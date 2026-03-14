@@ -30,9 +30,21 @@ interface StrikeRecord {
 const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
 
 const REGION_KEYWORDS: Record<string, string[]> = {
-    MILANO: ['lombardia', 'milano'],
-    ROMA: ['lazio', 'roma'],
-    TORINO: ['piemonte', 'torino'],
+    MILANO: ['milano'],
+    ROMA: ['roma'],
+    TORINO: ['torino'],
+};
+
+const AIRPORT_REGION_KEYWORDS: Record<string, string[]> = {
+    MILANO: ['malpensa', 'linate', 'bergamo', 'orio', 'bgy', 'mxp', 'lin'],
+    ROMA: ['fiumicino', 'ciampino', 'fco', 'cia'],
+    TORINO: ['caselle', 'trn'],
+};
+
+const AIRPORT_PROVINCE_KEYWORDS: Record<string, string[]> = {
+    MILANO: ['milano', 'varese', 'bergamo'],
+    ROMA: ['roma'],
+    TORINO: ['torino'],
 };
 
 const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
@@ -48,11 +60,16 @@ const TRANSPORT_SECTORS = [
 interface RawStrikeRow {
     date: string;
     provider: string;
-    duration: string;
     region: string;
     sector: string;
-    modalita: string;
-    note: string;
+    province: string;
+    modalita: string; // time window details
+    note: string; // free-form notes
+    rilevanza: string; // Nazionale/Territoriale/etc
+}
+
+function normalizeHeader(header: string): string {
+    return header.toLowerCase().replace(/\*/g, '').trim();
 }
 
 async function fetchAndFilter(): Promise<RawStrikeRow[]> {
@@ -66,48 +83,97 @@ async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 
     const $ = cheerio.load(html);
     const rows: RawStrikeRow[] = [];
+    let headerIndex: Record<string, number> = {};
 
     // The MIT table has no consistent id; find the main data table by scanning.
     // Rows typically have: date | provider | sector | region | duration | modalita | note
     $('table tr').each((_, tr) => {
+        const ths = $(tr).find('th');
+        if (ths.length > 0) {
+            // Build header index map from the first header row found
+            const headers = ths.map((_, th) => normalizeHeader($(th).text())).get();
+            headerIndex = {};
+            headers.forEach((h, idx) => {
+                if (h) headerIndex[h] = idx;
+            });
+            return;
+        }
+
         const cells = $(tr).find('td');
         if (cells.length < 5) return;
 
         // Try to extract fields - column positions may vary; use text heuristics
         const texts = cells.map((_, td) => $(td).text().trim()).get();
 
-        // Find which column looks like a date (dd/mm/yyyy)
+        // Find which column looks like a date (dd/mm/yyyy) as a fallback
         // Note: The HTML has multiple dates. The first date is usually at idx 1.
         const dateCol = texts.findIndex((t) => /^\d{2}\/\d{2}\/\d{4}/.test(t));
-        if (dateCol === -1) return;
+        if (dateCol === -1 && !headerIndex['inizio']) return;
 
-        // Based on test run, columns are:
-        // 1: Start Date, 2: End Date, 3: Sector/Union, 4: Macro Sector
-        // 5: Provider/Duration text, 6: Modalita, 7: Level (Nazionale/Locale), 
-        // 8: Note/Modalita2, 9: Date, 10: Region, 11: City
+        const getByHeader = (key: string, fallbackIdx?: number) => {
+            const idx = headerIndex[key];
+            if (idx !== undefined && idx !== null) return texts[idx] ?? '';
+            if (fallbackIdx !== undefined) return texts[fallbackIdx] ?? '';
+            return '';
+        };
+
+        const dateRaw = getByHeader('inizio', dateCol);
+        const providerRaw = getByHeader('categoria', dateCol + 4);
+        const sectorRaw = getByHeader('settore', dateCol + 3);
+        const modalitaRaw = getByHeader('modalita', dateCol + 5);
+        const rilevanzaRaw = getByHeader('rilevanza', dateCol + 6);
+        const noteRaw = getByHeader('note', dateCol + 7);
+        const regionRaw = getByHeader('regione', dateCol + 9);
+        const provinceRaw = getByHeader('provincia', dateCol + 10);
 
         const raw: Partial<RawStrikeRow> = {
-            date: texts[dateCol]?.trim() ?? '',
-            provider: texts[dateCol + 4]?.trim() ?? '', // Index 5 - provider string is usually here
-            sector: texts[dateCol + 3]?.trim() ?? '', // Index 4 - macro sector
-            region: (texts[dateCol + 9] + ' ' + (texts[dateCol + 10] ?? '')).trim(), // Index 10 + 11
-            duration: texts[dateCol + 5]?.trim() ?? '', // Index 6
-            modalita: texts[dateCol + 7]?.trim() ?? '', // Index 8
-            note: texts[dateCol + 6]?.trim() ?? '', // Index 7 (Nazionale/Locale)
+            date: dateRaw?.trim() ?? '',
+            provider: providerRaw?.trim() ?? '',
+            sector: sectorRaw?.trim() ?? '',
+            region: regionRaw?.trim() ?? '',
+            province: provinceRaw?.trim() ?? '',
+            modalita: modalitaRaw?.trim() ?? '',
+            note: noteRaw?.trim() ?? '',
+            rilevanza: rilevanzaRaw?.trim() ?? '',
         };
 
         // Filter: region must be Milano/Roma/Torino, unless it's national/plurisettoriale
-        const regionLow = raw.region?.toLowerCase().trim() ?? '';
-        const levelLow = raw.note?.toLowerCase().trim() ?? ''; // This holds Nazionale/Locale
-        const isNational = NATIONAL_KEYWORDS.some((k) => levelLow.includes(k));
+        const regionCombined = `${raw.region ?? ''} ${raw.province ?? ''}`.trim();
+        const regionLow = (raw.region ?? '').toLowerCase().trim();
+        const provinceLow = (raw.province ?? '').toLowerCase().trim();
+        const contextLow = `${raw.provider ?? ''} ${raw.note ?? ''}`.toLowerCase();
+        const levelLow = raw.rilevanza?.toLowerCase().trim() ?? '';
+        const isExplicitNationalRegion = regionLow.includes('italia') || regionLow.includes('tutte');
+        const hasLocality = (provinceLow || regionLow) && !isExplicitNationalRegion;
+        const isNational = isExplicitNationalRegion || (NATIONAL_KEYWORDS.some((k) => levelLow.includes(k)) && !hasLocality);
         let regionTag: string | null = null;
         if (isNational) {
             regionTag = 'NATIONAL';
         } else {
-            for (const [tag, keywords] of Object.entries(REGION_KEYWORDS)) {
-                if (keywords.some((kw) => regionLow.includes(kw))) {
-                    regionTag = tag;
-                    break;
+            const category = resolveCategory(raw.provider ?? '', raw.sector ?? '');
+            if (category === 'AIRPORT') {
+                for (const [tag, keywords] of Object.entries(AIRPORT_REGION_KEYWORDS)) {
+                    if (keywords.some((kw) => contextLow.includes(kw))) {
+                        regionTag = tag;
+                        break;
+                    }
+                }
+                if (!regionTag && provinceLow) {
+                    for (const [tag, keywords] of Object.entries(AIRPORT_PROVINCE_KEYWORDS)) {
+                        if (keywords.some((kw) => provinceLow.includes(kw))) {
+                            regionTag = tag;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!regionTag) {
+                const matchText = provinceLow || regionLow || regionCombined.toLowerCase().trim();
+                for (const [tag, keywords] of Object.entries(REGION_KEYWORDS)) {
+                    if (keywords.some((kw) => matchText.includes(kw))) {
+                        regionTag = tag;
+                        break;
+                    }
                 }
             }
         }
@@ -135,19 +201,31 @@ function parseItalianDate(dateStr: string): string {
 
 async function translateText(text: string): Promise<string> {
     if (!text || text.trim().length === 0) return text;
+    const apiKey = process.env.DEEPL_API_KEY;
+    if (!apiKey) return text;
+
     try {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
-        const res = await fetch(url);
+        const url = process.env.DEEPL_API_URL || 'https://api-free.deepl.com/v2/translate';
+        const params = new URLSearchParams();
+        params.append('auth_key', apiKey);
+        params.append('text', text);
+        params.append('target_lang', 'ZH');
+
+        const res = await fetch(url, {
+            method: 'POST',
+            body: params,
+        });
+        if (!res.ok) throw new Error(`DeepL translate failed: ${res.status}`);
         const json = await res.json();
-        if (json && json[0] && json[0][0] && json[0][0][0]) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let translated = json[0].map((s: any) => s[0]).join('');
-            translated = translated.replace(/航空地勤和飞行人员/g, '地勤与飞行人员');
-            translated = translated.replace(/地面及飞行人员/g, '地勤与飞行人员');
-            translated = translated.replace(/地面和飞行人员/g, '地勤与飞行人员');
-            translated = translated.replace(/的工作人员/g, '人员');
-            translated = translated.replace(/的人员/g, '人员');
-            return translated;
+        const translated = json?.translations?.[0]?.text;
+        if (translated) {
+            let cleaned = translated;
+            cleaned = cleaned.replace(/航空地勤和飞行人员/g, '地勤与飞行人员');
+            cleaned = cleaned.replace(/地面及飞行人员/g, '地勤与飞行人员');
+            cleaned = cleaned.replace(/地面和飞行人员/g, '地勤与飞行人员');
+            cleaned = cleaned.replace(/的工作人员/g, '人员');
+            cleaned = cleaned.replace(/的人员/g, '人员');
+            return cleaned;
         }
     } catch (e) {
         console.error("Translation failed for", text, e);
@@ -310,23 +388,22 @@ async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
     const rawRecords = await Promise.all(rawRows.map(async (row) => {
         const dateIso = parseItalianDate(row.date);
         const providerNorm = await normalizeProvider(row.provider);
-        const regionNorm = await translateText(row.region);
         const category = resolveCategory(row.provider, row.sector);
 
         let status: StrikeStatus = 'CONFIRMED';
-        const combinedRaw = `${row.provider} ${row.duration} ${row.note} ${row.modalita}`.toLowerCase();
+        const combinedRaw = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
         if (combinedRaw.includes('revocat') || combinedRaw.includes('differit')) {
             status = 'CANCELLED';
         } else if (combinedRaw.includes('da definire')) {
             status = 'REQUIRES_DETAIL';
         }
 
-        const timeInfo = parseTimeWindows(row.duration, row.modalita, row.note);
+        const timeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
         const guaranteedWins = injectGuaranteeWindows(category, dateIso, timeInfo);
 
         let lines = extractAffectedLines(row.note);
         // Map actual translated data if standard keywords were not found
-        const excludeNotes = ['nazionale', 'provinciale', 'regionale'];
+        const excludeNotes = ['nazionale', 'provinciale', 'regionale', 'territoriale'];
         if (lines.length === 1 && lines[0] === '全部线路' && row.note.trim().length > 3 && !excludeNotes.includes(row.note.toLowerCase().trim())) {
             const translatedNote = await translateText(row.note);
             if (translatedNote && translatedNote !== row.note) {
@@ -359,7 +436,7 @@ async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
             date: dateIso,
             category,
             provider: providerNorm,
-            region: regionNorm,
+            region: row.region,
             status: status,
             display_time: timeInfo.display,
             duration_hours: timeInfo.hours,

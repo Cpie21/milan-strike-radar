@@ -20,10 +20,17 @@ export default async function Page() {
     const lastYearSept1 = new Date(today.getFullYear() - 1, 8, 1);
     const startDateStr = new Date(lastYearSept1.getTime() - lastYearSept1.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
+    const regionFilter = [
+        'region.in.(MILANO,NATIONAL)',
+        'region.ilike.%milan%',
+        'region.eq.米兰',
+    ].join(',');
+
     const { data: strikes, error } = await supabase
         .from('strikes')
         .select('*')
         .gte('date', startDateStr)
+        .or(regionFilter)
         .order('date', { ascending: true });
 
     if (error) {
@@ -32,5 +39,5 @@ export default async function Page() {
 
     const rawStrikes = strikes || [];
 
-    return <StrikeDashboard strikesData={rawStrikes} />;
+    return <StrikeDashboard strikesData={rawStrikes} regionTag="MILANO" />;
 }

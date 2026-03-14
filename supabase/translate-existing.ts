@@ -10,6 +10,9 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function translateToChinese(text: string): Promise<string> {
+    const apiKey = process.env.DEEPL_API_KEY;
+    if (!apiKey) return text;
+
     let toTranslate = text.toUpperCase();
     toTranslate = toTranslate.replace(/SOC\. /g, '');
     toTranslate = toTranslate.replace(/SOC\./g, '');
@@ -23,19 +26,26 @@ async function translateToChinese(text: string): Promise<string> {
     toTranslate = toTranslate.trim();
 
     try {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(toTranslate)}`;
-        const res = await fetch(url);
+        const url = process.env.DEEPL_API_URL || 'https://api-free.deepl.com/v2/translate';
+        const params = new URLSearchParams();
+        params.append('auth_key', apiKey);
+        params.append('text', toTranslate);
+        params.append('target_lang', 'ZH');
+
+        const res = await fetch(url, { method: 'POST', body: params });
+        if (!res.ok) throw new Error(`DeepL translate failed: ${res.status}`);
         const json = await res.json();
-        if (json && json[0] && json[0][0] && json[0][0][0]) {
-            let translated = json[0].map((s: any) => s[0]).join('');
+        const translated = json?.translations?.[0]?.text;
+        if (translated) {
+            let cleaned = translated;
             // Optional shortening of common verbose text from translations
-            translated = translated.replace(/航空地勤和飞行人员/g, '地勤与飞行人员');
-            translated = translated.replace(/地面及飞行人员/g, '地勤与飞行人员');
-            translated = translated.replace(/地面和飞行人员/g, '地勤与飞行人员');
-            translated = translated.replace(/的工作人员/g, '人员');
-            translated = translated.replace(/的人员/g, '人员');
-            translated = translated.replace(/航空公司/g, '航司');
-            return translated;
+            cleaned = cleaned.replace(/航空地勤和飞行人员/g, '地勤与飞行人员');
+            cleaned = cleaned.replace(/地面及飞行人员/g, '地勤与飞行人员');
+            cleaned = cleaned.replace(/地面和飞行人员/g, '地勤与飞行人员');
+            cleaned = cleaned.replace(/的工作人员/g, '人员');
+            cleaned = cleaned.replace(/的人员/g, '人员');
+            cleaned = cleaned.replace(/航空公司/g, '航司');
+            return cleaned;
         }
     } catch (e) {
         console.error("Translation failed for", text, e);

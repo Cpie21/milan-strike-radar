@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, MotionConfig, useAnimation } from "framer-motion";
 import StrikeCard from "./StrikeCard";
 import WechatGuide from "./WechatGuide";
 import CalendarSyncModal from "./CalendarSyncModal";
 import WidgetGuideModal from "./WidgetGuideModal";
-import { aggregateStrikes } from "./utils";
+import { aggregateStrikes, filterStrikesForRegion } from "./utils";
 import { submitFeedback } from "../app/actions";
 import { captureOnce, capture, getDeviceType } from "../utils/analytics";
 
@@ -151,8 +152,10 @@ const TransportIcons = {
 
 export default function StrikeDashboard({
     strikesData,
+    regionTag = "MILANO",
 }: {
     strikesData: any[];
+    regionTag?: string;
 }) {
     // Helper functions
     const getLocalDateStr = (d: Date) => {
@@ -172,6 +175,18 @@ export default function StrikeDashboard({
     };
 
     const CN_DAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const REGION_LABELS: Record<string, string> = {
+        MILANO: "米兰",
+        ROMA: "罗马",
+        TORINO: "都灵",
+    };
+    const REGION_OPTIONS = [
+        { tag: "MILANO", label: "米兰", path: "/" },
+        { tag: "ROMA", label: "罗马", path: "/roma" },
+        { tag: "TORINO", label: "都灵", path: "/torino" },
+    ];
+    const activeRegionLabel = REGION_LABELS[regionTag.toUpperCase()] || "米兰";
+    const router = useRouter();
 
     // States
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -206,7 +221,7 @@ export default function StrikeDashboard({
     }, []);
 
     const [showTutorial, setShowTutorial] = useState<boolean>(false);
-    const [showRegionToast, setShowRegionToast] = useState<boolean>(false);
+    const [showRegionSelector, setShowRegionSelector] = useState<boolean>(false);
     const [visibleMonth, setVisibleMonth] = useState<number>(
         new Date().getMonth() + 1,
     );
@@ -470,9 +485,14 @@ export default function StrikeDashboard({
         }));
     };
 
+    const aggregatedData = useMemo(() => {
+        const regionScoped = filterStrikesForRegion(strikesData, regionTag);
+        const aggregated = aggregateStrikes(regionScoped);
+        return filterStrikesForRegion(aggregated, regionTag);
+    }, [strikesData, regionTag]);
+
     // Filter logic
     const filteredStrikes = useMemo(() => {
-        const aggregatedData = aggregateStrikes(strikesData);
         const dateStr = getLocalDateStr(selectedDate);
 
         return aggregatedData.filter((strike: any) => {
@@ -490,9 +510,9 @@ export default function StrikeDashboard({
 
             return true;
         });
-    }, [strikesData, selectedDate]);
+    }, [aggregatedData, selectedDate]);
     const selectedDateStr = getLocalDateStr(selectedDate);
-    const hasStrikesToday = strikesData.some(
+    const hasStrikesToday = aggregatedData.some(
         (s: any) => s.date === selectedDateStr,
     );
     const blurInitial = { opacity: 0, filter: "blur(10px)", WebkitFilter: "blur(10px)" };
@@ -605,8 +625,7 @@ export default function StrikeDashboard({
                                 </button>
                                 <button
                                     onClick={() => {
-                                        setShowRegionToast(true);
-                                        setTimeout(() => setShowRegionToast(false), 3000);
+                                        setShowRegionSelector(true);
                                     }}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all ${isDarkMode ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-white/20 border-white/10 hover:bg-[#E2E8F0]"}`}
                                 >
@@ -615,7 +634,7 @@ export default function StrikeDashboard({
                                         <circle cx="12" cy="10" r="3"></circle>
                                     </svg>
                                     <span className="text-white text-[13px] font-bold leading-tight">
-                                        米兰
+                                        {activeRegionLabel}
                                     </span>
                                 </button>
                             </div>
@@ -671,7 +690,7 @@ export default function StrikeDashboard({
                                 >
                                     {daysStrip.map((d, i) => {
                                         const dateStr = getLocalDateStr(d);
-                                        const dayHasStrike = strikesData.some(
+                                        const dayHasStrike = aggregatedData.some(
                                             (s: any) => s.date === dateStr,
                                         );
                                         const selected = dateStr === getLocalDateStr(selectedDate);
@@ -737,7 +756,7 @@ export default function StrikeDashboard({
                                         const isSelected = selectedCategories[cat];
 
                                         // Check if this category has a strike on the selected day
-                                        const categoryHasStrike = strikesData.some((strike: any) => {
+                                        const categoryHasStrike = aggregatedData.some((strike: any) => {
                                             if (strike.date !== selectedDateStr) return false;
                                             if (cat === "火车" && strike.category === "TRAIN")
                                                 return true;
@@ -763,7 +782,7 @@ export default function StrikeDashboard({
                                                     setHighlightedCategory(targetCategory);
                                                     setTimeout(() => setHighlightedCategory(null), 1500);
 
-                                                    const targetStrike = strikesData.find((s: any) => s.date === selectedDateStr && s.category === targetCategory);
+                                                    const targetStrike = aggregatedData.find((s: any) => s.date === selectedDateStr && s.category === targetCategory);
                                                     if (targetStrike) {
                                                         const el = document.getElementById(`strike-card-${targetStrike.id}`);
                                                         if (el) {
@@ -825,10 +844,10 @@ export default function StrikeDashboard({
                                             className={`flex flex-col items-center justify-center py-20 backdrop-blur-md rounded-3xl border border-white/20 ${isDarkMode ? "bg-black/40" : "bg-white/90 shadow-sm"}`}
                                         >
                                             <span className={`text-xl font-bold ${isDarkMode ? "text-white/80" : "text-slate-800"}`}>
-                                                {strikesData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "当前筛选条件无罢工" : "当日无罢工"}
+                                                {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "当前筛选条件无罢工" : "当日无罢工"}
                                             </span>
                                             <span className={`text-sm mt-2 ${isDarkMode ? "text-white/50" : "text-slate-500"}`}>
-                                                {strikesData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "请尝试选择上方筛选项" : "安心出行"}
+                                                {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "请尝试选择上方筛选项" : "安心出行"}
                                             </span>
                                         </CardFlipWrapper>
                                     </motion.div>
@@ -1194,7 +1213,7 @@ export default function StrikeDashboard({
                 <CalendarSyncModal
                     isOpen={showSyncModal}
                     onClose={() => setShowSyncModal(false)}
-                    strikes={strikesData}
+                    strikes={aggregatedData}
                     isDark={isDarkMode}
                     onScrollToCategory={(categoryId) => {
                         const todayStr = getLocalDateStr(selectedDate);
@@ -1203,7 +1222,7 @@ export default function StrikeDashboard({
                         const targetCategory = mapCat[categoryId];
                         if (!targetCategory) return;
 
-                        const targetStrike = strikesData.find((s: any) => s.date === todayStr && s.category === targetCategory);
+                        const targetStrike = aggregatedData.find((s: any) => s.date === todayStr && s.category === targetCategory);
                         if (targetStrike) {
                             const el = document.getElementById(`strike-card-${targetStrike.id}`);
                             if (el) {
@@ -1481,22 +1500,73 @@ export default function StrikeDashboard({
                     )}
                 </AnimatePresence>
 
-                {/* Region Not Supported Toast */}
+                {/* Region Selector */}
                 <AnimatePresence>
-                    {showRegionToast && (
+                    {showRegionSelector && (
                         <motion.div
-                            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                            className={`fixed top-8 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full font-bold text-[14px] flex items-center justify-center gap-2 shadow-[0px_4px_16px_rgba(0,0,0,0.2)] whitespace-nowrap border backdrop-blur-md w-max max-w-[90vw] ${isDarkMode ? "bg-[#1E293B]/90 text-white border-white/20" : "bg-white/90 text-[#0F172A] border-[#E2E8F0]"}`}
+                            initial="hidden"
+                            animate="visible"
+                            exit="hidden"
+                            variants={{
+                                hidden: { opacity: 0, filter: "blur(10px)", WebkitFilter: "blur(10px)" },
+                                visible: {
+                                    opacity: 1,
+                                    filter: "blur(0px)",
+                                    WebkitFilter: "blur(0px)",
+                                    transition: { duration: 0.3, staggerChildren: 0.08 },
+                                },
+                            }}
+                            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center px-6"
+                            onClick={() => setShowRegionSelector(false)}
                         >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
-                            暂时只支持米兰地区哦
+                            <motion.div
+                                variants={{
+                                    hidden: { opacity: 0, y: 20, scale: 0.98 },
+                                    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: "easeOut" } },
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`w-full max-w-[320px] rounded-[24px] border px-5 py-5 shadow-[0px_16px_60px_rgba(0,0,0,0.45)] ${isDarkMode ? "bg-[#0B1220]/95 border-white/10" : "bg-white/95 border-[#E2E8F0]"}`}
+                            >
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className={`text-[16px] font-bold ${isDarkMode ? "text-white" : "text-[#0F172A]"}`}>
+                                        选择城市
+                                    </span>
+                                    <button
+                                        onClick={() => setShowRegionSelector(false)}
+                                        className={`relative w-[28px] h-[28px] rounded-full border flex items-center justify-center ${isDarkMode ? "border-white/10 text-white/70 hover:text-white" : "border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]"}`}
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                    {REGION_OPTIONS.map((opt) => {
+                                        const isActive = opt.tag === regionTag.toUpperCase();
+                                        return (
+                                            <button
+                                                key={opt.tag}
+                                                onClick={() => {
+                                                    setShowRegionSelector(false);
+                                                    if (!isActive) router.push(opt.path);
+                                                }}
+                                                className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all ${isActive
+                                                    ? (isDarkMode ? "bg-white/15 border-white/30 text-white" : "bg-[#0F172A] text-white border-[#0F172A]")
+                                                    : (isDarkMode ? "bg-white/5 border-white/10 text-white/80 hover:bg-white/10" : "bg-white border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]")
+                                                    }`}
+                                            >
+                                                <span className="text-[15px] font-bold tracking-[0.2px]">{opt.label}</span>
+                                                {isActive && (
+                                                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${isDarkMode ? "bg-white/20 text-white" : "bg-white/20 text-white"}`}>
+                                                        当前
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </motion.div>
                         </motion.div>
                     )}
                 </AnimatePresence>

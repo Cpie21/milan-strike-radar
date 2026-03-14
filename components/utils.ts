@@ -20,6 +20,72 @@ export const statusMap: Record<string, 'active' | 'cancelled'> = {
   'UNCERTAIN': 'active',
 };
 
+const AFFECTED_LINE_BLACKLIST = [
+  '语言环境',
+  'ambiente linguistico',
+  'linguistico',
+  'nazionale',
+  'regionale',
+  'provinciale',
+  'territoriale',
+  'locale',
+  'note',
+];
+
+export function sanitizeAffectedLines(lines: string[]) {
+  if (!Array.isArray(lines)) return [];
+  return lines
+    .map(l => (l || '').trim())
+    .filter(Boolean)
+    .filter(l => !AFFECTED_LINE_BLACKLIST.some(b => l.toLowerCase().includes(b)));
+}
+
+const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = {
+  MILANO: ['马尔彭萨', 'malpensa', 'mxp', '利纳特', 'linate', 'lin', '贝加莫', 'bergamo', 'orio', 'bgy'],
+  ROMA: ['菲乌米奇诺', 'fiumicino', 'fco', '钱皮诺', 'ciampino', 'cia'],
+  TORINO: ['卡塞莱', 'caselle', '都灵', 'torino', 'trn'],
+};
+
+const REGION_AIRPORT_FALLBACK: Record<string, string[]> = {
+  MILANO: ['马尔彭萨 T1', '马尔彭萨 T2', '利纳特机场'],
+  ROMA: ['罗马菲乌米奇诺机场', '罗马钱皮诺机场'],
+  TORINO: ['都灵卡塞莱机场'],
+};
+
+export function filterStrikesForRegion(rawStrikes: any[], regionTag: string) {
+  if (!Array.isArray(rawStrikes)) return [];
+  const regionKey = (regionTag || 'MILANO').toUpperCase();
+  const keywords = REGION_AIRPORT_KEYWORDS[regionKey] || [];
+  const fallback = REGION_AIRPORT_FALLBACK[regionKey];
+
+  return rawStrikes
+    .map((strike) => {
+      if (!strike) return null;
+      if (strike.category !== 'AIRPORT') return strike;
+
+      const lines = sanitizeAffectedLines(strike.affected_lines || []);
+      if (keywords.length === 0) return { ...strike, affected_lines: lines };
+
+      const providerText = (strike.provider || '').toLowerCase();
+      const regionRaw = String(strike.region || '').toLowerCase();
+      const isNational = regionRaw.includes('national') || regionRaw.includes('nazionale') || regionRaw.includes('国家');
+
+      const filtered = lines.filter((l: string) => keywords.some(k => l.toLowerCase().includes(k)));
+      if (filtered.length > 0) {
+        return { ...strike, affected_lines: filtered };
+      }
+
+      const providerMatches = keywords.some(k => providerText.includes(k));
+      if (providerMatches || isNational) {
+        return { ...strike, affected_lines: fallback || lines };
+      }
+
+      // Local strike but no region match: drop to avoid leaking other-city airports
+      return null;
+    })
+    .filter(Boolean);
+}
+
 /**
  * Union overlaps helper
  */
@@ -85,7 +151,7 @@ export function aggregateStrikes(rawStrikes: any[]) {
 
       // Merge Affected Lines
       const linesSet = new Set([...(existing.affected_lines || []), ...(strike.affected_lines || [])]);
-      existing.affected_lines = Array.from(linesSet).filter(l => l !== '全部线路' && l !== '全部车次');
+      existing.affected_lines = sanitizeAffectedLines(Array.from(linesSet)).filter(l => l !== '全部线路' && l !== '全部车次');
       if (existing.affected_lines.length === 0) {
         existing.affected_lines = existing.category === 'AIRPORT' ? ['全部机场'] : ['全部线路'];
       }
@@ -101,9 +167,39 @@ export function aggregateStrikes(rawStrikes: any[]) {
         existing.affected_lines = ["马尔彭萨 T1", "马尔彭萨 T2", "利纳特机场"];
       }
 
-      // Strip redundant airport names from the provider string since it's in the lines tag
-      const stopWords = ['米兰马尔彭萨机场', '马尔彭萨机场', '马尔彭萨', '米兰利纳特机场', '利纳特机场', '利纳特', '米兰贝加莫机场', '贝加莫机场', '贝加莫', '机场', '和', '工'];
+      // Strip airport names from provider and push them into affected_lines
       let cleanedProvider = existing.provider;
+      const airportRefs = new Set<string>();
+
+      const extractAirportRefs = (input: string) => {
+        let cleaned = input;
+        const refs: string[] = [];
+
+        // Chinese airport names like "布雷西亚蒙蒂基亚里机场"
+        const cnMatches = cleaned.match(/[\u4e00-\u9fa5]{2,}机场/g);
+        if (cnMatches) {
+          cnMatches.forEach(m => {
+            const t = m.trim();
+            if (t && t !== '机场') refs.push(t);
+            cleaned = cleaned.replace(m, '');
+          });
+        }
+
+        // Italian/English airport names like "AEROPORTO DI BRESCIA"
+        const itMatches = [...cleaned.matchAll(/AEROPORTO(?:\s+DI|\s+D')?\s*([A-ZÀ-ÖØ-öø-ÿ\s\-]{2,})/gi)];
+        itMatches.forEach(m => {
+          const name = (m[1] || '').trim();
+          if (name) refs.push(name);
+        });
+        const enMatches = [...cleaned.matchAll(/AIRPORT\s*([A-ZÀ-ÖØ-öø-ÿ\s\-]{2,})/gi)];
+        enMatches.forEach(m => {
+          const name = (m[1] || '').trim();
+          if (name) refs.push(name);
+        });
+
+        cleaned = cleaned.replace(/AEROPORTO|AEROPORTI|AIRPORT/gi, '').replace(/\s{2,}/g, ' ').trim();
+        return { cleaned, refs };
+      };
       // Canonical mapping to deduplicate and translate acronyms
       const parts = cleanedProvider.split(/[\/、]/).map((p: string) => p.trim()).filter(Boolean);
       const canonicalSet = new Set<string>();
@@ -111,7 +207,15 @@ export function aggregateStrikes(rawStrikes: any[]) {
       const entityRoleMap = new Map<string, Set<string>>();
 
       parts.forEach((p: string) => {
-        const upper = p.toUpperCase();
+        const { cleaned, refs } = extractAirportRefs(p);
+        refs.forEach(r => airportRefs.add(r));
+        if (!cleaned) return;
+
+        const upper = cleaned.toUpperCase();
+        const codeAllowlist = new Set(['ENAV', 'SEA', 'ALHA', 'DNATA', 'ITA', 'GDA', 'TRENORD', 'ATM']);
+        if (/\d/.test(upper) && /^[A-Z0-9]{2,6}$/.test(upper) && !codeAllowlist.has(upper)) {
+          return;
+        }
         let mapped = false;
 
         // Determine role
@@ -174,9 +278,9 @@ export function aggregateStrikes(rawStrikes: any[]) {
             mapped = true;
           } else {
             // Remove meaningless job titles to see if anything substantial is left
-            let cl = p.replace(/接待人员|陆路|导航人员|地勤飞行人员|地勤|飞行人员|人员|工|管理|DI TERRA|E飞行|纳维甘特|航空有限公司|航空公司/ig, '').trim();
+            let cl = cleaned.replace(/接待人员|陆路|导航人员|地勤飞行人员|地勤|飞行人员|人员|工|管理|DI TERRA|E飞行|纳维甘特|航空有限公司|航空公司/ig, '').trim();
             if (cl.length > 2 || (cl.match(/^[a-zA-Z]{2,}$/) && cl.length >= 2)) {
-              unmappedSet.add(p); // Keep the original if it couldn't be mapped properly but seems like a unique entity
+              unmappedSet.add(cleaned); // Keep the cleaned value if it couldn't be mapped properly
             }
           }
         }
@@ -211,6 +315,12 @@ export function aggregateStrikes(rawStrikes: any[]) {
       }
 
       existing.provider = cleanedProvider;
+
+      if (airportRefs.size > 0) {
+        const linesSet = new Set(existing.affected_lines || []);
+        airportRefs.forEach(r => linesSet.add(r));
+        existing.affected_lines = sanitizeAffectedLines(Array.from(linesSet));
+      }
     }
 
     return existing;
