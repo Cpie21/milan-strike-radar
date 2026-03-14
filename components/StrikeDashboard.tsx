@@ -1549,7 +1549,9 @@ export default function StrikeDashboard({
                                                 key={opt.tag}
                                                 onClick={() => {
                                                     setShowRegionSelector(false);
-                                                    if (!isActive) router.push(opt.path);
+                                                    if (!isActive) {
+                                                        window.location.assign(opt.path);
+                                                    }
                                                 }}
                                                 className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all ${isActive
                                                     ? (isDarkMode ? "bg-white/15 border-white/30 text-white" : "bg-[#0F172A] text-white border-[#0F172A]")

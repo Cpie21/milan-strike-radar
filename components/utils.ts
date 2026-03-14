@@ -57,31 +57,24 @@ export function filterStrikesForRegion(rawStrikes: any[], regionTag: string) {
   const regionKey = (regionTag || 'MILANO').toUpperCase();
   const keywords = REGION_AIRPORT_KEYWORDS[regionKey] || [];
   const fallback = REGION_AIRPORT_FALLBACK[regionKey];
+  const allowedCategories = new Set(['TRAIN', 'SUBWAY', 'BUS', 'AIRPORT']);
 
   return rawStrikes
     .map((strike) => {
       if (!strike) return null;
+      if (!strike.category || !allowedCategories.has(strike.category)) return null;
       if (strike.category !== 'AIRPORT') return strike;
 
       const lines = sanitizeAffectedLines(strike.affected_lines || []);
       if (keywords.length === 0) return { ...strike, affected_lines: lines };
-
-      const providerText = (strike.provider || '').toLowerCase();
-      const regionRaw = String(strike.region || '').toLowerCase();
-      const isNational = regionRaw.includes('national') || regionRaw.includes('nazionale') || regionRaw.includes('国家');
 
       const filtered = lines.filter((l: string) => keywords.some(k => l.toLowerCase().includes(k)));
       if (filtered.length > 0) {
         return { ...strike, affected_lines: filtered };
       }
 
-      const providerMatches = keywords.some(k => providerText.includes(k));
-      if (providerMatches || isNational) {
-        return { ...strike, affected_lines: fallback || lines };
-      }
-
-      // Local strike but no region match: drop to avoid leaking other-city airports
-      return null;
+      // If nothing matched, fall back to region-specific airports
+      return { ...strike, affected_lines: fallback || lines };
     })
     .filter(Boolean);
 }
