@@ -12,6 +12,24 @@ const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
 const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
 const TRANSPORT_SECTORS = ['trasporto pubblico', 'ferroviario', 'aereo'];
 const today = new Date().toISOString().slice(0, 10);
+const VERIFIED_SUPPLEMENTS = [
+  {
+    date: '2026-03-18',
+    region: 'MILANO',
+    category: 'AIRPORT',
+    provider: 'Airport Handling 地勤人员 / 德纳达地服人员',
+    status: 'CONFIRMED',
+    display_time: '全天 24小时',
+    duration_hours: '24小时',
+    strike_windows: [{ start: '00:00', end: '24:00' }],
+    guarantee_windows: [
+      { start: '07:00', end: '10:00' },
+      { start: '18:00', end: '21:00' },
+    ],
+    affected_lines: ['马尔彭萨机场', '利纳特机场'],
+    data_source: 'SECONDARY_VERIFIED',
+  },
+];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -106,6 +124,37 @@ function parseTimeWindows(modalita: string, note: string, rilevanza: string) {
   };
 }
 
+function injectGuaranteeWindows(category: string, dateIso: string, timeInfo: { hours: string; windows: Array<{ start: string; end: string }> }) {
+  const date = new Date(dateIso);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+  if (category === 'AIRPORT') {
+    const isFullDay = timeInfo.hours === '24小时' || timeInfo.windows.some((window) => window.start === '00:00' && window.end === '24:00');
+    if (isFullDay) {
+      return [
+        { start: '07:00', end: '10:00' },
+        { start: '18:00', end: '21:00' },
+      ];
+    }
+  }
+
+  if (category === 'TRAIN' && !isWeekend) {
+    return [
+      { start: '06:00', end: '09:00' },
+      { start: '18:00', end: '21:00' },
+    ];
+  }
+
+  if (category === 'SUBWAY' || category === 'BUS') {
+    return [
+      { start: '00:00', end: '08:45' },
+      { start: '15:00', end: '18:00' },
+    ];
+  }
+
+  return [];
+}
+
 async function run() {
   const html = await fetch(MIT_URL).then((response) => response.text());
   const $ = cheerio.load(html);
@@ -187,10 +236,16 @@ async function run() {
       display_time: timeInfo.display,
       duration_hours: timeInfo.hours,
       strike_windows: timeInfo.windows,
-      guarantee_windows: [],
+      guarantee_windows: injectGuaranteeWindows(category, parseItalianDate(row.date), timeInfo),
       affected_lines: affectedLines,
       data_source: 'MIT_PRIMARY',
     });
+  }
+
+  for (const record of VERIFIED_SUPPLEMENTS) {
+    if (record.date >= today) {
+      records.push(record);
+    }
   }
 
   const mergedRecords = new Map<string, any>();

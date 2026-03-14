@@ -882,7 +882,7 @@ export default function StrikeDashboard({
                                                 style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                                 className="relative z-10 w-full h-full"
                                             >
-                                                <StrikeCard key={strike.id} strike={strike} isDark={isDarkMode} />
+                                                <StrikeCard key={strike.id} strike={{ ...strike, region: regionTag }} isDark={isDarkMode} />
                                             </motion.div>
                                         </motion.div>
                                     );

@@ -27,6 +27,7 @@ function getPlaneIcon(fillColor = "white") {
 interface StrikeRecord {
     id: string;
     date: string;
+    region?: string;
     category: 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
     provider: string;
     status: 'CONFIRMED' | 'REQUIRES_DETAIL' | 'CANCELLED' | 'CONFIRMED (STRIKE)';
@@ -38,6 +39,33 @@ interface StrikeRecord {
 }
 
 export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, isDark: boolean }) {
+    const viewRegion = strike.region || 'MILANO';
+    const buildFallbackGuarantees = () => {
+        const currentSlots = strike.strike_windows || [];
+        const isFullDay = currentSlots.some((slot) => slot.start === '00:00' && slot.end === '24:00') || strike.duration_hours === '24小时';
+        const date = new Date(strike.date);
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+        if (strike.category === 'AIRPORT' && isFullDay) {
+            return [
+                { start: '07:00', end: '10:00' },
+                { start: '18:00', end: '21:00' },
+            ];
+        }
+        if (strike.category === 'TRAIN' && !isWeekend) {
+            return [
+                { start: '06:00', end: '09:00' },
+                { start: '18:00', end: '21:00' },
+            ];
+        }
+        if (strike.category === 'SUBWAY' || strike.category === 'BUS') {
+            return [
+                { start: '00:00', end: '08:45' },
+                { start: '15:00', end: '18:00' },
+            ];
+        }
+        return [];
+    };
     // Expandable state for guarantee info
     const [isExpanded, setIsExpanded] = useState(false);
     // UI state for share button feedback
@@ -46,8 +74,8 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     // Doodle Feature State
     const [doodleCount, setDoodleCount] = useState(0);
     const doodleStorageKey = useMemo(
-        () => `doodled_${strike.date}|${strike.category}|${strike.category === 'AIRPORT' ? (strike.display_time || '') : ''}`,
-        [strike.date, strike.category, strike.display_time]
+        () => `doodled_${viewRegion}|${strike.date}|${strike.category}|${strike.category === 'AIRPORT' ? (strike.display_time || '') : ''}`,
+        [viewRegion, strike.date, strike.category, strike.display_time]
     );
 
     // Initialize synchronously to avoid flicker
@@ -86,7 +114,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         const syncCount = async () => {
             const effectiveDisplayTime = strike.category === 'AIRPORT' ? strike.display_time : undefined;
 
-            const count = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime);
+            const count = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime, viewRegion);
             if (!mounted) return;
 
             setDoodleCount(prev => {
@@ -104,7 +132,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
             mounted = false;
             clearInterval(timer);
         };
-    }, [strike.id, doodleStorageKey]);
+    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion]);
 
     const handleDoodle = async () => {
         if (hasDoodled) {
@@ -132,8 +160,8 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         }
 
         const effectiveDisplayTime = strike.category === 'AIRPORT' ? strike.display_time : undefined;
-        const result = await submitDoodle(strike.id as unknown as string, clientUuid, strike.date, strike.category, effectiveDisplayTime);
-        const latest = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime);
+        const result = await submitDoodle(strike.id as unknown as string, clientUuid, strike.date, strike.category, effectiveDisplayTime, viewRegion);
+        const latest = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime, viewRegion);
         setDoodleCount(latest);
 
         // Track graffiti event (always, even if already doodled)
@@ -256,9 +284,13 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     // The background should be transparent grey like others (26% opacity of slate-200 or similar)
     // We handle this in the render logic below by checking if segment is 'grey'
 
+    const guaranteeWindows = strike.guarantee_windows && strike.guarantee_windows.length > 0
+        ? strike.guarantee_windows
+        : buildFallbackGuarantees();
+
     let guarantees: { s: number, e: number }[] = [];
-    if (strike.guarantee_windows && Array.isArray(strike.guarantee_windows)) {
-        guarantees = strike.guarantee_windows.map((w: any) => {
+    if (guaranteeWindows && Array.isArray(guaranteeWindows)) {
+        guarantees = guaranteeWindows.map((w: any) => {
             const [sh, sm] = w.start.split(':').map(Number);
             const [eh, em] = w.end.split(':').map(Number);
             let endMin = eh * 60 + em;

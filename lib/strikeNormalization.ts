@@ -37,9 +37,9 @@ const TARGET_LOCATION_RULES = {
 } as const;
 
 const REGION_ALIASES: Record<string, string[]> = {
-  MILANO: ['MILANO', 'MILAN', '米兰', 'MALPENSA', 'MXP', 'LINATE', 'LIN', 'BERGAMO', 'ORIO', 'BGY'],
-  ROMA: ['ROMA', 'ROME', '罗马', 'FIUMICINO', 'FCO', 'CIAMPINO', 'CIA'],
-  TORINO: ['TORINO', 'TURIN', '都灵', 'CASELLE', 'TRN'],
+  MILANO: ['MILANO', 'MILAN', '米兰', 'MALPENSA', 'MXP', 'LINATE', 'LIN', 'BERGAMO', 'ORIO', 'BGY', '马尔彭萨', '利纳特', '贝加莫'],
+  ROMA: ['ROMA', 'ROME', '罗马', 'FIUMICINO', 'FCO', 'CIAMPINO', 'CIA', '菲乌米奇诺', '钱皮诺'],
+  TORINO: ['TORINO', 'TURIN', '都灵', 'CASELLE', 'TRN', '卡塞莱'],
 };
 
 type AirportDef = {
@@ -64,6 +64,7 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
   { match: /CIALONE(?:\s+TOUR)?/i, label: 'CIALONE 人员' },
   { match: /ARRIVA\s+ITALIA\s+DI\s+TORINO|ARRIVA\s+TORINO/i, label: 'Arriva Torino 人员' },
   { match: /SUN\s+DI\s+NOVARA|SUN\s+NOVARA/i, label: 'SUN Novara 人员' },
+  { match: /AIRPORT\s+HANDLING/i, label: 'Airport Handling 地勤人员' },
   { match: /\bITA(?:\s+AIRWAYS)?\b|ALITALIA|意大利航空/i, label: '意大利航空人员' },
   { match: /\bATAC\b/i, label: 'ATAC人员' },
   { match: /\bGTT\b/i, label: 'GTT人员' },

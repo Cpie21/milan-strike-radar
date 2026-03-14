@@ -15,17 +15,20 @@ const supabase = createClient(
     }
 );
 
-export async function submitDoodle(strikeId: string, clientUuid: string, date?: string, category?: string, displayTime?: string) {
-    return submitDoodleByGroup(strikeId, clientUuid, date, category, displayTime);
+export async function submitDoodle(strikeId: string, clientUuid: string, date?: string, category?: string, displayTime?: string, region?: string) {
+    return submitDoodleByGroup(strikeId, clientUuid, date, category, displayTime, region);
 }
 
-async function resolveGroupStrikeIds(strikeId: string, date?: string, category?: string, displayTime?: string) {
+async function resolveGroupStrikeIds(strikeId: string, date?: string, category?: string, displayTime?: string, region?: string) {
     if (!date || !category) return [strikeId];
     let query = supabase
         .from('strikes')
         .select('id')
         .eq('date', date)
         .eq('category', category);
+    if (region) {
+        query = query.in('region', [region, 'NATIONAL']);
+    }
     if (category === 'AIRPORT' && displayTime) {
         query = query.eq('display_time', displayTime);
     }
@@ -34,9 +37,9 @@ async function resolveGroupStrikeIds(strikeId: string, date?: string, category?:
     return data.map((r: any) => r.id).filter(Boolean);
 }
 
-export async function submitDoodleByGroup(strikeId: string, clientUuid: string, date?: string, category?: string, displayTime?: string) {
+export async function submitDoodleByGroup(strikeId: string, clientUuid: string, date?: string, category?: string, displayTime?: string, region?: string) {
     try {
-        const ids = await resolveGroupStrikeIds(strikeId, date, category, displayTime);
+        const ids = await resolveGroupStrikeIds(strikeId, date, category, displayTime, region);
         const canonicalStrikeId = ids.slice().sort()[0] || strikeId;
         const { error } = await supabase
             .from('strike_doodles')
@@ -57,13 +60,13 @@ export async function submitDoodleByGroup(strikeId: string, clientUuid: string, 
     }
 }
 
-export async function getDoodleCount(strikeId: string, date?: string, category?: string, displayTime?: string) {
-    return getDoodleCountByGroup(strikeId, date, category, displayTime);
+export async function getDoodleCount(strikeId: string, date?: string, category?: string, displayTime?: string, region?: string) {
+    return getDoodleCountByGroup(strikeId, date, category, displayTime, region);
 }
 
-export async function getDoodleCountByGroup(strikeId: string, date?: string, category?: string, displayTime?: string) {
+export async function getDoodleCountByGroup(strikeId: string, date?: string, category?: string, displayTime?: string, region?: string) {
     try {
-        const ids = await resolveGroupStrikeIds(strikeId, date, category, displayTime);
+        const ids = await resolveGroupStrikeIds(strikeId, date, category, displayTime, region);
         const { count, error } = await supabase
             .from('strike_doodles')
             .select('*', { count: 'exact', head: true })

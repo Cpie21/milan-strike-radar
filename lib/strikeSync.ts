@@ -43,6 +43,24 @@ export interface RawStrikeRow {
 const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
 const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
 const TRANSPORT_SECTORS = ['trasporto pubblico', 'ferroviario', 'aereo'];
+const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
+  {
+    date: '2026-03-18',
+    region: 'MILANO',
+    category: 'AIRPORT',
+    provider: 'Airport Handling 地勤人员 / 德纳达地服人员',
+    status: 'CONFIRMED',
+    display_time: '全天 24小时',
+    duration_hours: '24小时',
+    strike_windows: [{ start: '00:00', end: '24:00' }],
+    guarantee_windows: [
+      { start: '07:00', end: '10:00' },
+      { start: '18:00', end: '21:00' },
+    ],
+    affected_lines: ['马尔彭萨机场', '利纳特机场'],
+    data_source: 'SECONDARY_VERIFIED',
+  },
+];
 
 function normalizeHeader(header: string) {
   return header.toLowerCase().replace(/\*/g, '').trim();
@@ -346,7 +364,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
   }));
 
   const recordsMap = new Map<string, StrikeRecord>();
-  rawRecords.forEach((record) => {
+  [...rawRecords, ...VERIFIED_SUPPLEMENTS].forEach((record) => {
     const key = `${record.date}|${record.region}|${record.category}|${record.provider}|${record.display_time}`;
     if (!recordsMap.has(key)) recordsMap.set(key, record);
   });

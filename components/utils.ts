@@ -71,7 +71,7 @@ function filterAirportLinesForDisplay(lines: string[], currentRegion: string) {
   const keywords = REGION_AIRPORT_KEYWORDS[currentRegion] || [];
   const filtered = lines.filter((line) => keywords.some((keyword) => line.includes(keyword)));
   if (filtered.length > 0) return filtered;
-  return [`${currentRegion === 'NATIONAL' ? '全国' : currentRegion === 'MILANO' ? '米兰' : currentRegion === 'ROMA' ? '罗马' : '都灵'}相关机场`];
+  return [];
 }
 
 export function filterStrikesForRegion(rawStrikes: StrikeLike[], regionTag: string) {
@@ -104,6 +104,11 @@ export function filterStrikesForRegion(rawStrikes: StrikeLike[], regionTag: stri
           regionTag: normalizedRegion || currentRegion,
         }), currentRegion),
       };
+    })
+    .filter((strike) => {
+      if (!strike) return false;
+      if (strike.category !== 'AIRPORT') return true;
+      return Array.isArray(strike.affected_lines) && strike.affected_lines.length > 0;
     })
     .filter(Boolean);
 }
@@ -162,6 +167,7 @@ export function aggregateStrikes(rawStrikes: StrikeLike[]) {
 
       // Merge Strike Windows
       const allWindows = [...(existing.strike_windows || []), ...(strike.strike_windows || [])];
+      const allGuaranteeWindows = [...(existing.guarantee_windows || []), ...(strike.guarantee_windows || [])];
       if (strike.duration_hours === '24小时' || existing.duration_hours === '24小时') {
         existing.duration_hours = '24小时';
         existing.display_time = '全天 24小时';
@@ -170,6 +176,7 @@ export function aggregateStrikes(rawStrikes: StrikeLike[]) {
         existing.strike_windows = mergeTimeWindows(allWindows);
         existing.display_time = existing.strike_windows.map((w) => `${w.start} - ${w.end}`).join(', ');
       }
+      existing.guarantee_windows = mergeTimeWindows(allGuaranteeWindows);
 
       // Merge Status
       if (strike.status === 'CONFIRMED') existing.status = 'CONFIRMED';
