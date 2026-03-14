@@ -21,6 +21,7 @@ interface StrikeRecord {
     strike_windows: StrikeWindow[];
     guarantee_windows: StrikeWindow[];
     affected_lines: string[];
+    region: string;
     data_source?: string;
 }
 
@@ -28,7 +29,13 @@ interface StrikeRecord {
 
 const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
 
-const LOMBARDIA_REGIONS = ['lombardia', 'milano'];
+const REGION_KEYWORDS: Record<string, string[]> = {
+    MILANO: ['lombardia', 'milano'],
+    ROMA: ['lazio', 'roma'],
+    TORINO: ['piemonte', 'torino'],
+};
+
+const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
 
 const TRANSPORT_SECTORS = [
     'trasporto pubblico',
@@ -89,11 +96,23 @@ async function fetchAndFilter(): Promise<RawStrikeRow[]> {
             note: texts[dateCol + 6]?.trim() ?? '', // Index 7 (Nazionale/Locale)
         };
 
-        // Filter: region must contain lombardia or milano
+        // Filter: region must be Milano/Roma/Torino, unless it's national/plurisettoriale
         const regionLow = raw.region?.toLowerCase().trim() ?? '';
-        const levelLow = raw.note?.toLowerCase().trim() ?? ''; // This holdsazionale/Locale
-        const isLombardia = LOMBARDIA_REGIONS.some((r) => regionLow.includes(r)) || levelLow.includes('nazionale') || levelLow.includes('plurisettoriale');
-        if (!isLombardia) return;
+        const levelLow = raw.note?.toLowerCase().trim() ?? ''; // This holds Nazionale/Locale
+        const isNational = NATIONAL_KEYWORDS.some((k) => levelLow.includes(k));
+        let regionTag: string | null = null;
+        if (isNational) {
+            regionTag = 'NATIONAL';
+        } else {
+            for (const [tag, keywords] of Object.entries(REGION_KEYWORDS)) {
+                if (keywords.some((kw) => regionLow.includes(kw))) {
+                    regionTag = tag;
+                    break;
+                }
+            }
+        }
+        if (!regionTag) return;
+        raw.region = regionTag;
 
         // Filter: sector must be related to public / rail / air transport
         const sectorLow = raw.sector?.toLowerCase().trim() ?? '';
@@ -291,6 +310,7 @@ async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
     const rawRecords = await Promise.all(rawRows.map(async (row) => {
         const dateIso = parseItalianDate(row.date);
         const providerNorm = await normalizeProvider(row.provider);
+        const regionNorm = await translateText(row.region);
         const category = resolveCategory(row.provider, row.sector);
 
         let status: StrikeStatus = 'CONFIRMED';
@@ -339,6 +359,7 @@ async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
             date: dateIso,
             category,
             provider: providerNorm,
+            region: regionNorm,
             status: status,
             display_time: timeInfo.display,
             duration_hours: timeInfo.hours,
