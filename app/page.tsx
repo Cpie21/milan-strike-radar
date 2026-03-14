@@ -24,6 +24,8 @@ export default async function Page() {
         'region.in.(MILANO,NATIONAL)',
         'region.ilike.%milan%',
         'region.eq.米兰',
+        'region.eq.国家的',
+        'region.ilike.%nazional%',
     ].join(',');
 
     const { data: strikes, error } = await supabase

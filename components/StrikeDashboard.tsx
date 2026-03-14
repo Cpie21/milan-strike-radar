@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, MotionConfig, useAnimation } from "framer-motion";
 import StrikeCard from "./StrikeCard";
 import WechatGuide from "./WechatGuide";
@@ -186,8 +185,6 @@ export default function StrikeDashboard({
         { tag: "TORINO", label: "都灵", path: "/torino" },
     ];
     const activeRegionLabel = REGION_LABELS[regionTag.toUpperCase()] || "米兰";
-    const router = useRouter();
-
     // States
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedCategories, setSelectedCategories] = useState<

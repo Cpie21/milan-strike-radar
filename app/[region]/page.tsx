@@ -17,22 +17,28 @@ const REGION_FILTER_MAP: Record<string, string> = {
         'region.in.(MILANO,NATIONAL)',
         'region.ilike.%milan%',
         'region.eq.米兰',
+        'region.eq.国家的',
+        'region.ilike.%nazional%',
     ].join(','),
     ROMA: [
         'region.in.(ROMA,NATIONAL)',
         'region.ilike.%roma%',
         'region.ilike.%rome%',
         'region.eq.罗马',
+        'region.eq.国家的',
+        'region.ilike.%nazional%',
     ].join(','),
     TORINO: [
         'region.in.(TORINO,NATIONAL)',
         'region.ilike.%torino%',
         'region.ilike.%turin%',
         'region.eq.都灵',
+        'region.eq.国家的',
+        'region.ilike.%nazional%',
     ].join(','),
 };
 
-export default async function Page({ params }: { params: { region: string } }) {
+export default async function Page({ params }: { params: Promise<{ region: string }> }) {
     // Use service role key server-side (safe — this is a Server Component)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,7 +55,8 @@ export default async function Page({ params }: { params: { region: string } }) {
     const lastYearSept1 = new Date(today.getFullYear() - 1, 8, 1);
     const startDateStr = new Date(lastYearSept1.getTime() - lastYearSept1.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
-    const regionTag = REGION_SLUG_MAP[(params?.region || '').toLowerCase()] || 'MILANO';
+    const { region } = await params;
+    const regionTag = REGION_SLUG_MAP[(region || '').toLowerCase()] || 'MILANO';
     const regionFilter = REGION_FILTER_MAP[regionTag] || REGION_FILTER_MAP.MILANO;
 
     const { data: strikes, error } = await supabase

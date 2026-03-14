@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { submitDoodle, getDoodleCount } from '../app/actions';
+import { normalizeDisplayLines } from './utils';
+import { normalizeProviderList } from '../lib/strikeNormalization';
 import DoodleCanvas, { DoodleCategory } from './DoodleOverlay';
 import { capture, isWeChatBrowser } from '../utils/analytics';
 
@@ -180,21 +182,23 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     let title = "其他罢工";
     let subTitle = "相关人员";
     let icon = getTrainIcon(isDark ? '#0F172A' : 'white'); // Fallback
+    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
 
     // Exact mapping requested from Figma, using actual provider if available
-    if (isTrain) { title = "火车罢工"; subTitle = strike.provider || "国家铁路局"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
+    if (isTrain) { title = "火车罢工"; subTitle = normalizedProvider || "国家铁路局"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
     else if (isPlane) {
         title = "机场罢工";
-        subTitle = strike.provider || "航司与机场人员";
+        subTitle = normalizedProvider || "航司与机场人员";
         icon = getPlaneIcon(isDark ? '#0F172A' : 'white');
     }
-    else if (isMetro) { title = "地铁罢工"; subTitle = strike.provider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
-    else if (isBus) { title = "公交罢工"; subTitle = strike.provider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
+    else if (isMetro) { title = "地铁罢工"; subTitle = normalizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
+    else if (isBus) { title = "公交罢工"; subTitle = normalizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
 
     // Strip Airport Title from tags if we used it as the main title
     let displayLines = strike.affected_lines && strike.affected_lines.length > 0 && strike.affected_lines[0] !== '全部线路' && strike.affected_lines[0] !== '全部车次'
         ? strike.affected_lines
         : (isPlane ? ['全部机场'] : ['全部线路']);
+    displayLines = normalizeDisplayLines(displayLines, strike.category);
 
     // Status Tag Logic
     const isConfirmed = strike.status === 'CONFIRMED' || strike.status === 'CONFIRMED (STRIKE)';
@@ -226,6 +230,9 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     }
 
     const durationString = strike.duration_hours || "24小时";
+    const timeLabelLines = durationString === "24小时"
+        ? ["00:00 - 24:00"]
+        : timeSlots.map((slot) => `${slot.start} - ${slot.end}`);
 
     // Track Calculation Limits
     let axisStartMin = 0;
@@ -352,10 +359,15 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
 
             {/* Time / Duration Center */}
             <div className="flex flex-col items-center pt-4 pb-4 w-full px-6 gap-2">
-                <div className="flex items-baseline gap-2">
-                    <span className={`text-[36px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1E293B]'} leading-tight`}>
-                        {durationString === "24小时" ? "00:00 - 24:00" : strike.display_time || durationString}
-                    </span>
+                <div className="flex flex-col items-center justify-center gap-1 text-center w-full">
+                    {timeLabelLines.map((line, index) => (
+                        <span
+                            key={`${line}-${index}`}
+                            className={`text-[36px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1E293B]'} leading-tight`}
+                        >
+                            {line}
+                        </span>
+                    ))}
                 </div>
 
                 <div className={`mt-2 rounded-lg px-3 py-1 flex items-center border ${isDark ? 'bg-white/20 border-white/10' : 'bg-[#F1F5F9] border-transparent'}`}>
