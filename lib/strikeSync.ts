@@ -7,6 +7,7 @@ import {
   normalizeAirportAffectedLines,
   normalizeProviderList,
 } from './strikeNormalization.ts';
+import { getGuaranteeWindows } from './guaranteeWindows.ts';
 
 export type StrikeStatus = 'CONFIRMED' | 'CANCELLED' | 'REQUIRES_DETAIL' | 'UNCERTAIN';
 
@@ -58,61 +59,6 @@ const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
       { start: '18:00', end: '21:00' },
     ],
     affected_lines: ['马尔彭萨机场', '利纳特机场'],
-    data_source: 'SECONDARY_VERIFIED',
-  },
-  {
-    date: '2026-03-18',
-    region: 'NATIONAL',
-    category: 'AIRPORT',
-    provider: '易捷航空人员',
-    status: 'CONFIRMED',
-    display_time: '13:00 - 17:00',
-    duration_hours: '4小时',
-    strike_windows: [{ start: '13:00', end: '17:00' }],
-    guarantee_windows: [],
-    affected_lines: ['卡塞莱机场'],
-    data_source: 'SECONDARY_VERIFIED',
-  },
-  {
-    date: '2026-04-10',
-    region: 'NATIONAL',
-    category: 'AIRPORT',
-    provider: '意大利空管人员',
-    status: 'CONFIRMED',
-    display_time: '13:00 - 17:00',
-    duration_hours: '4小时',
-    strike_windows: [{ start: '13:00', end: '17:00' }],
-    guarantee_windows: [],
-    affected_lines: ['卡塞莱机场'],
-    data_source: 'SECONDARY_VERIFIED',
-  },
-  {
-    date: '2026-04-10',
-    region: 'NATIONAL',
-    category: 'AIRPORT',
-    provider: '科技天空技术人员',
-    status: 'CONFIRMED',
-    display_time: '13:00 - 17:00',
-    duration_hours: '4小时',
-    strike_windows: [{ start: '13:00', end: '17:00' }],
-    guarantee_windows: [],
-    affected_lines: ['卡塞莱机场'],
-    data_source: 'SECONDARY_VERIFIED',
-  },
-  {
-    date: '2026-05-11',
-    region: 'NATIONAL',
-    category: 'AIRPORT',
-    provider: '意大利空管人员',
-    status: 'CONFIRMED',
-    display_time: '10:00 - 18:00, 13:00 - 17:00',
-    duration_hours: '8小时',
-    strike_windows: [
-      { start: '10:00', end: '18:00' },
-      { start: '13:00', end: '17:00' },
-    ],
-    guarantee_windows: [],
-    affected_lines: ['卡塞莱机场'],
     data_source: 'SECONDARY_VERIFIED',
   },
 ];
@@ -256,38 +202,6 @@ function extractAffectedLines(note: string) {
   return found.length > 0 ? found : ['全部线路'];
 }
 
-function injectGuaranteeWindows(category: string, dateIso: string, timeInfo: { hours: string; windows: StrikeWindow[] }) {
-  const date = new Date(dateIso);
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-  if (category === 'AIRPORT') {
-    const isFullDay = timeInfo.hours === '24小时' || (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00');
-    if (isFullDay) {
-      return [
-        { start: '07:00', end: '10:00' },
-        { start: '18:00', end: '21:00' },
-      ];
-    }
-  }
-
-  if (category === 'TRAIN') {
-    if (isWeekend) return [];
-    return [
-      { start: '06:00', end: '09:00' },
-      { start: '18:00', end: '21:00' },
-    ];
-  }
-
-  if (category === 'SUBWAY' || category === 'BUS') {
-    return [
-      { start: '00:00', end: '08:45' },
-      { start: '15:00', end: '18:00' },
-    ];
-  }
-
-  return [];
-}
-
 function parseTimeWindows(durationRaw: string, modalita: string, note: string) {
   const combined = `${durationRaw} ${modalita} ${note}`.toUpperCase();
   let hours = '部分时段';
@@ -360,7 +274,14 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
     }
 
     const timeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
-    const guaranteeWindows = injectGuaranteeWindows(category, dateIso, timeInfo);
+    const guaranteeWindows = getGuaranteeWindows({
+      category,
+      dateIso,
+      region: row.region,
+      isFullDay:
+        timeInfo.hours === '24小时' ||
+        (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00'),
+    });
 
     let lines = category === 'AIRPORT'
       ? normalizeAirportAffectedLines([], { contextText: `${row.provider} ${row.note}`, regionTag: row.region })

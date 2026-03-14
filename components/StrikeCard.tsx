@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
+import { getGuaranteeWindows } from '../lib/guaranteeWindows';
 import DoodleCanvas, { DoodleCategory } from './DoodleOverlay';
 import { capture, isWeChatBrowser } from '../utils/analytics';
 
@@ -43,28 +44,12 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     const buildFallbackGuarantees = () => {
         const currentSlots = strike.strike_windows || [];
         const isFullDay = currentSlots.some((slot) => slot.start === '00:00' && slot.end === '24:00') || strike.duration_hours === '24小时';
-        const date = new Date(strike.date);
-        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-        if (strike.category === 'AIRPORT' && isFullDay) {
-            return [
-                { start: '07:00', end: '10:00' },
-                { start: '18:00', end: '21:00' },
-            ];
-        }
-        if (strike.category === 'TRAIN' && !isWeekend) {
-            return [
-                { start: '06:00', end: '09:00' },
-                { start: '18:00', end: '21:00' },
-            ];
-        }
-        if (strike.category === 'SUBWAY' || strike.category === 'BUS') {
-            return [
-                { start: '00:00', end: '08:45' },
-                { start: '15:00', end: '18:00' },
-            ];
-        }
-        return [];
+        return getGuaranteeWindows({
+            category: strike.category,
+            dateIso: strike.date,
+            region: strike.region,
+            isFullDay,
+        });
     };
     // Expandable state for guarantee info
     const [isExpanded, setIsExpanded] = useState(false);

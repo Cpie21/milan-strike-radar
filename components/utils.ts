@@ -30,6 +30,12 @@ const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = {
   TORINO: ['卡塞莱', '都灵相关机场'],
 };
 
+const REGION_DEFAULT_AIRPORT_LINES: Record<string, string[]> = {
+  MILANO: ['马尔彭萨机场', '利纳特机场', '贝加莫机场'],
+  ROMA: ['菲乌米奇诺机场', '钱皮诺机场'],
+  TORINO: ['卡塞莱机场'],
+};
+
 export function parseDate(dateStr: string) {
   return new Date(dateStr);
 }
@@ -70,7 +76,12 @@ function resolveStrikeRegion(strike: StrikeLike) {
 function filterAirportLinesForDisplay(lines: string[], currentRegion: string) {
   const keywords = REGION_AIRPORT_KEYWORDS[currentRegion] || [];
   const filtered = lines.filter((line) => keywords.some((keyword) => line.includes(keyword)));
-  if (filtered.length > 0) return filtered;
+  const hasConcreteAirport = filtered.some((line) => !line.includes('相关机场'));
+  if (hasConcreteAirport) return filtered;
+  if (filtered.length > 0) return REGION_DEFAULT_AIRPORT_LINES[currentRegion] || [];
+  if (lines.some((line) => line.includes('全国相关机场'))) {
+    return REGION_DEFAULT_AIRPORT_LINES[currentRegion] || [];
+  }
   return [];
 }
 
