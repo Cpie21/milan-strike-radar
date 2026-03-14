@@ -6,7 +6,7 @@ import {
   inferRegionTagFromText,
   normalizeAirportAffectedLines,
   normalizeProviderList,
-} from './strikeNormalization';
+} from './strikeNormalization.ts';
 
 export type StrikeStatus = 'CONFIRMED' | 'CANCELLED' | 'REQUIRES_DETAIL' | 'UNCERTAIN';
 
@@ -58,6 +58,61 @@ const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
       { start: '18:00', end: '21:00' },
     ],
     affected_lines: ['马尔彭萨机场', '利纳特机场'],
+    data_source: 'SECONDARY_VERIFIED',
+  },
+  {
+    date: '2026-03-18',
+    region: 'NATIONAL',
+    category: 'AIRPORT',
+    provider: '易捷航空人员',
+    status: 'CONFIRMED',
+    display_time: '13:00 - 17:00',
+    duration_hours: '4小时',
+    strike_windows: [{ start: '13:00', end: '17:00' }],
+    guarantee_windows: [],
+    affected_lines: ['卡塞莱机场'],
+    data_source: 'SECONDARY_VERIFIED',
+  },
+  {
+    date: '2026-04-10',
+    region: 'NATIONAL',
+    category: 'AIRPORT',
+    provider: '意大利空管人员',
+    status: 'CONFIRMED',
+    display_time: '13:00 - 17:00',
+    duration_hours: '4小时',
+    strike_windows: [{ start: '13:00', end: '17:00' }],
+    guarantee_windows: [],
+    affected_lines: ['卡塞莱机场'],
+    data_source: 'SECONDARY_VERIFIED',
+  },
+  {
+    date: '2026-04-10',
+    region: 'NATIONAL',
+    category: 'AIRPORT',
+    provider: '科技天空技术人员',
+    status: 'CONFIRMED',
+    display_time: '13:00 - 17:00',
+    duration_hours: '4小时',
+    strike_windows: [{ start: '13:00', end: '17:00' }],
+    guarantee_windows: [],
+    affected_lines: ['卡塞莱机场'],
+    data_source: 'SECONDARY_VERIFIED',
+  },
+  {
+    date: '2026-05-11',
+    region: 'NATIONAL',
+    category: 'AIRPORT',
+    provider: '意大利空管人员',
+    status: 'CONFIRMED',
+    display_time: '10:00 - 18:00, 13:00 - 17:00',
+    duration_hours: '8小时',
+    strike_windows: [
+      { start: '10:00', end: '18:00' },
+      { start: '13:00', end: '17:00' },
+    ],
+    guarantee_windows: [],
+    affected_lines: ['卡塞莱机场'],
     data_source: 'SECONDARY_VERIFIED',
   },
 ];
@@ -366,7 +421,40 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
   const recordsMap = new Map<string, StrikeRecord>();
   [...rawRecords, ...VERIFIED_SUPPLEMENTS].forEach((record) => {
     const key = `${record.date}|${record.region}|${record.category}|${record.provider}|${record.display_time}`;
-    if (!recordsMap.has(key)) recordsMap.set(key, record);
+    const existing = recordsMap.get(key);
+    if (!existing) {
+      recordsMap.set(key, record);
+      return;
+    }
+
+    const mergedStrikeWindows = mergeWindows([...(existing.strike_windows || []), ...(record.strike_windows || [])]);
+    const mergedGuarantees = mergeWindows([...(existing.guarantee_windows || []), ...(record.guarantee_windows || [])]);
+    const mergedAffectedLines = record.category === 'AIRPORT'
+      ? normalizeAirportAffectedLines([...(existing.affected_lines || []), ...(record.affected_lines || [])], {
+          contextText: `${existing.provider} ${record.provider} ${[...(existing.affected_lines || []), ...(record.affected_lines || [])].join(' ')}`,
+          regionTag: existing.region || record.region,
+        })
+      : Array.from(new Set([...(existing.affected_lines || []), ...(record.affected_lines || [])]));
+
+    const isFullDay =
+      existing.duration_hours === '24小时' ||
+      record.duration_hours === '24小时' ||
+      mergedStrikeWindows.some((window) => window.start === '00:00' && window.end === '24:00');
+
+    recordsMap.set(key, {
+      ...existing,
+      status: existing.status === 'CONFIRMED' || record.status === 'CONFIRMED' ? 'CONFIRMED' : record.status,
+      duration_hours: isFullDay ? '24小时' : existing.duration_hours || record.duration_hours,
+      display_time: isFullDay
+        ? '全天 24小时'
+        : mergedStrikeWindows.map((window) => `${window.start} - ${window.end}`).join(', '),
+      strike_windows: isFullDay ? [{ start: '00:00', end: '24:00' }] : mergedStrikeWindows,
+      guarantee_windows: mergedGuarantees,
+      affected_lines: mergedAffectedLines,
+      data_source: existing.data_source === 'SECONDARY_VERIFIED' || record.data_source === 'SECONDARY_VERIFIED'
+        ? 'SECONDARY_VERIFIED'
+        : existing.data_source || record.data_source,
+    });
   });
 
   return Array.from(recordsMap.values());
