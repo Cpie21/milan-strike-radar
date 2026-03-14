@@ -169,22 +169,16 @@ async function translateText(text: string): Promise<string> {
 }
 
 async function normalizeProvider(raw: string) {
-  let toTranslate = raw.toUpperCase();
-  toTranslate = toTranslate.replace(/SOC\. /g, '');
-  toTranslate = toTranslate.replace(/SOC\./g, '');
-  toTranslate = toTranslate.replace(/S\.P\.A\./g, '');
-  toTranslate = toTranslate.replace(/S\.R\.L\./g, '');
-  toTranslate = toTranslate.replace(/S\.C\.A\.R\.L\./g, '');
-  toTranslate = toTranslate.replace(/ PERSONALE /g, ' ');
-  toTranslate = toTranslate.replace(/^PERSONALE /g, '');
-  toTranslate = toTranslate.replace(/NAVIGANTE /g, '');
-  toTranslate = toTranslate.replace(/ DI TERRA E DI VOLO /g, ' ');
-  toTranslate = toTranslate.replace(/ DI VOLO /g, ' ');
-  toTranslate = toTranslate.replace(/ DI TERRA /g, ' ');
-  toTranslate = toTranslate.trim();
+  let source = raw.toUpperCase();
+  source = source.replace(/SOC\. /g, '');
+  source = source.replace(/SOC\./g, '');
+  source = source.replace(/S\.P\.A\./g, '');
+  source = source.replace(/S\.R\.L\./g, '');
+  source = source.replace(/S\.C\.A\.R\.L\./g, '');
+  source = source.trim();
 
-  const translated = await translateText(toTranslate);
-  return normalizeProviderList(toTranslate, translated).join(' / ') || '相关人员';
+  const translated = await translateText(source);
+  return normalizeProviderList(source, translated).join(' / ') || '相关人员';
 }
 
 function resolveCategory(provider: string, sector: string): StrikeRecord['category'] {

@@ -77,7 +77,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     // because useState(hasDoodled) only captures the initial snapshot, not future state
     const [isCanvasVisible, setIsCanvasVisible] = useState(() => {
         if (typeof window !== 'undefined') {
-            return !!localStorage.getItem(`doodled_${strike.date}|${strike.category}|${strike.category === 'AIRPORT' ? (strike.display_time || '') : ''}`);
+            return !!localStorage.getItem(doodleStorageKey);
         }
         return false;
     });

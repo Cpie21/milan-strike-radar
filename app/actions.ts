@@ -19,6 +19,13 @@ export async function submitDoodle(strikeId: string, clientUuid: string, date?: 
     return submitDoodleByGroup(strikeId, clientUuid, date, category, displayTime, region);
 }
 
+function buildDoodleGroupKey(date?: string, category?: string, displayTime?: string, region?: string) {
+    if (!date || !category) return '';
+    const normalizedRegion = region || 'MILANO';
+    const normalizedDisplayTime = category === 'AIRPORT' ? (displayTime || '') : '';
+    return `${date}|${normalizedRegion}|${category}|${normalizedDisplayTime}`;
+}
+
 async function resolveGroupStrikeIds(strikeId: string, date?: string, category?: string, displayTime?: string, region?: string) {
     if (!date || !category) return [strikeId];
     let query = supabase
@@ -39,6 +46,27 @@ async function resolveGroupStrikeIds(strikeId: string, date?: string, category?:
 
 export async function submitDoodleByGroup(strikeId: string, clientUuid: string, date?: string, category?: string, displayTime?: string, region?: string) {
     try {
+        const groupKey = buildDoodleGroupKey(date, category, displayTime, region);
+        if (groupKey) {
+            const { error } = await supabase
+                .from('strike_doodles')
+                .insert([{ strike_id: null, group_key: groupKey, client_uuid: clientUuid }]);
+
+            if (!error) {
+                return { success: true };
+            }
+
+            if (error.code === '23505') {
+                return { success: false, error: 'Already doodled' };
+            }
+
+            const maybeSchemaGap = `${error.message} ${error.details || ''}`.toLowerCase();
+            if (!maybeSchemaGap.includes('group_key') && !maybeSchemaGap.includes('null value in column "strike_id"')) {
+                console.error('Doodle insert error', error);
+                return { success: false, error: error.message };
+            }
+        }
+
         const ids = await resolveGroupStrikeIds(strikeId, date, category, displayTime, region);
         const canonicalStrikeId = ids.slice().sort()[0] || strikeId;
         const { error } = await supabase
@@ -66,6 +94,18 @@ export async function getDoodleCount(strikeId: string, date?: string, category?:
 
 export async function getDoodleCountByGroup(strikeId: string, date?: string, category?: string, displayTime?: string, region?: string) {
     try {
+        const groupKey = buildDoodleGroupKey(date, category, displayTime, region);
+        if (groupKey) {
+            const { count, error } = await supabase
+                .from('strike_doodles')
+                .select('*', { count: 'exact', head: true })
+                .eq('group_key', groupKey);
+
+            if (!error) {
+                return count || 0;
+            }
+        }
+
         const ids = await resolveGroupStrikeIds(strikeId, date, category, displayTime, region);
         const { count, error } = await supabase
             .from('strike_doodles')
