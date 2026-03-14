@@ -49,7 +49,7 @@ const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
     date: '2026-03-18',
     region: 'MILANO',
     category: 'AIRPORT',
-    provider: 'Airport Handling 地勤人员 / 德纳达地服人员',
+    provider: '机场地勤人员 / 德纳达地服人员',
     status: 'CONFIRMED',
     display_time: '全天 24小时',
     duration_hours: '24小时',

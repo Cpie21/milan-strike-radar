@@ -2,6 +2,7 @@ const AFFECTED_LINE_BLACKLIST = [
   '语言环境',
   'ambiente linguistico',
   'linguistico',
+  'handling',
   'nazionale',
   'regionale',
   'provinciale',
@@ -64,7 +65,7 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
   { match: /CIALONE(?:\s+TOUR)?/i, label: 'CIALONE 人员' },
   { match: /ARRIVA\s+ITALIA\s+DI\s+TORINO|ARRIVA\s+TORINO/i, label: 'Arriva Torino 人员' },
   { match: /SUN\s+DI\s+NOVARA|SUN\s+NOVARA/i, label: 'SUN Novara 人员' },
-  { match: /AIRPORT\s+HANDLING/i, label: 'Airport Handling 地勤人员' },
+  { match: /AIRPORT\s+HANDLING|机场地勤/i, label: '机场地勤人员' },
   { match: /\bITA(?:\s+AIRWAYS)?\b|ALITALIA|意大利航空/i, label: '意大利航空人员' },
   { match: /\bATAC\b/i, label: 'ATAC人员' },
   { match: /\bGTT\b/i, label: 'GTT人员' },
@@ -204,6 +205,7 @@ export function normalizeAirportAffectedLines(
   const collectNormalized = (sources: string[]) => {
     const normalized: string[] = [];
     const terminalBases = new Set<string>();
+    const wholeAirportBases = new Set<string>();
 
     sources.forEach((source) => {
       const airports = detectAirports(source);
@@ -221,6 +223,7 @@ export function normalizeAirportAffectedLines(
       }
 
       airports.forEach((airport) => {
+        wholeAirportBases.add(airport.name);
         normalized.push(`${airport.name}机场`);
       });
     });
@@ -229,13 +232,32 @@ export function normalizeAirportAffectedLines(
     normalized.forEach((item) => {
       if (item.endsWith('机场')) {
         const base = item.replace('机场', '');
-        if (terminalBases.has(base)) return;
+        if (wholeAirportBases.has(base)) {
+          dedup.set(base.toLowerCase(), item);
+          return;
+        }
+      } else {
+        const base = item.replace(/\s+T[12]$/, '');
+        if (wholeAirportBases.has(base)) return;
+        if (terminalBases.has(base) && wholeAirportBases.has(base)) return;
       }
       const key = item.replace(EXTRA_SPACES_RE, '').toLowerCase();
       dedup.set(key, item);
     });
 
-    return Array.from(dedup.values());
+    const items = Array.from(dedup.values());
+    AIRPORTS.forEach((airport) => {
+      const hasT1 = items.includes(`${airport.name} T1`);
+      const hasT2 = items.includes(`${airport.name} T2`);
+      if (hasT1 && hasT2) {
+        const collapsed = items.filter((item) => item !== `${airport.name} T1` && item !== `${airport.name} T2`);
+        collapsed.push(`${airport.name}机场`);
+        items.length = 0;
+        items.push(...unique(collapsed));
+      }
+    });
+
+    return items;
   };
 
   const contextText = options?.contextText || '';
@@ -251,14 +273,26 @@ export function normalizeAirportAffectedLines(
   return cleanedLines.filter((line) => !/[A-Za-z]/.test(line));
 }
 
-function localizeRoleLabel(label: string, rawUpper: string) {
+function localizeRoleLabel(label: string, rawUpper: string, rawText: string) {
   if (label === '易捷航空人员') {
-    if (rawUpper.includes('NAVIGANTE') || rawUpper.includes('PILOT') || rawUpper.includes('CREW')) return '易捷航空机组与飞行员';
-    if (rawUpper.includes('TERRA') || rawUpper.includes('GROUND')) return '易捷航空地勤人员';
+    if (
+      rawUpper.includes('NAVIGANTE') ||
+      rawUpper.includes('PILOT') ||
+      rawUpper.includes('CREW') ||
+      rawText.includes('机组') ||
+      rawText.includes('飞行员')
+    ) return '易捷航空机组与飞行员';
+    if (rawUpper.includes('TERRA') || rawUpper.includes('GROUND') || rawText.includes('地勤')) return '易捷航空地勤人员';
   }
   if (label === '意大利航空人员') {
-    if (rawUpper.includes('NAVIGANTE') || rawUpper.includes('PILOT') || rawUpper.includes('CREW')) return '意大利航空机组与飞行员';
-    if (rawUpper.includes('TERRA') || rawUpper.includes('GROUND')) return '意大利航空地勤人员';
+    if (
+      rawUpper.includes('NAVIGANTE') ||
+      rawUpper.includes('PILOT') ||
+      rawUpper.includes('CREW') ||
+      rawText.includes('机组') ||
+      rawText.includes('飞行员')
+    ) return '意大利航空机组与飞行员';
+    if (rawUpper.includes('TERRA') || rawUpper.includes('GROUND') || rawText.includes('地勤')) return '意大利航空地勤人员';
   }
   if (label === '意大利空管人员') {
     if (includesAny(rawUpper, ['MALPENSA', 'MXP', '马尔彭萨'])) return '马尔彭萨机场空管人员';
@@ -277,7 +311,7 @@ export function normalizeProviderPart(part: string, translatedText?: string) {
 
   for (const synonym of PROVIDER_SYNONYMS) {
     if (synonym.match.test(raw)) {
-      return localizeRoleLabel(synonym.label, rawUpper);
+      return localizeRoleLabel(synonym.label, rawUpper, raw);
     }
   }
 
