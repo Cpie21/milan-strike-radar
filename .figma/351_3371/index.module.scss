@@ -1,0 +1,63 @@
+* {
+  box-sizing: border-box;
+}
+
+.background {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 22px;
+  background: #121212;
+  padding: 10px 10px 11px 16px;
+  width: 329px;
+  height: 155px;
+  overflow: hidden;
+
+  .autoWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+
+    .group41 {
+      width: 36px;
+      height: 32px;
+    }
+
+    .a0 {
+      margin: 53px 0px 0px;
+      line-height: 29px;
+      letter-spacing: 0;
+      color: #ffffff;
+      font-family: "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .text {
+      line-height: 20px;
+      letter-spacing: 0;
+      color: #76e92a;
+      font-family: "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+    }
+  }
+
+  .rectangle102 {
+    display: flex;
+    align-items: flex-start;
+    border-radius: 12px;
+    background: #ffffff08;
+    padding: 59px 79px 57px 67px;
+
+    .text2 {
+      line-height: 18px;
+      letter-spacing: 0;
+      color: #ffffff80;
+      font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+  }
+}

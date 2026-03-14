@@ -1,0 +1,80 @@
+* {
+  box-sizing: border-box;
+}
+
+.background {
+  display: flex;
+  align-items: flex-start;
+  border-radius: 22px;
+  background: #121212;
+  padding: 15px 43px 14px 16px;
+  width: 329px;
+  height: 155px;
+  overflow: hidden;
+
+  .autoWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+
+    .group41 {
+      width: 36px;
+      height: 32px;
+    }
+
+    .a1 {
+      margin: 45px 0px 0px;
+      line-height: 29px;
+      letter-spacing: 0;
+      color: #ffffff;
+      font-family: "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .text {
+      line-height: 20px;
+      letter-spacing: 0;
+      color: #ffec20;
+      font-family: "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+    }
+  }
+
+  .ellipse47 {
+    margin-top: 14px;
+    margin-left: 19px;
+    border-radius: 50%;
+    background: #ff3b30;
+    width: 8px;
+    height: 8px;
+  }
+
+  .notes {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-left: 10px;
+    padding-left: 1px;
+
+    .text2 {
+      line-height: 18px;
+      letter-spacing: 0;
+      color: #ffffff;
+      font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 15px;
+    }
+
+    .a07001000 {
+      margin: 2px 0px 0px;
+      line-height: 14px;
+      letter-spacing: 0;
+      color: #ffffff80;
+      font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+    }
+  }
+}

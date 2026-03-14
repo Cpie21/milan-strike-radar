@@ -1,0 +1,79 @@
+* {
+  box-sizing: border-box;
+}
+
+.background {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 22px;
+  background: #ffffff;
+  padding: 10px 10px 11px 16px;
+  width: 329px;
+  height: 155px;
+  overflow: hidden;
+
+  .autoWrapper2 {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-self: stretch;
+
+    .autoWrapper {
+      position: relative;
+      width: 68px;
+      height: 20px;
+
+      .text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 68px;
+        height: 20px;
+        line-height: 20px;
+        letter-spacing: 0;
+        color: #2177fe;
+        font-family: "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .a0 {
+        position: absolute;
+        bottom: -28px;
+        left: 0;
+        width: 16px;
+        height: 29px;
+        line-height: 29px;
+        letter-spacing: 0;
+        color: #000000;
+        font-family: "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+      }
+    }
+
+    .group41 {
+      margin-top: 72px;
+      width: 36px;
+      height: 32px;
+    }
+  }
+
+  .rectangle102 {
+    display: flex;
+    align-items: flex-start;
+    border-radius: 12px;
+    background: #0000000d;
+    padding: 59px 79px 57px 67px;
+
+    .text2 {
+      line-height: 18px;
+      letter-spacing: 0;
+      color: #00000080;
+      font-family: "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+  }
+}

@@ -1,0 +1,31 @@
+* {
+  box-sizing: border-box;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  column-gap: 8px;
+  border: 2px solid var(--Color, #ffffff1a);
+  border-radius: 35px;
+  background: #2177fe;
+  padding: 11px 14px;
+  width: 131px;
+  height: 50px;
+
+  .container {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+  }
+
+  .text {
+    flex-shrink: 0;
+    line-height: 20px;
+    letter-spacing: 0;
+    color: #ffffff;
+    font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+  }
+}

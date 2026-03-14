@@ -1,0 +1,146 @@
+Fetching MIT...
+Found 36 total rows.
+
+Target Strikes (Mar 18, 22, 27 or ATAC/GTT in March):
+[
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE SOC. AIRPORT HANDLING/DNATA AEROPORTI DI MILANO LINATE E MALPENSA",
+    "sector": "Aereo",
+    "region": "Italia Tutte",
+    "duration": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "modalita": "",
+    "note": "Nazionale"
+  },
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE SOC. ALHA AEROPORTO DI MILANO MALPENSA",
+    "sector": "Aereo",
+    "region": "Italia Tutte",
+    "duration": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "modalita": "",
+    "note": "Nazionale"
+  },
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED",
+    "sector": "Aereo",
+    "region": "Italia Tutte",
+    "duration": "4 ORE: DALLE 13.00 ALLE 17.00",
+    "modalita": "",
+    "note": "Nazionale"
+  },
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE SOC. GDA HANDLING AEROPORTO DI BRESCIA MONTICHIARI",
+    "sector": "Aereo",
+    "region": "Lombardia Brescia",
+    "duration": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "modalita": "",
+    "note": "Locale"
+  },
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE SOC. MH24 AEROPORTO DI BRESCIA MONTICHIARI",
+    "sector": "Aereo",
+    "region": "Lombardia Brescia",
+    "duration": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "modalita": "ADESIONE OSP FILT-CGIL",
+    "note": "Locale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+    "sector": "Trasporto pubblico locale",
+    "region": "Lombardia Tutte",
+    "duration": "24 ORE VARIE MODALITA'",
+    "modalita": "",
+    "note": "Provinciale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOC. EAV DI NAPOLI",
+    "sector": "Trasporto pubblico locale",
+    "region": "Campania Napoli",
+    "duration": "4 ORE: DALLE 19.00 ALLE 23.00",
+    "modalita": "",
+    "note": "Locale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOC. SUN DI NOVARA",
+    "sector": "Trasporto pubblico locale",
+    "region": "Piemonte Novara",
+    "duration": "4 ORE: DALLE 17.30 ALLE 21.30",
+    "modalita": "",
+    "note": "Locale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOC. ARRIVA ITALIA DI TORINO",
+    "sector": "Trasporto pubblico locale",
+    "region": "Piemonte Torino",
+    "duration": "8 ORE: DALLE 16.00 A FINE SERVIZIO",
+    "modalita": "",
+    "note": "Locale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOC. CIALONE TOUR DI FROSINONE",
+    "sector": "Trasporto pubblico locale",
+    "region": "Lazio Frosinone",
+    "duration": "4 ORE: DALLE 13.00 ALLE 17.00",
+    "modalita": "",
+    "note": "Nazionale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOC. EAV DI NAPOLI",
+    "sector": "Trasporto pubblico locale",
+    "region": "Campania Napoli",
+    "duration": "4 ORE: DALLE 19.00 ALLE 23.00",
+    "modalita": "",
+    "note": "Locale"
+  },
+  {
+    "date": "27/03/2026",
+    "provider": "PERSONALE SOC. TEP DI PARMA",
+    "sector": "Trasporto pubblico locale",
+    "region": "Emilia-Romagna Parma",
+    "duration": "4 ORE: DALLE 8.30 ALLE 12.10",
+    "modalita": "",
+    "note": "Locale"
+  }
+]
+
+Check Frosinone or National entries:
+Found 16 Frosinone/national matches. Showing first 3:
+[
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE SOC. AIRPORT HANDLING/DNATA AEROPORTI DI MILANO LINATE E MALPENSA",
+    "sector": "Aereo",
+    "region": "Italia Tutte",
+    "duration": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "modalita": "",
+    "note": "Nazionale"
+  },
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE SOC. ALHA AEROPORTO DI MILANO MALPENSA",
+    "sector": "Aereo",
+    "region": "Italia Tutte",
+    "duration": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "modalita": "",
+    "note": "Nazionale"
+  },
+  {
+    "date": "18/03/2026",
+    "provider": "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED",
+    "sector": "Aereo",
+    "region": "Italia Tutte",
+    "duration": "4 ORE: DALLE 13.00 ALLE 17.00",
+    "modalita": "",
+    "note": "Nazionale"
+  }
+]

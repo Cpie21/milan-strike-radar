@@ -1,0 +1,28 @@
+* {
+  box-sizing: border-box;
+}
+
+.frame139 {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 42px;
+  box-shadow: 0px 0px 8px 1px #e6a35780;
+  background: #e7a356;
+  padding: 4px 12px;
+  width: 55px;
+  height: 33px;
+  row-gap: 5px;
+
+  .a12 {
+    flex-shrink: 0;
+    align-self: stretch;
+    line-height: 25px;
+    letter-spacing: -1px;
+    color: #624525;
+    font-family: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", SimHei, Arial, Helvetica, sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    text-shadow: 0px 0px 17px #f7aa5580;
+  }
+}
