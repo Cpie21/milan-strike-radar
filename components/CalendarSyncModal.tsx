@@ -10,10 +10,19 @@ interface CalendarSyncModalProps {
     strikes: StrikeRecord[];
     isDark: boolean;
     onScrollToCategory: (categoryId: string) => void;
+    regionTag?: string;
 }
 
-export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, onScrollToCategory }: CalendarSyncModalProps) {
+const REGION_LABELS: Record<string, string> = {
+    MILANO: '米兰',
+    ROMA: '罗马',
+    TORINO: '都灵',
+};
+
+export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, onScrollToCategory, regionTag = 'MILANO' }: CalendarSyncModalProps) {
     const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['train', 'subway', 'bus', 'airport']));
+    const normalizedRegion = (regionTag || 'MILANO').toUpperCase();
+    const regionLabel = REGION_LABELS[normalizedRegion] || '米兰';
 
     const openedAtRef = useRef<number>(0);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,11 +69,11 @@ export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, on
         // If testing locally, we point to the production domain so it doesn't fail.
         let targetHost = host;
         if (host.includes('localhost') || host.match(/^[0-9.]+(:[0-9]+)?$/)) {
-            targetHost = 'milan-strike-vibe.vercel.app';
+            targetHost = 'theitalystrike.com';
         }
 
         // Always try webcal first for subscriptions instead of hardcoded blobs
-        const subscribeUrl = `webcal://${targetHost}/api/calendar?types=${typesStr}`;
+        const subscribeUrl = `webcal://${targetHost}/api/calendar?types=${encodeURIComponent(typesStr)}&region=${encodeURIComponent(normalizedRegion)}`;
 
         // Track the event once per device
         captureOnce('calendar_sync_clicked', {
@@ -149,7 +158,7 @@ export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, on
                                         </g>
                                     </svg>
                                 </div>
-                                <span className="text-[#FFEC20] text-[20px] font-bold leading-tight font-['Noto_Sans_SC']">同步到本地日历</span>
+                                <span className="text-[#FFEC20] text-[20px] font-bold leading-tight font-['Noto_Sans_SC']">同步到本地日历 · {regionLabel}</span>
                             </div>
                             <button
                                 onClick={onClose}
@@ -193,7 +202,7 @@ export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, on
                             <motion.div variants={itemVariants} className="content-stretch flex flex-col gap-[10px] items-start py-[4px] relative shrink-0 w-full" data-name="Background+Shadow" data-node-id="329:2169">
                                 <div className="content-stretch flex flex-col items-center relative shrink-0 w-full" data-node-id="329:2170">
                                     <div className="flex flex-col font-['Noto_Sans_SC'] justify-center leading-[0] relative shrink-0 text-[18px] text-white w-full" data-node-id="329:2171">
-                                        <p className="leading-[normal] whitespace-pre-wrap tracking-wide">② 点击订阅日历文件</p>
+                                        <p className="leading-[normal] whitespace-pre-wrap tracking-wide">② 点击订阅 {regionLabel} 日历文件</p>
                                     </div>
                                 </div>
                                 <button onClick={handleDownload} className="bg-[#2177fe] active:scale-95 transition-transform border-2 border-[rgba(255,255,255,0.1)] border-solid content-stretch flex gap-[8px] items-center px-[22px] py-[15px] relative rounded-[35px] shrink-0 shadow-xl shadow-blue-500/20" data-name="Button" data-node-id="329:2190">
@@ -203,7 +212,7 @@ export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, on
                                         </svg>
                                     </div>
                                     <div className="flex flex-col font-['Noto_Sans_SC'] font-bold justify-center leading-[0] relative shrink-0 text-[14px] text-center text-white whitespace-nowrap tracking-wide" data-node-id="329:2193">
-                                        <p className="leading-[20px]">意大利罢工订阅文件</p>
+                                        <p className="leading-[20px]">{regionLabel}罢工订阅文件</p>
                                     </div>
                                 </button>
                             </motion.div>

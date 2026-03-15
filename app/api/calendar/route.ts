@@ -1,11 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { aggregateStrikes, categoryMap } from '../../../components/utils';
+import { aggregateStrikes, categoryMap, filterStrikesForRegion } from '../../../components/utils';
+import { canonicalizeRegionValue } from '../../../lib/strikeNormalization';
+
+const REGION_PAGE_PATHS: Record<string, string> = {
+    MILANO: '/',
+    ROMA: '/roma',
+    TORINO: '/torino',
+};
+
+const REGION_LABELS: Record<string, string> = {
+    MILANO: '米兰',
+    ROMA: '罗马',
+    TORINO: '都灵',
+};
+
+function resolveRegionTag(input: string | null) {
+    const raw = (input || '').trim();
+    if (!raw) return 'MILANO';
+
+    const canonical = canonicalizeRegionValue(raw.toUpperCase());
+    if (canonical === 'MILANO' || canonical === 'ROMA' || canonical === 'TORINO') {
+        return canonical;
+    }
+
+    const lower = raw.toLowerCase();
+    if (lower === 'milan' || lower === 'milano') return 'MILANO';
+    if (lower === 'rome' || lower === 'roma') return 'ROMA';
+    if (lower === 'turin' || lower === 'torino') return 'TORINO';
+    return 'MILANO';
+}
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const typesParam = searchParams.get('types') || 'train,subway,bus,airport';
     const selectedTypes = new Set(typesParam.toLowerCase().split(','));
+    const regionTag = resolveRegionTag(searchParams.get('region'));
+    const regionLabel = REGION_LABELS[regionTag] || '米兰';
+    const pagePath = REGION_PAGE_PATHS[regionTag] || '/';
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,8 +68,9 @@ export async function GET(request: NextRequest) {
         return new NextResponse('Error fetching data', { status: 500 });
     }
 
-    // Process strikes
-    const aggregatedData = aggregateStrikes(strikes);
+    // Process strikes using the same regional logic as the main app
+    const regionScoped = filterStrikesForRegion(strikes, regionTag);
+    const aggregatedData = filterStrikesForRegion(aggregateStrikes(regionScoped), regionTag);
 
     // Filter by requested types
     const filtered = aggregatedData.filter((s: any) => {
@@ -47,7 +80,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Build ICS String
-    let icsData = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Italy Strike Query//CN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:意大利罢工预警\nX-WR-TIMEZONE:Europe/Rome\nREFRESH-INTERVAL;VALUE=DURATION:PT1H\nX-PUBLISHED-TTL:PT1H\n";
+    let icsData = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Italy Strike Query//CN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:${regionLabel}罢工预警\nX-WR-TIMEZONE:Europe/Rome\nREFRESH-INTERVAL;VALUE=DURATION:PT1H\nX-PUBLISHED-TTL:PT1H\n`;
 
     filtered.forEach(strike => {
         const dateStr = strike.date.replace(/-/g, ''); // e.g. 20250518
@@ -64,10 +97,11 @@ export async function GET(request: NextRequest) {
         if (catDisplay === 'AIRPORT' || catDisplay === 'AEREO') catDisplay = '机场';
         if (catDisplay === 'MARITTIMO') catDisplay = '轮船';
 
-        const summary = `${catDisplay}罢工`;
+        const summary = `${regionLabel}${catDisplay}罢工`;
+        const detailUrl = `https://theitalystrike.com${pagePath}?date=${strike.date}`;
 
         // As requested: Describe who is striking and add the website link. Don't add guarantee times.
-        const description = `罢工主体: ${strike.provider}\\n\\n点击下方链接查看受影响线路和详情👇:\\nhttps://theitalystrike.com/?date=${strike.date}`;
+        const description = `城市: ${regionLabel}\\n罢工主体: ${strike.provider}\\n\\n点击下方链接查看受影响线路和详情👇:\\n${detailUrl}`;
 
         icsData += `BEGIN:VEVENT\n`;
         icsData += `UID:strike-${strike.id}@milanstrikeradar.com\n`;
@@ -76,7 +110,7 @@ export async function GET(request: NextRequest) {
         icsData += `DTEND;VALUE=DATE:${nextDateStr}\n`;
         icsData += `SUMMARY:${summary}\n`;
         icsData += `DESCRIPTION:${description}\n`;
-        icsData += `URL:https://theitalystrike.com/?date=${strike.date}\n`;
+        icsData += `URL:${detailUrl}\n`;
         icsData += `END:VEVENT\n`;
     });
 
@@ -86,6 +120,7 @@ export async function GET(request: NextRequest) {
     return new NextResponse(icsData, {
         headers: {
             'Content-Type': 'text/calendar; charset=utf-8',
+            'Content-Disposition': `inline; filename="${encodeURIComponent(`${regionLabel}-strike-calendar.ics`)}"`,
             'Cache-Control': 's-maxage=3600, stale-while-revalidate'
         },
     });

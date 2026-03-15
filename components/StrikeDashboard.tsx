@@ -1206,12 +1206,14 @@ export default function StrikeDashboard({
                     onClose={() => setShowWidgetModal(false)
                     }
                     isDark={isDarkMode}
+                    regionTag={regionTag}
                 />
                 <CalendarSyncModal
                     isOpen={showSyncModal}
                     onClose={() => setShowSyncModal(false)}
                     strikes={aggregatedData}
                     isDark={isDarkMode}
+                    regionTag={regionTag}
                     onScrollToCategory={(categoryId) => {
                         const todayStr = getLocalDateStr(selectedDate);
                         // Map categoryId to uppercase for matching backend

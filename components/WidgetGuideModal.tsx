@@ -6,13 +6,29 @@ interface WidgetGuideModalProps {
     isOpen: boolean;
     onClose: () => void;
     isDark: boolean;
+    regionTag?: string;
 }
 
-export default function WidgetGuideModal({ isOpen, onClose, isDark }: WidgetGuideModalProps) {
+const REGION_LABELS: Record<string, string> = {
+    MILANO: '米兰',
+    ROMA: '罗马',
+    TORINO: '都灵',
+};
+
+const REGION_PAGE_PATHS: Record<string, string> = {
+    MILANO: '/',
+    ROMA: '/roma',
+    TORINO: '/torino',
+};
+
+export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 'MILANO' }: WidgetGuideModalProps) {
     const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['train', 'subway', 'bus', 'plane']));
     const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
     const openedAtRef = useRef<number>(0);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const normalizedRegion = (regionTag || 'MILANO').toUpperCase();
+    const regionLabel = REGION_LABELS[normalizedRegion] || '米兰';
+    const regionPagePath = REGION_PAGE_PATHS[normalizedRegion] || '/';
 
     // Track Widgets_tutorial_success once per device if open for 3+ seconds
     useEffect(() => {
@@ -54,9 +70,15 @@ export default function WidgetGuideModal({ isOpen, onClose, isDark }: WidgetGuid
 
         const selectedApiTypes = Array.from(selectedTypes).map(t => typeMap[t]);
         const typesJson = JSON.stringify(selectedApiTypes);
+        const host = window.location.host;
+        const targetOrigin = (host.includes('localhost') || host.match(/^[0-9.]+(:[0-9]+)?$/))
+            ? 'https://theitalystrike.com'
+            : window.location.origin;
 
-        const code = `const API_URL = "https://theitalystrike.com/api/strikes";
+        const code = `const API_URL = "${targetOrigin}/api/strikes?region=${normalizedRegion}";
 const SELECTED_TYPES = ${typesJson};
+const REGION_LABEL = "${regionLabel}";
+const OPEN_URL = "${targetOrigin}${regionPagePath}";
 const widget = new ListWidget();
 const C = {
   bg: new Color("#121212"),
@@ -146,6 +168,7 @@ function addOneRow(parent, item, nowMin, dotColorOverride) {
 }
 
 widget.backgroundColor = C.bg;
+widget.url = OPEN_URL;
 
 try {
   const req = new Request(API_URL);
@@ -348,7 +371,7 @@ Script.complete();
                                         </g>
                                     </svg>
                                 </div>
-                                <span className="text-[#FFEC20] text-[20px] font-bold leading-tight font-['Noto_Sans_SC']">添加桌面小组件</span>
+                                <span className="text-[#FFEC20] text-[20px] font-bold leading-tight font-['Noto_Sans_SC']">添加桌面小组件 · {regionLabel}</span>
                             </div>
                             <button
                                 onClick={onClose}
@@ -392,7 +415,7 @@ Script.complete();
                             <motion.div variants={itemVariants} className="content-stretch flex flex-col gap-[10px] items-start py-[4px] relative shrink-0 w-full">
                                 <div className="content-stretch flex flex-col items-center relative shrink-0 w-full">
                                     <div className="flex flex-col font-['Noto_Sans_SC'] justify-center leading-[0] relative shrink-0 text-[18px] text-white w-full">
-                                        <p className="leading-[normal] whitespace-pre-wrap tracking-wide">② 复制代码，下载 Scriptable 应用</p>
+                                        <p className="leading-[normal] whitespace-pre-wrap tracking-wide">② 复制 {regionLabel} 小组件代码，下载 Scriptable 应用</p>
                                     </div>
                                 </div>
                                 <div className="flex gap-[10px] w-full">
@@ -407,7 +430,7 @@ Script.complete();
                                             )}
                                         </div>
                                         <div className="flex flex-col font-['Noto_Sans_SC'] font-bold justify-center leading-[0] relative shrink-0 text-[14px] text-center text-white whitespace-nowrap tracking-wide">
-                                            <p className="leading-[20px]">{copyState === 'copied' ? '已复制' : '小组件代码'}</p>
+                                            <p className="leading-[20px]">{copyState === 'copied' ? '已复制' : `${regionLabel}小组件代码`}</p>
                                         </div>
                                     </button>
                                     <a
