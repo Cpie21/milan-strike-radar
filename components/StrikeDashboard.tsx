@@ -64,41 +64,24 @@ function RegionCityIcon({
     tag: string;
     active: boolean;
 }) {
-    const stroke = active ? "#FFEC20" : "rgba(255,255,255,0.72)";
-    const fill = active ? "rgba(255,236,32,0.14)" : "rgba(255,255,255,0.08)";
-
-    if (tag === "MILANO") {
-        return (
-            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-                <path d="M5.5 21H20.5" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M8 21V11.8L13 6.5L18 11.8V21" fill={fill} stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M13 4.5V21" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M10.3 9.2H15.7" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" />
-                <path d="M9.8 13.5H11.1M14.9 13.5H16.2M9.8 17H11.1M14.9 17H16.2" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-        );
-    }
-
-    if (tag === "ROMA") {
-        return (
-            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-                <path d="M5 20.5H21" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-                <path d="M7.2 20.5V10.5C7.2 8.5 8.8 7 10.8 7H18.8V20.5" fill={fill} stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M7.2 11H18.8" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" />
-                <path d="M9.6 20.5V14.3M13 20.5V14.3M16.4 20.5V14.3" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-                <path d="M9.1 14.3H16.9" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-        );
-    }
+    const iconSrc = useMemo(() => {
+        switch (tag) {
+            case "MILANO": return "/assets/milano-icon.png";
+            case "ROMA": return "/assets/roma-icon.png";
+            case "TORINO": return "/assets/torino-icon.png";
+            default: return "/assets/milano-icon.png";
+        }
+    }, [tag]);
 
     return (
-        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-            <path d="M6 21H20" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M9 21V12.2L13 5.5L17 12.2V21" fill={fill} stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M13 5.5V21" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M10.5 12.5H15.5" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M12 8.7L14 8.7" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
+        <div className="relative w-[34px] h-[34px] flex items-center justify-center shrink-0">
+            <img
+                src={iconSrc}
+                alt={tag}
+                className={`w-full h-full object-contain transition-all duration-300 ${active ? "opacity-100 scale-110 brightness-110" : "opacity-45 grayscale scale-100"
+                    }`}
+            />
+        </div>
     );
 }
 
