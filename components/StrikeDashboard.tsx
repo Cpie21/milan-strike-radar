@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, MotionConfig, useAnimation } from "framer-motion";
+import { useRouter } from "next/navigation";
 import StrikeCard from "./StrikeCard";
 import WechatGuide from "./WechatGuide";
 import CalendarSyncModal from "./CalendarSyncModal";
@@ -53,6 +54,51 @@ function CardFlipWrapper({
         >
             {children}
         </motion.div>
+    );
+}
+
+function RegionCityIcon({
+    tag,
+    active,
+}: {
+    tag: string;
+    active: boolean;
+}) {
+    const stroke = active ? "#FFEC20" : "rgba(255,255,255,0.72)";
+    const fill = active ? "rgba(255,236,32,0.14)" : "rgba(255,255,255,0.08)";
+
+    if (tag === "MILANO") {
+        return (
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+                <path d="M5.5 21H20.5" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M8 21V11.8L13 6.5L18 11.8V21" fill={fill} stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M13 4.5V21" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M10.3 9.2H15.7" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M9.8 13.5H11.1M14.9 13.5H16.2M9.8 17H11.1M14.9 17H16.2" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+        );
+    }
+
+    if (tag === "ROMA") {
+        return (
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+                <path d="M5 20.5H21" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M7.2 20.5V10.5C7.2 8.5 8.8 7 10.8 7H18.8V20.5" fill={fill} stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7.2 11H18.8" stroke={stroke} strokeWidth="1.7" strokeLinecap="round" />
+                <path d="M9.6 20.5V14.3M13 20.5V14.3M16.4 20.5V14.3" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M9.1 14.3H16.9" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+        );
+    }
+
+    return (
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+            <path d="M6 21H20" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M9 21V12.2L13 5.5L17 12.2V21" fill={fill} stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 5.5V21" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
+            <path d="M10.5 12.5H15.5" stroke={stroke} strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M12 8.7L14 8.7" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
     );
 }
 
@@ -156,6 +202,7 @@ export default function StrikeDashboard({
     strikesData: any[];
     regionTag?: string;
 }) {
+    const router = useRouter();
     // Helper functions
     const getLocalDateStr = (d: Date) => {
         const year = d.getFullYear();
@@ -185,6 +232,93 @@ export default function StrikeDashboard({
         { tag: "TORINO", label: "都灵", path: "/torino" },
     ];
     const activeRegionLabel = REGION_LABELS[regionTag.toUpperCase()] || "米兰";
+    const [showRegionSelector, setShowRegionSelector] = useState<boolean>(false);
+    const [selectorFocusTag, setSelectorFocusTag] = useState<string>(regionTag.toUpperCase());
+    const WHEEL_REPEAT_COUNT = 7;
+    const WHEEL_BASE_OFFSET = Math.floor(WHEEL_REPEAT_COUNT / 2) * REGION_OPTIONS.length;
+    const [selectorWheelIndex, setSelectorWheelIndex] = useState<number>(REGION_OPTIONS.findIndex((opt) => opt.tag === regionTag.toUpperCase()) + WHEEL_BASE_OFFSET);
+    const [selectorBadgeDirection, setSelectorBadgeDirection] = useState<0 | 1 | -1>(0);
+    const regionNavTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const regionBadgeResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const regionTouchStartYRef = useRef<number | null>(null);
+    const WHEEL_ITEM_HEIGHT = 72;
+    const WHEEL_GAP = 12;
+    const WHEEL_STEP = WHEEL_ITEM_HEIGHT + WHEEL_GAP;
+    const WHEEL_VIEWPORT_HEIGHT = WHEEL_ITEM_HEIGHT * 3 + WHEEL_GAP * 2;
+
+    const selectorWheelOptions = useMemo(() => {
+        return Array.from({ length: WHEEL_REPEAT_COUNT }, (_, repeatIndex) =>
+            REGION_OPTIONS.map((opt, optionIndex) => ({
+                ...opt,
+                wheelIndex: repeatIndex * REGION_OPTIONS.length + optionIndex,
+            }))
+        ).flat();
+    }, [WHEEL_REPEAT_COUNT]);
+
+    useEffect(() => {
+        REGION_OPTIONS.forEach((opt) => {
+            router.prefetch(opt.path);
+        });
+    }, [router]);
+
+    useEffect(() => {
+        setSelectorFocusTag(regionTag.toUpperCase());
+        const index = REGION_OPTIONS.findIndex((opt) => opt.tag === regionTag.toUpperCase());
+        setSelectorWheelIndex((index >= 0 ? index : 0) + WHEEL_BASE_OFFSET);
+    }, [regionTag]);
+
+    useEffect(() => {
+        return () => {
+            if (regionNavTimeoutRef.current) clearTimeout(regionNavTimeoutRef.current);
+            if (regionBadgeResetTimeoutRef.current) clearTimeout(regionBadgeResetTimeoutRef.current);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!showRegionSelector) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const previousOverscroll = document.body.style.overscrollBehavior;
+        document.body.style.overflow = "hidden";
+        document.body.style.overscrollBehavior = "none";
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.body.style.overscrollBehavior = previousOverscroll;
+        };
+    }, [showRegionSelector]);
+
+    const syncWheelIndex = useCallback((nextWheelIndex: number) => {
+        const normalizedIndex = ((nextWheelIndex % REGION_OPTIONS.length) + REGION_OPTIONS.length) % REGION_OPTIONS.length;
+        setSelectorWheelIndex(nextWheelIndex);
+        setSelectorFocusTag(REGION_OPTIONS[normalizedIndex].tag);
+    }, []);
+
+    const triggerRegionChange = useCallback((targetTag: string) => {
+        const target = REGION_OPTIONS.find((opt) => opt.tag === targetTag);
+        if (!target) return;
+
+        setSelectorFocusTag(target.tag);
+        if (regionNavTimeoutRef.current) clearTimeout(regionNavTimeoutRef.current);
+
+        regionNavTimeoutRef.current = setTimeout(() => {
+            setShowRegionSelector(false);
+            if (target.tag !== regionTag.toUpperCase()) {
+                router.push(target.path);
+            }
+        }, 950);
+    }, [router, regionTag]);
+
+    const shiftRegionWheel = useCallback((direction: 1 | -1) => {
+        const nextWheelIndex = selectorWheelIndex + direction;
+        setSelectorBadgeDirection(direction);
+        if (regionBadgeResetTimeoutRef.current) clearTimeout(regionBadgeResetTimeoutRef.current);
+        regionBadgeResetTimeoutRef.current = setTimeout(() => {
+            setSelectorBadgeDirection(0);
+        }, 720);
+        syncWheelIndex(nextWheelIndex);
+        triggerRegionChange(selectorWheelOptions[nextWheelIndex]?.tag || REGION_OPTIONS[((nextWheelIndex % REGION_OPTIONS.length) + REGION_OPTIONS.length) % REGION_OPTIONS.length].tag);
+    }, [selectorWheelIndex, selectorWheelOptions, syncWheelIndex, triggerRegionChange]);
     // States
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [selectedCategories, setSelectedCategories] = useState<
@@ -218,7 +352,6 @@ export default function StrikeDashboard({
     }, []);
 
     const [showTutorial, setShowTutorial] = useState<boolean>(false);
-    const [showRegionSelector, setShowRegionSelector] = useState<boolean>(false);
     const [visibleMonth, setVisibleMonth] = useState<number>(
         new Date().getMonth() + 1,
     );
@@ -622,6 +755,7 @@ export default function StrikeDashboard({
                                 </button>
                                 <button
                                     onClick={() => {
+                                        setSelectorFocusTag(regionTag.toUpperCase());
                                         setShowRegionSelector(true);
                                     }}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all ${isDarkMode ? "bg-white/10 border-white/20 hover:bg-white/20" : "bg-white/20 border-white/10 hover:bg-[#E2E8F0]"}`}
@@ -1507,7 +1641,12 @@ export default function StrikeDashboard({
                             animate="visible"
                             exit="hidden"
                             variants={{
-                                hidden: { opacity: 0, filter: "blur(10px)", WebkitFilter: "blur(10px)" },
+                                hidden: {
+                                    opacity: 0,
+                                    filter: "blur(14px)",
+                                    WebkitFilter: "blur(14px)",
+                                    transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
+                                },
                                 visible: {
                                     opacity: 1,
                                     filter: "blur(0px)",
@@ -1520,52 +1659,89 @@ export default function StrikeDashboard({
                         >
                             <motion.div
                                 variants={{
-                                    hidden: { opacity: 0, y: 20, scale: 0.98 },
+                                    hidden: { opacity: 0, y: 20, scale: 0.98, transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] } },
                                     visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: "easeOut" } },
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                className={`w-full max-w-[320px] rounded-[24px] border px-5 py-5 shadow-[0px_16px_60px_rgba(0,0,0,0.45)] ${isDarkMode ? "bg-[#0B1220]/95 border-white/10" : "bg-white/95 border-[#E2E8F0]"}`}
+                                className="w-full max-w-[360px] relative"
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    <span className={`text-[16px] font-bold ${isDarkMode ? "text-white" : "text-[#0F172A]"}`}>
-                                        选择城市
-                                    </span>
-                                    <button
-                                        onClick={() => setShowRegionSelector(false)}
-                                        className={`relative w-[28px] h-[28px] rounded-full border flex items-center justify-center ${isDarkMode ? "border-white/10 text-white/70 hover:text-white" : "border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]"}`}
+                                <div
+                                    className="relative mx-auto w-full max-w-[320px] overflow-hidden touch-none"
+                                    style={{ height: `${WHEEL_VIEWPORT_HEIGHT}px` }}
+                                    onWheel={(event) => {
+                                        event.preventDefault();
+                                        if (Math.abs(event.deltaY) < 8) return;
+                                        shiftRegionWheel(event.deltaY > 0 ? 1 : -1);
+                                    }}
+                                    onTouchStart={(event) => {
+                                        regionTouchStartYRef.current = event.touches[0]?.clientY ?? null;
+                                    }}
+                                    onTouchEnd={(event) => {
+                                        const startY = regionTouchStartYRef.current;
+                                        const endY = event.changedTouches[0]?.clientY ?? null;
+                                        regionTouchStartYRef.current = null;
+                                        if (startY === null || endY === null) return;
+                                        const deltaY = endY - startY;
+                                        if (Math.abs(deltaY) < 22) return;
+                                        shiftRegionWheel(deltaY < 0 ? 1 : -1);
+                                    }}
+                                >
+                                    <motion.div
+                                        animate={{
+                                            y: WHEEL_VIEWPORT_HEIGHT / 2 - WHEEL_ITEM_HEIGHT / 2 - selectorWheelIndex * WHEEL_STEP,
+                                        }}
+                                        transition={{ duration: 0.55, ease: [0.22, 0.8, 0.2, 1] }}
+                                        className="absolute left-0 top-0 w-full"
                                     >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div className="flex flex-col gap-3">
-                                    {REGION_OPTIONS.map((opt) => {
-                                        const isActive = opt.tag === regionTag.toUpperCase();
-                                        return (
-                                            <button
-                                                key={opt.tag}
-                                                onClick={() => {
-                                                    setShowRegionSelector(false);
-                                                    if (!isActive) {
-                                                        window.location.assign(opt.path);
-                                                    }
-                                                }}
-                                                className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all ${isActive
-                                                    ? (isDarkMode ? "bg-white/15 border-white/30 text-white" : "bg-[#0F172A] text-white border-[#0F172A]")
-                                                    : (isDarkMode ? "bg-white/5 border-white/10 text-white/80 hover:bg-white/10" : "bg-white border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]")
-                                                    }`}
-                                            >
-                                                <span className="text-[15px] font-bold tracking-[0.2px]">{opt.label}</span>
-                                                {isActive && (
-                                                    <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${isDarkMode ? "bg-white/20 text-white" : "bg-white/20 text-white"}`}>
-                                                        当前
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
+                                        {selectorWheelOptions.map((opt) => {
+                                            const distance = Math.abs(opt.wheelIndex - selectorWheelIndex);
+                                            const isActive = distance === 0;
+                                            const opacity = distance === 0 ? 1 : distance === 1 ? 0.24 : 0;
+                                            return (
+                                                <button
+                                                    key={opt.tag}
+                                                    onClick={() => {
+                                                        syncWheelIndex(opt.wheelIndex);
+                                                        triggerRegionChange(opt.tag);
+                                                    }}
+                                                    className="flex w-full items-center justify-between px-3 text-left"
+                                                    style={{
+                                                        height: `${WHEEL_ITEM_HEIGHT}px`,
+                                                        marginBottom: `${WHEEL_GAP}px`,
+                                                        opacity,
+                                                        pointerEvents: distance > 1 ? "none" : "auto",
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <RegionCityIcon tag={opt.tag} active={isActive} />
+                                                        <span className={`leading-none tracking-[-0.03em] ${isActive ? "text-[36px] font-bold text-white" : "text-[30px] font-semibold text-white/92"}`}>
+                                                            {opt.label}
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-[58px] shrink-0" />
+                                                </button>
+                                            );
+                                        })}
+                                    </motion.div>
+                                    <div className="pointer-events-none absolute right-0 top-1/2 z-20 -translate-y-1/2">
+                                        <motion.div
+                                            key={selectorFocusTag}
+                                            initial={{ x: 0, scale: 1, opacity: 0.8 }}
+                                            animate={{
+                                                x: selectorBadgeDirection === 0 ? 0 : selectorBadgeDirection * 10,
+                                                scale: selectorBadgeDirection === 0 ? 1 : 1.02,
+                                                opacity: 1,
+                                            }}
+                                            transition={{
+                                                x: { duration: 0.68, ease: [0.22, 0.7, 0.2, 1] },
+                                                scale: { duration: 0.68, ease: [0.22, 0.7, 0.2, 1] },
+                                                opacity: { duration: 0.2, ease: "linear" },
+                                            }}
+                                            className={`mr-2 rounded-full px-3 py-1.5 text-[11px] font-bold ${isDarkMode ? "bg-black text-white" : "bg-white text-black"}`}
+                                        >
+                                            当前
+                                        </motion.div>
+                                    </div>
                                 </div>
                             </motion.div>
                         </motion.div>
