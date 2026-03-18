@@ -80,6 +80,9 @@ const SELECTED_TYPES = ${typesJson};
 const REGION_LABEL = "${regionLabel}";
 const OPEN_URL = "${targetOrigin}${regionPagePath}";
 const widget = new ListWidget();
+const LEFT_COL_WIDTH = 90;
+const RIGHT_COL_WIDTH = 198;
+const MAX_VISIBLE_ROWS = 3;
 const C = {
   bg: new Color("#121212"),
   white: new Color("#FFFFFF"),
@@ -106,6 +109,35 @@ function formatTime(item) {
   return String(w.start || "00:00") + " - " + String(w.end || "24:00");
 }
 
+function getTimeKey(item) {
+  if (!item) return "00:00-24:00";
+  if (Array.isArray(item.strike_windows) && item.strike_windows.length) {
+    return item.strike_windows.map(function(w) {
+      return String(w.start || "00:00") + "-" + String(w.end || "24:00");
+    }).join(",");
+  }
+  if (item.display_time) return String(item.display_time);
+  return formatTime(item);
+}
+
+function normalizeKeyPart(v) {
+  return String(v || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function dedupeStrikes(items) {
+  const map = new Map();
+  for (const item of items || []) {
+    if (!item) continue;
+    const key = [
+      normalizeKeyPart(item.category),
+      normalizeKeyPart(item.provider),
+      normalizeKeyPart(getTimeKey(item))
+    ].join("::");
+    if (!map.has(key)) map.set(key, item);
+  }
+  return Array.from(map.values());
+}
+
 function getDotColor(item, nowMin) {
   if (!item || !item.strike_windows || !item.strike_windows.length) return C.red;
   let hasFuture = false;
@@ -130,13 +162,29 @@ function getTitle(item) {
   return base + "（" + shortProvider + "）";
 }
 
-function addLeftColumn(container, count, isStrike) {
+function addWarningBadge(parent) {
+  const wrap = parent.addStack();
+  wrap.size = new Size(36, 32);
+  wrap.centerAlignContent();
+  const badge = wrap.addText("⚠");
+  badge.font = Font.mediumSystemFont(28);
+  badge.textColor = C.yellow;
+  return wrap;
+}
+
+function addLeftColumn(container, count, isStrike, visibleRows) {
   const left = container.addStack();
   left.layoutVertically();
-  const icon = left.addImage(SFSymbol.named(isStrike ? "exclamationmark.triangle.fill" : "checkmark.shield.fill").image);
-  icon.imageSize = new Size(36, 32);
-  icon.tintColor = isStrike ? C.yellow : C.green;
-  left.addSpacer(isStrike ? 45 : 53);
+  left.size = new Size(LEFT_COL_WIDTH, 0);
+  left.topAlignContent();
+  if (isStrike) {
+    addWarningBadge(left);
+  } else {
+    const icon = left.addImage(SFSymbol.named("checkmark.shield.fill").image);
+    icon.imageSize = new Size(36, 32);
+    icon.tintColor = C.green;
+  }
+  left.addSpacer(isStrike ? (visibleRows >= 3 ? 18 : visibleRows === 2 ? 28 : 45) : 53);
   const n = left.addText(String(count));
   n.font = Font.boldSystemFont(24);
   n.textColor = C.white;
@@ -146,7 +194,13 @@ function addLeftColumn(container, count, isStrike) {
   return left;
 }
 
-function addOneRow(parent, item, nowMin, dotColorOverride) {
+function addSeparator(parent) {
+  const sep = parent.addStack();
+  sep.size = new Size(RIGHT_COL_WIDTH, 1);
+  sep.backgroundColor = C.line;
+}
+
+function addOneRow(parent, item, nowMin, dotColorOverride, showTime) {
   const row = parent.addStack();
   row.layoutHorizontally();
   row.centerAlignContent();
@@ -157,14 +211,16 @@ function addOneRow(parent, item, nowMin, dotColorOverride) {
   row.addSpacer(10);
   const notes = row.addStack();
   notes.layoutVertically();
-  notes.size = new Size(198, 35);
+  notes.size = new Size(RIGHT_COL_WIDTH - 18, showTime === false ? 18 : 35);
   const t = notes.addText(getTitle(item));
   t.font = Font.systemFont(15);
   t.textColor = C.white;
   t.lineLimit = 1;
-  const time = notes.addText(formatTime(item));
-  time.font = Font.mediumSystemFont(12);
-  time.textColor = C.white50;
+  if (showTime !== false) {
+    const time = notes.addText(formatTime(item));
+    time.font = Font.mediumSystemFont(12);
+    time.textColor = C.white50;
+  }
 }
 
 widget.backgroundColor = C.bg;
@@ -177,7 +233,7 @@ try {
   const now = new Date();
   const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const todayStrikes = allStrikes.filter(x => x && x.date === today && SELECTED_TYPES.includes(x.category));
+  const todayStrikes = dedupeStrikes(allStrikes.filter(x => x && x.date === today && SELECTED_TYPES.includes(x.category)));
   const count = todayStrikes.length;
 
   if (count === 0) {
@@ -200,67 +256,40 @@ try {
     const root = widget.addStack();
     root.layoutHorizontally();
     root.topAlignContent();
-    addLeftColumn(root, 1, true);
+    addLeftColumn(root, 1, true, 1);
     root.addSpacer(19);
     const right = root.addStack();
     right.layoutVertically();
+    right.size = new Size(RIGHT_COL_WIDTH, 0);
     right.addSpacer(14);
-    addOneRow(right, todayStrikes[0], nowMin, C.red);
+    addOneRow(right, todayStrikes[0], nowMin, C.red, true);
   } else {
     widget.setPadding(15, 16, 14, 16);
     const root = widget.addStack();
-    root.layoutVertically();
+    root.layoutHorizontally();
+    root.topAlignContent();
+    const visibleRows = Math.min(count, MAX_VISIBLE_ROWS);
+    addLeftColumn(root, count, true, visibleRows);
+    root.addSpacer(19);
+    const right = root.addStack();
+    right.layoutVertically();
+    right.size = new Size(RIGHT_COL_WIDTH, 0);
 
-    const top = root.addStack();
-    top.layoutHorizontally();
-    const icon = top.addImage(SFSymbol.named("exclamationmark.triangle.fill").image);
-    icon.imageSize = new Size(36, 32);
-    icon.tintColor = C.yellow;
-    top.addSpacer(51);
-    addOneRow(top, todayStrikes[0], nowMin, getDotColor(todayStrikes[0], nowMin));
+    addOneRow(right, todayStrikes[0], nowMin, getDotColor(todayStrikes[0], nowMin), true);
 
-    root.addSpacer(10);
-    const sep1 = root.addStack();
-    sep1.addSpacer(82);
-    const sep1line = sep1.addStack();
-    sep1line.size = new Size(215, 1);
-    sep1line.backgroundColor = C.line;
+    if (visibleRows >= 2) {
+      right.addSpacer(10);
+      addSeparator(right);
+      right.addSpacer(10);
+      addOneRow(right, todayStrikes[1], nowMin, getDotColor(todayStrikes[1], nowMin), true);
+    }
 
-    root.addSpacer(10);
-    const mid = root.addStack();
-    mid.layoutHorizontally();
-    const n = mid.addText(String(count));
-    n.font = Font.boldSystemFont(24);
-    n.textColor = C.white;
-    mid.addSpacer(18);
-    const midRight = mid.addStack();
-    midRight.layoutVertically();
-    addOneRow(midRight, todayStrikes[1], nowMin, getDotColor(todayStrikes[1], nowMin));
-
-    root.addSpacer(9);
-    const sep2 = root.addStack();
-    sep2.addSpacer(82);
-    const sep2line = sep2.addStack();
-    sep2line.size = new Size(215, 1);
-    sep2line.backgroundColor = C.line;
-
-    root.addSpacer(9);
-    const bottom = root.addStack();
-    bottom.layoutHorizontally();
-    const status = bottom.addText("今日罢工");
-    status.font = Font.boldSystemFont(17);
-    status.textColor = C.yellow;
-    bottom.addSpacer(19);
-    const dot = bottom.addStack();
-    dot.size = new Size(8, 8);
-    dot.cornerRadius = 4;
-    const third = todayStrikes[2] || todayStrikes[1];
-    dot.backgroundColor = getDotColor(third, nowMin);
-    bottom.addSpacer(10);
-    const t = bottom.addText(getTitle(third));
-    t.font = Font.systemFont(15);
-    t.textColor = C.white;
-    t.lineLimit = 1;
+    if (visibleRows >= 3) {
+      right.addSpacer(9);
+      addSeparator(right);
+      right.addSpacer(9);
+      addOneRow(right, todayStrikes[2], nowMin, getDotColor(todayStrikes[2], nowMin), false);
+    }
   }
 } catch (e) {
   widget.setPadding(10, 16, 11, 10);
