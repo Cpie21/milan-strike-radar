@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
@@ -38,6 +37,16 @@ interface StrikeRecord {
     guarantee_windows: Array<{ start: string, end: string }>;
     affected_lines?: string[];
 }
+
+type TimeWindow = {
+    start: string;
+    end: string;
+};
+
+type Interval = {
+    s: number;
+    e: number;
+};
 
 export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, isDark: boolean }) {
     const viewRegion = strike.region || 'MILANO';
@@ -178,15 +187,14 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         bus: '公交',
     };
 
-    // Calculate current time indicator for today
-    const { isToday, timePct } = useMemo(() => {
-        // Try getting local timezone date (Italy/Milan) for better accuracy, or use system local
+    // Calculate current day state once, then map it to each card's visible time axis.
+    const { isToday, currentMinutes } = useMemo(() => {
         const now = new Date();
-        // Since we are formatting in local time:
         const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        const isToday = strike.date === todayStr;
-        const timePct = ((now.getHours() * 60 + now.getMinutes()) / 1440) * 100;
-        return { isToday, timePct };
+        return {
+            isToday: strike.date === todayStr,
+            currentMinutes: now.getHours() * 60 + now.getMinutes(),
+        };
     }, [strike.date]);
 
     // ── Generate Segments ─────────────────────────────────────────────────────────
@@ -234,13 +242,14 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     }
 
     // Time ranges parsing directly from server schema
-    let timeSlots: { start: string, end: string }[] = strike.strike_windows || [{ start: "00:00", end: "24:00" }];
-    if (timeSlots.length === 0) timeSlots.push({ start: "00:00", end: "24:00" });
+    const timeSlots: TimeWindow[] = strike.strike_windows && strike.strike_windows.length > 0
+        ? strike.strike_windows
+        : [{ start: "00:00", end: "24:00" }];
 
-    let isUnknownTime = false;
-    if (timeSlots.length === 1 && timeSlots[0].start === '00:00' && timeSlots[0].end === '24:00' && (strike.duration_hours === '多时段' || strike.duration_hours === '待定' || strike.duration_hours === '部分时段')) {
-        isUnknownTime = true;
-    }
+    const isUnknownTime = timeSlots.length === 1
+        && timeSlots[0].start === '00:00'
+        && timeSlots[0].end === '24:00'
+        && (strike.duration_hours === '多时段' || strike.duration_hours === '待定' || strike.duration_hours === '部分时段');
 
     const durationString = strike.duration_hours || "24小时";
     const timeLabelLines = durationString === "24小时"
@@ -265,6 +274,16 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         labelEnd = "01:00 (次日)";
     }
 
+    const currentTimeRatio = Math.min(1, Math.max(0, (currentMinutes - axisStartMin) / (axisEndMin - axisStartMin)));
+    const currentTimePct = currentTimeRatio * 100;
+    const showElapsedOverlay = isToday && currentTimePct > 0;
+    const elapsedGradientStyle = {
+        background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.22) 35%, rgba(255,255,255,0.7) 100%)',
+    } as const;
+    const elapsedStripeStyle = {
+        background: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 7px, rgba(0,0,0,0) 7px, rgba(0,0,0,0) 14px)',
+    } as const;
+
     // Fix for missing guarantee windows (like Plane strikes)
     // The background should be transparent grey like others (26% opacity of slate-200 or similar)
     // We handle this in the render logic below by checking if segment is 'grey'
@@ -273,18 +292,17 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         ? strike.guarantee_windows
         : buildFallbackGuarantees();
 
-    let guarantees: { s: number, e: number }[] = [];
-    if (guaranteeWindows && Array.isArray(guaranteeWindows)) {
-        guarantees = guaranteeWindows.map((w: any) => {
+    const guarantees: Interval[] = Array.isArray(guaranteeWindows)
+        ? guaranteeWindows.map((w: TimeWindow) => {
             const [sh, sm] = w.start.split(':').map(Number);
             const [eh, em] = w.end.split(':').map(Number);
             let endMin = eh * 60 + em;
             if (endMin === 0) endMin = 24 * 60; // 24:00 is 1440
             return { s: sh * 60 + sm, e: endMin };
-        });
-    }
+        })
+        : [];
 
-    const strikeIntervals = timeSlots.map((slot: any) => {
+    const strikeIntervals: Interval[] = timeSlots.map((slot: TimeWindow) => {
         let startMin = 0;
         let endMin = 24 * 60;
 
@@ -312,12 +330,12 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         return 'red';
     };
 
-    let points = new Set([axisStartMin, axisEndMin]);
-    strikeIntervals.forEach((inv: any) => { points.add(inv.s); points.add(inv.e); });
-    guarantees.forEach((inv: any) => { points.add(inv.s); points.add(inv.e); });
+    const points = new Set([axisStartMin, axisEndMin]);
+    strikeIntervals.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
+    guarantees.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
 
-    let sortedPoints = Array.from(points).filter(p => p >= axisStartMin && p <= axisEndMin).sort((a, b) => a - b);
-    const segments = [];
+    const sortedPoints = Array.from(points).filter(p => p >= axisStartMin && p <= axisEndMin).sort((a, b) => a - b);
+    const segments: Array<{ colorType: string; widthPct: number }> = [];
     for (let i = 0; i < sortedPoints.length - 1; i++) {
         const segStart = sortedPoints[i];
         const segEnd = sortedPoints[i + 1];
@@ -329,9 +347,9 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     }
 
     // Calculate intersected guarantees text for display
-    let intersectedGuarantees: { s: number, e: number }[] = [];
-    guarantees.forEach((g: any) => {
-        strikeIntervals.forEach((s: any) => {
+    const intersectedGuarantees: Interval[] = [];
+    guarantees.forEach((g) => {
+        strikeIntervals.forEach((s) => {
             const overlapS = Math.max(g.s, s.s);
             const overlapE = Math.min(g.e, s.e);
             if (overlapS < overlapE) {
@@ -399,13 +417,6 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
             {/* Strict Single Track Visualization */}
             <div className="mt-8 px-6 w-full">
                 <div className={`relative h-[8px] w-full rounded-full overflow-hidden flex ${isDark ? 'bg-[#E2E8F0]/25' : 'bg-gray-200'}`}>
-                    {/* Current Time Indicator */}
-                    {isToday && (
-                        <div
-                            className={`absolute top-0 bottom-0 w-[3px] z-20 ${isDark ? 'bg-white' : 'bg-black'}`}
-                            style={{ left: `${timePct}%` }}
-                        />
-                    )}
                     {isUnknownTime ? (
                         <div className="h-full w-full" style={{
                             background: isDark
@@ -431,6 +442,31 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                                 <div key={idx} className={`${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full`} style={{ width: `${seg.widthPct}%` }} />
                             )
                         })
+                    )}
+                    {showElapsedOverlay && (
+                        <div
+                            className="absolute inset-y-0 left-0 z-10 pointer-events-none overflow-hidden"
+                            style={{
+                                width: `${currentTimePct}%`,
+                                transform: 'translateZ(0)',
+                                WebkitTransform: 'translateZ(0)',
+                            }}
+                        >
+                            <div
+                                className="absolute inset-0"
+                                style={elapsedGradientStyle}
+                            />
+                            <div
+                                className="absolute inset-0"
+                                style={elapsedStripeStyle}
+                            />
+                        </div>
+                    )}
+                    {isToday && currentTimePct > 0 && currentTimePct < 100 && (
+                        <div
+                            className={`absolute top-0 bottom-0 w-[2px] z-20 rounded-full ${isDark ? 'bg-white/95 shadow-[0_0_10px_rgba(255,255,255,0.35)]' : 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]'}`}
+                            style={{ left: `calc(${currentTimePct}% - 1px)` }}
+                        />
                     )}
                 </div>
             </div>
