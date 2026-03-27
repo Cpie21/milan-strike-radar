@@ -631,12 +631,17 @@ export default function StrikeDashboard({
     const blurInitial = { opacity: 0, filter: "blur(10px)", WebkitFilter: "blur(10px)" };
     const blurAnimate = { opacity: 1, filter: "blur(0px)", WebkitFilter: "blur(0px)" };
     const blurExit = { opacity: 0, filter: "blur(10px)", WebkitFilter: "blur(10px)" };
-    const noStrikesInitial = { scale: 0.95, y: 10 };
+    const noStrikesInitial = { scale: 0.965, y: 18 };
     const noStrikesAnimate = { scale: 1, y: 0 };
     const noStrikesExit = { scale: 0.95 };
-    const strikeInitial = { scale: 0.95, y: -50 };
+    const strikeInitial = { scale: 0.97, y: -28 };
     const strikeAnimate = { scale: 1, y: 0 };
     const strikeExit = { scale: 0.95, y: 20 };
+    const cardEnterEase = [0.22, 1, 0.36, 1] as const;
+    const filterEnterDuration = 0.24;
+    const cardEnterDuration = 0.42;
+    const cardBlurDuration = 0.36;
+    const cardEnterBaseDelay = hasStrikesToday ? 0.16 : 0;
 
     // Background gradient with higher diffusion (spread out color stops)
     const pageGradient = isDarkMode
@@ -863,7 +868,7 @@ export default function StrikeDashboard({
                                     initial={{ opacity: 0, y: -6, scale: 0.98 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                                    transition={{ duration: 0.18, ease: [0.25, 0.1, 0.25, 1.0] }}
+                                    transition={{ duration: filterEnterDuration, ease: cardEnterEase }}
                                     className="flex justify-center gap-2 px-6 w-full overflow-visible"
                                 >
                                     {["火车", "地铁", "公交", "机场"].map((cat) => {
@@ -938,8 +943,8 @@ export default function StrikeDashboard({
                                 initial={noStrikesInitial}
                                 animate={noStrikesAnimate}
                                 transition={{
-                                    scale: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] },
-                                    y: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }
+                                    scale: { duration: cardEnterDuration, ease: cardEnterEase },
+                                    y: { duration: cardEnterDuration, ease: cardEnterEase }
                                 }}
                                 style={{ willChange: "transform" }}
                                 className="relative"
@@ -947,7 +952,7 @@ export default function StrikeDashboard({
                                 <motion.div
                                     initial={blurInitial}
                                     animate={blurAnimate}
-                                    transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }}
+                                    transition={{ duration: cardBlurDuration, ease: cardEnterEase }}
                                     style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 >
                                     <CardFlipWrapper isDark={isDarkMode} delay={0}
@@ -963,7 +968,7 @@ export default function StrikeDashboard({
                                 </motion.div>
                             </motion.div>
                         ) : (
-                            filteredStrikes.map((strike: any) => {
+                            filteredStrikes.map((strike: any, index: number) => {
                                 const isHighlighted = highlightedStrikeId === strike.id || highlightedCategory === strike.category;
                                 return (
                                     <motion.div
@@ -972,8 +977,8 @@ export default function StrikeDashboard({
                                         initial={strikeInitial}
                                         animate={strikeAnimate}
                                         transition={{
-                                            scale: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] },
-                                            y: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }
+                                            scale: { duration: cardEnterDuration, ease: cardEnterEase, delay: cardEnterBaseDelay + index * 0.06 },
+                                            y: { duration: cardEnterDuration, ease: cardEnterEase, delay: cardEnterBaseDelay + index * 0.06 }
                                         }}
                                         style={{ willChange: "transform" }}
                                         className="relative rounded-[32px] overflow-visible"
@@ -987,7 +992,7 @@ export default function StrikeDashboard({
                                         <motion.div
                                             initial={blurInitial}
                                             animate={blurAnimate}
-                                            transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }}
+                                            transition={{ duration: cardBlurDuration, ease: cardEnterEase, delay: cardEnterBaseDelay + index * 0.06 }}
                                             style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                             className="relative z-10 w-full h-full"
                                         >
