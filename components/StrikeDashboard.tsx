@@ -931,6 +931,7 @@ export default function StrikeDashboard({
 
                     {/* 3. Strike Cards Single Track Info List */}
                     <div id="cards-list-top" className="flex flex-col gap-6 px-4 pt-2 pb-[120px] w-full z-10 relative" style={{ minHeight: 'calc(100dvh - 280px)' }}>
+                        <div key={`cards-${selectedDateStr}`} className="flex flex-col gap-6 w-full">
                         {filteredStrikes.length === 0 ? (
                             <motion.div
                                 key={`no-strikes-${selectedDateStr}`}
@@ -996,6 +997,7 @@ export default function StrikeDashboard({
                                 );
                             })
                         )}
+                        </div>
 
                         {/* BOTTOM ELEMENTS FROM FIGMA */}
                         <div className="flex flex-col gap-4 w-full mt-[-8px] pb-8 shrink-0">

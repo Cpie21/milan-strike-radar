@@ -48,8 +48,26 @@ type Interval = {
     e: number;
 };
 
+function getManualDoodleBaseCount(strike: StrikeRecord) {
+    const normalizedRegion = strike.region || 'MILANO';
+    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
+
+    if (
+        strike.date === '2026-03-27' &&
+        normalizedRegion === 'MILANO' &&
+        strike.category === 'BUS' &&
+        normalizedProvider.includes('米兰交通局')
+    ) {
+        return 36;
+    }
+
+    return null;
+}
+
 export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, isDark: boolean }) {
     const viewRegion = strike.region || 'MILANO';
+    const manualDoodleBaseCount = getManualDoodleBaseCount(strike);
+    const usesManualDoodleCount = manualDoodleBaseCount !== null;
     const buildFallbackGuarantees = () => {
         const currentSlots = strike.strike_windows || [];
         const isFullDay = currentSlots.some((slot) => slot.start === '00:00' && slot.end === '24:00') || strike.duration_hours === '24小时';
@@ -106,6 +124,16 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         let mounted = true;
 
         const syncCount = async () => {
+            if (usesManualDoodleCount) {
+                const localMarked = !!localStorage.getItem(doodleStorageKey);
+                const baseCount = manualDoodleBaseCount || 0;
+                if (!mounted) return;
+
+                setDoodleCount(prev => Math.max(prev, baseCount + (localMarked ? 1 : 0)));
+                setIsDoodleCountLoaded(true);
+                return;
+            }
+
             const effectiveDisplayTime = strike.category === 'AIRPORT' ? strike.display_time : undefined;
 
             const count = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime, viewRegion);
@@ -126,7 +154,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
             mounted = false;
             clearInterval(timer);
         };
-    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion]);
+    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion, usesManualDoodleCount, manualDoodleBaseCount]);
 
     const handleDoodle = async () => {
         if (hasDoodled) {
@@ -151,6 +179,15 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         if (!clientUuid) {
             clientUuid = crypto.randomUUID();
             localStorage.setItem(doodleStorageKey, clientUuid);
+        }
+
+        if (usesManualDoodleCount) {
+            const nextCount = Math.max(doodleCount, manualDoodleBaseCount || 0) + 1;
+            capture('graffiti_spray_triggered', {
+                transport_type: strike.category.toLowerCase(),
+                total_rage_count: nextCount,
+            });
+            return;
         }
 
         const effectiveDisplayTime = strike.category === 'AIRPORT' ? strike.display_time : undefined;
@@ -225,9 +262,9 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     const isConfirmed = strike.status === 'CONFIRMED' || strike.status === 'CONFIRMED (STRIKE)';
 
     // Default bright theme tags
-    let tagBg = isConfirmed ? 'bg-[#D1FAE5]' : 'bg-[#FEF9C3]';
-    let tagBorder = isConfirmed ? 'border-[#059669]/20' : 'border-[#CA8A04]/20';
-    let tagTextCol = isConfirmed ? 'text-[#059669]' : 'text-[#CA8A04]';
+    let tagBg = isConfirmed ? 'bg-[#D1FAE5]' : (isDark ? 'bg-[#5B6574]' : 'bg-[#E2E8F0]');
+    let tagBorder = isConfirmed ? 'border-[#059669]/20' : (isDark ? 'border-white/10' : 'border-[#CBD5E1]');
+    let tagTextCol = isConfirmed ? 'text-[#059669]' : (isDark ? 'text-white' : 'text-[#475569]');
     let tagString = isConfirmed ? '已确认' : '待确认';
 
     if (strike.status === 'CANCELLED') {
@@ -236,7 +273,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         tagBorder = isDark ? 'border-white/20' : 'border-[#E2E8F0]';
         tagString = '已取消';
     } else if (isDark) {
-        tagBg = isConfirmed ? 'bg-[#5ab91b]' : 'bg-[#CA8A04]';
+        tagBg = isConfirmed ? 'bg-[#5ab91b]' : 'bg-[#5B6574]';
         tagBorder = 'border-black/20';
         tagTextCol = 'text-white';
     }

@@ -39,6 +39,7 @@ export interface RawStrikeRow {
   modalita: string;
   note: string;
   rilevanza: string;
+  proclamationDate: string;
 }
 
 const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
@@ -111,6 +112,7 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
       modalita: getByHeader('modalita', dateCol + 5).trim(),
       rilevanza: getByHeader('rilevanza', dateCol + 6).trim(),
       note: getByHeader('note', dateCol + 7).trim(),
+      proclamationDate: getByHeader('data proclamazione').trim(),
       region: getByHeader('regione', dateCol + 9).trim(),
       province: getByHeader('provincia', dateCol + 10).trim(),
     };
@@ -144,6 +146,35 @@ function parseItalianDate(dateStr: string) {
   const [dd, mm, yyyy] = dateStr.split('/');
   if (!dd || !mm || !yyyy) return dateStr;
   return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+}
+
+function parseItalianDateToDate(dateStr: string) {
+  const [dd, mm, yyyy] = dateStr.split('/');
+  if (!dd || !mm || !yyyy) return null;
+
+  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getLeadDaysBeforeStrike(dateIso: string, proclamationDate: string) {
+  const [yyyy, mm, dd] = dateIso.split('-');
+  if (!yyyy || !mm || !dd) return null;
+
+  const strikeDate = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  const proclaimedAt = parseItalianDateToDate(proclamationDate);
+  if (Number.isNaN(strikeDate.getTime()) || !proclaimedAt) return null;
+
+  const diffMs = strikeDate.getTime() - proclaimedAt.getTime();
+  return Math.round(diffMs / (24 * 60 * 60 * 1000));
+}
+
+function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['category'], dateIso: string) {
+  if (category !== 'TRAIN') return false;
+  if (row.region !== 'NATIONAL') return false;
+  if (!row.proclamationDate) return false;
+
+  const leadDays = getLeadDaysBeforeStrike(dateIso, row.proclamationDate);
+  return leadDays !== null && leadDays >= 14;
 }
 
 async function translateText(text: string): Promise<string> {
@@ -275,6 +306,9 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
 
     return Promise.all(categories.map(async (category) => {
       let resolvedStatus: StrikeStatus = status;
+      if (resolvedStatus === 'CONFIRMED' && shouldTreatAsPending(row, category, dateIso)) {
+        resolvedStatus = 'REQUIRES_DETAIL';
+      }
       const timeInfo = {
         hours: baseTimeInfo.hours,
         display: baseTimeInfo.display,

@@ -79,6 +79,7 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
   { match: /\bGDA\b/i, label: 'GDA地服人员' },
   { match: /\bMH24\b/i, label: 'MH24机场人员' },
   { match: /\bATM\b|米兰交通局/i, label: '米兰交通局人员' },
+  { match: /\bRFI\b|RETE\s+FERROVIARIA\s+ITALIANA/i, label: 'RFI基础设施维护人员' },
   { match: /\bTRENORD\b|伦巴第大区铁路/i, label: '伦巴第大区铁路人员' },
   { match: /\bTRENITALIA\b|意大利国家铁路/i, label: '意大利国家铁路人员' },
   { match: /\bITALO\b|伊塔洛高铁/i, label: '伊塔洛高铁人员' },

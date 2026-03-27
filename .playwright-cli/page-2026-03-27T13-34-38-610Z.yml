@@ -1,0 +1,194 @@
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e6]:
+            - heading "意大利罢工查询" [level=1] [ref=e7]
+            - generic [ref=e8]: Developed by 21'C
+          - generic [ref=e9]:
+            - button "清除涂鸦缓存" [ref=e10]
+            - button "添加到桌面" [ref=e11]:
+              - generic [ref=e13]: 添加到桌面
+            - button "米兰" [ref=e14]:
+              - img [ref=e15]
+              - generic [ref=e18]: 米兰
+        - generic [ref=e19]:
+          - heading "4月罢工信息" [level=2] [ref=e462]
+          - generic [ref=e21]:
+            - generic:
+              - img
+              - generic: 选择日期
+            - textbox [ref=e22] [cursor=pointer]
+      - generic [ref=e25]:
+        - button "周五 27" [ref=e463]:
+          - generic [ref=e27]: 周五
+          - generic [ref=e28]: "27"
+        - button "周六 28" [ref=e30]:
+          - generic [ref=e31]: 周六
+          - generic [ref=e32]: "28"
+        - button "周日 29" [ref=e33]:
+          - generic [ref=e34]: 周日
+          - generic [ref=e35]: "29"
+        - button "周一 30" [ref=e36]:
+          - generic [ref=e37]: 周一
+          - generic [ref=e38]: "30"
+        - button "周二 31" [ref=e39]:
+          - generic [ref=e40]: 周二
+          - generic [ref=e41]: "31"
+        - button "周三 1" [ref=e42]:
+          - generic [ref=e43]: 周三
+          - generic [ref=e44]: "1"
+        - button "周四 2" [ref=e45]:
+          - generic [ref=e46]: 周四
+          - generic [ref=e47]: "2"
+        - button "周五 3" [ref=e48]:
+          - generic [ref=e49]: 周五
+          - generic [ref=e50]: "3"
+        - button "周六 4" [ref=e51]:
+          - generic [ref=e52]: 周六
+          - generic [ref=e53]: "4"
+        - button "周日 5" [ref=e54]:
+          - generic [ref=e55]: 周日
+          - generic [ref=e56]: "5"
+        - button "周一 6" [ref=e57]:
+          - generic [ref=e58]: 周一
+          - generic [ref=e59]: "6"
+        - button "周二 7" [ref=e60]:
+          - generic [ref=e61]: 周二
+          - generic [ref=e62]: "7"
+        - button "周三 8" [ref=e63]:
+          - generic [ref=e64]: 周三
+          - generic [ref=e65]: "8"
+        - button "周四 9" [ref=e66]:
+          - generic [ref=e67]: 周四
+          - generic [ref=e68]: "9"
+        - button "周五 10" [ref=e69]:
+          - generic [ref=e70]: 周五
+          - generic [ref=e71]: "10"
+        - button "周六 11" [active] [ref=e72]:
+          - generic [ref=e73]: 周六
+          - generic [ref=e74]: "11"
+        - button "周日 12" [ref=e75]:
+          - generic [ref=e76]: 周日
+          - generic [ref=e77]: "12"
+        - button "周一 13" [ref=e78]:
+          - generic [ref=e79]: 周一
+          - generic [ref=e80]: "13"
+        - button "周二 14" [ref=e81]:
+          - generic [ref=e82]: 周二
+          - generic [ref=e83]: "14"
+        - button "周三 15" [ref=e84]:
+          - generic [ref=e85]: 周三
+          - generic [ref=e86]: "15"
+        - button "周四 16" [ref=e87]:
+          - generic [ref=e88]: 周四
+          - generic [ref=e89]: "16"
+        - button "周五 17" [ref=e90]:
+          - generic [ref=e91]: 周五
+          - generic [ref=e92]: "17"
+        - button "周六 18" [ref=e93]:
+          - generic [ref=e94]: 周六
+          - generic [ref=e95]: "18"
+        - button "周日 19" [ref=e96]:
+          - generic [ref=e97]: 周日
+          - generic [ref=e98]: "19"
+        - button "周一 20" [ref=e99]:
+          - generic [ref=e100]: 周一
+          - generic [ref=e101]: "20"
+        - button "周二 21" [ref=e102]:
+          - generic [ref=e103]: 周二
+          - generic [ref=e104]: "21"
+        - button "周三 22" [ref=e105]:
+          - generic [ref=e106]: 周三
+          - generic [ref=e107]: "22"
+        - button "周四 23" [ref=e108]:
+          - generic [ref=e109]: 周四
+          - generic [ref=e110]: "23"
+        - button "周五 24" [ref=e111]:
+          - generic [ref=e112]: 周五
+          - generic [ref=e113]: "24"
+        - button "周六 25" [ref=e114]:
+          - generic [ref=e115]: 周六
+          - generic [ref=e116]: "25"
+        - button "周日 26" [ref=e117]:
+          - generic [ref=e118]: 周日
+          - generic [ref=e119]: "26"
+      - button "火车" [ref=e569]:
+        - img [ref=e570]
+        - generic [ref=e572]: 火车
+        - generic:
+          - generic:
+            - img
+      - generic [ref=e130]:
+        - generic [ref=e576]:
+          - generic [ref=e577]:
+            - generic [ref=e578]:
+              - img [ref=e582]
+              - generic [ref=e584]:
+                - heading "火车罢工" [level=3] [ref=e585]
+                - paragraph [ref=e586]: RFI基础设施维护人员
+            - paragraph [ref=e588]: 待确认
+          - generic [ref=e589]:
+            - generic [ref=e591]: 00:00 - 24:00
+            - generic [ref=e592]:
+              - img [ref=e593]
+              - generic [ref=e596]: 24小时
+          - generic [ref=e600]:
+            - generic [ref=e601]: 05:00
+            - generic [ref=e602]: 01:00 (次日)
+          - generic [ref=e603]:
+            - generic [ref=e607] [cursor=pointer]: 无保障计划
+            - generic [ref=e608]:
+              - generic [ref=e609]: 受影响线路
+              - generic [ref=e612]: 全部线路
+          - generic [ref=e613]:
+            - button "分享" [ref=e614]:
+              - img [ref=e615]
+              - generic [ref=e618]: 分享
+            - button "我受影响了" [ref=e619]:
+              - img [ref=e620]
+              - generic [ref=e628]: 我受影响了
+          - img [ref=e630]
+          - generic [ref=e646]:
+            - text: 还有
+            - strong [ref=e647]: 1 人
+            - text: 也被影响了，和你一起在火车上猛猛涂鸦
+          - 'link "来源: 意大利交通部官网 (MIT) ➔" [ref=e649] [cursor=pointer]':
+            - /url: http://scioperi.mit.gov.it/mit2/public/scioperi
+        - generic [ref=e357]:
+          - generic [ref=e358]:
+            - generic [ref=e359] [cursor=pointer]:
+              - img [ref=e361]
+              - generic [ref=e366]: 添加小组件
+              - generic [ref=e367]: 在主屏幕追踪罢工信息
+            - generic [ref=e368] [cursor=pointer]:
+              - img [ref=e370]
+              - generic [ref=e374]: 同步日历
+              - generic [ref=e375]: 在本地日历中查看罢工事件
+          - generic [ref=e376]:
+            - heading "支持作者" [level=3] [ref=e378]
+            - paragraph [ref=e380]: 独立开发不易，如果对你有用请支持一杯奶茶。
+            - generic [ref=e382] [cursor=pointer]: 支持一下 / 反馈问题
+            - generic [ref=e385]:
+              - generic [ref=e386]: 或者点个关注
+              - button "小红书" [ref=e387] [cursor=pointer]:
+                - img "小红书" [ref=e388]
+            - generic:
+              - generic:
+                - img "Support Icon"
+          - paragraph [ref=e390]: 本服务基于 MIT License 开源协议，使用本服务即代表您同意自行承担一切风险，重要出行请与官方信息核对。
+  - generic [ref=e395] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e396]:
+      - img [ref=e397]
+    - generic [ref=e400]:
+      - button "Open issues overlay" [ref=e401]:
+        - generic [ref=e565]:
+          - generic [ref=e566]: "2"
+          - generic [ref=e567]: "3"
+        - generic [ref=e405]:
+          - text: Issue
+          - generic [ref=e406]: s
+      - button "Collapse issues badge" [ref=e407]:
+        - img [ref=e408]
+  - alert [ref=e410]
