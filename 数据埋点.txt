@@ -1,0 +1,705 @@
+# 数据埋点
+
+这份文档解释当前这个 WebApp 的埋点为什么埋、埋在什么位置、用什么逻辑埋，以及数据最后是怎么连到 PostHog 的。
+
+重点不是“理想中的埋点系统”，而是“当前代码已经实现的埋点系统”。
+
+---
+
+## 1. 当前埋点系统的定位
+
+这套埋点不是一套覆盖全站所有操作的精细化行为分析系统，而是一套偏轻量、偏产品决策型的埋点系统。
+
+它当前主要回答这些问题：
+
+- 用户是否看到了关键引导层
+  - 添加到桌面教程
+  - 小组件教程
+  - 日历订阅教程
+  - 微信内打开提示
+- 用户是否触发了关键转化动作
+  - 日历订阅点击
+  - 分享点击
+  - 涂鸦表达不满
+  - 打赏点击
+
+也就是说，当前埋点关注的是两类节点：
+
+1. 关键引导是否被真正消费
+2. 关键功能是否被真正点击
+
+它没有覆盖的内容也很明显：
+
+- 没有埋日期切换
+- 没有埋区域切换
+- 没有埋交通类别按钮点击
+- 没有埋卡片展开/收起
+- 没有埋反馈提交成功
+- 没有埋 Scriptable 代码复制成功
+
+所以它更像一套“关键漏斗埋点”，不是“全量行为埋点”。
+
+---
+
+## 2. 整体架构：埋点是怎么连到 PostHog 的
+
+对应代码：
+
+- `app/layout.tsx`
+- `providers/PostHogProvider.tsx`
+- `utils/analytics.ts`
+
+### 2.1 全站入口
+
+全站在根布局里统一包了一层：
+
+- `CSPostHogProvider`
+
+也就是说：
+
+- 只要页面进入 React 树
+- `posthog-js` 客户端就可以在前端可用
+
+### 2.2 PostHog 初始化
+
+真正初始化 PostHog 的地方在：
+
+- `providers/PostHogProvider.tsx`
+
+当前使用的环境变量是：
+
+- `NEXT_PUBLIC_POSTHOG_KEY`
+- `NEXT_PUBLIC_POSTHOG_HOST`
+
+初始化参数包括：
+
+- `api_host`
+  - 默认回退到 `https://us.i.posthog.com`
+- `person_profiles: 'identified_only'`
+- `debug: true`
+
+这里有一个很重要的现实情况：
+
+- 当前代码里没有看到 `identify()` 调用
+- 也没有看到设置用户 profile 的逻辑
+
+所以目前这套埋点本质上还是：
+
+- 匿名前端事件采集
+
+而不是用户级、账号级埋点。
+
+### 2.3 事件是怎么发出去的
+
+组件不会直接 everywhere 写 `posthog.capture(...)`，而是统一走一层 helper：
+
+- `captureOnce(event, properties)`
+- `capture(event, properties)`
+
+它们都在：
+
+- `utils/analytics.ts`
+
+所以当前数据流是：
+
+```text
+用户操作 / 引导层曝光
+    ↓
+组件中的触发点
+    ↓
+utils/analytics.ts
+    ├─ captureOnce()
+    └─ capture()
+    ↓
+posthog.capture(...)
+    ↓
+PostHog JS SDK
+    ↓
+NEXT_PUBLIC_POSTHOG_HOST / PostHog Cloud
+```
+
+---
+
+## 3. 当前埋点逻辑分成两种
+
+### 3.1 `captureOnce`
+
+作用：
+
+- 同一设备只记一次
+
+实现方式：
+
+- 用 `localStorage` 写一个 key：
+  - `ph_once_${event}`
+
+逻辑大意：
+
+1. 浏览器环境才执行
+2. 先看 localStorage 里有没有 `ph_once_事件名`
+3. 有就直接跳过
+4. 没有就写入 `1`
+5. 再调用 `posthog.capture`
+
+这代表它是：
+
+- 前端设备级去重
+- 不是服务端绝对去重
+- 不是用户账号级去重
+
+所以它的真实语义是：
+
+- “这个浏览器上，这个事件最多记一次”
+
+而不是：
+
+- “这个真实用户在所有设备上只会记一次”
+
+### 3.2 `capture`
+
+作用：
+
+- 每次都发
+
+适合场景：
+
+- 分享点击
+- 涂鸦点击
+- 打赏点击
+
+也就是那些天然允许重复发生的动作。
+
+---
+
+## 4. 为什么这些点会被埋
+
+把当前已埋的点按业务目的拆开，大概是下面这套思路。
+
+### 4.1 引导型埋点
+
+为什么要埋：
+
+- 这类功能本身不是主页面直接价值，而是“把低频访问转成高频触达”的转化层
+- 如果用户只是点开马上关闭，说明引导价值不够
+- 所以这里不只关心“打开”，更关心“停留到足够久”
+
+当前这类事件包括：
+
+- `AppToDesktop_tutorial_success`
+- `Widgets_tutorial_success`
+- `CalendarSync_tutorial_success`
+- `wechat_jump_success`
+
+### 4.2 转化型埋点
+
+为什么要埋：
+
+- 这些事件是真正接近业务目标的动作
+- 它们比浏览行为更能反映产品价值
+
+当前这类事件包括：
+
+- `calendar_sync_clicked`
+- `share_intent_clicked`
+- `graffiti_spray_triggered`
+- `donate_coffee_clicked`
+
+---
+
+## 5. 事件清单：现在到底埋了哪些事件
+
+下面按事件逐个列。
+
+---
+
+## 6. `wechat_jump_success`
+
+对应代码：
+
+- `components/WechatGuide.tsx`
+
+触发条件：
+
+- 检测到当前浏览器是微信内置浏览器
+- WeChat 引导层显示出来
+
+触发方式：
+
+- `captureOnce('wechat_jump_success')`
+
+为什么埋：
+
+- 用来统计微信内打开场景有没有发生
+- 它本质上是在测“渠道问题”的规模
+
+埋点属性：
+
+- 无额外属性
+
+逻辑特点：
+
+- 一台设备只记一次
+- 只要微信引导层出现，就会记
+- 不是用户真的完成“跳转 Safari”后才记
+
+也就是说，这个名字虽然叫 `success`，但当前代码语义更接近：
+
+- “微信拦截引导被展示过”
+
+---
+
+## 7. `AppToDesktop_tutorial_success`
+
+对应代码：
+
+- `components/StrikeDashboard.tsx`
+
+触发条件：
+
+- 添加到桌面教程弹层 `showTutorial === true`
+- 且持续打开超过 3 秒
+
+触发方式：
+
+- `captureOnce('AppToDesktop_tutorial_success', { AppToDesktop_time_spent_on_mask: timeSpent })`
+
+为什么埋：
+
+- 这是主流程之外的重要转化能力
+- 需要判断用户是否真的阅读/停留，而不是误触
+
+埋点属性：
+
+- `AppToDesktop_time_spent_on_mask`
+  - 弹层打开到触发时的停留秒数
+
+逻辑特点：
+
+- 3 秒延时触发
+- 提前关闭则不会触发
+- 同一设备只触发一次
+
+注意：
+
+- 这个事件不是“用户真的已经完成添加到桌面”
+- 而是“用户至少认真看过添加到桌面教程”
+
+---
+
+## 8. `Widgets_tutorial_success`
+
+对应代码：
+
+- `components/WidgetGuideModal.tsx`
+
+触发条件：
+
+- 小组件配置弹层打开
+- 且持续打开超过 3 秒
+
+触发方式：
+
+- `captureOnce('Widgets_tutorial_success', { Widgets_time_spent_on_mask: timeSpent })`
+
+为什么埋：
+
+- 小组件是产品的重要高频触达能力
+- 需要衡量这个教程有没有被消费
+
+埋点属性：
+
+- `Widgets_time_spent_on_mask`
+
+逻辑特点：
+
+- 和添加到桌面教程一样，是停留型一次性埋点
+- 测的是“教程被看过”，不是“代码已复制且小组件已完成”
+
+---
+
+## 9. `CalendarSync_tutorial_success`
+
+对应代码：
+
+- `components/CalendarSyncModal.tsx`
+
+触发条件：
+
+- 日历同步弹层打开
+- 且持续打开超过 3 秒
+
+触发方式：
+
+- `captureOnce('CalendarSync_tutorial_success', { CalendarSync_time_spent_on_mask: timeSpent })`
+
+为什么埋：
+
+- 日历订阅是重要转化动作
+- 需要衡量教程/配置层是否真的被用户阅读
+
+埋点属性：
+
+- `CalendarSync_time_spent_on_mask`
+
+逻辑特点：
+
+- 也是一次性、停留超过 3 秒才算
+- 不是“订阅成功”，而是“引导层被有效消费”
+
+---
+
+## 10. `calendar_sync_clicked`
+
+对应代码：
+
+- `components/CalendarSyncModal.tsx`
+
+触发条件：
+
+- 用户点击“订阅日历文件”
+
+触发方式：
+
+- `captureOnce('calendar_sync_clicked', { strike_date, device })`
+
+为什么埋：
+
+- 这是明确的转化点击
+- 比“打开弹层”更接近最终业务目标
+
+埋点属性：
+
+- `strike_date`
+  - 触发当天日期
+- `device`
+  - `iOS` / `Android` / `desktop`
+
+逻辑特点：
+
+- 它居然也走了 `captureOnce`
+- 所以同一设备无论点多少次，最终只会记一次
+
+这说明当前埋点策略更偏向：
+
+- 统计“这个设备有没有发生过日历订阅意图”
+
+而不是：
+
+- 统计“这个设备点了多少次订阅”
+
+---
+
+## 11. `graffiti_spray_triggered`
+
+对应代码：
+
+- `components/StrikeCard.tsx`
+
+触发条件：
+
+- 用户点击“我受影响了”
+- 涂鸦动作执行
+
+触发方式：
+
+- `capture('graffiti_spray_triggered', { transport_type, total_rage_count })`
+
+为什么埋：
+
+- 这是一个强烈表达情绪/共鸣的互动行为
+- 对产品来说，它代表用户不只是浏览，而是真正被事件影响
+
+埋点属性：
+
+- `transport_type`
+  - 当前卡片的交通类别，小写
+- `total_rage_count`
+  - 当前最新的涂鸦人数
+
+逻辑特点：
+
+- 这是可重复事件，用 `capture`
+- 不做 once 去重
+- 但业务层面 doodle 本身有单设备限制，埋点层没有额外限制
+
+---
+
+## 12. `share_intent_clicked`
+
+对应代码：
+
+- `components/StrikeCard.tsx`
+
+触发条件：
+
+- 用户点击分享按钮
+
+触发方式：
+
+- `capture('share_intent_clicked', { platform, shared_date })`
+
+为什么埋：
+
+- 分享是最直接的传播行为
+- 能反映内容是否值得带出站外
+
+埋点属性：
+
+- `platform`
+  - `微信`
+  - `系统原生`
+  - `desktop`
+- `shared_date`
+  - 被分享的罢工日期
+
+逻辑特点：
+
+- 先记“分享意图”，再执行系统分享或复制链接
+- 所以即使后面用户取消系统分享，埋点也已经发出去了
+
+这说明它测的是：
+
+- 点击分享按钮的意图
+
+而不是：
+
+- 最终真正分享成功
+
+---
+
+## 13. `donate_coffee_clicked`
+
+对应代码：
+
+- `components/StrikeDashboard.tsx`
+
+触发条件：
+
+- 用户点击 Revolut 打赏链接
+
+触发方式：
+
+- `capture('donate_coffee_clicked', { payment_method: 'Revolut' })`
+
+为什么埋：
+
+- 打赏是最直接的商业支持信号
+- 对产品来说，它代表极高意愿的转化
+
+埋点属性：
+
+- `payment_method`
+  - 当前固定为 `Revolut`
+
+逻辑特点：
+
+- 这是标准可重复点击埋点
+- 只记录点击离站，不记录外部支付是否真正完成
+
+---
+
+## 14. 工具层辅助逻辑：为什么这些属性这么写
+
+对应代码：
+
+- `utils/analytics.ts`
+
+### 14.1 `getDeviceType()`
+
+作用：
+
+- 给埋点补一个轻量设备维度
+
+当前识别结果只有三类：
+
+- `iOS`
+- `Android`
+- `desktop`
+
+这是很粗粒度的分类，足够支撑“PWA / 日历 / 移动端转化”判断。
+
+### 14.2 `isWeChatBrowser()`
+
+作用：
+
+- 给分享事件打 `platform`
+- 同时也支撑微信拦截引导层
+
+所以它既参与业务逻辑，也参与埋点标签。
+
+---
+
+## 15. 最终怎么连到 PostHog
+
+这一段是全链路的关键。
+
+### 15.1 初始化阶段
+
+`PostHogProvider.tsx` 在浏览器环境里执行：
+
+- 读取 `NEXT_PUBLIC_POSTHOG_KEY`
+- 读取 `NEXT_PUBLIC_POSTHOG_HOST`
+- 调用 `posthog.init(...)`
+
+### 15.2 页面挂载阶段
+
+`app/layout.tsx` 中，所有页面都会被：
+
+- `<CSPostHogProvider>{children}</CSPostHogProvider>`
+
+包住。
+
+所以所有客户端组件都可以直接调用：
+
+- `captureOnce`
+- `capture`
+
+### 15.3 发送阶段
+
+当组件触发埋点时，最终会执行：
+
+- `posthog.capture(event, properties)`
+
+然后由 `posthog-js` 发请求到：
+
+- `NEXT_PUBLIC_POSTHOG_HOST`
+- 如果没配，就走 `https://us.i.posthog.com`
+
+### 15.4 数据形态
+
+最终到 PostHog 的是：
+
+- 事件名
+- 一组事件属性
+- PostHog SDK 自动附带的匿名标识与上下文
+
+当前代码没有做的事情包括：
+
+- 没有 `identify()`
+- 没有用户 ID 绑定
+- 没有自定义 person properties
+- 没有服务端埋点
+
+所以今天这套系统是：
+
+- 纯前端匿名事件埋点
+
+---
+
+## 16. 当前埋点命名的一个现实问题
+
+现在有几个事件名字里带 `success`，但从代码语义上看，它们并不代表真正完成了最终目标。
+
+例如：
+
+- `AppToDesktop_tutorial_success`
+- `Widgets_tutorial_success`
+- `CalendarSync_tutorial_success`
+- `wechat_jump_success`
+
+这些事件现在更准确的含义其实是：
+
+- 引导层被展示并停留到足够久
+
+而不是：
+
+- 用户真的成功完成添加到桌面 / 完成小组件 / 完成日历订阅 / 成功跳出微信
+
+这不一定是错误，但做分析时一定要知道语义边界。
+
+---
+
+## 17. 当前埋点系统的优点
+
+### 17.1 足够轻
+
+- 只有少数关键事件
+- 成本低
+- 维护简单
+
+### 17.2 有明确的漏斗意识
+
+当前埋点都围绕几条关键产品路径：
+
+- 看引导
+- 点同步
+- 点分享
+- 点表达不满
+- 点打赏
+
+### 17.3 用 `captureOnce` 避免噪音
+
+对教程/首次转化类事件，前端直接做设备级去重，可以减少重复刷新导致的数据污染。
+
+---
+
+## 18. 当前埋点系统的局限
+
+### 18.1 `captureOnce` 是按事件名去重，不是按上下文去重
+
+例如：
+
+- `calendar_sync_clicked`
+
+只要这个设备记过一次，以后：
+
+- 换城市再点
+- 换日期再点
+- 换交通类型再点
+
+都不会再记。
+
+所以它不适合分析：
+
+- 区域差异
+- 日期差异
+- 多次使用频率
+
+### 18.2 没有真正的成功回传
+
+现在很多事件测的是：
+
+- 打开教程
+- 点击按钮
+
+而不是：
+
+- 真正完成 PWA 添加
+- 真正成功订阅日历
+- 真正完成支付
+- 真正完成分享
+
+### 18.3 没有用户身份体系
+
+因为没有 `identify()`，所以当前很难做：
+
+- 跨设备归因
+- 用户级生命周期分析
+- 人群留存分析
+
+### 18.4 没有全站浏览分析层
+
+当前代码里能明确看到的是业务自定义事件。
+
+至于 PostHog 默认自动采集：
+
+- 代码中没有显式关闭
+- 也没有显式单独配置
+
+所以如果最终分析要依赖 pageview / autocapture，最好再单独确认 PostHog 项目设置和 SDK 默认行为。
+
+---
+
+## 19. 一句话总结
+
+当前这套埋点系统可以概括成一句话：
+
+“用一层很薄的前端 helper，把少量关键引导节点和关键转化按钮埋到 PostHog，事件大体分为一次性设备级埋点和可重复动作埋点，整体以匿名事件流的形式直接上报到 PostHog。”
+
+如果再压缩一点，它的核心逻辑就是：
+
+- 引导层：看没看懂
+- 转化按钮：点没点
+- PostHog：收得到
+
+这就是现在这套数据埋点真正的样子。

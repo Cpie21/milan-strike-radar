@@ -1,0 +1,892 @@
+# 信息是如何被转化的
+
+这份文档回答的问题是：
+
+“MIT 官网上的原始罢工信息，以及二级验证/补充信息，是如何一步步被抓取、清洗、归一化、入库，最后再变成前端、小组件、日历里可结构化展示的数据的？”
+
+我会把它拆成两条链路来看：
+
+1. 同步链路
+   从外部信息源进入数据库
+2. 展示链路
+   从数据库进入网页 / 小组件 / 日历
+
+---
+
+## 1. 先说结论：这条转化链路的全貌
+
+```text
+一级信息源（MIT 官网）
+    ↓
+HTML 表格抓取
+    ↓
+筛选出和交通、目标区域相关的原始行 RawStrikeRow
+    ↓
+字段级加工
+    ├─ 日期标准化
+    ├─ 区域归类
+    ├─ 类别判断
+    ├─ 运营方/罢工主体归一化
+    ├─ 时间窗口解析
+    ├─ 保障时间推导
+    ├─ 受影响线路/机场提取
+    └─ 状态判断
+    ↓
+二级验证层
+    ├─ SECONDARY_LIVE（代码里预留接口）
+    └─ SECONDARY_VERIFIED（人工确认补丁）
+    ↓
+记录去重与合并
+    ↓
+Supabase strikes 表
+    ↓
+运行时再次加工
+    ├─ 按区域过滤
+    ├─ 前端聚合
+    ├─ 机场展示裁剪
+    └─ 文案再归一化
+    ↓
+多端输出
+    ├─ 网页卡片 StrikeCard
+    ├─ Scriptable 小组件
+    ├─ ICS 日历订阅
+    └─ 分享深链 / 社区反馈
+```
+
+---
+
+## 2. 一级信息源：MIT 官网是怎么进入系统的
+
+对应代码：
+
+- `lib/strikeSync.ts`
+- `app/api/cron/sync-strikes/route.ts`
+
+### 2.1 一级源是什么
+
+当前代码中的一级信息源是：
+
+- MIT 官网罢工公开页面
+  - `http://scioperi.mit.gov.it/mit2/public/scioperi`
+
+在代码里它被定义为：
+
+- `MIT_URL`
+
+### 2.2 它是怎么被抓下来的
+
+同步入口是：
+
+- `GET /api/cron/sync-strikes`
+
+这个接口会依次做三件事：
+
+1. `fetchAndFilter()`
+   - 去 MIT 拉 HTML
+2. `transformRows()`
+   - 把原始行转成结构化 `StrikeRecord`
+3. `upsertToSupabase()`
+   - 把结果写入 Supabase
+
+### 2.3 抓下来后最初的数据长什么样
+
+MIT 页面不是 API，而是 HTML 表格，所以系统先把表格每一行读成一个中间结构：
+
+- `RawStrikeRow`
+
+字段包括：
+
+- `date`
+- `provider`
+- `region`
+- `sector`
+- `province`
+- `modalita`
+- `note`
+- `rilevanza`
+
+这一步还只是“抄下来”，还没有真正变成适合前端使用的数据。
+
+---
+
+## 3. 第一轮筛选：不是所有 MIT 行都会留下
+
+对应代码：
+
+- `fetchAndFilter()` in `lib/strikeSync.ts`
+
+### 3.1 系统先过滤掉什么
+
+抓到表格行后，系统不会全收，而是先做第一轮业务过滤：
+
+- 只保留能归到目标区域的行
+- 只保留交通相关行业
+- 只保留米兰 / 罗马 / 都灵 / 全国相关的事件
+
+### 3.2 区域是怎么判断的
+
+这里不是只看一个字段，而是综合判断：
+
+- `regione`
+- `provincia`
+- `settore`
+- `provider`
+- `note`
+- `rilevanza`
+
+使用的是：
+
+- `classifyRegionTag()`
+- `inferRegionTagFromText()`
+- `canonicalizeRegionValue()`
+
+这一步的核心目的，是把 MIT 原始文本归成系统内部统一区域：
+
+- `MILANO`
+- `ROMA`
+- `TORINO`
+- `NATIONAL`
+- `OTHER`
+
+如果归出来是 `OTHER` 或空值，就会被丢弃。
+
+### 3.3 行业是怎么判断的
+
+系统只保留交通相关行业，当前允许的 sector 关键词包括：
+
+- `trasporto pubblico`
+- `ferroviario`
+- `aereo`
+
+也就是说，MIT 上即便有其他行业罢工，当前产品不会纳入这条数据链。
+
+---
+
+## 4. 第二轮加工：从 RawStrikeRow 变成结构化 StrikeRecord
+
+对应代码：
+
+- `transformRows()` in `lib/strikeSync.ts`
+
+这一步是最关键的“转化工厂”。
+
+最终输出的数据结构是：
+
+- `StrikeRecord`
+
+字段包括：
+
+- `date`
+- `category`
+- `provider`
+- `status`
+- `display_time`
+- `duration_hours`
+- `strike_windows`
+- `guarantee_windows`
+- `affected_lines`
+- `region`
+- `data_source`
+
+下面逐字段说明它是怎么来的。
+
+---
+
+## 5. 每个核心字段是如何被加工出来的
+
+### 5.1 `date`：日期标准化
+
+来源：
+
+- MIT 原始字段 `date`
+
+处理方式：
+
+- `parseItalianDate()`
+
+转换结果：
+
+- 从 `dd/mm/yyyy`
+- 变成 `yyyy-mm-dd`
+
+这是后续所有去重、查询、深链、日历订阅的主索引之一。
+
+### 5.2 `provider`：罢工主体/运营方归一化
+
+来源：
+
+- MIT 原始字段 `provider`
+
+处理流程：
+
+1. `normalizeProvider()`
+   - 先做英文/公司后缀清洗
+2. `translateText()`
+   - 如果配置了 DeepL，会先尝试翻译成中文
+3. `normalizeProviderList()`
+   - 用同义词规则、角色后缀规则、分隔符合并规则做标准化
+
+关键目标：
+
+- 把原始、凌乱、可能包含公司后缀的 provider
+- 转成适合用户理解的中文角色名
+
+例如系统会把一些 provider 归并成：
+
+- 易捷航空机组与飞行员
+- 德纳达地服人员
+- 米兰交通局人员
+- 意大利国家铁路人员
+
+这一步是“原始名字”转成“展示名字”的关键。
+
+### 5.3 `category`：交通类别判断
+
+来源：
+
+- `provider`
+- `sector`
+
+处理方式：
+
+- `resolveCategory()`
+
+映射目标：
+
+- `TRAIN`
+- `SUBWAY`
+- `BUS`
+- `AIRPORT`
+
+规则特点：
+
+- 如果 provider 含 `ATM`，优先归地铁
+- 如果 provider 含 `Trenord / Trenitalia / Italo` 或 sector 含铁路，归火车
+- 如果 provider 含 `SEA / ENAV / aeroporto` 或 sector 含航空，归机场
+- 其他默认归公交
+
+这一步让前端可以统一按四大交通类别组织内容。
+
+### 5.4 `status`：罢工状态判断
+
+来源：
+
+- `provider`
+- `modalita`
+- `note`
+- `rilevanza`
+
+处理方式：
+
+- 将这些原始文本拼在一起做关键词判断
+
+可能结果：
+
+- `CONFIRMED`
+- `CANCELLED`
+- `REQUIRES_DETAIL`
+- `UNCERTAIN`
+
+当前规则大意：
+
+- 出现 `revocat` / `differit`
+  - 视为取消
+- 出现 `da definire`
+  - 视为待补细节
+- 若二级源也拿不到补细节结果
+  - 最终变成 `UNCERTAIN`
+
+### 5.5 `strike_windows` / `display_time` / `duration_hours`：时间结构化
+
+来源：
+
+- `modalita`
+- `note`
+- `rilevanza`
+
+处理方式：
+
+- `parseTimeWindows()`
+
+这一步会把自然语言时间描述转成三个层次：
+
+1. `strike_windows`
+   - 真正可计算的时间区间数组
+2. `display_time`
+   - 适合展示的时间字符串
+3. `duration_hours`
+   - 适合摘要展示的时长标签
+
+支持识别的典型模式包括：
+
+- `24 ORE`
+- `INTERO TURNO`
+- `DALLE xx:xx ALLE xx:xx`
+- `DALLE xx:xx A FINE SERVIZIO`
+
+如果完全解析不出来，会回退成：
+
+- `00:00 - 24:00`
+
+### 5.6 `guarantee_windows`：保障时段不是抓出来的，而是推导出来的
+
+来源：
+
+- `category`
+- `date`
+- `region`
+- 是否全天罢工
+
+处理方式：
+
+- `getGuaranteeWindows()` in `lib/guaranteeWindows.ts`
+
+也就是说：
+
+- 保障时段不是 MIT 原始表直接给出的结构化字段
+- 而是系统根据交通类别、区域、工作日/周末规则推导出来的
+
+例如：
+
+- 机场全天罢工
+  - 推导出 `07:00-10:00`、`18:00-21:00`
+- 火车工作日
+  - 推导出 `06:00-09:00`、`18:00-21:00`
+- 公交/地铁
+  - 不同城市使用不同保障规则
+
+这是“业务规则生成信息”，不是“原始源直出信息”。
+
+### 5.7 `affected_lines`：受影响对象提取
+
+这是整条链路里最复杂的字段之一。
+
+来源：
+
+- `note`
+- `provider`
+- 上下文文本
+
+处理路径分两类：
+
+#### 非机场类
+
+使用：
+
+- `extractAffectedLines()`
+
+当前逻辑偏保守：
+
+- 从备注里尝试抓关键词
+- 如果抓不到，就回退为 `全部线路`
+
+如果只有“全部线路”，而备注又有可翻译文本，系统会再尝试：
+
+- `translateText(row.note)`
+
+把备注翻成中文后直接作为一条说明性 affected line。
+
+#### 机场类
+
+使用：
+
+- `normalizeAirportAffectedLines()`
+
+机场类不会简单保留原文字段，而是会进一步识别：
+
+- 机场名
+  - 马尔彭萨
+  - 利纳特
+  - 贝加莫
+  - 菲乌米奇诺
+  - 钱皮诺
+  - 卡塞莱
+- 航站楼
+  - T1 / T2
+- 空管范围
+  - 米兰相关机场
+  - 罗马相关机场
+  - 全国相关机场
+
+还会做：
+
+- 去噪
+- 去重
+- T1/T2 合并成整座机场
+- 按区域裁剪可展示机场列表
+
+所以机场受影响对象并不是“直接抄备注”，而是被高度结构化过的。
+
+### 5.8 `region`：区域标准化
+
+来源：
+
+- MIT 的 `regione`
+- `provincia`
+- `provider`
+- `note`
+
+处理方式：
+
+- `classifyRegionTag()`
+- `canonicalizeRegionValue()`
+
+目标是把原始文本统一进系统区域枚举，方便：
+
+- 前端分城市页面
+- 小组件分城市
+- 日历订阅分城市
+- 全国性事件映射到对应城市页
+
+### 5.9 `data_source`：记录信息来源层级
+
+这个字段很重要，它不是给用户看的，而是给系统自己看的“来源标记”。
+
+当前有三种来源级别：
+
+- `MIT_PRIMARY`
+  - 直接来自 MIT 主信息源
+- `SECONDARY_LIVE`
+  - 来自二级实时补充源
+- `SECONDARY_VERIFIED`
+  - 来自人工确认补丁
+
+---
+
+## 6. 二级验证层：一级源不够细时，系统怎么补
+
+对应代码：
+
+- `fetchSecondarySource()` in `lib/strikeSync.ts`
+- `VERIFIED_SUPPLEMENTS` in `lib/strikeSync.ts`
+
+### 6.1 二级验证层存在的目的
+
+一级源 MIT 的问题通常不是“完全错误”，而是“不够细”：
+
+- 时段不够精确
+- 备注过于模糊
+- 受影响对象只写成“全部线路”
+- 某些机场/航司信息需要补丁确认
+
+所以系统预留了二级验证层。
+
+### 6.2 代码中二级验证层分两种
+
+#### A. `SECONDARY_LIVE`
+
+这是“实时去二级源补信息”的路径。
+
+触发条件大致是：
+
+- `status === REQUIRES_DETAIL`
+- 或 `affected_lines` 只有 `全部线路`
+
+理论上它可以补：
+
+- 更精确的 `strike_windows`
+- 更精确的 `affected_lines`
+
+但是要注意：
+
+当前代码里的 `fetchSecondarySource()` 还是一个预留接口，默认直接返回 `null`。
+
+这意味着：
+
+- 架构上已经有“二级 live 验证”这个层
+- 但当前仓库里还没有真正接入在线二级源抓取实现
+
+#### B. `SECONDARY_VERIFIED`
+
+这是“人工确认过的补丁记录”。
+
+当前实现方式是：
+
+- 在 `VERIFIED_SUPPLEMENTS` 里手工写入某些确认过的事件
+- 并打上 `data_source: 'SECONDARY_VERIFIED'`
+
+这类数据会与 MIT 主数据一起进入合并阶段。
+
+### 6.3 二级验证层什么时候会覆盖一级源
+
+在记录合并时，如果同一条记录同时有：
+
+- `MIT_PRIMARY`
+- `SECONDARY_VERIFIED`
+
+那么最终会优先保留：
+
+- `SECONDARY_VERIFIED`
+
+也就是说：
+
+- 二级人工确认的可信度高于一级源原始文本
+
+---
+
+## 7. 去重与合并：多条原始记录怎么变成更稳定的一条
+
+对应代码：
+
+- `transformRows()` 末尾的 `recordsMap`
+- `mergeWindows()` in `lib/strikeSync.ts`
+
+### 7.1 为什么要合并
+
+MIT 原始数据可能会出现：
+
+- 同一主体被拆成多条
+- 同一事件不同时段被拆开
+- 一级源和二级补丁同时出现
+
+如果不合并，前端会看到重复卡片。
+
+### 7.2 第一次合并 key
+
+在同步阶段，使用的 key 是：
+
+- `date`
+- `region`
+- `category`
+- `provider`
+- `display_time`
+
+也就是说，系统会把“同一天、同区域、同类别、同主体、同展示时段”的记录视为同一个业务事件。
+
+### 7.3 合并时会合并什么
+
+合并内容包括：
+
+- `strike_windows`
+  - 合并重叠窗口
+- `guarantee_windows`
+  - 合并重叠窗口
+- `affected_lines`
+  - 去重合并
+- `status`
+  - 只要有一条是 confirmed，就尽量保 confirmed
+- `data_source`
+  - 优先保留更强来源
+
+### 7.4 全天事件的特殊处理
+
+如果任何一条记录已经表明它是全天事件，那么合并后的结果会被统一成：
+
+- `00:00 - 24:00`
+- `24小时`
+
+避免前端出现“全天事件又被拆成多个碎时间段”的展示噪音。
+
+---
+
+## 8. 入库：结构化结果如何写进 Supabase
+
+对应代码：
+
+- `upsertToSupabase()` in `lib/strikeSync.ts`
+
+### 8.1 入库策略
+
+不是简单 insert，而是 upsert 风格：
+
+1. 先查有没有同 key 记录
+2. 有就 update
+3. 没有就 insert
+
+主查重字段是：
+
+- `date`
+- `region`
+- `category`
+- `provider`
+- `display_time`
+
+### 8.2 为什么还有 legacy 兼容逻辑
+
+代码里还有一段对旧唯一约束的兼容处理，原因是历史库结构可能只按：
+
+- `date`
+- `provider`
+
+做唯一约束。
+
+所以如果 insert 因旧约束失败，系统会再：
+
+- 查旧记录
+- 合并字段
+- update 回去
+
+这保证了历史数据结构升级期间不会因为约束变化而丢数据。
+
+---
+
+## 9. 展示链路：数据库里的数据不是直接拿来显示的
+
+对应代码：
+
+- `components/utils.ts`
+- `app/page.tsx`
+- `app/roma/page.tsx`
+- `app/torino/page.tsx`
+- `app/api/strikes/route.ts`
+- `app/api/calendar/route.ts`
+
+前面那条链路解决的是：
+
+- 如何得到“标准记录”
+
+而展示链路解决的是：
+
+- 如何得到“适合某个页面、某个区域、某个输出渠道”的记录
+
+这也是第二次转化。
+
+---
+
+## 10. 运行时第二次转化：从 strikes 表到页面数据
+
+### 10.1 服务端先拉区域相关数据
+
+每个城市页面会先从 Supabase 拉出较大的候选集合。
+
+然后在运行时再做：
+
+- `filterStrikesForRegion()`
+- `aggregateStrikes()`
+- 再次 `filterStrikesForRegion()`
+
+这一步不是多余，而是为了保证：
+
+- 全国性事件能正确挂到目标城市
+- 机场类展示能被裁剪成当前城市相关机场
+- provider 文案再次稳定
+- 同一天同类别事件在前端表现上更像“一条业务信息”
+
+### 10.2 前端展示聚合和同步聚合有什么不同
+
+同步聚合的目标是：
+
+- 存标准数据
+
+前端聚合的目标是：
+
+- 提升展示稳定性
+- 降低重复卡片
+- 让机场类信息更适合城市页面阅读
+
+### 10.3 机场类在展示前还会再裁一刀
+
+这是非常重要的一层。
+
+使用：
+
+- `filterAirportLinesForDisplay()`
+
+作用是：
+
+- 即便数据库里保留了较泛的机场范围
+- 页面最终只展示当前城市真正相关的机场
+
+例如米兰页会优先落成：
+
+- 马尔彭萨机场
+- 利纳特机场
+- 贝加莫机场
+
+---
+
+## 11. 最终是怎么变成网页卡片的
+
+网页卡片使用的是：
+
+- `StrikeCard`
+
+卡片会把结构化字段转成用户可以直接读懂的信息层次：
+
+- `category` -> 标题和图标
+- `provider` -> 副标题
+- `display_time` / `strike_windows` -> 时间主视觉
+- `guarantee_windows` -> 保障时段模块
+- `affected_lines` -> 受影响线路/机场
+- `status` -> 已确认 / 待确认 / 已取消
+
+此外卡片还会进一步生成：
+
+- 时间轴颜色段
+- 当前时间位置
+- 保障时段 chips
+- 分享链接
+- doodle 群体反馈
+
+也就是说，前端展示不是简单“打印数据库字段”，而是在结构化字段基础上继续做了一轮视觉映射。
+
+---
+
+## 12. 它又是怎么变成小组件数据的
+
+对应代码：
+
+- `app/api/strikes/route.ts`
+- `components/WidgetGuideModal.tsx`
+
+流程是：
+
+1. 小组件脚本请求 `/api/strikes?region=...`
+2. 接口先从数据库读出 strikes
+3. 再执行：
+   - 区域过滤
+   - 聚合
+4. 返回 JSON
+5. Scriptable 脚本再从中选出：
+   - 今天的
+   - 当前用户勾选类型的
+   - 去重后的
+6. 最终生成小组件 UI
+
+这说明：
+
+- 小组件看到的不是原始数据库记录
+- 而是“已经做过第二次运行时转化”的 JSON
+
+---
+
+## 13. 它又是怎么变成日历订阅数据的
+
+对应代码：
+
+- `app/api/calendar/route.ts`
+- `components/CalendarSyncModal.tsx`
+
+流程是：
+
+1. 用户在弹层里选交通类型
+2. 前端拼出 `webcal://.../api/calendar?...`
+3. `/api/calendar` 从数据库拿数据
+4. 再做：
+   - 区域过滤
+   - 聚合
+   - 类型过滤
+5. 最后再把结构化记录转成 ICS 事件
+
+ICS 中保留的主要信息包括：
+
+- 城市
+- 交通类别
+- 罢工主体
+- 站内详情链接
+
+所以日历订阅本质上是：
+
+- 结构化数据 -> 日历协议数据
+
+这是另一种“输出格式转化”。
+
+---
+
+## 14. 一个字段级例子：一条 MIT 原始信息是怎么变样的
+
+可以把它理解成下面这样：
+
+### 14.1 原始形态（MIT 表格）
+
+```text
+date: 18/03/2026
+provider: EASYJET AIRLINES SPA PERSONALE NAVIGANTE
+sector: AEREO
+region: LOMBARDIA
+province: MILANO
+modalita: DALLE 13.00 ALLE 17.00
+note: sciopero equipaggi e piloti
+rilevanza: nazionale
+```
+
+### 14.2 第一轮系统理解
+
+```text
+dateIso: 2026-03-18
+region: MILANO
+category: AIRPORT
+providerNorm: 易捷航空机组与飞行员
+status: CONFIRMED
+strike_windows: [{ start: "13:00", end: "17:00" }]
+display_time: 13:00 - 17:00
+guarantee_windows: []
+affected_lines: [米兰相关机场] 或 [马尔彭萨机场, 利纳特机场]（取决于上下文）
+data_source: MIT_PRIMARY
+```
+
+### 14.3 第二轮展示理解
+
+进入米兰页后，前端还会再把它变成用户真正看到的内容：
+
+- 标题：机场罢工
+- 副标题：易捷航空机组与飞行员
+- 时间：13:00 - 17:00
+- 时间轴：按机场规则绘制
+- 受影响机场：只保留米兰相关机场
+
+---
+
+## 15. 这条转化链路里，最重要的“加工动作”有哪些
+
+如果只保留最关键的几个动作，它们是：
+
+### A. 采集
+
+- 从 MIT HTML 表抓出表格行
+
+### B. 识别
+
+- 识别它是不是目标城市、目标行业、目标交通事件
+
+### C. 标准化
+
+- 把原始文本变成统一字段
+  - 统一日期
+  - 统一类别
+  - 统一主体
+  - 统一区域
+  - 统一受影响对象
+
+### D. 推导
+
+- 根据业务规则补出保障时段等结构化字段
+
+### E. 验证/补强
+
+- 用二级层补更精确的信息
+- 当前主要依赖人工确认补丁，live 二级口子已预留
+
+### F. 去重合并
+
+- 把多个来源、多个时间块、重复主体收敛成稳定记录
+
+### G. 多端输出
+
+- 输出给网页
+- 输出给小组件
+- 输出给日历
+
+---
+
+## 16. 最重要的一句总结
+
+这个项目不是“把 MIT 官网内容原样搬到前端”，而是做了两次关键转化：
+
+1. 第一次转化
+   - 从 MIT 原始表格 -> 结构化标准罢工记录
+2. 第二次转化
+   - 从标准罢工记录 -> 适合网页 / 小组件 / 日历的目标格式
+
+而“二级验证员/二级源”的角色，正是在一级源不够细或不够稳的时候，为这条结构化链路补充更高质量的信息。
+
+在当前代码里，这个二级层已经被设计进架构中：
+
+- `SECONDARY_LIVE`
+  - 已预留实时补充接口
+- `SECONDARY_VERIFIED`
+  - 已有人工确认补丁机制
+
+所以这条系统链路，本质上是：
+
+“原始公开信息 -> 机器归一化 -> 规则推导 -> 二级验证补强 -> 结构化存储 -> 多端展示输出”

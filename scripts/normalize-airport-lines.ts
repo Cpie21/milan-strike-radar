@@ -5,7 +5,7 @@ import {
   normalizeAirportAffectedLines,
   normalizeProviderList,
   sanitizeAffectedLines,
-} from '../lib/strikeNormalization.ts';
+} from '../lib/strikeNormalization';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

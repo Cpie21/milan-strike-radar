@@ -931,81 +931,71 @@ export default function StrikeDashboard({
 
                     {/* 3. Strike Cards Single Track Info List */}
                     <div id="cards-list-top" className="flex flex-col gap-6 px-4 pt-2 pb-[120px] w-full z-10 relative" style={{ minHeight: 'calc(100dvh - 280px)' }}>
-                        <AnimatePresence mode="wait" initial={false}>
-                            {filteredStrikes.length === 0 ? (
+                        {filteredStrikes.length === 0 ? (
+                            <motion.div
+                                key={`no-strikes-${selectedDateStr}`}
+                                initial={noStrikesInitial}
+                                animate={noStrikesAnimate}
+                                transition={{
+                                    scale: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] },
+                                    y: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }
+                                }}
+                                style={{ willChange: "transform" }}
+                                className="relative"
+                            >
                                 <motion.div
-                                    key="no-strikes"
-                                    layout
-                                    initial={noStrikesInitial}
-                                    animate={noStrikesAnimate}
-                                    exit={noStrikesExit}
-                                    transition={{
-                                        layout: { type: "spring", stiffness: 360, damping: 34, duration: 0.35 },
-                                        scale: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] },
-                                        y: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }
-                                    }}
-                                    style={{ willChange: "transform" }}
-                                    className="relative"
+                                    initial={blurInitial}
+                                    animate={blurAnimate}
+                                    transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }}
+                                    style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                 >
-                                    <motion.div
-                                        initial={blurInitial}
-                                        animate={blurAnimate}
-                                        exit={blurExit}
-                                        transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }}
-                                        style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
+                                    <CardFlipWrapper isDark={isDarkMode} delay={0}
+                                        className={`flex flex-col items-center justify-center py-20 backdrop-blur-md rounded-3xl border border-white/20 ${isDarkMode ? "bg-black/40" : "bg-white/90 shadow-sm"}`}
                                     >
-                                        <CardFlipWrapper isDark={isDarkMode} delay={0}
-                                            className={`flex flex-col items-center justify-center py-20 backdrop-blur-md rounded-3xl border border-white/20 ${isDarkMode ? "bg-black/40" : "bg-white/90 shadow-sm"}`}
-                                        >
-                                            <span className={`text-xl font-bold ${isDarkMode ? "text-white/80" : "text-slate-800"}`}>
-                                                {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "当前筛选条件无罢工" : "当日无罢工"}
-                                            </span>
-                                            <span className={`text-sm mt-2 ${isDarkMode ? "text-white/50" : "text-slate-500"}`}>
-                                                {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "请尝试选择上方筛选项" : "安心出行"}
-                                            </span>
-                                        </CardFlipWrapper>
-                                    </motion.div>
+                                        <span className={`text-xl font-bold ${isDarkMode ? "text-white/80" : "text-slate-800"}`}>
+                                            {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "当前筛选条件无罢工" : "无交通罢工"}
+                                        </span>
+                                        <span className={`text-sm mt-2 ${isDarkMode ? "text-white/50" : "text-slate-500"}`}>
+                                            {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "请尝试选择上方筛选项" : "安心出行"}
+                                        </span>
+                                    </CardFlipWrapper>
                                 </motion.div>
-                            ) : (
-                                filteredStrikes.map((strike: any) => {
-                                    const isHighlighted = highlightedStrikeId === strike.id || highlightedCategory === strike.category;
-                                    return (
-                                        <motion.div
-                                            layout
-                                            key={strike.id}
-                                            id={`strike-card-${strike.id}`}
-                                            initial={strikeInitial}
-                                            animate={strikeAnimate}
-                                            exit={strikeExit}
-                                            transition={{
-                                                layout: { type: "spring", bounce: 0.18, duration: 0.35 },
-                                                scale: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] },
-                                                y: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }
-                                            }}
-                                            style={{ willChange: "transform" }}
-                                            className="relative rounded-[32px] overflow-visible"
+                            </motion.div>
+                        ) : (
+                            filteredStrikes.map((strike: any) => {
+                                const isHighlighted = highlightedStrikeId === strike.id || highlightedCategory === strike.category;
+                                return (
+                                    <motion.div
+                                        key={`${selectedDateStr}-${strike.id}`}
+                                        id={`strike-card-${strike.id}`}
+                                        initial={strikeInitial}
+                                        animate={strikeAnimate}
+                                        transition={{
+                                            scale: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] },
+                                            y: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }
+                                        }}
+                                        style={{ willChange: "transform" }}
+                                        className="relative rounded-[32px] overflow-visible"
+                                    >
+                                        {/* Dedicated Highlight Wrapper */}
+                                        <div
+                                            className={`absolute inset-[-4px] pointer-events-none transition-opacity duration-[1500ms] ease-in-out z-0 ${isHighlighted ? "opacity-100" : "opacity-0"}`}
                                         >
-                                            {/* Dedicated Highlight Wrapper */}
-                                            <div
-                                                className={`absolute inset-[-4px] pointer-events-none transition-opacity duration-[1500ms] ease-in-out z-0 ${isHighlighted ? "opacity-100" : "opacity-0"}`}
-                                            >
-                                                <div className="w-full h-full rounded-[36px] border-[3px] border-[#FFEC20] shadow-[0_0_20px_rgba(255,236,32,0.8)] animate-[pulse_1.5s_ease-in-out_infinite]" />
-                                            </div>
-                                            <motion.div
-                                                initial={blurInitial}
-                                                animate={blurAnimate}
-                                                exit={blurExit}
-                                                transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }}
-                                                style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
-                                                className="relative z-10 w-full h-full"
-                                            >
-                                                <StrikeCard key={strike.id} strike={{ ...strike, region: regionTag }} isDark={isDarkMode} />
-                                            </motion.div>
+                                            <div className="w-full h-full rounded-[36px] border-[3px] border-[#FFEC20] shadow-[0_0_20px_rgba(255,236,32,0.8)] animate-[pulse_1.5s_ease-in-out_infinite]" />
+                                        </div>
+                                        <motion.div
+                                            initial={blurInitial}
+                                            animate={blurAnimate}
+                                            transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1.0] }}
+                                            style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
+                                            className="relative z-10 w-full h-full"
+                                        >
+                                            <StrikeCard key={strike.id} strike={{ ...strike, region: regionTag }} isDark={isDarkMode} />
                                         </motion.div>
-                                    );
-                                })
-                            )}
-                        </AnimatePresence>
+                                    </motion.div>
+                                );
+                            })
+                        )}
 
                         {/* BOTTOM ELEMENTS FROM FIGMA */}
                         <div className="flex flex-col gap-4 w-full mt-[-8px] pb-8 shrink-0">
@@ -1152,7 +1142,7 @@ export default function StrikeDashboard({
                                     </div>
                                 </div>
                             </CardFlipWrapper>
-                            
+
                             {/* MIT License Disclaimer */}
                             <div className="w-full flex justify-center text-center mt-[24px] mb-[12px] px-[20px]">
                                 <p className={`text-[10px] leading-[14px] font-['Noto_Sans_SC'] ${isDarkMode ? "text-white/40" : "text-slate-400/80"}`}>
@@ -1560,22 +1550,22 @@ export default function StrikeDashboard({
                                             variants={itemVariants}
                                             className="w-full"
                                         >
-                                        <a
-                                            href="https://revolut.me/cpie21"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={() => {
-                                                capture('donate_coffee_clicked', { payment_method: 'Revolut' });
-                                            }}
-                                            className="bg-[#de4141] hover:bg-[#DC2626] active:scale-95 transition-all border-2 border-[rgba(0,0,0,0.2)] flex items-center justify-center overflow-clip w-full py-[27px] relative rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)]"
-                                        >
-                                            <span className="font-bold text-[18px] text-center text-white w-full">
-                                                {Number(donateAmount || 0) * 2 >= 5
-                                                    ? `居然要支持 ${Number(donateAmount || 0) * 2}€ 嘛 !! 点我进行支持🙏`
-                                                    : `点击支持开发者 ${Number(donateAmount || 0) * 2}€`
-                                                }
-                                            </span>
-                                        </a>
+                                            <a
+                                                href="https://revolut.me/cpie21"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={() => {
+                                                    capture('donate_coffee_clicked', { payment_method: 'Revolut' });
+                                                }}
+                                                className="bg-[#de4141] hover:bg-[#DC2626] active:scale-95 transition-all border-2 border-[rgba(0,0,0,0.2)] flex items-center justify-center overflow-clip w-full py-[27px] relative rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)]"
+                                            >
+                                                <span className="font-bold text-[18px] text-center text-white w-full">
+                                                    {Number(donateAmount || 0) * 2 >= 5
+                                                        ? `居然要支持 ${Number(donateAmount || 0) * 2}€ 嘛 !! 点我进行支持🙏`
+                                                        : `点击支持开发者 ${Number(donateAmount || 0) * 2}€`
+                                                    }
+                                                </span>
+                                            </a>
                                         </motion.div>
                                     </div>
                                 </div>

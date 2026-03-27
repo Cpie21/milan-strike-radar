@@ -1,4 +1,4 @@
-import { canonicalizeRegionValue } from './strikeNormalization.ts';
+import { canonicalizeRegionValue } from './strikeNormalization';
 
 export type GuaranteeWindow = {
   start: string;

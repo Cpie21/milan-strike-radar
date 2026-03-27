@@ -6,8 +6,8 @@ import {
   inferRegionTagFromText,
   normalizeAirportAffectedLines,
   normalizeProviderList,
-} from './strikeNormalization.ts';
-import { getGuaranteeWindows } from './guaranteeWindows.ts';
+} from './strikeNormalization';
+import { getGuaranteeWindows } from './guaranteeWindows';
 
 export type StrikeStatus = 'CONFIRMED' | 'CANCELLED' | 'REQUIRES_DETAIL' | 'UNCERTAIN';
 
@@ -181,13 +181,17 @@ async function normalizeProvider(raw: string) {
   return normalizeProviderList(source, translated).join(' / ') || '相关人员';
 }
 
-function resolveCategory(provider: string, sector: string): StrikeRecord['category'] {
+function resolveCategories(provider: string, sector: string): StrikeRecord['category'][] {
   const providerLow = provider.toLowerCase();
   const sectorLow = sector.toLowerCase();
-  if (providerLow.includes('atm')) return 'SUBWAY';
-  if (providerLow.includes('trenord') || providerLow.includes('trenitalia') || providerLow.includes('italo') || sectorLow.includes('ferrov')) return 'TRAIN';
-  if (providerLow.includes('sea') || providerLow.includes('enav') || providerLow.includes('aeroport') || sectorLow.includes('aereo')) return 'AIRPORT';
-  return 'BUS';
+  const isMilanAtm = /\batm\b/.test(providerLow) && providerLow.includes('milano');
+
+  // ATM in Milan is the local transit operator, so broad TPL strikes affect both metro and bus.
+  if (isMilanAtm && sectorLow.includes('trasporto pubblico')) return ['SUBWAY', 'BUS'];
+  if (/\batm\b/.test(providerLow)) return ['SUBWAY'];
+  if (providerLow.includes('trenord') || providerLow.includes('trenitalia') || providerLow.includes('italo') || sectorLow.includes('ferrov')) return ['TRAIN'];
+  if (providerLow.includes('sea') || providerLow.includes('enav') || providerLow.includes('aeroport') || sectorLow.includes('aereo')) return ['AIRPORT'];
+  return ['BUS'];
 }
 
 function extractAffectedLines(note: string) {
@@ -238,7 +242,7 @@ function parseTimeWindows(durationRaw: string, modalita: string, note: string) {
   };
 }
 
-async function fetchSecondarySource(category: string, provider: string, dateIso: string): Promise<{ windows?: StrikeWindow[]; lines?: string[] } | null> {
+async function fetchSecondarySource(category: string, provider: string): Promise<{ windows?: StrikeWindow[]; lines?: string[] } | null> {
   try {
     if ((category === 'SUBWAY' || category === 'BUS') && provider.toUpperCase().includes('ATM')) {
       return null;
@@ -254,10 +258,10 @@ async function fetchSecondarySource(category: string, provider: string, dateIso:
 }
 
 export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
-  const rawRecords = await Promise.all(rawRows.map(async (row) => {
+  const rawRecordGroups = await Promise.all(rawRows.map(async (row) => {
     const dateIso = parseItalianDate(row.date);
     const providerNorm = await normalizeProvider(row.provider);
-    const category = resolveCategory(row.provider, row.sector);
+    const categories = resolveCategories(row.provider, row.sector);
 
     let status: StrikeStatus = 'CONFIRMED';
     const combinedRaw = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
@@ -267,71 +271,81 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
       status = 'REQUIRES_DETAIL';
     }
 
-    const timeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
-    const guaranteeWindows = getGuaranteeWindows({
-      category,
-      dateIso,
-      region: row.region,
-      isFullDay:
-        timeInfo.hours === '24小时' ||
-        (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00'),
-    });
+    const baseTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
 
-    let lines = category === 'AIRPORT'
-      ? normalizeAirportAffectedLines([], { contextText: `${row.provider} ${row.note}`, regionTag: row.region })
-      : extractAffectedLines(row.note);
-
-    const excludeNotes = ['nazionale', 'provinciale', 'regionale', 'territoriale'];
-    if (lines.length === 1 && lines[0] === '全部线路' && row.note.trim().length > 3 && !excludeNotes.includes(row.note.toLowerCase().trim())) {
-      const translatedNote = await translateText(row.note);
-      if (translatedNote && translatedNote !== row.note) lines = [translatedNote];
-    }
-
-    if (category === 'AIRPORT') {
-      lines = normalizeAirportAffectedLines(lines, {
-        contextText: `${row.provider} ${row.note}`,
-        regionTag: row.region,
+    return Promise.all(categories.map(async (category) => {
+      let resolvedStatus: StrikeStatus = status;
+      const timeInfo = {
+        hours: baseTimeInfo.hours,
+        display: baseTimeInfo.display,
+        windows: baseTimeInfo.windows.map((window) => ({ ...window })),
+      };
+      const guaranteeWindows = getGuaranteeWindows({
+        category,
+        dateIso,
+        region: row.region,
+        isFullDay:
+          timeInfo.hours === '24小时' ||
+          (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00'),
       });
-    }
 
-    let dataSource = 'MIT_PRIMARY';
-    if (status === 'REQUIRES_DETAIL' || (lines.length === 1 && lines[0] === '全部线路')) {
-      const secondaryResult = await fetchSecondarySource(category, providerNorm, dateIso);
-      if (secondaryResult) {
-        if (secondaryResult.windows?.length) {
-          timeInfo.windows = secondaryResult.windows;
-          timeInfo.display = secondaryResult.windows.map((window) => `${window.start} - ${window.end}`).join(', ');
-          timeInfo.hours = '精确时段';
-        }
-        if (secondaryResult.lines?.length) {
-          lines = category === 'AIRPORT'
-            ? normalizeAirportAffectedLines(secondaryResult.lines, {
-                contextText: `${row.provider} ${row.note}`,
-                regionTag: row.region,
-              })
-            : secondaryResult.lines;
-        }
-        status = 'CONFIRMED';
-        dataSource = 'SECONDARY_LIVE';
-      } else if (status === 'REQUIRES_DETAIL') {
-        status = 'UNCERTAIN';
+      let lines = category === 'AIRPORT'
+        ? normalizeAirportAffectedLines([], { contextText: `${row.provider} ${row.note}`, regionTag: row.region })
+        : extractAffectedLines(row.note);
+
+      const excludeNotes = ['nazionale', 'provinciale', 'regionale', 'territoriale'];
+      if (lines.length === 1 && lines[0] === '全部线路' && row.note.trim().length > 3 && !excludeNotes.includes(row.note.toLowerCase().trim())) {
+        const translatedNote = await translateText(row.note);
+        if (translatedNote && translatedNote !== row.note) lines = [translatedNote];
       }
-    }
 
-    return {
-      date: dateIso,
-      category,
-      provider: providerNorm,
-      region: row.region,
-      status,
-      display_time: timeInfo.display,
-      duration_hours: timeInfo.hours,
-      strike_windows: timeInfo.windows,
-      guarantee_windows: guaranteeWindows,
-      affected_lines: lines,
-      data_source: dataSource,
-    } satisfies StrikeRecord;
+      if (category === 'AIRPORT') {
+        lines = normalizeAirportAffectedLines(lines, {
+          contextText: `${row.provider} ${row.note}`,
+          regionTag: row.region,
+        });
+      }
+
+      let dataSource = 'MIT_PRIMARY';
+      if (resolvedStatus === 'REQUIRES_DETAIL' || (lines.length === 1 && lines[0] === '全部线路')) {
+        const secondaryResult = await fetchSecondarySource(category, providerNorm);
+        if (secondaryResult) {
+          if (secondaryResult.windows?.length) {
+            timeInfo.windows = secondaryResult.windows;
+            timeInfo.display = secondaryResult.windows.map((window) => `${window.start} - ${window.end}`).join(', ');
+            timeInfo.hours = '精确时段';
+          }
+          if (secondaryResult.lines?.length) {
+            lines = category === 'AIRPORT'
+              ? normalizeAirportAffectedLines(secondaryResult.lines, {
+                  contextText: `${row.provider} ${row.note}`,
+                  regionTag: row.region,
+                })
+              : secondaryResult.lines;
+          }
+          resolvedStatus = 'CONFIRMED';
+          dataSource = 'SECONDARY_LIVE';
+        } else if (resolvedStatus === 'REQUIRES_DETAIL') {
+          resolvedStatus = 'UNCERTAIN';
+        }
+      }
+
+      return {
+        date: dateIso,
+        category,
+        provider: providerNorm,
+        region: row.region,
+        status: resolvedStatus,
+        display_time: timeInfo.display,
+        duration_hours: timeInfo.hours,
+        strike_windows: timeInfo.windows,
+        guarantee_windows: guaranteeWindows,
+        affected_lines: lines,
+        data_source: dataSource,
+      } satisfies StrikeRecord;
+    }));
   }));
+  const rawRecords = rawRecordGroups.flat();
 
   const recordsMap = new Map<string, StrikeRecord>();
   [...rawRecords, ...VERIFIED_SUPPLEMENTS].forEach((record) => {

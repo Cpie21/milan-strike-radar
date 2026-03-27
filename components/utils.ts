@@ -12,11 +12,14 @@ type StrikeWindow = {
 };
 
 type StrikeLike = {
+  id?: number | string;
   category?: string;
   date?: string;
+  data_source?: string;
   display_time?: string;
   duration_hours?: string;
   strike_windows?: StrikeWindow[];
+  guarantee_windows?: StrikeWindow[];
   affected_lines?: string[];
   provider?: string;
   region?: string;
@@ -85,12 +88,42 @@ function filterAirportLinesForDisplay(lines: string[], currentRegion: string) {
   return [];
 }
 
-export function filterStrikesForRegion(rawStrikes: StrikeLike[], regionTag: string) {
+const NETWORK_WIDE_LINE_MARKERS = new Set(['全部线路', '全部车次']);
+
+function shouldDeriveBusVariantForMilanAtm(strike: StrikeLike) {
+  if (!strike || strike.category !== 'SUBWAY') return false;
+
+  const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
+  const normalizedRegion = resolveStrikeRegion(strike);
+  const sanitizedLines = sanitizeAffectedLines(strike.affected_lines || []);
+
+  if (normalizedRegion !== 'MILANO') return false;
+  if (!normalizedProvider.includes('米兰交通局')) return false;
+
+  return sanitizedLines.length === 0 || sanitizedLines.every((line) => NETWORK_WIDE_LINE_MARKERS.has(line));
+}
+
+function expandDerivedStrikeVariants(rawStrikes: Array<StrikeLike | null | undefined>) {
+  return rawStrikes.flatMap((strike) => {
+    if (!strike) return [];
+    if (!shouldDeriveBusVariantForMilanAtm(strike)) return [strike];
+
+    return [
+      strike,
+      {
+        ...strike,
+        category: 'BUS',
+      },
+    ];
+  });
+}
+
+export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | undefined>, regionTag: string) {
   if (!Array.isArray(rawStrikes)) return [];
   const allowedCategories = new Set(['TRAIN', 'SUBWAY', 'BUS', 'AIRPORT']);
   const currentRegion = canonicalizeRegionValue(regionTag) || 'MILANO';
 
-  return rawStrikes
+  const normalizedStrikes: Array<StrikeLike | null> = rawStrikes
     .map((strike) => {
       if (!strike) return null;
       if (!strike.category || !allowedCategories.has(strike.category)) return null;
@@ -115,13 +148,15 @@ export function filterStrikesForRegion(rawStrikes: StrikeLike[], regionTag: stri
           regionTag: normalizedRegion || currentRegion,
         }), currentRegion),
       };
-    })
+    });
+
+  return normalizedStrikes
     .filter((strike) => {
       if (!strike) return false;
       if (strike.category !== 'AIRPORT') return true;
       return Array.isArray(strike.affected_lines) && strike.affected_lines.length > 0;
     })
-    .filter(Boolean);
+    .filter((strike): strike is StrikeLike => Boolean(strike));
 }
 
 /**
@@ -147,10 +182,10 @@ function mergeTimeWindows(windows: StrikeWindow[]) {
  * Data Aggregation (Phase) per user PRD
  * Groups identically dated strikes inside the same category
  */
-export function aggregateStrikes(rawStrikes: StrikeLike[]) {
+export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined>) {
   const map = new Map<string, StrikeLike>();
 
-  rawStrikes.forEach(strike => {
+  expandDerivedStrikeVariants(rawStrikes).forEach(strike => {
     const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
     const normalizedLines = strike.category === 'AIRPORT'
       ? normalizeAirportAffectedLines(strike.affected_lines || [], {
@@ -173,6 +208,7 @@ export function aggregateStrikes(rawStrikes: StrikeLike[]) {
       });
     } else {
       const existing = map.get(key);
+      if (!existing) return;
 
       existing.provider = normalizeProviderList(`${existing.provider || ''} / ${normalizedProvider}`).join(' / ') || '相关人员';
 
