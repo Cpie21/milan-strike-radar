@@ -15,7 +15,6 @@ type GuaranteeInput = {
 export function getGuaranteeWindows({ category, dateIso, region, isFullDay }: GuaranteeInput): GuaranteeWindow[] {
   const normalizedRegion = canonicalizeRegionValue(region || '');
   const date = new Date(dateIso);
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
   if (category === 'AIRPORT') {
     if (!isFullDay) return [];
@@ -26,7 +25,13 @@ export function getGuaranteeWindows({ category, dateIso, region, isFullDay }: Gu
   }
 
   if (category === 'TRAIN') {
-    if (isWeekend) return [];
+    if (date.getDay() === 0) {
+      return [
+        { start: '07:00', end: '10:00' },
+        { start: '18:00', end: '21:00' },
+      ];
+    }
+
     return [
       { start: '06:00', end: '09:00' },
       { start: '18:00', end: '21:00' },

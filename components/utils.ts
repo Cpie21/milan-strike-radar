@@ -90,6 +90,33 @@ function filterAirportLinesForDisplay(lines: string[], currentRegion: string) {
 
 const NETWORK_WIDE_LINE_MARKERS = new Set(['全部线路', '全部车次']);
 
+function getRomeTodayIso() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(new Date());
+}
+
+function requiresRegionalTrainImpactVerification(strike: StrikeLike) {
+  const status = (strike.status || '').toUpperCase();
+  if (status !== 'REQUIRES_DETAIL' && status !== 'UNCERTAIN') return false;
+  if ((strike.data_source || 'MIT_PRIMARY') !== 'MIT_PRIMARY') return false;
+  if (strike.category !== 'TRAIN') return false;
+  if (canonicalizeRegionValue(strike.region || '') !== 'NATIONAL') return false;
+  return true;
+}
+
+function shouldHideExpiredPendingStrike(strike: StrikeLike) {
+  if (!requiresRegionalTrainImpactVerification(strike)) return false;
+  if (!strike.date) return false;
+
+  return strike.date <= getRomeTodayIso();
+}
+
 function shouldDeriveBusVariantForMilanAtm(strike: StrikeLike) {
   if (!strike || strike.category !== 'SUBWAY') return false;
 
@@ -127,6 +154,7 @@ export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | und
     .map((strike) => {
       if (!strike) return null;
       if (!strike.category || !allowedCategories.has(strike.category)) return null;
+      if (shouldHideExpiredPendingStrike(strike)) return null;
       const normalizedRegion = resolveStrikeRegion(strike);
       if (normalizedRegion && normalizedRegion !== currentRegion && normalizedRegion !== 'NATIONAL') {
         return null;

@@ -441,6 +441,30 @@ function mergeWindows(windows: StrikeWindow[]) {
   return merged;
 }
 
+function getRomeTodayIso() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Rome',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  return formatter.format(new Date());
+}
+
+function requiresRegionalTrainImpactVerification(record: Pick<StrikeRecord, 'category' | 'region' | 'status' | 'data_source'>) {
+  if (record.category !== 'TRAIN') return false;
+  if (record.region !== 'NATIONAL') return false;
+  if (record.status !== 'REQUIRES_DETAIL' && record.status !== 'UNCERTAIN') return false;
+  if ((record.data_source || 'MIT_PRIMARY') !== 'MIT_PRIMARY') return false;
+  return true;
+}
+
+function shouldPruneExpiredPendingRecord(record: Pick<StrikeRecord, 'date' | 'category' | 'region' | 'status' | 'data_source'>, todayIso = getRomeTodayIso()) {
+  if (!requiresRegionalTrainImpactVerification(record)) return false;
+  return record.date <= todayIso;
+}
+
 export async function upsertToSupabase(records: StrikeRecord[]) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -525,4 +549,45 @@ export async function upsertToSupabase(records: StrikeRecord[]) {
   }
 
   return affected;
+}
+
+export async function pruneExpiredPendingFromSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const todayIso = getRomeTodayIso();
+
+  const { data: candidates, error: lookupError } = await supabase
+    .from('strikes')
+    .select('id, date, category, region, status, data_source')
+    .lte('date', todayIso)
+    .eq('category', 'TRAIN')
+    .eq('region', 'NATIONAL')
+    .in('status', ['REQUIRES_DETAIL', 'UNCERTAIN']);
+
+  if (lookupError) {
+    throw new Error(`Supabase prune lookup error: ${lookupError.message}`);
+  }
+
+  const staleIds = (candidates || [])
+    .filter((record) => shouldPruneExpiredPendingRecord(record, todayIso))
+    .map((record) => record.id);
+
+  if (staleIds.length === 0) return 0;
+
+  const { error: deleteError } = await supabase
+    .from('strikes')
+    .delete()
+    .in('id', staleIds);
+
+  if (deleteError) {
+    throw new Error(`Supabase prune delete error: ${deleteError.message}`);
+  }
+
+  return staleIds.length;
 }

@@ -1,7 +1,8 @@
+import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { fetchAndFilter, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
+import { fetchAndFilter, pruneExpiredPendingFromSupabase, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
 
-export { fetchAndFilter, transformRows, upsertToSupabase };
+export { fetchAndFilter, pruneExpiredPendingFromSupabase, transformRows, upsertToSupabase };
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,24 +18,24 @@ export async function GET(request: Request): Promise<NextResponse> {
     const rawRows = await fetchAndFilter();
     console.log(`[sync-strikes] Fetched ${rawRows.length} matching rows from MIT`);
 
-    if (rawRows.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No matching strikes found',
-        upserted: 0,
-      });
-    }
-
-    const records = await transformRows(rawRows);
+    const records = rawRows.length > 0 ? await transformRows(rawRows) : [];
     console.log(`[sync-strikes] Transformed ${records.length} records`);
 
-    const upserted = await upsertToSupabase(records);
+    const upserted = records.length > 0 ? await upsertToSupabase(records) : 0;
     console.log(`[sync-strikes] Upserted ${upserted} records`);
+
+    const pruned = await pruneExpiredPendingFromSupabase();
+    console.log(`[sync-strikes] Pruned ${pruned} expired pending national train records`);
+
+    revalidatePath('/');
+    revalidatePath('/roma');
+    revalidatePath('/torino');
 
     return NextResponse.json({
       success: true,
       fetched: rawRows.length,
       upserted,
+      pruned,
       records,
     });
   } catch (error) {
