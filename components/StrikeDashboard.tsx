@@ -7,9 +7,18 @@ import StrikeCard from "./StrikeCard";
 import WechatGuide from "./WechatGuide";
 import CalendarSyncModal from "./CalendarSyncModal";
 import WidgetGuideModal from "./WidgetGuideModal";
+import LanguageModal from "./LanguageModal";
 import { aggregateStrikes, filterStrikesForRegion } from "./utils";
 import { submitFeedback } from "../app/actions";
 import { captureOnce, capture, getDeviceType } from "../utils/analytics";
+import {
+    AppLanguage,
+    LANGUAGE_STORAGE_KEY,
+    categoryLabels,
+    detectBrowserLanguage,
+    pickText,
+    regionLabels,
+} from "./i18n";
 
 // Real-world card flip: two-phase rotateX — card tilts away, jumps to other side, tilts back.
 // Only animates on actual isDark VALUE CHANGES (not on mount), using prevDarkRef comparison.
@@ -204,17 +213,16 @@ export default function StrikeDashboard({
     };
 
     const CN_DAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-    const REGION_LABELS: Record<string, string> = {
-        MILANO: "米兰",
-        ROMA: "罗马",
-        TORINO: "都灵",
-    };
+    const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const REGION_OPTIONS = [
-        { tag: "MILANO", label: "米兰", path: "/" },
-        { tag: "ROMA", label: "罗马", path: "/roma" },
-        { tag: "TORINO", label: "都灵", path: "/torino" },
+        { tag: "MILANO", path: "/" },
+        { tag: "ROMA", path: "/roma" },
+        { tag: "TORINO", path: "/torino" },
     ];
-    const activeRegionLabel = REGION_LABELS[regionTag.toUpperCase()] || "米兰";
+    const [language, setLanguage] = useState<AppLanguage>('zh');
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const activeRegionLabel = regionLabels[language][regionTag.toUpperCase()] || regionLabels[language].MILANO;
     const [showRegionSelector, setShowRegionSelector] = useState<boolean>(false);
     const [selectorFocusTag, setSelectorFocusTag] = useState<string>(regionTag.toUpperCase());
     const WHEEL_REPEAT_COUNT = 7;
@@ -237,6 +245,25 @@ export default function StrikeDashboard({
             }))
         ).flat();
     }, [WHEEL_REPEAT_COUNT]);
+
+    useEffect(() => {
+        const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+        if (stored === 'zh' || stored === 'en') {
+            setLanguage(stored);
+            return;
+        }
+        setLanguage(detectBrowserLanguage());
+    }, []);
+
+    const handleLanguageSelect = (nextLanguage: AppLanguage) => {
+        setLanguage(nextLanguage);
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLanguage);
+        setShowLanguageModal(false);
+    };
+
+    useEffect(() => {
+        document.documentElement.lang = language === 'en' ? 'en' : 'zh';
+    }, [language]);
 
     useEffect(() => {
         REGION_OPTIONS.forEach((opt) => {
@@ -430,11 +457,11 @@ export default function StrikeDashboard({
         const res = await submitFeedback(feedbackContent, nickname);
         setIsSubmittingFeedback(false);
         if (res.success) {
-            alert("感谢您的反馈！");
+            alert(pickText(language, "感谢您的反馈！", "Thanks for the feedback!"));
             setFeedbackContent("");
             // Optionally clear nickname or keep it
         } else {
-            alert("提交失败，请稍后重试");
+            alert(pickText(language, "提交失败，请稍后重试", "Submission failed. Please try again later."));
         }
     };
 
@@ -704,7 +731,7 @@ export default function StrikeDashboard({
                         <div className="flex items-start justify-between w-full">
                             <div className="flex flex-col">
                                 <h1 className="text-white text-[12px] font-bold tracking-[0.3px]">
-                                    意大利罢工查询
+                                    {pickText(language, '意大利罢工查询', 'Italy Strike Radar')}
                                 </h1>
                                 <span className="text-white text-[8px] tracking-[0.5px] uppercase font-bold">
                                     Developed by 21'C
@@ -721,7 +748,7 @@ export default function StrikeDashboard({
                                         }}
                                         className="px-2 py-1.5 text-[10px] bg-red-500/80 text-white rounded-full font-bold transition-all hover:bg-red-600 border border-red-400"
                                     >
-                                        清除涂鸦缓存
+                                        {pickText(language, '清除涂鸦缓存', 'Clear doodle cache')}
                                     </button>
                                 )}
                                 <button
@@ -738,7 +765,7 @@ export default function StrikeDashboard({
                                 >
                                     <div className={`w-1.5 h-1.5 rounded-full relative ${isDarkMode ? "bg-[#FFEC20] shadow-[0_0_8px_2px_rgba(255,236,32,0.6)]" : "bg-white"}`}></div>
                                     <span className="text-white text-[13px] font-bold leading-tight">
-                                        添加到桌面
+                                        {pickText(language, '添加到桌面', 'Add to Home')}
                                     </span>
                                 </button>
                                 <button
@@ -761,13 +788,13 @@ export default function StrikeDashboard({
 
                         <div className="flex items-end justify-between mt-4">
                             <h2 className="text-white text-[34px] font-black tracking-[-0.85px] leading-tight">
-                                {visibleMonth}月罢工信息
+                                {language === 'en' ? `${EN_MONTHS[visibleMonth - 1]} strike alerts` : `${visibleMonth}月罢工信息`}
                             </h2>
                             <div className="relative flex items-center justify-center">
                                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-full border border-white/20 shadow-lg pointer-events-none relative z-10 cursor-pointer">
                                     <IconCalendar />
                                     <span className="text-[#1E293B] text-[13px] font-bold">
-                                        选择日期
+                                        {pickText(language, '选择日期', 'Pick date')}
                                     </span>
                                 </div>
                                 {daysStrip.length > 0 && (
@@ -833,7 +860,7 @@ export default function StrikeDashboard({
                                                 <span
                                                     className={`text-xs z-20 ${selected ? "text-[#64748B]" : "text-white/80"}`}
                                                 >
-                                                    {CN_DAYS[d.getDay()]}
+                                                    {language === 'en' ? EN_DAYS[d.getDay()] : CN_DAYS[d.getDay()]}
                                                 </span>
                                                 <span
                                                     className={`text-lg font-bold z-20 ${selected ? "text-[#0F172A] text-2xl" : "text-white/80"}`}
@@ -842,7 +869,7 @@ export default function StrikeDashboard({
                                                 </span>
                                                 {isToday(d) && selected && (
                                                     <span className="text-[#0EA5E9] text-[8px] font-medium leading-tight z-20">
-                                                        今天
+                                                        {pickText(language, '今天', 'Today')}
                                                     </span>
                                                 )}
                                                 {dayHasStrike && (
@@ -914,7 +941,9 @@ export default function StrikeDashboard({
                                                 {TransportIcons[cat as keyof typeof TransportIcons](
                                                     true,
                                                 )}
-                                                <span className="text-[14px] font-bold">{cat}</span>
+                                                <span className="text-[14px] font-bold">
+                                                    {categoryLabels[language][({ '火车': 'TRAIN', '地铁': 'SUBWAY', '公交': 'BUS', '机场': 'AIRPORT' } as Record<string, string>)[cat]]}
+                                                </span>
                                                 {categoryHasStrike && (
                                                     <div className="absolute flex h-[34px] items-center justify-center -left-[20px] -top-[20px] w-[34px] pointer-events-none z-10 origin-center scale-[1.15] -rotate-[16deg]">
                                                         <div className="flex-none drop-shadow-[0_0_12px_rgba(255,236,32,0.9)]" style={{ filter: 'drop-shadow(0 0 8px rgba(255,236,32,0.9)) drop-shadow(0 0 14px rgba(255,236,32,0.5))' }}>
@@ -959,10 +988,14 @@ export default function StrikeDashboard({
                                         className={`flex flex-col items-center justify-center py-20 backdrop-blur-md rounded-3xl border border-white/20 ${isDarkMode ? "bg-black/40" : "bg-white/90 shadow-sm"}`}
                                     >
                                         <span className={`text-xl font-bold ${isDarkMode ? "text-white/80" : "text-slate-800"}`}>
-                                            {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "当前筛选条件无罢工" : "无交通罢工"}
+                                            {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate))
+                                                ? pickText(language, "当前筛选条件无罢工", "No strikes for this filter")
+                                                : pickText(language, "无交通罢工", "No transport strikes")}
                                         </span>
                                         <span className={`text-sm mt-2 ${isDarkMode ? "text-white/50" : "text-slate-500"}`}>
-                                            {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate)) ? "请尝试选择上方筛选项" : "安心出行"}
+                                            {aggregatedData.some((s: any) => s.date === getLocalDateStr(selectedDate))
+                                                ? pickText(language, "请尝试选择上方筛选项", "Try a filter above")
+                                                : pickText(language, "安心出行", "Travel with peace of mind")}
                                         </span>
                                     </CardFlipWrapper>
                                 </motion.div>
@@ -996,7 +1029,7 @@ export default function StrikeDashboard({
                                             style={{ willChange: "opacity, filter", transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                                             className="relative z-10 w-full h-full"
                                         >
-                                            <StrikeCard key={strike.id} strike={{ ...strike, region: regionTag }} isDark={isDarkMode} />
+                                            <StrikeCard key={strike.id} strike={{ ...strike, region: regionTag }} isDark={isDarkMode} language={language} />
                                         </motion.div>
                                     </motion.div>
                                 );
@@ -1041,12 +1074,12 @@ export default function StrikeDashboard({
                                     <span
                                         className={`text-[14px] font-medium leading-[20px] ${isDarkMode ? "text-white" : "text-slate-800"}`}
                                     >
-                                        添加小组件
+                                        {pickText(language, '添加小组件', 'Add widget')}
                                     </span>
                                     <span
                                         className={`text-[10px] mt-[4px] text-center font-normal leading-[15px] ${isDarkMode ? "text-white/50" : "text-slate-400"}`}
                                     >
-                                        在主屏幕追踪罢工信息
+                                        {pickText(language, '在主屏幕追踪罢工信息', 'Track strikes on your home screen')}
                                     </span>
                                 </CardFlipWrapper>
                                 <CardFlipWrapper isDark={isDarkMode} delay={0.05}
@@ -1081,12 +1114,12 @@ export default function StrikeDashboard({
                                     <span
                                         className={`text-[14px] font-medium leading-[20px] ${isDarkMode ? "text-white" : "text-slate-800"}`}
                                     >
-                                        同步日历
+                                        {pickText(language, '同步日历', 'Sync calendar')}
                                     </span>
                                     <span
                                         className={`text-[10px] mt-[4px] text-center font-normal leading-[15px] ${isDarkMode ? "text-white/50" : "text-slate-400"}`}
                                     >
-                                        在本地日历中查看罢工事件
+                                        {pickText(language, '在本地日历中查看罢工事件', 'See strike events in your calendar')}
                                     </span>
                                 </CardFlipWrapper>
                             </div>
@@ -1102,14 +1135,14 @@ export default function StrikeDashboard({
                                     <h3
                                         className={`text-[20px] leading-[28px] font-black uppercase m-0 z-10 ${isDarkMode ? "text-white" : "text-slate-800"}`}
                                     >
-                                        支持作者
+                                        {pickText(language, '支持作者', 'Support the creator')}
                                     </h3>
                                 </div>
                                 <div className="w-full relative shrink-0 pb-[8px] pr-[40px]">
                                     <p
                                         className={`text-[12px] leading-[16px] m-0 font-medium z-10 ${isDarkMode ? "text-[#d1d5db]" : "text-slate-400"}`}
                                     >
-                                        独立开发不易，如果对你有用请支持一杯奶茶。
+                                        {pickText(language, '独立开发不易，如果对你有用请支持一杯奶茶。', 'Independent projects take real time. If this helps, you can support the work.')}
                                     </p>
                                 </div>
                                 <div
@@ -1117,7 +1150,7 @@ export default function StrikeDashboard({
                                     className="bg-[#1777ff] relative self-start rounded-[40px] shrink-0 z-10 px-[20px] py-[10px] cursor-pointer shadow-sm active:scale-95 transition-all flex items-center justify-center mt-2 group overflow-hidden"
                                 >
                                     <span className="text-[14px] leading-[16px] font-bold text-center text-white whitespace-nowrap tracking-wide relative z-10">
-                                        支持一下 / 反馈问题
+                                        {pickText(language, '支持一下 / 反馈问题', 'Support / send feedback')}
                                     </span>
                                     <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:left-[100%] transition-all duration-[750ms] ease-in-out z-0" />
                                 </div>
@@ -1126,7 +1159,7 @@ export default function StrikeDashboard({
                                         <span
                                             className={`text-[20px] leading-[28px] font-black uppercase whitespace-nowrap ${isDarkMode ? "text-white" : "text-slate-600"}`}
                                         >
-                                            或者点个关注{" "}
+                                            {pickText(language, '或者点个关注', 'Or follow along')}{" "}
                                         </span>
                                         <button
                                             onClick={() => window.open('https://xhslink.com/m/6T4mEqx0B1s', '_blank')}
@@ -1153,8 +1186,21 @@ export default function StrikeDashboard({
                             {/* MIT License Disclaimer */}
                             <div className="w-full flex justify-center text-center mt-[24px] mb-[12px] px-[20px]">
                                 <p className={`text-[10px] leading-[14px] font-['Noto_Sans_SC'] ${isDarkMode ? "text-white/40" : "text-slate-400/80"}`}>
-                                    本服务基于 MIT License 开源协议，使用本服务即代表您同意自行承担一切风险，重要出行请与官方信息核对。
+                                    {pickText(
+                                        language,
+                                        '本服务基于 MIT License 开源协议，使用本服务即代表您同意自行承担一切风险，重要出行请与官方信息核对。',
+                                        'This service is open sourced under the MIT License. Use it at your own risk and verify important trips with official sources.'
+                                    )}
                                 </p>
+                            </div>
+                            <div className="w-full flex justify-center px-[20px] mb-[12px]">
+                                <button
+                                    onClick={() => setShowLanguageModal(true)}
+                                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full border text-[12px] font-bold transition-all active:scale-95 ${isDarkMode ? "bg-black/40 border-white/15 text-white/80 hover:text-white hover:bg-white/10" : "bg-white/70 border-slate-200 text-slate-600 hover:text-slate-900"}`}
+                                >
+                                    <span>Aa</span>
+                                    <span>{pickText(language, '语言 / Language', 'Language / 语言')}</span>
+                                </button>
                             </div>
                         </div>{/* end BOTTOM ELEMENTS flex-col */}
                     </div>{/* end cards-list-top */}
@@ -1196,7 +1242,7 @@ export default function StrikeDashboard({
                                             onClick={() => {
                                                 if (typeof navigator !== 'undefined' && navigator.clipboard) {
                                                     navigator.clipboard.writeText(window.location.href);
-                                                    alert("链接已复制，请打开 Safari 浏览器粘贴并访问");
+                                                    alert(pickText(language, "链接已复制，请打开 Safari 浏览器粘贴并访问", "Link copied. Paste it in Safari to continue."));
                                                 } else {
                                                     const tempInput = document.createElement("input");
                                                     tempInput.value = window.location.href;
@@ -1204,14 +1250,14 @@ export default function StrikeDashboard({
                                                     tempInput.select();
                                                     document.execCommand("copy");
                                                     document.body.removeChild(tempInput);
-                                                    alert("链接已复制，请打开 Safari 浏览器粘贴并访问");
+                                                    alert(pickText(language, "链接已复制，请打开 Safari 浏览器粘贴并访问", "Link copied. Paste it in Safari to continue."));
                                                 }
                                             }}
                                             className="bg-[#de4141] border-[3px] border-[rgba(0,0,0,0.4)] flex items-center justify-center px-[18px] py-[10px] rounded-[38px] shadow-[0_8px_32px_rgba(222,65,65,0.4)] transition-transform active:scale-95"
                                         >
                                             <div className="flex flex-col font-['Noto_Sans_SC'] font-bold justify-center leading-[21px] text-[15px] text-center text-white whitespace-nowrap">
-                                                <p className="font-['Noto_Sans_SC'] font-[350] mb-0">需要在 Safari 浏览器上进行</p>
-                                                <p className="underline decoration-solid underline-offset-2">一键复制链接</p>
+                                                <p className="font-['Noto_Sans_SC'] font-[350] mb-0">{pickText(language, '需要在 Safari 浏览器上进行', 'Use Safari to continue')}</p>
+                                                <p className="underline decoration-solid underline-offset-2">{pickText(language, '一键复制链接', 'Copy link')}</p>
                                             </div>
                                         </button>
                                     </motion.div>
@@ -1240,7 +1286,7 @@ export default function StrikeDashboard({
                                                     </g>
                                                 </svg>
                                             </div>
-                                            <span className="text-[#FFEC20] text-[20px] font-bold leading-tight font-['Noto_Sans_SC']">添加网站到桌面</span>
+                                            <span className="text-[#FFEC20] text-[20px] font-bold leading-tight font-['Noto_Sans_SC']">{pickText(language, '添加网站到桌面', 'Add website to Home Screen')}</span>
                                         </div>
                                         <button
                                             onClick={() => setShowTutorial(false)}
@@ -1259,7 +1305,9 @@ export default function StrikeDashboard({
                                         >
                                             <div className="flex flex-col items-center justify-center text-white text-center shrink-0 flex-1 z-10 gap-1">
                                                 <span className="text-[18px] font-medium leading-none">①</span>
-                                                <span className="text-[14px] tracking-tight font-bold leading-tight">点击底部容器右侧<br />三个点</span>
+                                                <span className="text-[14px] tracking-tight font-bold leading-tight">
+                                                    {language === 'en' ? <>Tap the three-dot<br />menu</> : <>点击底部容器右侧<br />三个点</>}
+                                                </span>
                                             </div>
                                             <div className="border border-white/20 rounded-[28px] w-[195px] h-[117px] shrink-0 relative overflow-hidden bg-white/5 z-0">
                                                 <img src="/assets/tutorial-step-1.png" alt="Step 1" className="w-full h-full object-cover" />
@@ -1273,7 +1321,7 @@ export default function StrikeDashboard({
                                         >
                                             <div className="flex flex-col items-center justify-center text-white text-center shrink-0 flex-1 z-10 gap-1">
                                                 <span className="text-[18px] font-medium leading-none">②</span>
-                                                <span className="text-[15px] font-bold leading-tight">点击共享</span>
+                                                <span className="text-[15px] font-bold leading-tight">{pickText(language, '点击共享', 'Tap Share')}</span>
                                             </div>
                                             <div className="border border-white/20 rounded-[28px] w-[195px] h-[117px] shrink-0 relative overflow-hidden bg-white/5 z-0">
                                                 <img src="/assets/tutorial-step-2.png" alt="Step 2" className="w-full h-full object-cover" />
@@ -1287,7 +1335,7 @@ export default function StrikeDashboard({
                                         >
                                             <div className="flex flex-col items-center justify-center text-white text-center shrink-0 flex-1 z-10 gap-1">
                                                 <span className="text-[18px] font-medium leading-none">③</span>
-                                                <span className="text-[15px] font-bold leading-tight">展开更多</span>
+                                                <span className="text-[15px] font-bold leading-tight">{pickText(language, '展开更多', 'Show more')}</span>
                                             </div>
                                             <div className="border border-white/20 rounded-[28px] w-[195px] h-[117px] shrink-0 relative overflow-hidden bg-white/5 z-0">
                                                 <img src="/assets/tutorial-step-3.png" alt="Step 3" className="w-full h-full object-cover" />
@@ -1301,7 +1349,7 @@ export default function StrikeDashboard({
                                         >
                                             <div className="flex flex-col items-center justify-center text-white text-center shrink-0 flex-1 z-10 gap-1">
                                                 <span className="text-[18px] font-medium leading-none">④</span>
-                                                <span className="text-[15px] font-bold leading-tight">添加到主屏幕</span>
+                                                <span className="text-[15px] font-bold leading-tight">{pickText(language, '添加到主屏幕', 'Add to Home Screen')}</span>
                                             </div>
                                             <div className="border border-white/20 rounded-[28px] w-[195px] h-[117px] shrink-0 relative overflow-hidden bg-white/5 z-0">
                                                 <img src="/assets/tutorial-step-4.png" alt="Step 4" className="w-full h-full object-cover" />
@@ -1321,6 +1369,7 @@ export default function StrikeDashboard({
                     }
                     isDark={isDarkMode}
                     regionTag={regionTag}
+                    language={language}
                 />
                 <CalendarSyncModal
                     isOpen={showSyncModal}
@@ -1328,6 +1377,7 @@ export default function StrikeDashboard({
                     strikes={aggregatedData}
                     isDark={isDarkMode}
                     regionTag={regionTag}
+                    language={language}
                     onScrollToCategory={(categoryId) => {
                         const todayStr = getLocalDateStr(selectedDate);
                         // Map categoryId to uppercase for matching backend
@@ -1336,16 +1386,23 @@ export default function StrikeDashboard({
                         if (!targetCategory) return;
 
                         const targetStrike = aggregatedData.find((s: any) => s.date === todayStr && s.category === targetCategory);
-                        if (targetStrike) {
-                            const el = document.getElementById(`strike-card-${targetStrike.id}`);
+                        const targetStrikeId = targetStrike?.id != null ? String(targetStrike.id) : null;
+                        if (targetStrikeId) {
+                            const el = document.getElementById(`strike-card-${targetStrikeId}`);
                             if (el) {
                                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 // Highlight it briefly
-                                setHighlightedStrikeId(targetStrike.id);
+                                setHighlightedStrikeId(targetStrikeId);
                                 setTimeout(() => setHighlightedStrikeId(null), 2000);
                             }
                         }
                     }}
+                />
+                <LanguageModal
+                    isOpen={showLanguageModal}
+                    language={language}
+                    onClose={() => setShowLanguageModal(false)}
+                    onSelect={handleLanguageSelect}
                 />
 
                 {/* Donate Popup Overlay */}
@@ -1394,7 +1451,7 @@ export default function StrikeDashboard({
                                                     <path d="M12.8787 0.363657C13.855 -0.0401462 14.9378 -0.109813 15.9578 0.165414C16.9778 0.440644 17.8777 1.04603 18.5183 1.88612C19.0727 2.61312 19.4046 3.48093 19.4812 4.38612C20.0461 4.78209 20.5241 5.29927 20.8748 5.90858C21.5044 7.00258 21.6738 8.3021 21.3455 9.52088C21.0182 10.7354 20.2227 11.7695 19.1346 12.3998L19.1355 12.4008L17.1355 13.601L17.1248 13.6068C15.5734 14.5019 13.7297 14.7447 11.9998 14.2806C10.5051 13.8796 9.202 12.9786 8.29764 11.7406C6.69227 12.6956 5.41096 13.9834 4.40995 15.3041C4.77395 15.2264 5.17237 15.1637 5.59745 15.1342C7.60668 14.9946 10.1605 15.5705 12.3357 18.2894C12.4707 18.4583 12.5263 18.6772 12.4881 18.89C12.4498 19.103 12.3211 19.2894 12.1355 19.4008L11.7498 18.7572C12.1034 19.3466 12.1324 19.3964 12.1346 19.4008L12.1336 19.4017L12.1316 19.4027C12.1301 19.4036 12.1288 19.4054 12.1267 19.4066C12.1225 19.4091 12.1167 19.4116 12.1101 19.4154C12.0966 19.4232 12.0775 19.4339 12.0545 19.4467C12.0084 19.4721 11.9433 19.5072 11.8611 19.5482C11.6969 19.6301 11.4625 19.7377 11.1697 19.849C10.5852 20.0712 9.75522 20.3114 8.77713 20.3803C6.99735 20.5055 4.77582 20.055 2.70194 18.0238C2.32916 18.743 2.04908 19.3888 1.85038 19.892C1.71691 20.23 1.62052 20.503 1.55838 20.6889C1.52734 20.7817 1.50444 20.8531 1.49002 20.8998C1.48291 20.9228 1.47759 20.9398 1.4744 20.9506C1.4728 20.956 1.47209 20.9602 1.47147 20.9623C1.47117 20.9633 1.47056 20.964 1.47049 20.9642C1.3564 21.362 0.941746 21.5926 0.543735 21.4789C0.145458 21.3651 -0.0847071 20.9494 0.0290862 20.5512V20.5482C0.0295086 20.5468 0.0303671 20.5447 0.0310393 20.5424C0.032378 20.5378 0.0345865 20.5316 0.0368987 20.5238C0.0416114 20.5079 0.0485748 20.485 0.0574065 20.4564C0.0750777 20.3992 0.100781 20.3172 0.135531 20.2133C0.205308 20.0046 0.310675 19.7063 0.454867 19.3412C0.742926 18.6118 1.18881 17.6094 1.82108 16.5092C2.99274 14.4704 4.83474 12.0472 7.55252 10.4379C6.95082 9.04677 6.83068 7.48563 7.22733 6.00721C7.68958 4.28464 8.81386 2.81441 10.3553 1.91834L11.8553 0.943735C12.0215 0.820396 12.1961 0.708063 12.3777 0.606821C12.3903 0.599606 12.403 0.592721 12.4158 0.586313C12.5657 0.504543 12.7198 0.429399 12.8787 0.363657ZM10.5056 18.4916C8.85934 16.8529 7.104 16.5329 5.70194 16.6303C4.9623 16.6816 4.31251 16.8529 3.82303 17.0228C5.54047 18.6659 7.29825 18.9808 8.67166 18.8842C9.39989 18.8329 10.0324 18.6608 10.5056 18.4916ZM15.5672 1.61366C14.8666 1.42462 14.1225 1.47302 13.4519 1.75038C12.7816 2.02776 12.2214 2.51927 11.8592 3.14784C11.497 3.77637 11.353 4.50695 11.449 5.22596C11.5451 5.94521 11.8766 6.61295 12.3914 7.1244C12.6507 7.38202 12.9497 7.59195 13.2742 7.7494C13.1002 7.38862 12.9999 6.98536 12.9998 6.55799C12.9998 5.59737 13.4927 4.75191 14.239 4.26014C14.2801 4.22193 14.3251 4.18676 14.3758 4.1576C15.4102 3.56227 16.628 3.37878 17.7879 3.63807C17.6756 3.33828 17.5227 3.05324 17.326 2.7953C16.886 2.21836 16.2677 1.80271 15.5672 1.61366ZM14.4998 6.55799C14.5 7.24813 15.0596 7.80799 15.7498 7.80799C15.9047 7.80799 16.0523 7.77748 16.1892 7.72596C16.2502 7.69522 16.3116 7.66491 16.3709 7.63026C16.3989 7.61389 16.4278 7.59967 16.4568 7.58729C16.7843 7.36201 16.9996 6.98549 16.9998 6.55799C16.9998 5.86764 16.4401 5.30799 15.7498 5.30799C15.0594 5.30799 14.4998 5.86764 14.4998 6.55799ZM18.4998 6.55799C18.4996 7.70157 17.8008 8.6806 16.8074 9.0951C15.9718 9.5023 15.0336 9.66016 14.1062 9.54237C13.0582 9.40915 12.0832 8.93251 11.3338 8.18788C10.5845 7.4433 10.1017 6.47221 9.9617 5.42518C9.90304 4.9863 9.90661 4.54433 9.96854 4.1117C9.35689 4.74611 8.90805 5.52954 8.67557 6.39588C8.31453 7.74156 8.50276 9.17636 9.19901 10.3832C9.89526 11.5899 11.0429 12.4704 12.3885 12.8314C13.6501 13.1699 14.9893 13.0252 16.1463 12.432L16.3748 12.308L18.364 11.1146L18.3758 11.1078C19.125 10.6766 19.6724 9.96496 19.8973 9.13026C20.122 8.29565 20.0061 7.40578 19.575 6.65663C19.2581 6.10598 18.7895 5.66491 18.2322 5.38026C18.4019 5.73748 18.4998 6.1362 18.4998 6.55799Z" fill="white" />
                                                 </svg>
                                             </div>
-                                            <span className="font-bold text-[19px] text-white tracking-widest pl-1">感谢您愿意点进这个界面！</span>
+                                            <span className="font-bold text-[19px] text-white tracking-widest pl-1">{pickText(language, '感谢您愿意点进这个界面！', 'Thanks for opening this panel!')}</span>
                                         </div>
                                         <button onClick={() => setShowDonatePopup(false)} className="relative shrink-0 w-[32px] h-[32px] active:scale-90 transition-transform cursor-pointer opacity-70 hover:opacity-100">
                                             <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1506,7 +1563,7 @@ export default function StrikeDashboard({
                                             className="bg-[rgba(255,255,255,0.1)] border border-[rgba(0,0,0,0.2)] flex items-center overflow-clip pb-[10px] pt-[17px] px-[11px] relative rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)] w-full backdrop-blur-md"
                                         >
                                             <div className="flex flex-[1_0_0] flex-col gap-[12px] items-center justify-center min-h-px min-w-px relative w-full">
-                                                <span className="font-bold text-[15px] text-center text-white w-full">您的昵称是</span>
+                                                <span className="font-bold text-[15px] text-center text-white w-full">{pickText(language, '您的昵称是', 'Your nickname')}</span>
                                                 <div className="bg-[rgba(0,0,0,0.2)] flex items-center justify-center py-[13px] relative rounded-[36px] w-full">
                                                     <input
                                                         type="text"
@@ -1525,11 +1582,11 @@ export default function StrikeDashboard({
                                             className="bg-[rgba(255,255,255,0.1)] border border-[rgba(0,0,0,0.2)] flex items-center overflow-clip pb-[10px] pt-[17px] px-[11px] relative rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)] w-full backdrop-blur-md"
                                         >
                                             <div className="flex flex-[1_0_0] flex-col gap-[12px] items-center justify-center min-h-px min-w-px relative w-full">
-                                                <span className="font-bold text-[15px] text-center text-white w-full">说点什么吗</span>
+                                                <span className="font-bold text-[15px] text-center text-white w-full">{pickText(language, '说点什么吗', 'Anything to share?')}</span>
                                                 <div className="bg-[rgba(0,0,0,0.2)] flex items-center justify-center py-[13px] px-[10px] relative rounded-[20px] w-full">
                                                     <textarea
                                                         ref={textareaRef}
-                                                        placeholder="可以来点建议"
+                                                        placeholder={pickText(language, '可以来点建议', 'Suggestions are welcome')}
                                                         rows={1}
                                                         value={feedbackContent}
                                                         onChange={(e) => setFeedbackContent(e.target.value)}
@@ -1547,7 +1604,7 @@ export default function StrikeDashboard({
                                                     className="flex items-center justify-center gap-[10px] border-2 border-[rgba(0,0,0,0.2)] rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)] bg-[#1878ff] py-[15px] w-full h-[56px] overflow-hidden cursor-pointer active:scale-95 transition-all"
                                                 >
                                                     <span className="text-white text-[18px] font-bold leading-[22px] tracking-normal">
-                                                        {isSubmittingFeedback ? "发送中..." : "发给开发者"}
+                                                        {isSubmittingFeedback ? pickText(language, "发送中...", "Sending...") : pickText(language, "发给开发者", "Send to developer")}
                                                     </span>
                                                 </button>
                                             </motion.div>
@@ -1568,8 +1625,8 @@ export default function StrikeDashboard({
                                             >
                                                 <span className="font-bold text-[18px] text-center text-white w-full">
                                                     {Number(donateAmount || 0) * 2 >= 5
-                                                        ? `居然要支持 ${Number(donateAmount || 0) * 2}€ 嘛 !! 点我进行支持🙏`
-                                                        : `点击支持开发者 ${Number(donateAmount || 0) * 2}€`
+                                                        ? pickText(language, `居然要支持 ${Number(donateAmount || 0) * 2}€ 嘛 !! 点我进行支持🙏`, `Support with ${Number(donateAmount || 0) * 2}€`)
+                                                        : pickText(language, `点击支持开发者 ${Number(donateAmount || 0) * 2}€`, `Support the developer ${Number(donateAmount || 0) * 2}€`)
                                                     }
                                                 </span>
                                             </a>
@@ -1585,7 +1642,7 @@ export default function StrikeDashboard({
                                         <img alt="WeChat QR" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src="/assets/wechat-qr-round.png" />
                                     </div>
                                     <span className="font-light text-[18px] text-[rgba(255,255,255,0.5)] text-center relative pointer-events-none select-none min-w-full w-fit">
-                                        或者扫描微信赞赏码
+                                        {pickText(language, '或者扫描微信赞赏码', 'Or scan the WeChat appreciation code')}
                                     </span>
                                 </motion.div>
                             </motion.div>
@@ -1608,7 +1665,7 @@ export default function StrikeDashboard({
                                 <line x1="12" y1="8" x2="12" y2="12"></line>
                                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
                             </svg>
-                            请在手机 Safari 中操作
+                            {pickText(language, '请在手机 Safari 中操作', 'Please use mobile Safari')}
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1624,13 +1681,11 @@ export default function StrikeDashboard({
                                 hidden: {
                                     opacity: 0,
                                     filter: "blur(14px)",
-                                    WebkitFilter: "blur(14px)",
                                     transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
                                 },
                                 visible: {
                                     opacity: 1,
                                     filter: "blur(0px)",
-                                    WebkitFilter: "blur(0px)",
                                     transition: { duration: 0.3, staggerChildren: 0.08 },
                                 },
                             }}
@@ -1695,7 +1750,7 @@ export default function StrikeDashboard({
                                                     <div className="flex items-center gap-3">
                                                         <RegionCityIcon tag={opt.tag} active={isActive} />
                                                         <span className={`leading-none tracking-[-0.03em] ${isActive ? "text-[36px] font-bold text-white" : "text-[30px] font-semibold text-white/92"}`}>
-                                                            {opt.label}
+                                                            {regionLabels[language][opt.tag] || opt.tag}
                                                         </span>
                                                     </div>
                                                     <div className="w-[58px] shrink-0" />
@@ -1719,7 +1774,7 @@ export default function StrikeDashboard({
                                             }}
                                             className={`mr-2 rounded-full px-3 py-1.5 text-[11px] font-bold ${isDarkMode ? "bg-black text-white" : "bg-white text-black"}`}
                                         >
-                                            当前
+                                            {pickText(language, '当前', 'Current')}
                                         </motion.div>
                                     </div>
                                 </div>
