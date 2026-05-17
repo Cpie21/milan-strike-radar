@@ -96,9 +96,11 @@ const CATEGORY_PROVIDER_FALLBACKS: Record<string, string> = {
   BUS: '公共交通人员',
   AIRPORT: '机场相关人员',
 };
+const VAGUE_PROVIDER_LABELS = new Set(['相关人员', '( )人员', '()人员']);
 
 function normalizeProviderForDisplay(provider: string | undefined, category: string | undefined) {
-  return normalizeProviderList(provider || '').join(' / ') || CATEGORY_PROVIDER_FALLBACKS[category || ''] || '相关人员';
+  const normalized = normalizeProviderList(provider || '').filter((label) => !VAGUE_PROVIDER_LABELS.has(label));
+  return normalized.join(' / ') || CATEGORY_PROVIDER_FALLBACKS[category || ''] || '相关人员';
 }
 
 function getRomeTodayIso() {

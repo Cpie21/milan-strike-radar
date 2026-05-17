@@ -79,6 +79,13 @@ function getProviderFallback(category: StrikeRecord['category'], language: AppLa
     return pickText(language, '公共交通人员', 'public transport staff');
 }
 
+const VAGUE_PROVIDER_LABELS = new Set(['相关人员', '( )人员', '()人员']);
+
+function normalizeProviderForCard(provider: string, category: StrikeRecord['category'], language: AppLanguage) {
+    const normalized = normalizeProviderList(provider || '').filter((label) => !VAGUE_PROVIDER_LABELS.has(label));
+    return normalized.join(' / ') || getProviderFallback(category, language);
+}
+
 export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike: StrikeRecord, isDark: boolean, language?: AppLanguage }) {
     const viewRegion = strike.region || 'MILANO';
     const manualDoodleBaseCount = getManualDoodleBaseCount(strike);
@@ -255,7 +262,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     let title = categoryTitles[language].OTHER;
     let subTitle = getProviderFallback(strike.category, language);
     let icon = getTrainIcon(isDark ? '#0F172A' : 'white'); // Fallback
-    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || getProviderFallback(strike.category, language);
+    const normalizedProvider = normalizeProviderForCard(strike.provider || '', strike.category, language);
     const localizedProvider = translateProvider(normalizedProvider, language);
 
     // Exact mapping requested from Figma, using actual provider if available
