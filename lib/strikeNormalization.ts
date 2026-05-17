@@ -43,6 +43,42 @@ const REGION_ALIASES: Record<string, string[]> = {
   TORINO: ['TORINO', 'TURIN', '都灵', 'CASELLE', 'TRN', '卡塞莱'],
 };
 
+const NON_TARGET_LOCATION_ALIASES = [
+  'ABRUZZO',
+  'ANCONA',
+  'BARI',
+  'BASILICATA',
+  'BOLOGNA',
+  'BRINDISI',
+  'CAGLIARI',
+  'CALABRIA',
+  'CAMPANIA',
+  'CATANIA',
+  'EAV',
+  'FIRENZE',
+  'FLORENCE',
+  'FOGGIA',
+  'GENOVA',
+  'LIGURIA',
+  'NAPLES',
+  'NAPOLI',
+  'NOVARA',
+  'PADOVA',
+  'PALERMO',
+  'PISA',
+  'POTENZA',
+  'PUGLIA',
+  'SARDEGNA',
+  'SICILIA',
+  'SOGAER',
+  'TOSCANA',
+  'TRENTO',
+  'TRENTINO',
+  'UMBRIA',
+  'VENETO',
+  'VERONA',
+];
+
 type AirportDef = {
   tag: 'MILANO' | 'ROMA' | 'TORINO';
   name: string;
@@ -59,13 +95,17 @@ const AIRPORTS: AirportDef[] = [
 ];
 
 const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
+  { match: /SCIOPERO\s+GENERALE\s+CATEGORIE\s+PUBBLICHE\s+E\s+PRIVATE/i, label: '全国公共和私营部门人员' },
+  { match: /PERSONALE\s+DI\s+MACCHINA\s+E\s+DI\s+BORDO|GRUPPO\s+FERROVIE\s+DELLO\s+STATO|FERROVIE\s+DELLO\s+STATO/i, label: '意大利国家铁路司乘人员' },
   { match: /TECHNO\s*SKY|科技天空/i, label: '科技天空技术人员' },
+  { match: /SKY\s+SERVICE/i, label: 'Sky Service机场人员' },
   { match: /EASYJET|易捷/i, label: '易捷航空人员' },
   { match: /TEP(?:\s+DI)?\s+PARMA/i, label: 'TEP Parma 人员' },
   { match: /CIALONE(?:\s+TOUR)?/i, label: 'CIALONE 人员' },
   { match: /ARRIVA\s+ITALIA\s+DI\s+TORINO|ARRIVA\s+TORINO/i, label: 'Arriva Torino 人员' },
   { match: /SUN\s+DI\s+NOVARA|SUN\s+NOVARA/i, label: 'SUN Novara 人员' },
   { match: /AIRPORT\s+HANDLING|机场地勤/i, label: '机场地勤人员' },
+  { match: /ADR\s+SECURITY/i, label: '罗马机场安检人员' },
   { match: /\bITA(?:\s+AIRWAYS)?\b|ALITALIA|意大利航空/i, label: '意大利航空人员' },
   { match: /\bATAC\b/i, label: 'ATAC人员' },
   { match: /\bGTT\b/i, label: 'GTT人员' },
@@ -75,10 +115,13 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
   { match: /ENAV|意大利空管局|空管局空管|空中交通管制/i, label: '意大利空管人员' },
   { match: /\bSEA\b|米兰机场运营/i, label: '米兰机场运营人员' },
   { match: /\bALHA\b|阿尔哈/i, label: '阿尔哈地服人员' },
+  { match: /MLE-?BCUBE|BCUBE/i, label: 'BCUBE地服人员' },
   { match: /\bDNATA\b|德纳达/i, label: '德纳达地服人员' },
   { match: /\bGDA\b/i, label: 'GDA地服人员' },
   { match: /\bMH24\b/i, label: 'MH24机场人员' },
   { match: /\bATM\b|米兰交通局/i, label: '米兰交通局人员' },
+  { match: /\bMERCITALIA\b/i, label: 'Mercitalia铁路货运人员' },
+  { match: /\bBUSITALIA\b/i, label: 'Busitalia人员' },
   { match: /\bRFI\b|RETE\s+FERROVIARIA\s+ITALIANA/i, label: 'RFI基础设施维护人员' },
   { match: /\bTRENORD\b|伦巴第大区铁路/i, label: '伦巴第大区铁路人员' },
   { match: /\bTRENITALIA\b|意大利国家铁路/i, label: '意大利国家铁路人员' },
@@ -89,6 +132,7 @@ const COMPANY_SUFFIX_RE = /\b(SOC\.?|SOCIETA'?|SPA|S\.P\.A\.|SRL|S\.R\.L\.|SCARL
 const EXTRA_SPACES_RE = /\s+/g;
 const ROLE_SUFFIX_RE = /(人员|机组与飞行员|地勤人员|空管人员|技术人员|地服人员|运营人员)$/;
 const NATIONAL_LOCATION_MARKERS = ['italia', 'tutte', 'nazionale'];
+const MEANINGLESS_PROVIDER_RE = /^[\s()[\]{}（）【】"'.,;:，。；：\-–—_/\\|]+$/;
 
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -108,6 +152,10 @@ function containsAlias(text: string, alias: string) {
 
 function includesAny(text: string, items: string[]): boolean {
   return items.some((item) => containsAlias(text, item));
+}
+
+function containsWholeWord(text: string, word: string) {
+  return new RegExp(`(?:^|[^A-Z0-9])${escapeRegExp(word.toUpperCase())}(?:$|[^A-Z0-9])`).test(text.toUpperCase());
 }
 
 function unique<T>(arr: T[]): T[] {
@@ -147,10 +195,17 @@ export function inferRegionTagFromText(text: string) {
   for (const [tag, aliases] of Object.entries(REGION_ALIASES)) {
     if (aliases.some((alias) => containsAlias(upper, alias))) return tag;
   }
-  if (upper.includes('NAZIONALE') || upper.includes('TUTTA ITALIA') || upper.includes('ITALIA')) {
+  if (includesAny(upper, NON_TARGET_LOCATION_ALIASES)) {
+    return 'OTHER';
+  }
+  if (
+    upper.includes('NAZIONALE') ||
+    upper.includes('TUTTA ITALIA') ||
+    containsWholeWord(upper, 'ITALIA')
+  ) {
     return 'NATIONAL';
   }
-  if (upper.includes('AEROPORTO') || upper.includes('AIRPORT') || upper.includes('ACC ')) {
+  if (upper.includes('AEROPORTO DI ') || upper.includes('AIRPORT')) {
     return 'OTHER';
   }
   return '';
@@ -187,7 +242,7 @@ export function classifyRegionTag(input: {
   }
 
   if (hasExplicitNational) {
-    if (inferred && inferred !== 'OTHER' && inferred !== 'NATIONAL') return inferred;
+    if (inferred && inferred !== 'NATIONAL') return inferred;
     return 'NATIONAL';
   }
 
@@ -320,8 +375,9 @@ export function normalizeProviderPart(part: string, translatedText?: string) {
   cleaned = cleaned.replace(COMPANY_SUFFIX_RE, ' ');
   cleaned = cleaned.replace(/[A-Za-z]+(?:\s+[A-Za-z]+)*/g, ' ');
   cleaned = cleaned.replace(/[0-9]{2,}/g, ' ');
+  cleaned = cleaned.replace(/[()[\]{}（）【】]/g, ' ');
   cleaned = cleaned.replace(EXTRA_SPACES_RE, ' ').trim();
-  if (!cleaned) return '相关人员';
+  if (!cleaned || cleaned === '人员' || MEANINGLESS_PROVIDER_RE.test(cleaned)) return '';
   if (!ROLE_SUFFIX_RE.test(cleaned)) cleaned = `${cleaned}人员`;
   return cleaned;
 }

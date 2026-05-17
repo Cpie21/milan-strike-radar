@@ -1,8 +1,8 @@
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { fetchAndFilter, pruneExpiredPendingFromSupabase, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
+import { fetchAndFilter, pruneExpiredPendingFromSupabase, pruneSupersededPendingFromSupabase, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
 
-export { fetchAndFilter, pruneExpiredPendingFromSupabase, transformRows, upsertToSupabase };
+export { fetchAndFilter, pruneExpiredPendingFromSupabase, pruneSupersededPendingFromSupabase, transformRows, upsertToSupabase };
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +24,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     const upserted = records.length > 0 ? await upsertToSupabase(records) : 0;
     console.log(`[sync-strikes] Upserted ${upserted} records`);
 
+    const prunedSuperseded = records.length > 0 ? await pruneSupersededPendingFromSupabase(records) : 0;
+    console.log(`[sync-strikes] Pruned ${prunedSuperseded} superseded pending records`);
+
     const pruned = await pruneExpiredPendingFromSupabase();
     console.log(`[sync-strikes] Pruned ${pruned} expired pending national train records`);
 
@@ -35,6 +38,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       success: true,
       fetched: rawRows.length,
       upserted,
+      prunedSuperseded,
       pruned,
       records,
     });

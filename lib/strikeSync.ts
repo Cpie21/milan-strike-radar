@@ -32,6 +32,7 @@ export interface StrikeRecord {
 
 export interface RawStrikeRow {
   date: string;
+  endDate: string;
   provider: string;
   region: string;
   sector: string;
@@ -45,6 +46,66 @@ export interface RawStrikeRow {
 const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
 const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
 const TRANSPORT_SECTORS = ['trasporto pubblico', 'ferroviario', 'aereo'];
+const TRANSPORT_CONTEXT_KEYWORDS = [
+  'settore ferroviario',
+  'ferroviario:',
+  'trasporto pubblico locale',
+  'settore aereo',
+  'trasporto aereo',
+  'aeroport',
+  'enav',
+];
+const TRANSPORT_EXCLUSION_KEYWORDS = [
+  'esclusi settori trasporto aereo, ferroviario, trasporto pubblico locale',
+  'esclusi settori trasporto aereo',
+  'esclusi settori ferroviario',
+  'escluso settore ferroviario',
+  'escluso settore trasporto pubblico locale',
+  'escluso settore trasporto aereo',
+];
+const PASSENGER_RAIL_IMPACT_KEYWORDS = [
+  'trenord',
+  'trenitalia',
+  'italo',
+  'ntv',
+  'rfi',
+  'rete ferroviaria italiana',
+  'trasporto viaggiatori',
+  'trasporto passeggeri',
+  'servizio passeggeri',
+  'gruppo ferrovie dello stato',
+  'personale di macchina',
+  'personale mobile',
+  'personale di bordo',
+  'equipaggi',
+  'macchinisti',
+  'capotreno',
+  'alta velocita',
+  'alta velocità',
+];
+const FREIGHT_ONLY_RAIL_KEYWORDS = [
+  'mercitalia',
+  'shunting',
+  'terminal',
+  'intermodal',
+  'interporto',
+  'logistica',
+  'logistics',
+  'cargo',
+  'merci',
+  'scalo merci',
+  'smistamento',
+  'raccordi ferroviari',
+  'raccordo ferroviario',
+  'manovra ferroviaria',
+];
+const PENDING_STATUSES: StrikeStatus[] = ['REQUIRES_DETAIL', 'UNCERTAIN'];
+const CATEGORY_PROVIDER_FALLBACKS: Record<StrikeRecord['category'], string> = {
+  TRAIN: '铁路相关人员',
+  SUBWAY: '公共交通人员',
+  BUS: '公共交通人员',
+  AIRPORT: '机场相关人员',
+};
 const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
   {
     date: '2026-03-18',
@@ -107,6 +168,7 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 
     const raw: RawStrikeRow = {
       date: getByHeader('inizio', dateCol).trim(),
+      endDate: getByHeader('fine', dateCol + 1).trim(),
       provider: getByHeader('categoria', dateCol + 4).trim(),
       sector: getByHeader('settore', dateCol + 3).trim(),
       modalita: getByHeader('modalita', dateCol + 5).trim(),
@@ -133,13 +195,38 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 
     if (!finalRegion || finalRegion === 'OTHER') return;
 
-    const sectorLow = raw.sector.toLowerCase();
-    if (!TRANSPORT_SECTORS.some((sector) => sectorLow.includes(sector))) return;
+    if (!isTransportRelevantRow(raw)) return;
 
     rows.push({ ...raw, region: canonicalizeRegionValue(finalRegion) });
   });
 
   return rows;
+}
+
+function isTransportRelevantRow(row: RawStrikeRow) {
+  const sectorLow = row.sector.toLowerCase();
+  const combined = `${row.sector} ${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+
+  if (TRANSPORT_EXCLUSION_KEYWORDS.some((keyword) => combined.includes(keyword))) return false;
+  if (isCommuterIrrelevantFreightRailRow(row)) return false;
+  if (TRANSPORT_SECTORS.some((sector) => sectorLow.includes(sector))) return true;
+
+  return TRANSPORT_CONTEXT_KEYWORDS.some((keyword) => combined.includes(keyword));
+}
+
+function isCommuterIrrelevantFreightRailRow(row: RawStrikeRow) {
+  const combined = `${row.sector} ${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+  const railContext =
+    row.sector.toLowerCase().includes('ferroviario') ||
+    combined.includes('ferroviario') ||
+    combined.includes('ferrov');
+
+  if (!railContext) return false;
+
+  const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
+  if (hasPassengerImpactSignal) return false;
+
+  return FREIGHT_ONLY_RAIL_KEYWORDS.some((keyword) => combined.includes(keyword));
 }
 
 function parseItalianDate(dateStr: string) {
@@ -154,6 +241,100 @@ function parseItalianDateToDate(dateStr: string) {
 
   const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getDateSpan(startDateStr: string, endDateStr?: string) {
+  const start = parseItalianDateToDate(startDateStr);
+  const end = parseItalianDateToDate(endDateStr || startDateStr) || start;
+  if (!start || !end || end < start) return [parseItalianDate(startDateStr)];
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end && dates.length < 10) {
+    const yyyy = String(cursor.getFullYear());
+    const mm = String(cursor.getMonth() + 1).padStart(2, '0');
+    const dd = String(cursor.getDate()).padStart(2, '0');
+    dates.push(`${yyyy}-${mm}-${dd}`);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return dates;
+}
+
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(':').map(Number);
+  if (hours === 24) return 24 * 60;
+  return hours * 60 + minutes;
+}
+
+function buildDisplayFromWindows(windows: StrikeWindow[]) {
+  return windows.length === 1 && windows[0].start === '00:00' && windows[0].end === '24:00'
+    ? '全天 24小时'
+    : windows.map((window) => `${window.start} - ${window.end}`).join(', ');
+}
+
+function buildDurationFromWindows(windows: StrikeWindow[], fallback: string) {
+  if (windows.length === 1 && windows[0].start === '00:00' && windows[0].end === '24:00') return '24小时';
+
+  const totalMinutes = windows.reduce((sum, window) => {
+    const start = timeToMinutes(window.start);
+    let end = timeToMinutes(window.end);
+    if (end <= start) end += 24 * 60;
+    return sum + Math.max(0, end - start);
+  }, 0);
+
+  if (!totalMinutes) return fallback;
+  const hours = totalMinutes / 60;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}小时`;
+}
+
+function splitTimeInfoForDate(
+  baseTimeInfo: { hours: string; display: string; windows: StrikeWindow[] },
+  dateSpan: string[],
+  dateIndex: number
+) {
+  if (dateSpan.length <= 1) {
+    return {
+      hours: baseTimeInfo.hours,
+      display: baseTimeInfo.display,
+      windows: baseTimeInfo.windows.map((window) => ({ ...window })),
+    };
+  }
+
+  const isFullDay =
+    baseTimeInfo.hours === '24小时' ||
+    baseTimeInfo.hours === '48小时' ||
+    baseTimeInfo.windows.some((window) => window.start === '00:00' && window.end === '24:00');
+
+  if (isFullDay) {
+    const windows = [{ start: '00:00', end: '24:00' }];
+    return {
+      hours: '24小时',
+      display: '全天 24小时',
+      windows,
+    };
+  }
+
+  const windows = baseTimeInfo.windows.flatMap((window) => {
+    const start = timeToMinutes(window.start);
+    const end = timeToMinutes(window.end);
+    const isOvernight = end <= start;
+
+    if (!isOvernight) {
+      return dateIndex === 0 ? [{ ...window }] : [];
+    }
+
+    if (dateIndex === 0) return [{ start: window.start, end: '24:00' }];
+    if (dateIndex === 1) return [{ start: '00:00', end: window.end }];
+    return [];
+  });
+
+  const resolvedWindows = windows.length > 0 ? windows : [{ start: '00:00', end: '24:00' }];
+  return {
+    hours: buildDurationFromWindows(resolvedWindows, baseTimeInfo.hours),
+    display: buildDisplayFromWindows(resolvedWindows),
+    windows: resolvedWindows,
+  };
 }
 
 function getLeadDaysBeforeStrike(dateIso: string, proclamationDate: string) {
@@ -174,7 +355,17 @@ function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['categor
   if (!row.proclamationDate) return false;
 
   const leadDays = getLeadDaysBeforeStrike(dateIso, row.proclamationDate);
-  return leadDays !== null && leadDays >= 14;
+  if (leadDays === null || leadDays < 14) return false;
+
+  const combined = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+  const hasConcreteTime =
+    /\b\d+\s*ore\b/i.test(combined) ||
+    /dalle\s+\d{1,2}[\.:]\d{2}/i.test(combined) ||
+    combined.includes('24 ore') ||
+    combined.includes('intero turno');
+  const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
+
+  return !hasConcreteTime || !hasPassengerImpactSignal;
 }
 
 async function translateText(text: string): Promise<string> {
@@ -209,19 +400,48 @@ async function normalizeProvider(raw: string) {
   source = source.trim();
 
   const translated = await translateText(source);
-  return normalizeProviderList(source, translated).join(' / ') || '相关人员';
+  return normalizeProviderList(source, translated).join(' / ');
 }
 
-function resolveCategories(provider: string, sector: string): StrikeRecord['category'][] {
+function getProviderFallback(category: StrikeRecord['category']) {
+  return CATEGORY_PROVIDER_FALLBACKS[category];
+}
+
+function resolveCategories(provider: string, sector: string, context = ''): StrikeRecord['category'][] {
   const providerLow = provider.toLowerCase();
   const sectorLow = sector.toLowerCase();
+  const combinedLow = `${provider} ${sector} ${context}`.toLowerCase();
   const isMilanAtm = /\batm\b/.test(providerLow) && providerLow.includes('milano');
 
   // ATM in Milan is the local transit operator, so broad TPL strikes affect both metro and bus.
   if (isMilanAtm && sectorLow.includes('trasporto pubblico')) return ['SUBWAY', 'BUS'];
   if (/\batm\b/.test(providerLow)) return ['SUBWAY'];
-  if (providerLow.includes('trenord') || providerLow.includes('trenitalia') || providerLow.includes('italo') || sectorLow.includes('ferrov')) return ['TRAIN'];
-  if (providerLow.includes('sea') || providerLow.includes('enav') || providerLow.includes('aeroport') || sectorLow.includes('aereo')) return ['AIRPORT'];
+
+  const categories = new Set<StrikeRecord['category']>();
+  if (
+    providerLow.includes('trenord') ||
+    providerLow.includes('trenitalia') ||
+    providerLow.includes('italo') ||
+    providerLow.includes('rfi') ||
+    combinedLow.includes('ferrov')
+  ) {
+    categories.add('TRAIN');
+  }
+  if (
+    providerLow.includes('sea') ||
+    providerLow.includes('enav') ||
+    combinedLow.includes('aereo') ||
+    combinedLow.includes('aeroport') ||
+    combinedLow.includes('easyjet') ||
+    combinedLow.includes('adr security')
+  ) {
+    categories.add('AIRPORT');
+  }
+  if (combinedLow.includes('trasporto pubblico locale') || combinedLow.includes('autoferro')) {
+    categories.add('BUS');
+  }
+
+  if (categories.size > 0) return Array.from(categories);
   return ['BUS'];
 }
 
@@ -243,8 +463,9 @@ function parseTimeWindows(durationRaw: string, modalita: string, note: string) {
     const hourMatch = combined.match(/(\d+)\s*ORE/);
     if (hourMatch) hours = `${hourMatch[1]}小时`;
 
-    const timeRegex = /DALLE\s+(\d{1,2})[\.:](\d{2})\s+ALLE\s+(\d{1,2})[\.:](\d{2})/g;
-    const endOfServiceRegex = /DALLE\s+(\d{1,2})[\.:](\d{2})\s+A\s+FINE\s+SERVIZIO/g;
+    const optionalDate = String.raw`(?:\s+DEL\s+\d{1,2}\/\d{1,2})?`;
+    const timeRegex = new RegExp(String.raw`DALLE\s+(\d{1,2})[\.:](\d{2})${optionalDate}\s+ALLE\s+(\d{1,2})[\.:](\d{2})`, 'g');
+    const endOfServiceRegex = new RegExp(String.raw`DALLE\s+(\d{1,2})[\.:](\d{2})${optionalDate}\s+A\s+FINE\s+SERVIZIO`, 'g');
     let match: RegExpExecArray | null;
     while ((match = timeRegex.exec(combined)) !== null) {
       windows.push({
@@ -290,9 +511,9 @@ async function fetchSecondarySource(category: string, provider: string): Promise
 
 export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
   const rawRecordGroups = await Promise.all(rawRows.map(async (row) => {
-    const dateIso = parseItalianDate(row.date);
-    const providerNorm = await normalizeProvider(row.provider);
-    const categories = resolveCategories(row.provider, row.sector);
+    const baseProviderNorm = await normalizeProvider(row.provider);
+    const categories = resolveCategories(row.provider, row.sector, `${row.modalita} ${row.note} ${row.rilevanza}`);
+    const dateSpan = getDateSpan(row.date, row.endDate);
 
     let status: StrikeStatus = 'CONFIRMED';
     const combinedRaw = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
@@ -303,17 +524,17 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
     }
 
     const baseTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
+    const recordInputs = dateSpan.flatMap((dateIso, dateIndex) => (
+      categories.map((category) => ({ dateIso, dateIndex, category }))
+    ));
 
-    return Promise.all(categories.map(async (category) => {
+    return Promise.all(recordInputs.map(async ({ dateIso, dateIndex, category }) => {
+      const providerNorm = baseProviderNorm || getProviderFallback(category);
       let resolvedStatus: StrikeStatus = status;
       if (resolvedStatus === 'CONFIRMED' && shouldTreatAsPending(row, category, dateIso)) {
         resolvedStatus = 'REQUIRES_DETAIL';
       }
-      const timeInfo = {
-        hours: baseTimeInfo.hours,
-        display: baseTimeInfo.display,
-        windows: baseTimeInfo.windows.map((window) => ({ ...window })),
-      };
+      const timeInfo = splitTimeInfoForDate(baseTimeInfo, dateSpan, dateIndex);
       const guaranteeWindows = getGuaranteeWindows({
         category,
         dateIso,
@@ -465,6 +686,47 @@ function shouldPruneExpiredPendingRecord(record: Pick<StrikeRecord, 'date' | 'ca
   return record.date <= todayIso;
 }
 
+function isPendingStatus(status?: string | null) {
+  return PENDING_STATUSES.includes((status || '') as StrikeStatus);
+}
+
+function isVagueProvider(provider?: string | null) {
+  const value = (provider || '').trim();
+  if (!value) return true;
+  return value === '相关人员' || value === '铁路相关人员' || value === '公共交通人员' || value === '机场相关人员';
+}
+
+function providerCanSupersedePending(pendingProvider: string | null | undefined, nextProvider: string) {
+  if (isVagueProvider(pendingProvider) || isVagueProvider(nextProvider)) return true;
+
+  const pending = normalizeProviderList(pendingProvider || '').join(' / ').toLowerCase();
+  const next = normalizeProviderList(nextProvider || '').join(' / ').toLowerCase();
+  if (!pending || !next) return true;
+  if (pending === next || pending.includes(next) || next.includes(pending)) return true;
+
+  const pendingParts = pending.split(/\s*\/\s*/).filter(Boolean);
+  const nextParts = next.split(/\s*\/\s*/).filter(Boolean);
+  return pendingParts.some((part) => nextParts.some((nextPart) => part === nextPart || part.includes(nextPart) || nextPart.includes(part)));
+}
+
+function regionsOverlap(candidateRegion: string | null | undefined, nextRegion: string) {
+  const candidate = canonicalizeRegionValue(candidateRegion || '');
+  const next = canonicalizeRegionValue(nextRegion || '');
+  return candidate === next || candidate === 'NATIONAL' || next === 'NATIONAL';
+}
+
+function canSupersedePendingRecord(
+  candidate: Pick<StrikeRecord, 'date' | 'category' | 'region' | 'provider' | 'status'>,
+  nextRecord: StrikeRecord
+) {
+  if (!isPendingStatus(candidate.status)) return false;
+  if (nextRecord.status === 'REQUIRES_DETAIL' || nextRecord.status === 'UNCERTAIN') return false;
+  if (candidate.date !== nextRecord.date) return false;
+  if (candidate.category !== nextRecord.category) return false;
+  if (!regionsOverlap(candidate.region, nextRecord.region)) return false;
+  return providerCanSupersedePending(candidate.provider, nextRecord.provider);
+}
+
 export async function upsertToSupabase(records: StrikeRecord[]) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -494,6 +756,25 @@ export async function upsertToSupabase(records: StrikeRecord[]) {
       if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
       affected += 1;
       continue;
+    }
+
+    if (!isPendingStatus(record.status)) {
+      const { data: pendingCandidates, error: pendingLookupError } = await supabase
+        .from('strikes')
+        .select('id, date, category, region, provider, status')
+        .eq('date', record.date)
+        .eq('category', record.category)
+        .in('status', PENDING_STATUSES);
+
+      if (pendingLookupError) throw new Error(`Supabase pending lookup error: ${pendingLookupError.message}`);
+
+      const supersededPending = (pendingCandidates || []).find((candidate) => canSupersedePendingRecord(candidate, record));
+      if (supersededPending?.id) {
+        const { error: updatePendingError } = await supabase.from('strikes').update(record).eq('id', supersededPending.id);
+        if (updatePendingError) throw new Error(`Supabase pending update error: ${updatePendingError.message}`);
+        affected += 1;
+        continue;
+      }
     }
 
     const { error: insertError } = await supabase.from('strikes').insert(record);
@@ -549,6 +830,48 @@ export async function upsertToSupabase(records: StrikeRecord[]) {
   }
 
   return affected;
+}
+
+export async function pruneSupersededPendingFromSupabase(records: StrikeRecord[]) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  const confirmedOrCancelledRecords = records.filter((record) => !isPendingStatus(record.status));
+  if (confirmedOrCancelledRecords.length === 0) return 0;
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const dates = Array.from(new Set(confirmedOrCancelledRecords.map((record) => record.date)));
+
+  const { data: candidates, error: lookupError } = await supabase
+    .from('strikes')
+    .select('id, date, category, region, provider, status')
+    .in('date', dates)
+    .in('status', PENDING_STATUSES);
+
+  if (lookupError) {
+    throw new Error(`Supabase superseded pending lookup error: ${lookupError.message}`);
+  }
+
+  const staleIds = (candidates || [])
+    .filter((candidate) => confirmedOrCancelledRecords.some((record) => canSupersedePendingRecord(candidate, record)))
+    .map((candidate) => candidate.id);
+
+  if (staleIds.length === 0) return 0;
+
+  const { error: deleteError } = await supabase
+    .from('strikes')
+    .delete()
+    .in('id', staleIds);
+
+  if (deleteError) {
+    throw new Error(`Supabase superseded pending delete error: ${deleteError.message}`);
+  }
+
+  return staleIds.length;
 }
 
 export async function pruneExpiredPendingFromSupabase() {

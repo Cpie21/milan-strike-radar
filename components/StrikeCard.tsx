@@ -73,6 +73,12 @@ function getManualDoodleBaseCount(strike: StrikeRecord) {
     return null;
 }
 
+function getProviderFallback(category: StrikeRecord['category'], language: AppLanguage) {
+    if (category === 'TRAIN') return pickText(language, '铁路相关人员', 'rail staff');
+    if (category === 'AIRPORT') return pickText(language, '机场相关人员', 'airport staff');
+    return pickText(language, '公共交通人员', 'public transport staff');
+}
+
 export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike: StrikeRecord, isDark: boolean, language?: AppLanguage }) {
     const viewRegion = strike.region || 'MILANO';
     const manualDoodleBaseCount = getManualDoodleBaseCount(strike);
@@ -247,9 +253,9 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     const isMetro = isSubway;
 
     let title = categoryTitles[language].OTHER;
-    let subTitle = pickText(language, "相关人员", "affected staff");
+    let subTitle = getProviderFallback(strike.category, language);
     let icon = getTrainIcon(isDark ? '#0F172A' : 'white'); // Fallback
-    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
+    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || getProviderFallback(strike.category, language);
     const localizedProvider = translateProvider(normalizedProvider, language);
 
     // Exact mapping requested from Figma, using actual provider if available

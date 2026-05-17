@@ -90,6 +90,17 @@ function filterAirportLinesForDisplay(lines: string[], currentRegion: string) {
 
 const NETWORK_WIDE_LINE_MARKERS = new Set(['全部线路', '全部车次']);
 
+const CATEGORY_PROVIDER_FALLBACKS: Record<string, string> = {
+  TRAIN: '铁路相关人员',
+  SUBWAY: '公共交通人员',
+  BUS: '公共交通人员',
+  AIRPORT: '机场相关人员',
+};
+
+function normalizeProviderForDisplay(provider: string | undefined, category: string | undefined) {
+  return normalizeProviderList(provider || '').join(' / ') || CATEGORY_PROVIDER_FALLBACKS[category || ''] || '相关人员';
+}
+
 function getRomeTodayIso() {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Rome',
@@ -120,7 +131,7 @@ function shouldHideExpiredPendingStrike(strike: StrikeLike) {
 function shouldDeriveBusVariantForMilanAtm(strike: StrikeLike) {
   if (!strike || strike.category !== 'SUBWAY') return false;
 
-  const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
+  const normalizedProvider = normalizeProviderForDisplay(strike.provider, strike.category);
   const normalizedRegion = resolveStrikeRegion(strike);
   const sanitizedLines = sanitizeAffectedLines(strike.affected_lines || []);
 
@@ -163,14 +174,14 @@ export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | und
         return {
           ...strike,
           region: normalizedRegion || currentRegion,
-          provider: normalizeProviderList(strike.provider || '').join(' / ') || '相关人员',
+          provider: normalizeProviderForDisplay(strike.provider, strike.category),
         };
       }
 
       return {
         ...strike,
         region: normalizedRegion || currentRegion,
-        provider: normalizeProviderList(strike.provider || '').join(' / ') || '相关人员',
+        provider: normalizeProviderForDisplay(strike.provider, strike.category),
         affected_lines: filterAirportLinesForDisplay(normalizeAirportAffectedLines(strike.affected_lines || [], {
           contextText: `${strike.provider || ''} ${(strike.affected_lines || []).join(' ')} ${strike.display_time || ''}`,
           regionTag: normalizedRegion || currentRegion,
@@ -214,7 +225,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
   const map = new Map<string, StrikeLike>();
 
   expandDerivedStrikeVariants(rawStrikes).forEach(strike => {
-    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
+    const normalizedProvider = normalizeProviderForDisplay(strike.provider, strike.category);
     const normalizedLines = strike.category === 'AIRPORT'
       ? normalizeAirportAffectedLines(strike.affected_lines || [], {
           contextText: `${strike.provider || ''} ${(strike.affected_lines || []).join(' ')}`,
@@ -238,7 +249,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       const existing = map.get(key);
       if (!existing) return;
 
-      existing.provider = normalizeProviderList(`${existing.provider || ''} / ${normalizedProvider}`).join(' / ') || '相关人员';
+      existing.provider = normalizeProviderForDisplay(`${existing.provider || ''} / ${normalizedProvider}`, existing.category);
 
       // Merge Strike Windows
       const allWindows = [...(existing.strike_windows || []), ...(strike.strike_windows || [])];
@@ -272,7 +283,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
 
   return Array.from(map.values()).map(existing => ({
     ...existing,
-    provider: normalizeProviderList(existing.provider || '').join(' / ') || '相关人员',
+    provider: normalizeProviderForDisplay(existing.provider, existing.category),
     affected_lines: existing.category === 'AIRPORT'
       ? normalizeAirportAffectedLines(existing.affected_lines || [], {
           contextText: `${existing.provider || ''} ${(existing.affected_lines || []).join(' ')}`,
