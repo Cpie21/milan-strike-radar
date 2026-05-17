@@ -413,7 +413,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     guarantees.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
 
     const sortedPoints = Array.from(points).filter(p => p >= axisStartMin && p <= axisEndMin).sort((a, b) => a - b);
-    const segments: Array<{ colorType: string; widthPct: number }> = [];
+    const segments: Array<{ colorType: string; widthPct: number; startMin: number; endMin: number }> = [];
     for (let i = 0; i < sortedPoints.length - 1; i++) {
         const segStart = sortedPoints[i];
         const segEnd = sortedPoints[i + 1];
@@ -421,7 +421,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         const mid = (segStart + segEnd) / 2;
         const colorType = getSegmentColor(mid);
         const widthPct = ((segEnd - segStart) / (axisEndMin - axisStartMin)) * 100;
-        segments.push({ colorType, widthPct });
+        segments.push({ colorType, widthPct, startMin: segStart, endMin: segEnd });
     }
 
     // Calculate intersected guarantees text for display
@@ -516,8 +516,26 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                                     zIndex = 'z-10 relative'; // lift above overflow hidden if possible, but keeping inline glow
                                 }
                             }
+                            const isGuaranteeSegment = seg.colorType === 'green' && uniqueIntersected.length > 0;
+                            const className = `${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full ${isGuaranteeSegment ? 'appearance-none border-0 p-0 cursor-pointer hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#87ff38]' : ''}`;
+                            const style = { width: `${seg.widthPct}%` };
+
+                            if (isGuaranteeSegment) {
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        className={className}
+                                        style={style}
+                                        aria-label={pickText(language, `展开保障时间 ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `Show protected service window ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
+                                        title={pickText(language, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
+                                        onClick={() => setIsExpanded(true)}
+                                    />
+                                );
+                            }
+
                             return (
-                                <div key={idx} className={`${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full`} style={{ width: `${seg.widthPct}%` }} />
+                                <div key={idx} className={className} style={style} />
                             )
                         })
                     )}
