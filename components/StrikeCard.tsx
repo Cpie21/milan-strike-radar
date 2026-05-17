@@ -73,6 +73,19 @@ function getManualDoodleBaseCount(strike: StrikeRecord) {
     return null;
 }
 
+function getStableDoodleOffset(seed: string, min = 18, spread = 6) {
+    let hash = 0;
+    for (let index = 0; index < seed.length; index += 1) {
+        hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+    }
+    return min + (hash % spread);
+}
+
+function getDoodleBaseOffset(strike: StrikeRecord) {
+    if (!strike.date.startsWith('2026-05-')) return 0;
+    return getStableDoodleOffset(`${strike.region || 'MILANO'}|${strike.date}|${strike.category}|${strike.display_time || ''}`);
+}
+
 function getProviderFallback(category: StrikeRecord['category'], language: AppLanguage) {
     if (category === 'TRAIN') return pickText(language, '铁路相关人员', 'rail staff');
     if (category === 'AIRPORT') return pickText(language, '机场相关人员', 'airport staff');
@@ -90,6 +103,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     const viewRegion = strike.region || 'MILANO';
     const manualDoodleBaseCount = getManualDoodleBaseCount(strike);
     const usesManualDoodleCount = manualDoodleBaseCount !== null;
+    const doodleBaseOffset = getDoodleBaseOffset(strike);
     const buildFallbackGuarantees = () => {
         const currentSlots = strike.strike_windows || [];
         const isFullDay = currentSlots.some((slot) => slot.start === '00:00' && slot.end === '24:00') || strike.duration_hours === '24小时';
@@ -151,7 +165,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                 const baseCount = manualDoodleBaseCount || 0;
                 if (!mounted) return;
 
-                setDoodleCount(prev => Math.max(prev, baseCount + (localMarked ? 1 : 0)));
+                setDoodleCount(prev => Math.max(prev, baseCount + doodleBaseOffset + (localMarked ? 1 : 0)));
                 setIsDoodleCountLoaded(true);
                 return;
             }
@@ -163,8 +177,9 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
 
             setDoodleCount(prev => {
                 const localMarked = !!localStorage.getItem(doodleStorageKey);
-                if (localMarked) return Math.max(prev, count, 1);
-                return Math.max(prev, count);
+                const displayCount = count + doodleBaseOffset;
+                if (localMarked) return Math.max(prev, displayCount, doodleBaseOffset + 1);
+                return Math.max(prev, displayCount);
             });
             setIsDoodleCountLoaded(true);
         };
@@ -176,7 +191,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
             mounted = false;
             clearInterval(timer);
         };
-    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion, usesManualDoodleCount, manualDoodleBaseCount]);
+    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion, usesManualDoodleCount, manualDoodleBaseCount, doodleBaseOffset]);
 
     const handleDoodle = async () => {
         if (hasDoodled) {
@@ -204,7 +219,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         }
 
         if (usesManualDoodleCount) {
-            const nextCount = Math.max(doodleCount, manualDoodleBaseCount || 0) + 1;
+            const nextCount = Math.max(doodleCount, (manualDoodleBaseCount || 0) + doodleBaseOffset) + 1;
             capture('graffiti_spray_triggered', {
                 transport_type: strike.category.toLowerCase(),
                 total_rage_count: nextCount,
@@ -215,12 +230,13 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         const effectiveDisplayTime = strike.category === 'AIRPORT' ? strike.display_time : undefined;
         const result = await submitDoodle(strike.id as unknown as string, clientUuid, strike.date, strike.category, effectiveDisplayTime, viewRegion);
         const latest = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime, viewRegion);
-        setDoodleCount(latest);
+        const displayLatest = latest + doodleBaseOffset;
+        setDoodleCount(displayLatest);
 
         // Track graffiti event (always, even if already doodled)
         capture('graffiti_spray_triggered', {
             transport_type: strike.category.toLowerCase(),
-            total_rage_count: latest,
+            total_rage_count: displayLatest,
         });
 
         if (!result.success && result.error !== 'Already doodled') {
