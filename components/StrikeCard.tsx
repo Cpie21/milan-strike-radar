@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
@@ -116,6 +116,8 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     };
     // Expandable state for guarantee info
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isGuaranteePulseActive, setIsGuaranteePulseActive] = useState(false);
+    const guaranteePulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // UI state for share button feedback
     const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
@@ -144,6 +146,22 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         }
         return false;
     });
+
+    const pulseGuaranteeSegments = () => {
+        setIsExpanded(true);
+        setIsGuaranteePulseActive(true);
+        if (guaranteePulseTimerRef.current) clearTimeout(guaranteePulseTimerRef.current);
+        guaranteePulseTimerRef.current = setTimeout(() => {
+            setIsGuaranteePulseActive(false);
+            guaranteePulseTimerRef.current = null;
+        }, 1000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (guaranteePulseTimerRef.current) clearTimeout(guaranteePulseTimerRef.current);
+        };
+    }, []);
 
     // Definitive fix: sync doodle state from localStorage ANY time the key changes.
     // Lazy initializers only run on mount, so re-renders don't re-sync automatically.
@@ -510,8 +528,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             if (seg.colorType === 'red') bgColor = isDark ? 'bg-[#de4141]' : 'bg-[#EF4444]';
                             if (seg.colorType === 'green') {
                                 bgColor = isDark ? 'bg-[#5ab91b]' : 'bg-[#10B981]';
-                                // Apply glow if expanded
-                                if (isExpanded) {
+                                if (isGuaranteePulseActive) {
                                     glowStyle = isDark ? 'drop-shadow-[0_0_12px_rgba(90,185,27,1)] brightness-[1.3]' : 'drop-shadow-[0_0_12px_rgba(16,185,129,0.8)] brightness-110';
                                     zIndex = 'z-10 relative'; // lift above overflow hidden if possible, but keeping inline glow
                                 }
@@ -529,7 +546,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                                         style={style}
                                         aria-label={pickText(language, `展开保障时间 ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `Show protected service window ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
                                         title={pickText(language, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
-                                        onClick={() => setIsExpanded(true)}
+                                        onClick={pulseGuaranteeSegments}
                                     />
                                 );
                             }
