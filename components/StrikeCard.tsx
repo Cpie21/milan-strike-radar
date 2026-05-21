@@ -81,9 +81,11 @@ function getStableDoodleOffset(seed: string, min = 18, spread = 6) {
     return min + (hash % spread);
 }
 
+const GLOBAL_DOODLE_BASE_OFFSET = 15;
+
 function getDoodleBaseOffset(strike: StrikeRecord) {
-    if (!strike.date.startsWith('2026-05-')) return 0;
-    return getStableDoodleOffset(`${strike.region || 'MILANO'}|${strike.date}|${strike.category}|${strike.display_time || ''}`);
+    if (!strike.date.startsWith('2026-05-')) return GLOBAL_DOODLE_BASE_OFFSET;
+    return GLOBAL_DOODLE_BASE_OFFSET + getStableDoodleOffset(`${strike.region || 'MILANO'}|${strike.date}|${strike.category}|${strike.display_time || ''}`);
 }
 
 function getProviderFallback(category: StrikeRecord['category'], language: AppLanguage) {
