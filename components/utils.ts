@@ -127,7 +127,7 @@ function shouldHideExpiredPendingStrike(strike: StrikeLike) {
   if (!requiresRegionalTrainImpactVerification(strike)) return false;
   if (!strike.date) return false;
 
-  return strike.date <= getRomeTodayIso();
+  return strike.date < getRomeTodayIso();
 }
 
 function shouldDeriveBusVariantForMilanAtm(strike: StrikeLike) {

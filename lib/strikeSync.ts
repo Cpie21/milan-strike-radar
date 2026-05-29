@@ -289,11 +289,11 @@ function buildDurationFromWindows(windows: StrikeWindow[], fallback: string) {
 }
 
 function splitTimeInfoForDate(
-  baseTimeInfo: { hours: string; display: string; windows: StrikeWindow[] },
+  baseTimeInfo: { hours: string; display: string; windows: StrikeWindow[]; dateSpecific?: boolean },
   dateSpan: string[],
   dateIndex: number
 ) {
-  if (dateSpan.length <= 1) {
+  if (dateSpan.length <= 1 || baseTimeInfo.dateSpecific) {
     return {
       hours: baseTimeInfo.hours,
       display: baseTimeInfo.display,
@@ -349,6 +349,50 @@ function getLeadDaysBeforeStrike(dateIso: string, proclamationDate: string) {
   return Math.round(diffMs / (24 * 60 * 60 * 1000));
 }
 
+function getDaysUntilStrike(dateIso: string, todayIso = getRomeTodayIso()) {
+  const [yyyy, mm, dd] = dateIso.split('-');
+  const [todayYyyy, todayMm, todayDd] = todayIso.split('-');
+  if (!yyyy || !mm || !dd || !todayYyyy || !todayMm || !todayDd) return null;
+
+  const strikeDate = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  const today = new Date(Number(todayYyyy), Number(todayMm) - 1, Number(todayDd));
+  if (Number.isNaN(strikeDate.getTime()) || Number.isNaN(today.getTime())) return null;
+
+  return Math.round((strikeDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+function getCategoryModalitaText(modalita: string, category?: StrikeRecord['category']) {
+  if (!category) return modalita;
+
+  const segments = modalita.split(/\s+\/\s+/).map((segment) => segment.trim()).filter(Boolean);
+  const matchesCategory = (segment: string) => {
+    const upper = segment.toUpperCase();
+    if (category === 'TRAIN') return upper.includes('FERROVIARIO') || upper.includes('FERROV');
+    if (category === 'AIRPORT') return upper.includes('AEREO') || upper.includes('AEROPORT');
+    if (category === 'BUS' || category === 'SUBWAY') {
+      return upper.includes('TPL') || upper.includes('TRASPORTO PUBBLICO') || upper.includes('AUTOFERRO');
+    }
+    return false;
+  };
+
+  const categorySegments = segments.filter(matchesCategory);
+  return categorySegments.length > 0 ? categorySegments.join(' / ') : modalita;
+}
+
+function hasConcreteStrikeTiming(row: RawStrikeRow, category: StrikeRecord['category'], dateIso: string) {
+  const modalita = getCategoryModalitaText(row.modalita, category).toLowerCase();
+  const combined = `${modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+
+  return (
+    /\b\d+\s*ore\b/i.test(combined) ||
+    /dalle\s+\d{1,2}[\.:]\d{2}/i.test(combined) ||
+    /\d{1,2}[\.:]\d{2}\s*(?:del\s+\d{1,2}\/\d{1,2})?\s*[-–]\s*\d{1,2}[\.:]\d{2}/i.test(combined) ||
+    combined.includes('24 ore') ||
+    combined.includes('intero turno') ||
+    parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso).dateSpecific === true
+  );
+}
+
 function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['category'], dateIso: string) {
   if (category !== 'TRAIN') return false;
   if (row.region !== 'NATIONAL') return false;
@@ -358,12 +402,20 @@ function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['categor
   if (leadDays === null || leadDays < 14) return false;
 
   const combined = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
-  const hasConcreteTime =
-    /\b\d+\s*ore\b/i.test(combined) ||
-    /dalle\s+\d{1,2}[\.:]\d{2}/i.test(combined) ||
-    combined.includes('24 ore') ||
-    combined.includes('intero turno');
+  const hasConcreteTime = hasConcreteStrikeTiming(row, category, dateIso);
   const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
+  const hasRailScopeSignal = hasPassengerImpactSignal || combined.includes('ferroviario') || combined.includes('ferrovie');
+  const daysUntilStrike = getDaysUntilStrike(dateIso);
+
+  if (
+    daysUntilStrike !== null &&
+    daysUntilStrike >= 0 &&
+    daysUntilStrike <= 3 &&
+    hasConcreteTime &&
+    hasRailScopeSignal
+  ) {
+    return false;
+  }
 
   return !hasConcreteTime || !hasPassengerImpactSignal;
 }
@@ -451,14 +503,53 @@ function extractAffectedLines(note: string) {
   return found.length > 0 ? found : ['全部线路'];
 }
 
-function parseTimeWindows(durationRaw: string, modalita: string, note: string) {
-  const combined = `${durationRaw} ${modalita} ${note}`.toUpperCase();
+function buildIsoFromDayMonth(day: string, month: string, fallbackYear: number) {
+  return `${fallbackYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+function buildWindowForTargetDate(
+  startTime: string,
+  endTime: string,
+  startDateIso?: string,
+  endDateIso?: string,
+  targetDateIso?: string
+) {
+  if (!startDateIso && !endDateIso) return { start: startTime, end: endTime };
+  if (!targetDateIso) return { start: startTime, end: endTime };
+
+  const startDate = startDateIso || targetDateIso;
+  let endDate = endDateIso || startDate;
+  if (endDate < startDate) {
+    const [yyyy, mm, dd] = endDate.split('-').map(Number);
+    endDate = `${yyyy + 1}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+  }
+
+  if (targetDateIso < startDate || targetDateIso > endDate) return null;
+  if (startDate === endDate) return { start: startTime, end: endTime };
+  if (targetDateIso === startDate) return { start: startTime, end: '24:00' };
+  if (targetDateIso === endDate) return { start: '00:00', end: endTime };
+  return { start: '00:00', end: '24:00' };
+}
+
+function parseTimeWindows(
+  durationRaw: string,
+  modalita: string,
+  note: string,
+  category?: StrikeRecord['category'],
+  dateIso?: string
+) {
+  const scopedDuration = getCategoryModalitaText(durationRaw, category);
+  const combined = `${scopedDuration} ${modalita} ${note}`.toUpperCase();
+  const targetYear = Number((dateIso || '').slice(0, 4)) || new Date().getFullYear();
   let hours = '部分时段';
   const windows: StrikeWindow[] = [];
+  let dateSpecific = false;
+  let matchedConcreteWindow = false;
 
   if (combined.includes('24 ORE') || combined.includes('INTERO TURNO')) {
     hours = '24小时';
     windows.push({ start: '00:00', end: '24:00' });
+    matchedConcreteWindow = true;
   } else {
     const hourMatch = combined.match(/(\d+)\s*ORE/);
     if (hourMatch) hours = `${hourMatch[1]}小时`;
@@ -472,26 +563,87 @@ function parseTimeWindows(durationRaw: string, modalita: string, note: string) {
         start: `${match[1].padStart(2, '0')}:${match[2]}`,
         end: `${match[3].padStart(2, '0')}:${match[4]}`,
       });
+      matchedConcreteWindow = true;
     }
     while ((match = endOfServiceRegex.exec(combined)) !== null) {
       windows.push({
         start: `${match[1].padStart(2, '0')}:${match[2]}`,
         end: '24:00',
       });
+      matchedConcreteWindow = true;
+    }
+
+    const rangeRegex = /(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?\s*[-–]\s*(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?/g;
+    while ((match = rangeRegex.exec(combined)) !== null) {
+      const startTime = `${match[1].padStart(2, '0')}:${match[2]}`;
+      const rawEndTime = `${match[5].padStart(2, '0')}:${match[6]}`;
+      const endTime = rawEndTime === '23:59' ? '24:00' : rawEndTime;
+      const startDate = match[3] && match[4] ? buildIsoFromDayMonth(match[3], match[4], targetYear) : undefined;
+      const endDate = match[7] && match[8] ? buildIsoFromDayMonth(match[7], match[8], targetYear) : undefined;
+      const window = buildWindowForTargetDate(startTime, endTime, startDate, endDate, dateIso);
+      if (window) {
+        windows.push(window);
+        matchedConcreteWindow = true;
+        if (startDate || endDate) dateSpecific = true;
+      }
     }
   }
 
   if (windows.length === 0) windows.push({ start: '00:00', end: '24:00' });
   windows.sort((a, b) => a.start.localeCompare(b.start));
+  const resolvedHours = matchedConcreteWindow && hours === '部分时段'
+    ? buildDurationFromWindows(windows, hours)
+    : hours;
 
   return {
-    hours,
+    hours: resolvedHours,
     windows,
-    display:
-      windows.length === 1 && windows[0].start === '00:00' && windows[0].end === '24:00'
-        ? '全天 24小时'
-        : windows.map((window) => `${window.start} - ${window.end}`).join(', '),
+    display: buildDisplayFromWindows(windows),
+    dateSpecific,
   };
+}
+
+function parseIsoDateToDate(dateIso: string) {
+  const [yyyy, mm, dd] = dateIso.split('-');
+  if (!yyyy || !mm || !dd) return null;
+  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatIsoDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getDateSpanFromIsoRange(startIso: string, endIso: string) {
+  const start = parseIsoDateToDate(startIso);
+  const end = parseIsoDateToDate(endIso);
+  if (!start || !end || end < start) return [startIso];
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end && dates.length < 10) {
+    dates.push(formatIsoDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function getCategoryDateSpan(row: RawStrikeRow, category: StrikeRecord['category'], fallbackDateSpan: string[]) {
+  const baseYear = Number((fallbackDateSpan[0] || '').slice(0, 4)) || new Date().getFullYear();
+  const scoped = getCategoryModalitaText(row.modalita, category).toUpperCase();
+  const explicitDates = new Set<string>();
+  const rangeRegex = /(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?\s*[-–]\s*(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = rangeRegex.exec(scoped)) !== null) {
+    if (!match[3] || !match[4] || !match[7] || !match[8]) continue;
+
+    const startDate = buildIsoFromDayMonth(match[3], match[4], baseYear);
+    const endDate = buildIsoFromDayMonth(match[7], match[8], baseYear);
+    getDateSpanFromIsoRange(startDate, endDate).forEach((dateIso) => explicitDates.add(dateIso));
+  }
+
+  return Array.from(new Set([...fallbackDateSpan, ...explicitDates])).sort();
 }
 
 async function fetchSecondarySource(category: string, provider: string): Promise<{ windows?: StrikeWindow[]; lines?: string[] } | null> {
@@ -523,18 +675,19 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
       status = 'REQUIRES_DETAIL';
     }
 
-    const baseTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
-    const recordInputs = dateSpan.flatMap((dateIso, dateIndex) => (
-      categories.map((category) => ({ dateIso, dateIndex, category }))
-    ));
+    const recordInputs = categories.flatMap((category) => {
+      const categoryDateSpan = getCategoryDateSpan(row, category, dateSpan);
+      return categoryDateSpan.map((dateIso, dateIndex) => ({ dateIso, dateIndex, category, dateSpan: categoryDateSpan }));
+    });
 
-    return Promise.all(recordInputs.map(async ({ dateIso, dateIndex, category }) => {
+    return Promise.all(recordInputs.map(async ({ dateIso, dateIndex, category, dateSpan }) => {
       const providerNorm = baseProviderNorm || getProviderFallback(category);
       let resolvedStatus: StrikeStatus = status;
       if (resolvedStatus === 'CONFIRMED' && shouldTreatAsPending(row, category, dateIso)) {
         resolvedStatus = 'REQUIRES_DETAIL';
       }
-      const timeInfo = splitTimeInfoForDate(baseTimeInfo, dateSpan, dateIndex);
+      const parsedTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso);
+      const timeInfo = splitTimeInfoForDate(parsedTimeInfo, dateSpan, dateIndex);
       const guaranteeWindows = getGuaranteeWindows({
         category,
         dateIso,
@@ -683,7 +836,7 @@ function requiresRegionalTrainImpactVerification(record: Pick<StrikeRecord, 'cat
 
 function shouldPruneExpiredPendingRecord(record: Pick<StrikeRecord, 'date' | 'category' | 'region' | 'status' | 'data_source'>, todayIso = getRomeTodayIso()) {
   if (!requiresRegionalTrainImpactVerification(record)) return false;
-  return record.date <= todayIso;
+  return record.date < todayIso;
 }
 
 function isPendingStatus(status?: string | null) {

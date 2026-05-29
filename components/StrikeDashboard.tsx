@@ -945,7 +945,7 @@ export default function StrikeDashboard({
                                                     {categoryLabels[language][({ '火车': 'TRAIN', '地铁': 'SUBWAY', '公交': 'BUS', '机场': 'AIRPORT' } as Record<string, string>)[cat]]}
                                                 </span>
                                                 {categoryHasStrike && (
-                                                    <div className="absolute flex h-[34px] items-center justify-center -left-[15px] -top-[20px] w-[34px] pointer-events-none z-10 origin-center scale-[1.15]">
+                                                    <div className="absolute flex h-[34px] items-center justify-center -left-[10px] -top-[22px] w-[34px] pointer-events-none z-10 origin-center scale-[1.15]">
                                                         <div className="flex-none drop-shadow-[0_0_12px_rgba(255,236,32,0.9)]" style={{ filter: 'drop-shadow(0 0 8px rgba(255,236,32,0.9)) drop-shadow(0 0 14px rgba(255,236,32,0.5))' }}>
                                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                                 <path d="M11.1325 3.49896C11.5177 2.83368 12.4782 2.83368 12.8633 3.49896L22.1289 19.5031C22.5149 20.1698 22.0337 21.0041 21.2635 21.0041H2.73236C1.96202 21.0041 1.48096 20.1698 1.86693 19.5031L11.1325 3.49896Z" fill="#FFEC20" stroke="#0F172A" strokeLinejoin="round" strokeOpacity="0.8" strokeWidth="1.5" />
