@@ -843,6 +843,28 @@ function isPendingStatus(status?: string | null) {
   return PENDING_STATUSES.includes((status || '') as StrikeStatus);
 }
 
+function isFullDayRecord(record: Pick<StrikeRecord, 'display_time' | 'duration_hours' | 'strike_windows'>) {
+  return (
+    record.display_time === '全天 24小时' ||
+    record.duration_hours === '24小时' ||
+    (record.strike_windows || []).some((window) => window.start === '00:00' && window.end === '24:00')
+  );
+}
+
+function shouldReplaceSameStrikeVariant(
+  existing: Pick<StrikeRecord, 'status' | 'display_time' | 'duration_hours' | 'strike_windows'>,
+  nextRecord: StrikeRecord
+) {
+  if (isPendingStatus(existing.status) && !isPendingStatus(nextRecord.status)) return true;
+
+  return (
+    existing.status === 'CONFIRMED' &&
+    nextRecord.status === 'CONFIRMED' &&
+    isFullDayRecord(existing) &&
+    !isFullDayRecord(nextRecord)
+  );
+}
+
 function isVagueProvider(provider?: string | null) {
   const value = (provider || '').trim();
   if (!value) return true;
@@ -907,6 +929,24 @@ export async function upsertToSupabase(records: StrikeRecord[]) {
     if (existing?.id) {
       const { error: updateError } = await supabase.from('strikes').update(record).eq('id', existing.id);
       if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
+      affected += 1;
+      continue;
+    }
+
+    const { data: sameStrikeVariants, error: sameStrikeLookupError } = await supabase
+      .from('strikes')
+      .select('id, status, display_time, duration_hours, strike_windows')
+      .eq('date', record.date)
+      .eq('region', record.region)
+      .eq('category', record.category)
+      .eq('provider', record.provider);
+
+    if (sameStrikeLookupError) throw new Error(`Supabase same-strike lookup error: ${sameStrikeLookupError.message}`);
+
+    const replaceableVariant = (sameStrikeVariants || []).find((variant) => shouldReplaceSameStrikeVariant(variant, record));
+    if (replaceableVariant?.id) {
+      const { error: replaceError } = await supabase.from('strikes').update(record).eq('id', replaceableVariant.id);
+      if (replaceError) throw new Error(`Supabase same-strike replace error: ${replaceError.message}`);
       affected += 1;
       continue;
     }
