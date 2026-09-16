@@ -43,7 +43,7 @@ export interface RawStrikeRow {
   proclamationDate: string;
 }
 
-const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
+const MIT_URL = 'https://scioperi.mit.gov.it/mit2/public/scioperi';
 const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
 const TRANSPORT_SECTORS = ['trasporto pubblico', 'ferroviario', 'aereo'];
 const TRANSPORT_CONTEXT_KEYWORDS = [
@@ -126,20 +126,35 @@ const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
 ];
 
 function normalizeHeader(header: string) {
-  return header.toLowerCase().replace(/\*/g, '').trim();
+  return header.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\*/g, '').replace(/\s+/g, ' ').trim();
 }
 
 export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
-  const html = await fetch(MIT_URL, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MilanStrikeBot/1.0)' },
-  }).then((response) => {
-    if (!response.ok) throw new Error(`MIT fetch failed: ${response.status}`);
-    return response.text();
-  });
+  // Bound every attempt, including reading the body. Do not report a failed
+  // upstream fetch (or an HTML error page with status 200) as an empty calendar.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(MIT_URL, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MilanStrikeBot/1.0)' },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!response.ok) throw new Error(`MIT fetch failed: ${response.status}`);
+      return parseStrikeHtml(await response.text());
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)));
+    }
+  }
+  throw new Error(`MIT sync failed after 3 attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+}
 
+export function parseStrikeHtml(html: string): RawStrikeRow[] {
   const $ = cheerio.load(html);
   const rows: RawStrikeRow[] = [];
   let headerIndex: Record<string, number> = {};
+  let foundStrikeTable = false;
 
   $('table tr').each((_, tr) => {
     const ths = $(tr).find('th');
@@ -149,6 +164,9 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
       headers.forEach((header, index) => {
         if (header) headerIndex[header] = index;
       });
+      if (['inizio', 'fine', 'categoria', 'settore', 'modalita', 'regione', 'provincia'].every((key) => headerIndex[key] !== undefined)) {
+        foundStrikeTable = true;
+      }
       return;
     }
 
@@ -157,7 +175,7 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 
     const texts = cells.map((__, td) => $(td).text().trim()).get();
     const dateCol = texts.findIndex((text) => /^\d{2}\/\d{2}\/\d{4}/.test(text));
-    if (dateCol === -1 && !headerIndex.inizio) return;
+    if (dateCol === -1) return;
 
     const getByHeader = (key: string, fallbackIdx?: number) => {
       const index = headerIndex[key];
@@ -200,6 +218,9 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
     rows.push({ ...raw, region: canonicalizeRegionValue(finalRegion) });
   });
 
+  if (!foundStrikeTable) {
+    throw new Error('MIT strike table missing or changed; refusing to treat this response as no strikes');
+  }
   return rows;
 }
 
@@ -432,7 +453,7 @@ async function translateText(text: string): Promise<string> {
     params.append('text', text);
     params.append('target_lang', 'ZH');
 
-    const response = await fetch(url, { method: 'POST', body: params });
+    const response = await fetch(url, { method: 'POST', body: params, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error(`DeepL translate failed: ${response.status}`);
     const json = await response.json();
     return json?.translations?.[0]?.text || text;

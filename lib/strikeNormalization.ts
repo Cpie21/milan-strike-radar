@@ -221,16 +221,22 @@ export function classifyRegionTag(input: {
   const regionText = (input.regionText || '').trim().toLowerCase();
   const provinceText = (input.provinceText || '').trim().toLowerCase();
   const sectorText = (input.sectorText || '').trim().toLowerCase();
-  const inferred = inferRegionTagFromText(`${input.providerText || ''} ${input.noteText || ''}`);
+  // Excluded locations do not define the strike's scope (e.g. a national
+  // strike whose note excludes FS Security in Sicily).
+  const scopeNotes = (input.noteText || '').replace(/\besclus[oaie]\b.*$/i, '');
+  const inferred = inferRegionTagFromText(`${input.providerText || ''} ${scopeNotes}`);
   const hasExplicitNational =
-    NATIONAL_LOCATION_MARKERS.some((marker) => regionText.includes(marker)) ||
-    NATIONAL_LOCATION_MARKERS.some((marker) => provinceText.includes(marker));
+    NATIONAL_LOCATION_MARKERS.some((marker) => regionText === marker) ||
+    (!regionText && NATIONAL_LOCATION_MARKERS.some((marker) => provinceText === marker));
 
   for (const [tag, rules] of Object.entries(TARGET_LOCATION_RULES)) {
     if (rules.provinces.some((province) => provinceText.includes(province))) {
       return tag;
     }
     if (rules.regions.some((region) => regionText.includes(region)) && inferred === tag) {
+      return tag;
+    }
+    if (rules.regions.some((region) => regionText.includes(region)) && provinceText === 'tutte') {
       return tag;
     }
     if (

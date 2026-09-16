@@ -6,6 +6,7 @@ export { fetchAndFilter, pruneExpiredPendingFromSupabase, pruneSupersededPending
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 export async function GET(request: Request): Promise<NextResponse> {
   const authHeader = request.headers.get('authorization');
@@ -33,6 +34,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/');
     revalidatePath('/roma');
     revalidatePath('/torino');
+    revalidatePath('/api/strikes');
+    revalidatePath('/api/calendar');
 
     return NextResponse.json({
       success: true,
