@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:sync": "node --test scripts/test-strike-sync.cjs",
+    "test:database": "node --test scripts/test-strike-database.cjs",
+    "test:enrichment": "node --test scripts/test-strike-enrichment.cjs",
+    "test:presentation": "node --test scripts/test-strike-presentation.cjs",
+    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
@@ -14,20 +19,22 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.35.0",
     "gsap": "^3.14.2",
-    "next": "16.1.6",
-    "posthog-js": "^1.359.1",
+    "next": "16.3.8",
+    "posthog-js": "1.435.8",
     "posthog-node": "^5.28.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "unpdf": "1.8.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5"

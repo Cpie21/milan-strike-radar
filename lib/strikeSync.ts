@@ -1,13 +1,16 @@
+import { createHash } from 'node:crypto';
+import { parseStrikeTiming, scopeTiming } from './strikeTiming';
 import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import {
   canonicalizeRegionValue,
-  classifyRegionTag,
-  inferRegionTagFromText,
+  classifyRegionTags,
   normalizeAirportAffectedLines,
   normalizeProviderList,
 } from './strikeNormalization';
+import { makeScopeEvidence, extractLineScope } from './strikeScope';
 import { getGuaranteeWindows } from './guaranteeWindows';
+import type { TimingEvidence } from './strikeEvidence';
 
 export type StrikeStatus = 'CONFIRMED' | 'CANCELLED' | 'REQUIRES_DETAIL' | 'UNCERTAIN';
 
@@ -28,10 +31,16 @@ export interface StrikeRecord {
   affected_lines: string[];
   region: string;
   data_source?: string;
+  source_key?: string;
+  source_url?: string;
+  raw_payload?: RawStrikeRow;
+  last_seen_at?: string;
+  timing_evidence?: TimingEvidence | null;
 }
 
 export interface RawStrikeRow {
   date: string;
+  endDate: string;
   provider: string;
   region: string;
   sector: string;
@@ -40,11 +49,69 @@ export interface RawStrikeRow {
   note: string;
   rilevanza: string;
   proclamationDate: string;
+  unions?: string;
+  sourceKey?: string;
+  sourceUrl?: string;
+  sourceStatus?: string;
+  rawRegion?: string;
 }
 
-const MIT_URL = 'http://scioperi.mit.gov.it/mit2/public/scioperi';
-const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
+const MIT_URL = 'https://scioperi.mit.gov.it/mit2/public/scioperi';
 const TRANSPORT_SECTORS = ['trasporto pubblico', 'ferroviario', 'aereo'];
+const TRANSPORT_CONTEXT_KEYWORDS = [
+  'ferroviario',
+  'ferrovie',
+  'settore ferroviario',
+  'ferroviario:',
+  'trasporto pubblico locale',
+  'settore aereo',
+  'trasporto aereo',
+  'aeroport',
+  'enav',
+];
+const PASSENGER_RAIL_IMPACT_KEYWORDS = [
+  'trenord',
+  'trenitalia',
+  'italo',
+  'ntv',
+  'rfi',
+  'rete ferroviaria italiana',
+  'trasporto viaggiatori',
+  'trasporto passeggeri',
+  'servizio passeggeri',
+  'gruppo ferrovie dello stato',
+  'personale di macchina',
+  'personale mobile',
+  'personale di bordo',
+  'equipaggi',
+  'macchinisti',
+  'capotreno',
+  'alta velocita',
+  'alta velocità',
+];
+const FREIGHT_ONLY_RAIL_KEYWORDS = [
+  'mercitalia',
+  'shunting',
+  'terminal',
+  'intermodal',
+  'interporto',
+  'logistica',
+  'logistics',
+  'cargo',
+  'merci',
+  'scalo merci',
+  'smistamento',
+  'raccordi ferroviari',
+  'raccordo ferroviario',
+  'manovra ferroviaria',
+];
+const PENDING_STATUSES: StrikeStatus[] = ['REQUIRES_DETAIL', 'UNCERTAIN'];
+const CATEGORY_PROVIDER_FALLBACKS: Record<StrikeRecord['category'], string> = {
+  TRAIN: '铁路相关人员',
+  SUBWAY: '公共交通人员',
+  BUS: '公共交通人员',
+  AIRPORT: '机场相关人员',
+};
 const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
   {
     date: '2026-03-18',
@@ -65,20 +132,50 @@ const VERIFIED_SUPPLEMENTS: StrikeRecord[] = [
 ];
 
 function normalizeHeader(header: string) {
-  return header.toLowerCase().replace(/\*/g, '').trim();
+  return header.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchOfficial(url: string, options: RequestInit = {}) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(url, { ...options, cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+      if (!response.ok) throw new Error(`MIT returned HTTP ${response.status}`);
+      return parseStrikeHtml(await response.text());
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
-  const html = await fetch(MIT_URL, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MilanStrikeBot/1.0)' },
-  }).then((response) => {
-    if (!response.ok) throw new Error(`MIT fetch failed: ${response.status}`);
-    return response.text();
-  });
+  return fetchOfficial(MIT_URL);
+}
 
+// The upcoming list drops yesterday's records and withdrawn future events.
+// Search all states so both late changes and upcoming cancellations are seen.
+export async function fetchRecentRows(todayIso = getRomeTodayIso()): Promise<RawStrikeRow[]> {
+  const { start, end } = syncDateWindow(todayIso);
+  const italianDate = (iso: string) => iso.split('-').reverse().join('/');
+  const body = new URLSearchParams({ dataInizio: italianDate(start), dataFine: italianDate(end), settore: '0', rilevanza: '0', stato: '0', categoria: '', sindacato: '', submit: 'Ricerca' });
+  return fetchOfficial(`${MIT_URL}/ricerca`, { method: 'POST', body });
+}
+
+export function syncDateWindow(todayIso = getRomeTodayIso()) {
+  const start = new Date(`${todayIso}T12:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - 7);
+  const end = new Date(`${todayIso}T12:00:00Z`);
+  end.setUTCDate(end.getUTCDate() + 90);
+  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+}
+
+export function parseStrikeHtml(html: string): RawStrikeRow[] {
   const $ = cheerio.load(html);
   const rows: RawStrikeRow[] = [];
   let headerIndex: Record<string, number> = {};
+  let foundStrikeTable = false;
 
   $('table tr').each((_, tr) => {
     const ths = $(tr).find('th');
@@ -88,6 +185,9 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
       headers.forEach((header, index) => {
         if (header) headerIndex[header] = index;
       });
+      if (['inizio', 'fine', 'categoria', 'settore', 'modalita', 'regione', 'provincia'].every((key) => headerIndex[key] !== undefined)) {
+        foundStrikeTable = true;
+      }
       return;
     }
 
@@ -96,7 +196,7 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 
     const texts = cells.map((__, td) => $(td).text().trim()).get();
     const dateCol = texts.findIndex((text) => /^\d{2}\/\d{2}\/\d{4}/.test(text));
-    if (dateCol === -1 && !headerIndex.inizio) return;
+    if (dateCol === -1) return;
 
     const getByHeader = (key: string, fallbackIdx?: number) => {
       const index = headerIndex[key];
@@ -107,45 +207,64 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 
     const raw: RawStrikeRow = {
       date: getByHeader('inizio', dateCol).trim(),
+      endDate: getByHeader('fine', dateCol + 1).trim(),
       provider: getByHeader('categoria', dateCol + 4).trim(),
       sector: getByHeader('settore', dateCol + 3).trim(),
       modalita: getByHeader('modalita', dateCol + 5).trim(),
       rilevanza: getByHeader('rilevanza', dateCol + 6).trim(),
       note: getByHeader('note', dateCol + 7).trim(),
       proclamationDate: getByHeader('data proclamazione').trim(),
+      unions: getByHeader('sindacati', dateCol + 2).trim(),
+      sourceStatus: getByHeader('stato').trim(),
+      sourceUrl: MIT_URL,
       region: getByHeader('regione', dateCol + 9).trim(),
+      rawRegion: getByHeader('regione', dateCol + 9).trim(),
       province: getByHeader('provincia', dateCol + 10).trim(),
     };
 
-    const regionTag = classifyRegionTag({
-      regionText: raw.region,
-      provinceText: raw.province,
-      sectorText: raw.sector,
-      providerText: raw.provider,
-      noteText: `${raw.note} ${raw.rilevanza}`,
+    if (!isTransportRelevantRow(raw)) return;
+    const regionTags = classifyRegionTags({
+      regionText: raw.region, provinceText: raw.province, sectorText: raw.sector,
+      providerText: raw.provider, noteText: raw.note, relevanceText:raw.rilevanza,
     });
-
-    let finalRegion = regionTag;
-    if (!finalRegion && NATIONAL_KEYWORDS.some((keyword) => raw.rilevanza.toLowerCase().includes(keyword))) {
-      const fallback = inferRegionTagFromText(`${raw.provider} ${raw.note}`);
-      finalRegion = fallback && fallback !== 'OTHER' ? fallback : '';
-    }
-
-    if (!finalRegion || finalRegion === 'OTHER') return;
-
-    const sectorLow = raw.sector.toLowerCase();
-    if (!TRANSPORT_SECTORS.some((sector) => sectorLow.includes(sector))) return;
-
-    rows.push({ ...raw, region: canonicalizeRegionValue(finalRegion) });
+    // Identity intentionally excludes timing, so an official timing revision
+    // replaces its previous version rather than creating a second full-day row.
+    raw.sourceKey = createHash('sha256').update(JSON.stringify([
+      raw.date, raw.provider, raw.unions, raw.proclamationDate, raw.region, raw.province,
+    ])).digest('hex');
+    regionTags.forEach(region => rows.push({ ...raw, region: canonicalizeRegionValue(region) }));
   });
 
+  if (!foundStrikeTable) {
+    throw new Error('MIT strike table missing or changed; refusing to treat this response as no strikes');
+  }
   return rows;
 }
 
-function parseItalianDate(dateStr: string) {
-  const [dd, mm, yyyy] = dateStr.split('/');
-  if (!dd || !mm || !yyyy) return dateStr;
-  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+function isTransportRelevantRow(row: RawStrikeRow) {
+  const sectorLow = row.sector.toLowerCase();
+  const combined = `${row.sector} ${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+
+
+  if (isCommuterIrrelevantFreightRailRow(row)) return false;
+  if (TRANSPORT_SECTORS.some((sector) => sectorLow.includes(sector))) return true;
+
+  return TRANSPORT_CONTEXT_KEYWORDS.some((keyword) => combined.includes(keyword));
+}
+
+function isCommuterIrrelevantFreightRailRow(row: RawStrikeRow) {
+  const combined = `${row.sector} ${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+  const railContext =
+    row.sector.toLowerCase().includes('ferroviario') ||
+    combined.includes('ferroviario') ||
+    combined.includes('ferrov');
+
+  if (!railContext || /generale|plurisettorial/i.test(row.sector+' '+row.provider)) return false;
+
+  const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
+  if (hasPassengerImpactSignal) return false;
+
+  return FREIGHT_ONLY_RAIL_KEYWORDS.some((keyword) => combined.includes(keyword));
 }
 
 function parseItalianDateToDate(dateStr: string) {
@@ -153,7 +272,100 @@ function parseItalianDateToDate(dateStr: string) {
   if (!dd || !mm || !yyyy) return null;
 
   const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) || date.getFullYear() !== Number(yyyy) || date.getMonth() !== Number(mm) - 1 || date.getDate() !== Number(dd) ? null : date;
+}
+
+function getDateSpan(startDateStr: string, endDateStr?: string) {
+  const start = parseItalianDateToDate(startDateStr);
+  const end = parseItalianDateToDate(endDateStr || startDateStr);
+  if (!start || !end || end < start) throw new Error(`Invalid official date span: ${startDateStr} - ${endDateStr}`);
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end && dates.length < 32) {
+    const yyyy = String(cursor.getFullYear());
+    const mm = String(cursor.getMonth() + 1).padStart(2, '0');
+    const dd = String(cursor.getDate()).padStart(2, '0');
+    dates.push(`${yyyy}-${mm}-${dd}`);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  if (cursor <= end) throw new Error('Official date span exceeds 32 days; refusing to publish a truncated span');
+
+  return dates;
+}
+
+function timeToMinutes(time: string) {
+  const [hours, minutes] = time.split(':').map(Number);
+  if (hours === 24) return 24 * 60;
+  return hours * 60 + minutes;
+}
+
+function buildDisplayFromWindows(windows: StrikeWindow[]) {
+  return windows.length === 1 && windows[0].start === '00:00' && windows[0].end === '24:00'
+    ? '全天 24小时'
+    : windows.map((window) => `${window.start} - ${window.end}`).join(', ');
+}
+
+function buildDurationFromWindows(windows: StrikeWindow[], fallback: string) {
+  if (windows.length === 1 && windows[0].start === '00:00' && windows[0].end === '24:00') return '24小时';
+
+  const totalMinutes = windows.reduce((sum, window) => {
+    const start = timeToMinutes(window.start);
+    let end = timeToMinutes(window.end);
+    if (end <= start) end += 24 * 60;
+    return sum + Math.max(0, end - start);
+  }, 0);
+
+  if (!totalMinutes) return fallback;
+  const hours = totalMinutes / 60;
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}小时`;
+}
+
+function splitTimeInfoForDate(
+  baseTimeInfo: { hours: string; display: string; windows: StrikeWindow[]; dateSpecific?: boolean },
+  dateSpan: string[],
+  dateIndex: number
+) {
+  if (dateSpan.length <= 1 || baseTimeInfo.dateSpecific) {
+    return {
+      hours: baseTimeInfo.hours,
+      display: baseTimeInfo.display,
+      windows: baseTimeInfo.windows.map((window) => ({ ...window })),
+    };
+  }
+
+  const isFullDay =
+    baseTimeInfo.windows.some((window) => window.start === '00:00' && window.end === '24:00');
+
+  if (isFullDay) {
+    const windows = [{ start: '00:00', end: '24:00' }];
+    return {
+      hours: '24小时',
+      display: '全天 24小时',
+      windows,
+    };
+  }
+
+  const windows = baseTimeInfo.windows.flatMap((window) => {
+    const start = timeToMinutes(window.start);
+    const end = timeToMinutes(window.end);
+    const isOvernight = end <= start;
+
+    if (!isOvernight) {
+      return dateIndex === 0 ? [{ ...window }] : [];
+    }
+
+    if (dateIndex === 0) return [{ start: window.start, end: '24:00' }];
+    if (dateIndex === 1) return [{ start: '00:00', end: window.end }];
+    return [];
+  });
+
+  const resolvedWindows = windows;
+  return {
+    hours: buildDurationFromWindows(resolvedWindows, baseTimeInfo.hours),
+    display: resolvedWindows.length ? buildDisplayFromWindows(resolvedWindows) : '具体时段待公布',
+    windows: resolvedWindows,
+  };
 }
 
 function getLeadDaysBeforeStrike(dateIso: string, proclamationDate: string) {
@@ -168,13 +380,42 @@ function getLeadDaysBeforeStrike(dateIso: string, proclamationDate: string) {
   return Math.round(diffMs / (24 * 60 * 60 * 1000));
 }
 
+function getCategoryModalitaText(modalita: string, category?: StrikeRecord['category']) {
+  return scopeTiming(modalita, category);
+}
+
+function hasConcreteStrikeTiming(row: RawStrikeRow, category: StrikeRecord['category'], dateIso: string) {
+  const modalita = getCategoryModalitaText(row.modalita, category).toLowerCase();
+  const combined = `${modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+
+  return (
+    /\b\d+\s*ore\b/i.test(combined) ||
+    /dalle\s+\d{1,2}[\.:]\d{2}/i.test(combined) ||
+    /\d{1,2}[\.:]\d{2}\s*(?:del\s+\d{1,2}\/\d{1,2})?\s*[-–]\s*\d{1,2}[\.:]\d{2}/i.test(combined) ||
+    combined.includes('24 ore') ||
+    combined.includes('intero turno') ||
+    parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso).dateSpecific === true
+  );
+}
+
 function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['category'], dateIso: string) {
   if (category !== 'TRAIN') return false;
   if (row.region !== 'NATIONAL') return false;
   if (!row.proclamationDate) return false;
 
   const leadDays = getLeadDaysBeforeStrike(dateIso, row.proclamationDate);
-  return leadDays !== null && leadDays >= 14;
+  if (leadDays === null || leadDays < 14) return false;
+
+  const combined = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
+  const hasConcreteTime = hasConcreteStrikeTiming(row, category, dateIso);
+  const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
+  const hasRailScopeSignal = hasPassengerImpactSignal || combined.includes('ferroviario') || combined.includes('ferrovie');
+
+  // An explicit railway window in the official table is evidence even after
+  // the date has passed; archive corrections must not become pending again.
+  if (hasConcreteTime && hasRailScopeSignal) return false;
+
+  return !hasConcreteTime || !hasPassengerImpactSignal;
 }
 
 async function translateText(text: string): Promise<string> {
@@ -189,7 +430,7 @@ async function translateText(text: string): Promise<string> {
     params.append('text', text);
     params.append('target_lang', 'ZH');
 
-    const response = await fetch(url, { method: 'POST', body: params });
+    const response = await fetch(url, { method: 'POST', body: params, signal: AbortSignal.timeout(10_000) });
     if (!response.ok) throw new Error(`DeepL translate failed: ${response.status}`);
     const json = await response.json();
     return json?.translations?.[0]?.text || text;
@@ -199,7 +440,7 @@ async function translateText(text: string): Promise<string> {
   }
 }
 
-async function normalizeProvider(raw: string) {
+async function normalizeProvider(raw: string, translator = translateText) {
   let source = raw.toUpperCase();
   source = source.replace(/SOC\. /g, '');
   source = source.replace(/SOC\./g, '');
@@ -208,161 +449,120 @@ async function normalizeProvider(raw: string) {
   source = source.replace(/S\.C\.A\.R\.L\./g, '');
   source = source.trim();
 
-  const translated = await translateText(source);
-  return normalizeProviderList(source, translated).join(' / ') || '相关人员';
+  const translated = await translator(source);
+  return normalizeProviderList(source, translated).join(' / ');
 }
 
-function resolveCategories(provider: string, sector: string): StrikeRecord['category'][] {
+function getProviderFallback(category: StrikeRecord['category']) {
+  return CATEGORY_PROVIDER_FALLBACKS[category];
+}
+
+function resolveCategories(provider: string, sector: string, context = ''): StrikeRecord['category'][] {
   const providerLow = provider.toLowerCase();
   const sectorLow = sector.toLowerCase();
-  const isMilanAtm = /\batm\b/.test(providerLow) && providerLow.includes('milano');
+  const combinedLow = `${provider} ${sector} ${context}`.toLowerCase();
+  const localTransit = /trasporto pubblico|autoferro|\btpl\b/.test(sectorLow);
+  const metroNetwork = /\batm\b.*milano|\batac\b|\bgtt\b|\banm\b|\bamt\b.*genova|\bamts\b|circumetnea|brescia.*(?:mobilita|trasporti)/.test(providerLow);
+  const specificMode = /metropolitan|\bmetro\b|autobus|\bbus\b|superficie|\btram\b/.test(providerLow);
 
-  // ATM in Milan is the local transit operator, so broad TPL strikes affect both metro and bus.
-  if (isMilanAtm && sectorLow.includes('trasporto pubblico')) return ['SUBWAY', 'BUS'];
-  if (/\batm\b/.test(providerLow)) return ['SUBWAY'];
-  if (providerLow.includes('trenord') || providerLow.includes('trenitalia') || providerLow.includes('italo') || sectorLow.includes('ferrov')) return ['TRAIN'];
-  if (providerLow.includes('sea') || providerLow.includes('enav') || providerLow.includes('aeroport') || sectorLow.includes('aereo')) return ['AIRPORT'];
-  return ['BUS'];
-}
-
-function extractAffectedLines(note: string) {
-  const keywords = ['Linate', 'Malpensa', 'Bergamo', 'M1', 'M2', 'M3', 'M4', 'M5', 'Trenord', 'Trenitalia'];
-  const found = keywords.filter((keyword) => note.toLowerCase().includes(keyword.toLowerCase()));
-  return found.length > 0 ? found : ['全部线路'];
-}
-
-function parseTimeWindows(durationRaw: string, modalita: string, note: string) {
-  const combined = `${durationRaw} ${modalita} ${note}`.toUpperCase();
-  let hours = '部分时段';
-  const windows: StrikeWindow[] = [];
-
-  if (combined.includes('24 ORE') || combined.includes('INTERO TURNO')) {
-    hours = '24小时';
-    windows.push({ start: '00:00', end: '24:00' });
-  } else {
-    const hourMatch = combined.match(/(\d+)\s*ORE/);
-    if (hourMatch) hours = `${hourMatch[1]}小时`;
-
-    const timeRegex = /DALLE\s+(\d{1,2})[\.:](\d{2})\s+ALLE\s+(\d{1,2})[\.:](\d{2})/g;
-    const endOfServiceRegex = /DALLE\s+(\d{1,2})[\.:](\d{2})\s+A\s+FINE\s+SERVIZIO/g;
-    let match: RegExpExecArray | null;
-    while ((match = timeRegex.exec(combined)) !== null) {
-      windows.push({
-        start: `${match[1].padStart(2, '0')}:${match[2]}`,
-        end: `${match[3].padStart(2, '0')}:${match[4]}`,
-      });
-    }
-    while ((match = endOfServiceRegex.exec(combined)) !== null) {
-      windows.push({
-        start: `${match[1].padStart(2, '0')}:${match[2]}`,
-        end: '24:00',
-      });
-    }
+  const categories = new Set<StrikeRecord['category']>();
+  if (
+    providerLow.includes('trenord') ||
+    providerLow.includes('trenitalia') ||
+    providerLow.includes('italo') ||
+    providerLow.includes('rfi') ||
+    combinedLow.includes('ferrov')
+  ) {
+    categories.add('TRAIN');
+  }
+  if (
+    /\bsea\b/.test(providerLow) ||
+    providerLow.includes('enav') ||
+    combinedLow.includes('aereo') ||
+    combinedLow.includes('aeroport') ||
+    combinedLow.includes('easyjet') ||
+    combinedLow.includes('adr security')
+  ) {
+    categories.add('AIRPORT');
+  }
+  if (combinedLow.includes('trasporto pubblico locale') || combinedLow.includes('autoferro') || /\btpl\b/.test(combinedLow)) {
+    categories.add('BUS');
   }
 
-  if (windows.length === 0) windows.push({ start: '00:00', end: '24:00' });
-  windows.sort((a, b) => a.start.localeCompare(b.start));
-
-  return {
-    hours,
-    windows,
-    display:
-      windows.length === 1 && windows[0].start === '00:00' && windows[0].end === '24:00'
-        ? '全天 24小时'
-        : windows.map((window) => `${window.start} - ${window.end}`).join(', '),
-  };
+  if (!categories.size && sectorLow.includes('trasporto pubblico')) categories.add('BUS');
+  if (/metropolitan|\bmetro\b/.test(providerLow)) categories.add('SUBWAY');
+  if (localTransit && metroNetwork && !specificMode) { categories.add('BUS'); categories.add('SUBWAY'); }
+  // A named metro division is not a blanket bus announcement. Messina's ATM
+  // operates buses/trams, so its acronym alone must never create a metro card.
+  if (localTransit && /metropolitan|\bmetro\b/.test(providerLow) && !/autobus|\bbus\b|superficie|\btram\b/.test(providerLow)) categories.delete('BUS');
+  // An excluded mode does not exclude the other transport modes of a general strike.
+  const excluded = combinedLow.match(/esclus[oaie]\s+(?:il\s+)?settor[ei]\s+([^.;]+)/)?.[1] || '';
+  if (/aereo/.test(excluded)) categories.delete('AIRPORT');
+  if (/ferroviario/.test(excluded)) categories.delete('TRAIN');
+  if (/trasporto pubblico|tpl/.test(excluded)) { categories.delete('BUS'); categories.delete('SUBWAY'); }
+  return Array.from(categories);
 }
 
-async function fetchSecondarySource(category: string, provider: string): Promise<{ windows?: StrikeWindow[]; lines?: string[] } | null> {
-  try {
-    if ((category === 'SUBWAY' || category === 'BUS') && provider.toUpperCase().includes('ATM')) {
-      return null;
-    }
-    if (category === 'AIRPORT') {
-      return null;
-    }
-    return null;
-  } catch (error) {
-    console.error('Secondary fetch failed:', error);
-    return null;
-  }
+export function parseTimeWindows(durationRaw: string, note: string, _relevance: string, category?: StrikeRecord['category'], dateIso?: string) {
+  // Notes are not mixed into durations: they can contain exclusions, guaranteed
+  // service windows and times belonging to a different mode of transport.
+  return parseStrikeTiming(durationRaw, category, dateIso);
+}
+
+function getCategoryDateSpan(row: RawStrikeRow, category: StrikeRecord['category'], fallbackDateSpan: string[]) {
+  const timing = parseStrikeTiming(row.modalita, category, fallbackDateSpan[0]);
+  return timing.explicitDates.length ? timing.explicitDates : fallbackDateSpan;
 }
 
 export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
-  const rawRecordGroups = await Promise.all(rawRows.map(async (row) => {
-    const dateIso = parseItalianDate(row.date);
-    const providerNorm = await normalizeProvider(row.provider);
-    const categories = resolveCategories(row.provider, row.sector);
+  // The status-search snapshot follows the upcoming snapshot and is authoritative
+  // for revisions. Deduplicate before translations and transformations.
+  rawRows = [...new Map(rawRows.map(row => [`${row.sourceKey || JSON.stringify(row)}|${row.region}`, row])).values()];
+  // Memoize translation work per run and bound concurrency as city coverage grows.
+  const translations = new Map<string, Promise<string>>();
+  const translate = (text: string) => {
+    if (!translations.has(text)) translations.set(text, translateText(text));
+    return translations.get(text)!;
+  };
+  const rawRecordGroups: StrikeRecord[][] = [];
+  for (let offset = 0; offset < rawRows.length; offset += 6) {
+  const batch = rawRows.slice(offset, offset + 6);
+  rawRecordGroups.push(...await Promise.all(batch.map(async (row) => {
+    const baseProviderNorm = row.region === 'MESSINA' && /\bATM\b/i.test(row.provider) ? 'ATM Messina人员' : await normalizeProvider(row.provider, translate);
+    const categories = resolveCategories(row.provider, row.sector, `${row.modalita} ${row.note} ${row.rilevanza}`);
+    const dateSpan = getDateSpan(row.date, row.endDate);
 
     let status: StrikeStatus = 'CONFIRMED';
     const combinedRaw = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
-    if (combinedRaw.includes('revocat') || combinedRaw.includes('differit')) {
+    if (`${combinedRaw} ${row.sourceStatus || ''}`.toLowerCase().match(/revocat|differit|sospes/)) {
       status = 'CANCELLED';
     } else if (combinedRaw.includes('da definire')) {
       status = 'REQUIRES_DETAIL';
     }
 
-    const baseTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza);
+    const recordInputs = categories.flatMap((category) => {
+      const categoryDateSpan = getCategoryDateSpan(row, category, dateSpan);
+      return categoryDateSpan.map((dateIso, dateIndex) => ({ dateIso, dateIndex, category, dateSpan: categoryDateSpan }));
+    });
 
-    return Promise.all(categories.map(async (category) => {
+    return Promise.all(recordInputs.map(async ({ dateIso, dateIndex, category, dateSpan }) => {
+      const providerNorm = baseProviderNorm || getProviderFallback(category);
       let resolvedStatus: StrikeStatus = status;
       if (resolvedStatus === 'CONFIRMED' && shouldTreatAsPending(row, category, dateIso)) {
         resolvedStatus = 'REQUIRES_DETAIL';
       }
-      const timeInfo = {
-        hours: baseTimeInfo.hours,
-        display: baseTimeInfo.display,
-        windows: baseTimeInfo.windows.map((window) => ({ ...window })),
-      };
-      const guaranteeWindows = getGuaranteeWindows({
-        category,
-        dateIso,
-        region: row.region,
-        isFullDay:
-          timeInfo.hours === '24小时' ||
-          (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00'),
-      });
+      const parsedTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso);
+      const timeInfo = splitTimeInfoForDate(parsedTimeInfo, dateSpan, dateIndex);
+      // Only aviation's protected flight bands are a documented general rule.
+      // A city is not an operator, so never donate ATM/ATAC/GTT guarantees.
+      const guaranteeWindows = category === 'AIRPORT' && !/cargo/i.test(row.provider) && timeInfo.windows.length ? getGuaranteeWindows({category,dateIso,region:row.region,isFullDay:/\b24\s*ORE\b/i.test(row.modalita) && timeInfo.windows.some(w=>w.start<='07:00' && w.end>='21:00')}) : [];
+      if (!timeInfo.windows.length && resolvedStatus === 'CONFIRMED') resolvedStatus = 'UNCERTAIN';
+      const fields=makeScopeEvidence(row,row.region,category,timeInfo.windows,guaranteeWindows);
+      const lineScope=extractLineScope(row.note);
+      const lines=category==='AIRPORT' ? fields.affectedAirports.value : lineScope==='ALL_LINES' ? ['全部线路'] : lineScope==='UNKNOWN' ? [] : lineScope;
 
-      let lines = category === 'AIRPORT'
-        ? normalizeAirportAffectedLines([], { contextText: `${row.provider} ${row.note}`, regionTag: row.region })
-        : extractAffectedLines(row.note);
-
-      const excludeNotes = ['nazionale', 'provinciale', 'regionale', 'territoriale'];
-      if (lines.length === 1 && lines[0] === '全部线路' && row.note.trim().length > 3 && !excludeNotes.includes(row.note.toLowerCase().trim())) {
-        const translatedNote = await translateText(row.note);
-        if (translatedNote && translatedNote !== row.note) lines = [translatedNote];
-      }
-
-      if (category === 'AIRPORT') {
-        lines = normalizeAirportAffectedLines(lines, {
-          contextText: `${row.provider} ${row.note}`,
-          regionTag: row.region,
-        });
-      }
-
-      let dataSource = 'MIT_PRIMARY';
-      if (resolvedStatus === 'REQUIRES_DETAIL' || (lines.length === 1 && lines[0] === '全部线路')) {
-        const secondaryResult = await fetchSecondarySource(category, providerNorm);
-        if (secondaryResult) {
-          if (secondaryResult.windows?.length) {
-            timeInfo.windows = secondaryResult.windows;
-            timeInfo.display = secondaryResult.windows.map((window) => `${window.start} - ${window.end}`).join(', ');
-            timeInfo.hours = '精确时段';
-          }
-          if (secondaryResult.lines?.length) {
-            lines = category === 'AIRPORT'
-              ? normalizeAirportAffectedLines(secondaryResult.lines, {
-                  contextText: `${row.provider} ${row.note}`,
-                  regionTag: row.region,
-                })
-              : secondaryResult.lines;
-          }
-          resolvedStatus = 'CONFIRMED';
-          dataSource = 'SECONDARY_LIVE';
-        } else if (resolvedStatus === 'REQUIRES_DETAIL') {
-          resolvedStatus = 'UNCERTAIN';
-        }
-      }
+      const dataSource = 'MIT_PRIMARY';
+      if (resolvedStatus === 'REQUIRES_DETAIL') resolvedStatus = 'UNCERTAIN';
 
       return {
         date: dateIso,
@@ -375,16 +575,20 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
         strike_windows: timeInfo.windows,
         guarantee_windows: guaranteeWindows,
         affected_lines: lines,
+        timing_evidence:{windows:timeInfo.windows.map(w=>({...w,end_kind:'clock' as const})),confidence:'official',sources:[],unions:row.unions || '',conflicts:[],fields},
         data_source: dataSource,
+        ...(row.sourceKey ? { source_key: row.sourceKey, source_url: row.sourceUrl || MIT_URL, raw_payload: row, last_seen_at: new Date().toISOString() } : {}),
       } satisfies StrikeRecord;
     }));
-  }));
+  })));
+  }
   const rawRecords = rawRecordGroups.flat();
 
   const recordsMap = new Map<string, StrikeRecord>();
-  [...rawRecords, ...VERIFIED_SUPPLEMENTS].forEach((record) => {
-    const key = `${record.date}|${record.region}|${record.category}|${record.provider}|${record.display_time}`;
+  [...rawRecords, ...VERIFIED_SUPPLEMENTS.filter(record => record.date >= getRomeTodayIso())].forEach((record) => {
+    const key = `${record.source_key || record.provider}|${record.date}|${record.region}|${record.category}`;
     const existing = recordsMap.get(key);
+    if (record.source_key) { recordsMap.set(key, record); return; }
     if (!existing) {
       recordsMap.set(key, record);
       return;
@@ -406,7 +610,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
 
     recordsMap.set(key, {
       ...existing,
-      status: existing.status === 'CONFIRMED' || record.status === 'CONFIRMED' ? 'CONFIRMED' : record.status,
+      status: existing.status === 'CANCELLED' || record.status === 'CANCELLED' ? 'CANCELLED' : record.status,
       duration_hours: isFullDay ? '24小时' : existing.duration_hours || record.duration_hours,
       display_time: isFullDay
         ? '全天 24小时'
@@ -462,21 +666,114 @@ function requiresRegionalTrainImpactVerification(record: Pick<StrikeRecord, 'cat
 
 function shouldPruneExpiredPendingRecord(record: Pick<StrikeRecord, 'date' | 'category' | 'region' | 'status' | 'data_source'>, todayIso = getRomeTodayIso()) {
   if (!requiresRegionalTrainImpactVerification(record)) return false;
-  return record.date <= todayIso;
+  return record.date < todayIso;
 }
 
-export async function upsertToSupabase(records: StrikeRecord[]) {
+function isPendingStatus(status?: string | null) {
+  return PENDING_STATUSES.includes((status || '') as StrikeStatus);
+}
+
+function isFullDayRecord(record: Pick<StrikeRecord, 'display_time' | 'duration_hours' | 'strike_windows'>) {
+  return (
+    record.display_time === '全天 24小时' ||
+    record.duration_hours === '24小时' ||
+    (record.strike_windows || []).some((window) => window.start === '00:00' && window.end === '24:00')
+  );
+}
+
+function shouldReplaceSameStrikeVariant(
+  existing: Pick<StrikeRecord, 'status' | 'display_time' | 'duration_hours' | 'strike_windows'>,
+  nextRecord: StrikeRecord
+) {
+  if (isPendingStatus(existing.status) && !isPendingStatus(nextRecord.status)) return true;
+
+  return (
+    existing.status === 'CONFIRMED' &&
+    nextRecord.status === 'CONFIRMED' &&
+    isFullDayRecord(existing) &&
+    !isFullDayRecord(nextRecord)
+  );
+}
+
+function isVagueProvider(provider?: string | null) {
+  const value = (provider || '').trim();
+  if (!value) return true;
+  return value === '相关人员' || value === '铁路相关人员' || value === '公共交通人员' || value === '机场相关人员';
+}
+
+function providerCanSupersedePending(pendingProvider: string | null | undefined, nextProvider: string) {
+  if (isVagueProvider(pendingProvider) || isVagueProvider(nextProvider)) return true;
+
+  const pending = normalizeProviderList(pendingProvider || '').join(' / ').toLowerCase();
+  const next = normalizeProviderList(nextProvider || '').join(' / ').toLowerCase();
+  if (!pending || !next) return true;
+  if (pending === next || pending.includes(next) || next.includes(pending)) return true;
+
+  const pendingParts = pending.split(/\s*\/\s*/).filter(Boolean);
+  const nextParts = next.split(/\s*\/\s*/).filter(Boolean);
+  return pendingParts.some((part) => nextParts.some((nextPart) => part === nextPart || part.includes(nextPart) || nextPart.includes(part)));
+}
+
+function regionsOverlap(candidateRegion: string | null | undefined, nextRegion: string) {
+  const candidate = canonicalizeRegionValue(candidateRegion || '');
+  const next = canonicalizeRegionValue(nextRegion || '');
+  return candidate === next || candidate === 'NATIONAL' || next === 'NATIONAL';
+}
+
+function canSupersedePendingRecord(
+  candidate: Pick<StrikeRecord, 'date' | 'category' | 'region' | 'provider' | 'status'>,
+  nextRecord: StrikeRecord
+) {
+  if (!isPendingStatus(candidate.status)) return false;
+  if (nextRecord.status === 'REQUIRES_DETAIL' || nextRecord.status === 'UNCERTAIN') return false;
+  if (candidate.date !== nextRecord.date) return false;
+  if (candidate.category !== nextRecord.category) return false;
+  if (!regionsOverlap(candidate.region, nextRecord.region)) return false;
+  return providerCanSupersedePending(candidate.provider, nextRecord.provider);
+}
+
+function createDatabaseClient(url: string, key: string) {
+  return createClient(url, key);
+}
+
+export async function upsertToSupabase(records: StrikeRecord[], database?: ReturnType<typeof createDatabaseClient>, warnings: string[] = []) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!database && (!supabaseUrl || !supabaseKey)) {
     throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = database || createDatabaseClient(supabaseUrl!, supabaseKey!);
   let affected = 0;
-
-  for (const record of records) {
+  const sourced = records.filter(record => record.source_key);
+  const adoptedIds = new Set<string>();
+  if (sourced.length) {
+    const dates = [...new Set(sourced.map(record => record.date))];
+    const { data: legacy, error } = await supabase.from('strikes').select('id,date,region,category,provider,source_key').in('date', dates).is('source_key', null);
+    if (error) throw new Error(`Source schema unavailable: ${error.message}; apply the strike-source migration first`);
+    const rows = [];
+    for (const record of sourced) {
+      const candidates = (legacy || []).filter(row => row.date === record.date && row.region === record.region && row.category === record.category && row.provider === record.provider && !adoptedIds.has(row.id));
+      // A legacy ambiguity must not stop unrelated, authoritative announcements.
+      // Do not guess an identity; write a new sourced row. The successful snapshot
+      // soft-retires unmatched legacy rows and retains them for later review.
+      if (candidates.length > 1) warnings.push(`Ambiguous legacy strike: ${record.date} ${record.region} ${record.category}; retained for review`);
+      const existing = candidates.length === 1 ? candidates[0] : undefined;
+      if (existing) {
+        adoptedIds.add(existing.id);
+        const { error: adoptError } = await supabase.from('strikes').update({ source_key: record.source_key }).eq('id', existing.id).is('source_key', null);
+        if (adoptError) throw new Error(`Legacy adoption failed: ${adoptError.message}`);
+      }
+      rows.push({ ...record, updated_at: new Date().toISOString() });
+    }
+    // A stable source key means corrections to arbitrary times and cancelled
+    // events overwrite the same row. Timing is deliberately not part of identity.
+    const { error: upsertError } = await supabase.from('strikes').upsert(rows, { onConflict: 'source_key,date,region,category', defaultToNull: false });
+    if (upsertError) throw new Error(`Source upsert failed: ${upsertError.message}`);
+    affected += sourced.length;
+  }
+  for (const record of records.filter(record => !record.source_key)) {
     const { data: existing, error: lookupError } = await supabase
       .from('strikes')
       .select('id')
@@ -496,59 +793,93 @@ export async function upsertToSupabase(records: StrikeRecord[]) {
       continue;
     }
 
+    const { data: sameStrikeVariants, error: sameStrikeLookupError } = await supabase
+      .from('strikes')
+      .select('id, status, display_time, duration_hours, strike_windows')
+      .eq('date', record.date)
+      .eq('region', record.region)
+      .eq('category', record.category)
+      .eq('provider', record.provider);
+
+    if (sameStrikeLookupError) throw new Error(`Supabase same-strike lookup error: ${sameStrikeLookupError.message}`);
+
+    const replaceableVariant = (sameStrikeVariants || []).find((variant) => shouldReplaceSameStrikeVariant(variant, record));
+    if (replaceableVariant?.id) {
+      const { error: replaceError } = await supabase.from('strikes').update(record).eq('id', replaceableVariant.id);
+      if (replaceError) throw new Error(`Supabase same-strike replace error: ${replaceError.message}`);
+      affected += 1;
+      continue;
+    }
+
+    if (!isPendingStatus(record.status)) {
+      const { data: pendingCandidates, error: pendingLookupError } = await supabase
+        .from('strikes')
+        .select('id, date, category, region, provider, status')
+        .eq('date', record.date)
+        .eq('category', record.category)
+        .in('status', PENDING_STATUSES);
+
+      if (pendingLookupError) throw new Error(`Supabase pending lookup error: ${pendingLookupError.message}`);
+
+      const supersededPending = (pendingCandidates || []).find((candidate) => canSupersedePendingRecord(candidate, record));
+      if (supersededPending?.id) {
+        const { error: updatePendingError } = await supabase.from('strikes').update(record).eq('id', supersededPending.id);
+        if (updatePendingError) throw new Error(`Supabase pending update error: ${updatePendingError.message}`);
+        affected += 1;
+        continue;
+      }
+    }
+
     const { error: insertError } = await supabase.from('strikes').insert(record);
     if (insertError) {
-      const isLegacyConstraint = insertError.message.includes('strikes_date_provider_key');
-      if (!isLegacyConstraint) {
-        throw new Error(`Supabase insert error: ${insertError.message}`);
-      }
-
-      const { data: legacyExisting, error: legacyLookupError } = await supabase
-        .from('strikes')
-        .select('id, region, category, provider, status, display_time, duration_hours, strike_windows, guarantee_windows, affected_lines')
-        .eq('date', record.date)
-        .eq('provider', record.provider)
-        .maybeSingle();
-
-      if (legacyLookupError || !legacyExisting?.id) {
-        throw new Error(`Supabase legacy lookup error: ${legacyLookupError?.message || insertError.message}`);
-      }
-
-      const mergedStrikeWindows = mergeWindows([...(legacyExisting.strike_windows || []), ...record.strike_windows]);
-      const mergedGuarantees = mergeWindows([...(legacyExisting.guarantee_windows || []), ...record.guarantee_windows]);
-      const mergedAffectedLines = Array.from(new Set([...(legacyExisting.affected_lines || []), ...record.affected_lines]));
-      const isFullDay =
-        legacyExisting.duration_hours === '24小时' ||
-        record.duration_hours === '24小时' ||
-        mergedStrikeWindows.some((window) => window.start === '00:00' && window.end === '24:00');
-
-      const mergedRecord = {
-        ...record,
-        region: legacyExisting.region || record.region,
-        category: legacyExisting.category || record.category,
-        status: legacyExisting.status === 'CONFIRMED' || record.status === 'CONFIRMED' ? 'CONFIRMED' : record.status,
-        strike_windows: isFullDay ? [{ start: '00:00', end: '24:00' }] : mergedStrikeWindows,
-        guarantee_windows: mergedGuarantees,
-        affected_lines: mergedAffectedLines,
-        duration_hours: isFullDay ? '24小时' : record.duration_hours,
-        display_time: isFullDay
-          ? '全天 24小时'
-          : mergedStrikeWindows.map((window) => `${window.start} - ${window.end}`).join(', '),
-      } satisfies StrikeRecord;
-
-      const { error: legacyUpdateError } = await supabase
-        .from('strikes')
-        .update(mergedRecord)
-        .eq('id', legacyExisting.id);
-
-      if (legacyUpdateError) {
-        throw new Error(`Supabase legacy update error: ${legacyUpdateError.message}`);
-      }
+      throw new Error(`Supabase insert error: ${insertError.message}. Apply the strike-source migration; incompatible records must never be merged to bypass a constraint.`);
     }
     affected += 1;
   }
 
   return affected;
+}
+
+export async function pruneSupersededPendingFromSupabase(records: StrikeRecord[]) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  const confirmedOrCancelledRecords = records.filter((record) => !isPendingStatus(record.status));
+  if (confirmedOrCancelledRecords.length === 0) return 0;
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  const dates = Array.from(new Set(confirmedOrCancelledRecords.map((record) => record.date)));
+
+  const { data: candidates, error: lookupError } = await supabase
+    .from('strikes')
+    .select('id, date, category, region, provider, status')
+    .in('date', dates)
+    .in('status', PENDING_STATUSES);
+
+  if (lookupError) {
+    throw new Error(`Supabase superseded pending lookup error: ${lookupError.message}`);
+  }
+
+  const staleIds = (candidates || [])
+    .filter((candidate) => confirmedOrCancelledRecords.some((record) => canSupersedePendingRecord(candidate, record)))
+    .map((candidate) => candidate.id);
+
+  if (staleIds.length === 0) return 0;
+
+  const { error: deleteError } = await supabase
+    .from('strikes')
+    .delete()
+    .in('id', staleIds);
+
+  if (deleteError) {
+    throw new Error(`Supabase superseded pending delete error: ${deleteError.message}`);
+  }
+
+  return staleIds.length;
 }
 
 export async function pruneExpiredPendingFromSupabase() {

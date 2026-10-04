@@ -1,3 +1,4 @@
+import { CITIES, resolveCity } from './cities';
 const AFFECTED_LINE_BLACKLIST = [
   '语言环境',
   'ambiente linguistico',
@@ -12,39 +13,51 @@ const AFFECTED_LINE_BLACKLIST = [
 ];
 
 export const REGION_LABELS: Record<string, string> = {
-  MILANO: '米兰',
-  ROMA: '罗马',
-  TORINO: '都灵',
-  NATIONAL: '全国',
-  OTHER: '其他地区',
+  ...Object.fromEntries(CITIES.map(city => [city.tag, city.zh])),
+  NATIONAL: '全国', OTHER: '其他地区',
 };
+const REGION_ALIASES: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag,
+  [city.tag, city.en, city.zh, ...city.aliases, ...city.airportAliases.filter(a => !['orio','bgy'].includes(a) || city.tag === 'BERGAMO'), ...city.airports.filter(a => a !== '贝加莫' || city.tag === 'BERGAMO')]
+]));
 
-const TARGET_LOCATION_RULES = {
-  MILANO: {
-    regions: ['lombardia'],
-    provinces: ['milano'],
-    airportProvinces: ['varese', 'bergamo'],
-  },
-  ROMA: {
-    regions: ['lazio'],
-    provinces: ['roma'],
-    airportProvinces: [],
-  },
-  TORINO: {
-    regions: ['piemonte'],
-    provinces: ['torino'],
-    airportProvinces: [],
-  },
-} as const;
-
-const REGION_ALIASES: Record<string, string[]> = {
-  MILANO: ['MILANO', 'MILAN', '米兰', 'MALPENSA', 'MXP', 'LINATE', 'LIN', 'BERGAMO', 'ORIO', 'BGY', '马尔彭萨', '利纳特', '贝加莫'],
-  ROMA: ['ROMA', 'ROME', '罗马', 'FIUMICINO', 'FCO', 'CIAMPINO', 'CIA', '菲乌米奇诺', '钱皮诺'],
-  TORINO: ['TORINO', 'TURIN', '都灵', 'CASELLE', 'TRN', '卡塞莱'],
-};
+const NON_TARGET_LOCATION_ALIASES = [
+  'ABRUZZO',
+  'ANCONA',
+  'BARI',
+  'BASILICATA',
+  'BOLOGNA',
+  'BRINDISI',
+  'CAGLIARI',
+  'CALABRIA',
+  'CAMPANIA',
+  'CATANIA',
+  'EAV',
+  'FIRENZE',
+  'FLORENCE',
+  'FOGGIA',
+  'GENOVA',
+  'LIGURIA',
+  'NAPLES',
+  'NAPOLI',
+  'NOVARA', 'MONZA', 'VARESE',
+  'PADOVA',
+  'PALERMO',
+  'PISA',
+  'POTENZA',
+  'PUGLIA',
+  'SARDEGNA',
+  'SICILIA',
+  'SOGAER',
+  'TOSCANA',
+  'TRENTO',
+  'TRENTINO',
+  'UMBRIA',
+  'VENETO',
+  'VERONA',
+];
 
 type AirportDef = {
-  tag: 'MILANO' | 'ROMA' | 'TORINO';
+  tag: string;
   name: string;
   aliases: string[];
 };
@@ -52,20 +65,27 @@ type AirportDef = {
 const AIRPORTS: AirportDef[] = [
   { tag: 'MILANO', name: '马尔彭萨', aliases: ['MALPENSA', 'MXP', '马尔彭萨'] },
   { tag: 'MILANO', name: '利纳特', aliases: ['LINATE', 'LIN', '利纳特'] },
-  { tag: 'MILANO', name: '贝加莫', aliases: ['BERGAMO', 'ORIO', 'BGY', '贝加莫'] },
+  { tag: 'BERGAMO', name: '贝加莫', aliases: ['BERGAMO', 'ORIO', 'BGY', '贝加莫'] },
   { tag: 'ROMA', name: '菲乌米奇诺', aliases: ['FIUMICINO', 'FCO', '菲乌米奇诺'] },
   { tag: 'ROMA', name: '钱皮诺', aliases: ['CIAMPINO', 'CIA', '钱皮诺'] },
   { tag: 'TORINO', name: '卡塞莱', aliases: ['CASELLE', 'TRN', '卡塞莱'] },
+  ...CITIES.filter(city => !['MILANO', 'ROMA', 'TORINO', 'BERGAMO'].includes(city.tag)).flatMap(city =>
+    city.airports.map(name => ({ tag: city.tag, name, aliases: [city.tag, city.en, city.zh, ...city.airportAliases] }))
+  ),
 ];
 
 const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
+  { match: /SCIOPERO\s+GENERALE\s+CATEGORIE\s+PUBBLICHE\s+E\s+PRIVATE/i, label: '全国公共和私营部门人员' },
+  { match: /PERSONALE\s+DI\s+MACCHINA\s+E\s+DI\s+BORDO|GRUPPO\s+FERROVIE\s+DELLO\s+STATO|FERROVIE\s+DELLO\s+STATO/i, label: '意大利国家铁路司乘人员' },
   { match: /TECHNO\s*SKY|科技天空/i, label: '科技天空技术人员' },
+  { match: /SKY\s+SERVICE/i, label: 'Sky Service机场人员' },
   { match: /EASYJET|易捷/i, label: '易捷航空人员' },
   { match: /TEP(?:\s+DI)?\s+PARMA/i, label: 'TEP Parma 人员' },
   { match: /CIALONE(?:\s+TOUR)?/i, label: 'CIALONE 人员' },
   { match: /ARRIVA\s+ITALIA\s+DI\s+TORINO|ARRIVA\s+TORINO/i, label: 'Arriva Torino 人员' },
   { match: /SUN\s+DI\s+NOVARA|SUN\s+NOVARA/i, label: 'SUN Novara 人员' },
   { match: /AIRPORT\s+HANDLING|机场地勤/i, label: '机场地勤人员' },
+  { match: /ADR\s+SECURITY/i, label: '罗马机场安检人员' },
   { match: /\bITA(?:\s+AIRWAYS)?\b|ALITALIA|意大利航空/i, label: '意大利航空人员' },
   { match: /\bATAC\b/i, label: 'ATAC人员' },
   { match: /\bGTT\b/i, label: 'GTT人员' },
@@ -75,10 +95,14 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
   { match: /ENAV|意大利空管局|空管局空管|空中交通管制/i, label: '意大利空管人员' },
   { match: /\bSEA\b|米兰机场运营/i, label: '米兰机场运营人员' },
   { match: /\bALHA\b|阿尔哈/i, label: '阿尔哈地服人员' },
+  { match: /MLE-?BCUBE|BCUBE/i, label: 'BCUBE地服人员' },
   { match: /\bDNATA\b|德纳达/i, label: '德纳达地服人员' },
   { match: /\bGDA\b/i, label: 'GDA地服人员' },
   { match: /\bMH24\b/i, label: 'MH24机场人员' },
+  { match: /\bATM\s+(?:DI\s+)?MESSINA\b/i, label: 'ATM Messina人员' },
   { match: /\bATM\b|米兰交通局/i, label: '米兰交通局人员' },
+  { match: /\bMERCITALIA\b/i, label: 'Mercitalia铁路货运人员' },
+  { match: /\bBUSITALIA\b/i, label: 'Busitalia人员' },
   { match: /\bRFI\b|RETE\s+FERROVIARIA\s+ITALIANA/i, label: 'RFI基础设施维护人员' },
   { match: /\bTRENORD\b|伦巴第大区铁路/i, label: '伦巴第大区铁路人员' },
   { match: /\bTRENITALIA\b|意大利国家铁路/i, label: '意大利国家铁路人员' },
@@ -88,7 +112,7 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
 const COMPANY_SUFFIX_RE = /\b(SOC\.?|SOCIETA'?|SPA|S\.P\.A\.|SRL|S\.R\.L\.|SCARL|S\.C\.A\.R\.L\.|LIMITED|LTD|AIRLINES|TOUR|HANDLING|AEROPORTO|AIRPORT)\b/gi;
 const EXTRA_SPACES_RE = /\s+/g;
 const ROLE_SUFFIX_RE = /(人员|机组与飞行员|地勤人员|空管人员|技术人员|地服人员|运营人员)$/;
-const NATIONAL_LOCATION_MARKERS = ['italia', 'tutte', 'nazionale'];
+const MEANINGLESS_PROVIDER_RE = /^[\s()[\]{}（）【】"'.,;:，。；：\-–—_/\\|]+$/;
 
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -98,7 +122,7 @@ function containsAlias(text: string, alias: string) {
   const upper = text.toUpperCase();
   const aliasUpper = alias.toUpperCase();
 
-  if (/^[A-Z0-9]{2,3}$/.test(aliasUpper)) {
+  if (/^[A-Z0-9 ]+$/.test(aliasUpper)) {
     const re = new RegExp(`(?:^|[^A-Z0-9])${escapeRegExp(aliasUpper)}(?:$|[^A-Z0-9])`);
     return re.test(upper);
   }
@@ -131,71 +155,67 @@ export function sanitizeAffectedLines(lines: string[]) {
     .filter((line) => !AFFECTED_LINE_BLACKLIST.some((blocked) => line.toLowerCase().includes(blocked)));
 }
 
-function inferAirportScope(contextText: string, regionTag?: string): string | null {
-  const upper = contextText.toUpperCase();
-  if (upper.includes('ENAV ACC ROMA') || upper.includes('ACC ROMA')) return '罗马相关机场';
-  if (upper.includes('ENAV ACC DI MILANO') || upper.includes('ENAV ACC MILANO') || upper.includes('ACC DI MILANO')) return '米兰相关机场';
-  if (upper.includes('ENAV ACC DI TORINO') || upper.includes('ENAV ACC TORINO') || upper.includes('ACC DI TORINO')) return '都灵相关机场';
-  if (upper.includes('ITALIA') || upper.includes('TUTTE') || upper.includes('NAZIONALE') || regionTag === 'NATIONAL') return '全国相关机场';
-  if (regionTag && REGION_LABELS[regionTag]) return `${REGION_LABELS[regionTag]}相关机场`;
-  return null;
-}
-
 export function inferRegionTagFromText(text: string) {
   const upper = (text || '').toUpperCase();
   if (!upper) return '';
+  for (const city of CITIES) {
+    if ([city.tag, city.en, city.zh].some(alias => containsAlias(upper, alias))) return city.tag;
+  }
   for (const [tag, aliases] of Object.entries(REGION_ALIASES)) {
     if (aliases.some((alias) => containsAlias(upper, alias))) return tag;
   }
-  if (upper.includes('NAZIONALE') || upper.includes('TUTTA ITALIA') || upper.includes('ITALIA')) {
+  if (includesAny(upper, NON_TARGET_LOCATION_ALIASES)) {
+    return 'OTHER';
+  }
+  if (
+    upper.includes('NAZIONALE') ||
+    upper.includes('TUTTA ITALIA') ||
+    /SCIOPERO (?:GENERALE|NAZIONALE)/.test(upper)
+  ) {
     return 'NATIONAL';
   }
-  if (upper.includes('AEROPORTO') || upper.includes('AIRPORT') || upper.includes('ACC ')) {
+  if (upper.includes('AEROPORTO DI ') || upper.includes('AIRPORT')) {
     return 'OTHER';
   }
   return '';
 }
 
-export function classifyRegionTag(input: {
-  regionText?: string;
-  provinceText?: string;
-  sectorText?: string;
-  providerText?: string;
-  noteText?: string;
-}) {
-  const regionText = (input.regionText || '').trim().toLowerCase();
-  const provinceText = (input.provinceText || '').trim().toLowerCase();
-  const sectorText = (input.sectorText || '').trim().toLowerCase();
-  const inferred = inferRegionTagFromText(`${input.providerText || ''} ${input.noteText || ''}`);
-  const hasExplicitNational =
-    NATIONAL_LOCATION_MARKERS.some((marker) => regionText.includes(marker)) ||
-    NATIONAL_LOCATION_MARKERS.some((marker) => provinceText.includes(marker));
+export type RegionInput = { regionText?: string; provinceText?: string; sectorText?: string; providerText?: string; noteText?: string; relevanceText?: string };
 
-  for (const [tag, rules] of Object.entries(TARGET_LOCATION_RULES)) {
-    if (rules.provinces.some((province) => provinceText.includes(province))) {
-      return tag;
-    }
-    if (rules.regions.some((region) => regionText.includes(region)) && inferred === tag) {
-      return tag;
-    }
-    if (
-      sectorText.includes('aereo') &&
-      rules.airportProvinces.some((province) => provinceText.includes(province))
-    ) {
-      return tag;
-    }
+// Read the affected entity first. Protected destinations and exclusions never
+// expand geography; 'Italia' in an operator name is not a scope declaration.
+export function affectedScopeText(text: string) {
+  return (text || '').split(/(?:\bESCLUS[OAIE]\b|\bGARANTIT[IOEA]\b|\bNON\s+(?:INTERESS|COINVOLT)|\bECCETTO\b)/i)[0];
+}
+export function classifyRegionTags(input: RegionInput): string[] {
+  const region=(input.regionText || '').trim().toLowerCase();
+  const province=(input.provinceText || '').trim().toLowerCase();
+  const provider=affectedScopeText(input.providerText || '');
+  const text=provider+' '+affectedScopeText(input.noteText || '');
+  const named=CITIES.filter(city=>[city.tag,city.en,city.zh,...city.aliases].some(alias=>containsAlias(text,alias))).map(c=>c.tag);
+  // Named airports override generic administrative national fields.
+  const airports=(/aereo/i.test(input.sectorText || '') || /aeroport|airport|\bAPT\b|\bENAV\b/i.test(provider)) ? detectAirports(provider).map(a=>a.tag) : [];
+  const concrete=unique(airports.length ? airports : named);
+  if (concrete.length) return concrete;
+  // A named unsupported locality must not become an entire supported region.
+  if (includesAny(text, NON_TARGET_LOCATION_ALIASES.filter(a => a.toLowerCase() !== region))) return ['UNKNOWN'];
+  const provinces=CITIES.filter(c=>containsAlias(province,c.slug)).map(c=>c.tag);
+  if(provinces.length) return provinces;
+  if(province && !['tutte','italia','nazionale'].includes(province)) return ['UNKNOWN'];
+  const relevance=input.relevanceText || '';
+  const broad=/sciopero (?:generale|plurisettoriale)|categorie pubbliche|settori pubblici|personale.*(?:settore|trasporto)\s+(?:aereo|ferroviario)/i.test(provider);
+  const nationalEntity=/\b(?:ENAV|EASYJET|RYANAIR|WIZZ|ITA AIRWAYS|TRENITALIA|ITALO|RFI|POSTE AIR CARGO)\b/i.test(provider);
+  if (['italia','nazionale'].includes(region) && (/^nazionale$/i.test(relevance) && (broad || nationalEntity) || broad && !relevance)) return ['NATIONAL'];
+  // 'Tutte' is only regional scope with an explicit regional relevance.
+  if(province==='tutte' && /regionale/i.test(relevance)) {
+    const cities=CITIES.filter(c=>c.region===region).map(c=>c.tag);
+    if(cities.length) return cities;
   }
-
-  if (hasExplicitNational) {
-    if (inferred && inferred !== 'OTHER' && inferred !== 'NATIONAL') return inferred;
-    return 'NATIONAL';
-  }
-
-  if (regionText || provinceText) {
-    return 'OTHER';
-  }
-
-  return inferred;
+  return ['UNKNOWN'];
+}
+export function classifyRegionTag(input: RegionInput) {
+  const tags=classifyRegionTags(input);
+  return tags[0] === 'UNKNOWN' ? 'OTHER' : tags[0];
 }
 
 export function normalizeAirportAffectedLines(
@@ -265,13 +285,10 @@ export function normalizeAirportAffectedLines(
   const contextNormalized = collectNormalized(contextText ? [contextText] : []);
   if (contextNormalized.length > 0) return contextNormalized;
 
-  const scope = inferAirportScope(contextText, options?.regionTag);
-  if (scope) return [scope];
-
   const lineNormalized = collectNormalized(cleanedLines);
   if (lineNormalized.length > 0) return lineNormalized;
 
-  return cleanedLines.filter((line) => !/[A-Za-z]/.test(line));
+  return []; // No concrete airport evidence: preserve unknown, never expand.
 }
 
 function localizeRoleLabel(label: string, rawUpper: string, rawText: string) {
@@ -320,8 +337,14 @@ export function normalizeProviderPart(part: string, translatedText?: string) {
   cleaned = cleaned.replace(COMPANY_SUFFIX_RE, ' ');
   cleaned = cleaned.replace(/[A-Za-z]+(?:\s+[A-Za-z]+)*/g, ' ');
   cleaned = cleaned.replace(/[0-9]{2,}/g, ' ');
+  cleaned = cleaned.replace(/[()[\]{}（）【】]/g, ' ');
   cleaned = cleaned.replace(EXTRA_SPACES_RE, ' ').trim();
-  if (!cleaned) return '相关人员';
+  if (!cleaned || cleaned === '人员' || MEANINGLESS_PROVIDER_RE.test(cleaned.replace(/人员/g,''))) {
+    // New operators must remain identifiable even before a Chinese synonym
+    // is registered. Preserve their source name rather than dropping it.
+    const sourceName=(part || '').replace(COMPANY_SUFFIX_RE,' ').replace(/\b(?:PERSONALE|GRUPPO|DI|DEL|DELLA|SOC)\b/gi,' ').replace(/[()[\]{}]/g,' ').replace(EXTRA_SPACES_RE,' ').trim();
+    return /[A-Za-z]{2}/.test(sourceName) ? /人员$/.test(sourceName) ? sourceName : `${sourceName}人员` : '';
+  }
   if (!ROLE_SUFFIX_RE.test(cleaned)) cleaned = `${cleaned}人员`;
   return cleaned;
 }
@@ -352,6 +375,8 @@ export function normalizeProviderList(text: string, translatedText?: string) {
 export function canonicalizeRegionValue(region: string) {
   const value = (region || '').trim().toLowerCase();
   if (!value) return '';
+  const city = resolveCity(value);
+  if (city) return city.tag;
   if (value === 'milano' || value === 'milan' || value === '米兰') return 'MILANO';
   if (value === 'roma' || value === 'rome' || value === '罗马') return 'ROMA';
   if (value === 'torino' || value === 'turin' || value === '都灵') return 'TORINO';

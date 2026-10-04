@@ -1,4 +1,3 @@
-import { canonicalizeRegionValue } from './strikeNormalization';
 
 export type GuaranteeWindow = {
   start: string;
@@ -12,9 +11,7 @@ type GuaranteeInput = {
   isFullDay?: boolean;
 };
 
-export function getGuaranteeWindows({ category, dateIso, region, isFullDay }: GuaranteeInput): GuaranteeWindow[] {
-  const normalizedRegion = canonicalizeRegionValue(region || '');
-  const date = new Date(dateIso);
+export function getGuaranteeWindows({ category, isFullDay }: GuaranteeInput): GuaranteeWindow[] {
 
   if (category === 'AIRPORT') {
     if (!isFullDay) return [];
@@ -24,40 +21,7 @@ export function getGuaranteeWindows({ category, dateIso, region, isFullDay }: Gu
     ];
   }
 
-  if (category === 'TRAIN') {
-    if (date.getDay() === 0) {
-      return [
-        { start: '07:00', end: '10:00' },
-        { start: '18:00', end: '21:00' },
-      ];
-    }
-
-    return [
-      { start: '06:00', end: '09:00' },
-      { start: '18:00', end: '21:00' },
-    ];
-  }
-
-  if (category === 'BUS' || category === 'SUBWAY') {
-    if (normalizedRegion === 'TORINO') {
-      return [
-        { start: '06:00', end: '09:00' },
-        { start: '12:00', end: '15:00' },
-      ];
-    }
-
-    if (normalizedRegion === 'ROMA') {
-      return [
-        { start: '00:00', end: '08:29' },
-        { start: '17:00', end: '19:59' },
-      ];
-    }
-
-    return [
-      { start: '00:00', end: '08:45' },
-      { start: '15:00', end: '18:00' },
-    ];
-  }
-
+  // A city does not identify an operator or a dated strike notice.
+  // Operator guarantees are read from that announcement by enrichment.
   return [];
 }

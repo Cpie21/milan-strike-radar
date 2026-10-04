@@ -1,12 +1,23 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { strikeTimeline, windowsDisplay, type StrikeEvent } from '../lib/strikePresentation';
+import { evidenceTimeLabel, type TimingEvidence } from '../lib/strikeEvidence';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
-import { getGuaranteeWindows } from '../lib/guaranteeWindows';
+import { scopeTitle, scopeOf, type GuaranteeSource } from '../lib/strikeScope';
 import DoodleCanvas, { DoodleCategory } from './DoodleOverlay';
 import { capture, isWeChatBrowser } from '../utils/analytics';
+import {
+    AppLanguage,
+    categoryTitles,
+    pickText,
+    translateAxisLabel,
+    translateDuration,
+    translateLine,
+    translateProvider,
+} from './i18n';
 
 // Helpers
 function getTrainIcon(fillColor = "white") {
@@ -28,6 +39,12 @@ interface StrikeRecord {
     id: string;
     date: string;
     region?: string;
+    data_source?: string;
+    source_url?: string;
+    timing_evidence?: TimingEvidence | null;
+    strike_events?: StrikeEvent[];
+    has_unknown_timing?: boolean;
+    has_unknown_lines?: boolean;
     category: 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
     provider: string;
     status: 'CONFIRMED' | 'REQUIRES_DETAIL' | 'CANCELLED' | 'CONFIRMED (STRIKE)';
@@ -35,17 +52,13 @@ interface StrikeRecord {
     duration_hours: string;
     strike_windows: Array<{ start: string, end: string }>;
     guarantee_windows: Array<{ start: string, end: string }>;
+    guaranteeSource?: GuaranteeSource;
     affected_lines?: string[];
 }
 
 type TimeWindow = {
     start: string;
     end: string;
-};
-
-type Interval = {
-    s: number;
-    e: number;
 };
 
 function getManualDoodleBaseCount(strike: StrikeRecord) {
@@ -64,22 +77,43 @@ function getManualDoodleBaseCount(strike: StrikeRecord) {
     return null;
 }
 
-export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, isDark: boolean }) {
+function getStableDoodleOffset(seed: string, min = 18, spread = 6) {
+    let hash = 0;
+    for (let index = 0; index < seed.length; index += 1) {
+        hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+    }
+    return min + (hash % spread);
+}
+
+const GLOBAL_DOODLE_BASE_OFFSET = 15;
+
+function getDoodleBaseOffset(strike: StrikeRecord) {
+    if (!strike.date.startsWith('2026-05-')) return GLOBAL_DOODLE_BASE_OFFSET;
+    return GLOBAL_DOODLE_BASE_OFFSET + getStableDoodleOffset(`${strike.region || 'MILANO'}|${strike.date}|${strike.category}|${strike.display_time || ''}`);
+}
+
+function getProviderFallback(category: StrikeRecord['category'], language: AppLanguage) {
+    if (category === 'TRAIN') return pickText(language, '铁路相关人员', 'rail staff');
+    if (category === 'AIRPORT') return pickText(language, '机场相关人员', 'airport staff');
+    return pickText(language, '公共交通人员', 'public transport staff');
+}
+
+const VAGUE_PROVIDER_LABELS = new Set(['相关人员', '( )人员', '()人员']);
+
+function normalizeProviderForCard(provider: string, category: StrikeRecord['category'], language: AppLanguage) {
+    const normalized = normalizeProviderList(provider || '').filter((label) => !VAGUE_PROVIDER_LABELS.has(label));
+    return normalized.join(' / ') || getProviderFallback(category, language);
+}
+
+export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike: StrikeRecord, isDark: boolean, language?: AppLanguage }) {
     const viewRegion = strike.region || 'MILANO';
     const manualDoodleBaseCount = getManualDoodleBaseCount(strike);
     const usesManualDoodleCount = manualDoodleBaseCount !== null;
-    const buildFallbackGuarantees = () => {
-        const currentSlots = strike.strike_windows || [];
-        const isFullDay = currentSlots.some((slot) => slot.start === '00:00' && slot.end === '24:00') || strike.duration_hours === '24小时';
-        return getGuaranteeWindows({
-            category: strike.category,
-            dateIso: strike.date,
-            region: strike.region,
-            isFullDay,
-        });
-    };
+    const doodleBaseOffset = getDoodleBaseOffset(strike);
     // Expandable state for guarantee info
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isGuaranteePulseActive, setIsGuaranteePulseActive] = useState(false);
+    const guaranteePulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // UI state for share button feedback
     const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
 
@@ -109,6 +143,22 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         return false;
     });
 
+    const pulseGuaranteeSegments = () => {
+        setIsExpanded(true);
+        setIsGuaranteePulseActive(true);
+        if (guaranteePulseTimerRef.current) clearTimeout(guaranteePulseTimerRef.current);
+        guaranteePulseTimerRef.current = setTimeout(() => {
+            setIsGuaranteePulseActive(false);
+            guaranteePulseTimerRef.current = null;
+        }, 1000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (guaranteePulseTimerRef.current) clearTimeout(guaranteePulseTimerRef.current);
+        };
+    }, []);
+
     // Definitive fix: sync doodle state from localStorage ANY time the key changes.
     // Lazy initializers only run on mount, so re-renders don't re-sync automatically.
     // This catches cases where React reconciles the component instead of remounting it.
@@ -129,7 +179,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                 const baseCount = manualDoodleBaseCount || 0;
                 if (!mounted) return;
 
-                setDoodleCount(prev => Math.max(prev, baseCount + (localMarked ? 1 : 0)));
+                setDoodleCount(prev => Math.max(prev, baseCount + doodleBaseOffset + (localMarked ? 1 : 0)));
                 setIsDoodleCountLoaded(true);
                 return;
             }
@@ -141,8 +191,9 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
 
             setDoodleCount(prev => {
                 const localMarked = !!localStorage.getItem(doodleStorageKey);
-                if (localMarked) return Math.max(prev, count, 1);
-                return Math.max(prev, count);
+                const displayCount = count + doodleBaseOffset;
+                if (localMarked) return Math.max(prev, displayCount, doodleBaseOffset + 1);
+                return Math.max(prev, displayCount);
             });
             setIsDoodleCountLoaded(true);
         };
@@ -154,7 +205,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
             mounted = false;
             clearInterval(timer);
         };
-    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion, usesManualDoodleCount, manualDoodleBaseCount]);
+    }, [strike.id, doodleStorageKey, strike.date, strike.category, strike.display_time, viewRegion, usesManualDoodleCount, manualDoodleBaseCount, doodleBaseOffset]);
 
     const handleDoodle = async () => {
         if (hasDoodled) {
@@ -182,7 +233,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         }
 
         if (usesManualDoodleCount) {
-            const nextCount = Math.max(doodleCount, manualDoodleBaseCount || 0) + 1;
+            const nextCount = Math.max(doodleCount, (manualDoodleBaseCount || 0) + doodleBaseOffset) + 1;
             capture('graffiti_spray_triggered', {
                 transport_type: strike.category.toLowerCase(),
                 total_rage_count: nextCount,
@@ -193,12 +244,13 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         const effectiveDisplayTime = strike.category === 'AIRPORT' ? strike.display_time : undefined;
         const result = await submitDoodle(strike.id as unknown as string, clientUuid, strike.date, strike.category, effectiveDisplayTime, viewRegion);
         const latest = await getDoodleCount(strike.id, strike.date, strike.category, effectiveDisplayTime, viewRegion);
-        setDoodleCount(latest);
+        const displayLatest = latest + doodleBaseOffset;
+        setDoodleCount(displayLatest);
 
         // Track graffiti event (always, even if already doodled)
         capture('graffiti_spray_triggered', {
             transport_type: strike.category.toLowerCase(),
-            total_rage_count: latest,
+            total_rage_count: displayLatest,
         });
 
         if (!result.success && result.error !== 'Already doodled') {
@@ -218,45 +270,45 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     if (isBus) doodleCat = 'bus';
 
     const doodleTransportLabel: Record<DoodleCategory, string> = {
-        train: '火车',
-        plane: '飞机',
-        subway: '地铁',
-        bus: '公交',
+        train: pickText(language, '火车', 'train'),
+        plane: pickText(language, '飞机', 'flight'),
+        subway: pickText(language, '地铁', 'metro'),
+        bus: pickText(language, '公交', 'bus'),
     };
 
     // Calculate current day state once, then map it to each card's visible time axis.
     const { isToday, currentMinutes } = useMemo(() => {
-        const now = new Date();
-        const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        // Strike windows are Italian local times, so "now" is read in Rome.
+        const [hours, minutes] = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+            .format(new Date()).split(':').map(Number);
         return {
-            isToday: strike.date === todayStr,
-            currentMinutes: now.getHours() * 60 + now.getMinutes(),
+            isToday: strike.date === new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()),
+            currentMinutes: hours * 60 + minutes,
         };
     }, [strike.date]);
 
     // ── Generate Segments ─────────────────────────────────────────────────────────
     const isMetro = isSubway;
 
-    let title = "其他罢工";
-    let subTitle = "相关人员";
+    let title = categoryTitles[language].OTHER;
+    let subTitle = getProviderFallback(strike.category, language);
     let icon = getTrainIcon(isDark ? '#0F172A' : 'white'); // Fallback
-    const normalizedProvider = normalizeProviderList(strike.provider || '').join(' / ') || '相关人员';
+    const normalizedProvider = normalizeProviderForCard(strike.provider || '', strike.category, language);
+    const localizedProvider = translateProvider(normalizedProvider, language);
 
     // Exact mapping requested from Figma, using actual provider if available
-    if (isTrain) { title = "火车罢工"; subTitle = normalizedProvider || "国家铁路局"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
+    if (isTrain) { title = categoryTitles[language].TRAIN; subTitle = localizedProvider || pickText(language, "国家铁路局", "rail operator staff"); icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
     else if (isPlane) {
-        title = "机场罢工";
-        subTitle = normalizedProvider || "航司与机场人员";
+        title = scopeTitle(scopeOf(strike),language);
+        subTitle = localizedProvider || pickText(language, "航司与机场人员", "airline and airport staff");
         icon = getPlaneIcon(isDark ? '#0F172A' : 'white');
     }
-    else if (isMetro) { title = "地铁罢工"; subTitle = normalizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
-    else if (isBus) { title = "公交罢工"; subTitle = normalizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
+    else if (isMetro) { title = categoryTitles[language].SUBWAY; subTitle = localizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
+    else if (isBus) { title = categoryTitles[language].BUS; subTitle = localizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
 
     // Strip Airport Title from tags if we used it as the main title
-    let displayLines = strike.affected_lines && strike.affected_lines.length > 0 && strike.affected_lines[0] !== '全部线路' && strike.affected_lines[0] !== '全部车次'
-        ? strike.affected_lines
-        : (isPlane ? ['全部机场'] : ['全部线路']);
-    displayLines = normalizeDisplayLines(displayLines, strike.category);
+    const displayLines=normalizeDisplayLines(strike.affected_lines || [],strike.category);
+    const localizedDisplayLines=isPlane && ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?[subTitle]:displayLines.length?displayLines.map(line=>line==='全部线路' || line==='全部车次'?pickText(language,'该运营商全部线路','All lines of this operator'):translateLine(line,language)):[pickText(language,isPlane?'官方暂未注明具体机场':'官方暂未注明具体线路',isPlane?'Specific airports not stated by officials':'Specific lines not stated by officials')];
 
     // Status Tag Logic
     const isConfirmed = strike.status === 'CONFIRMED' || strike.status === 'CONFIRMED (STRIKE)';
@@ -265,13 +317,13 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     let tagBg = isConfirmed ? 'bg-[#D1FAE5]' : (isDark ? 'bg-[#5B6574]' : 'bg-[#E2E8F0]');
     let tagBorder = isConfirmed ? 'border-[#059669]/20' : (isDark ? 'border-white/10' : 'border-[#CBD5E1]');
     let tagTextCol = isConfirmed ? 'text-[#059669]' : (isDark ? 'text-white' : 'text-[#475569]');
-    let tagString = isConfirmed ? '已确认' : '待确认';
+    let tagString = isConfirmed ? pickText(language, '已确认', 'Confirmed') : pickText(language, '待确认', 'Pending');
 
     if (strike.status === 'CANCELLED') {
         tagBg = isDark ? 'bg-white/10' : 'bg-[#F1F5F9]';
         tagTextCol = isDark ? 'text-white/60' : 'text-[#64748B]';
         tagBorder = isDark ? 'border-white/20' : 'border-[#E2E8F0]';
-        tagString = '已取消';
+        tagString = pickText(language, '已取消', 'Cancelled');
     } else if (isDark) {
         tagBg = isConfirmed ? 'bg-[#5ab91b]' : 'bg-[#5B6574]';
         tagBorder = 'border-black/20';
@@ -281,35 +333,26 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
     // Time ranges parsing directly from server schema
     const timeSlots: TimeWindow[] = strike.strike_windows && strike.strike_windows.length > 0
         ? strike.strike_windows
-        : [{ start: "00:00", end: "24:00" }];
+        : [];
 
-    const isUnknownTime = timeSlots.length === 1
+    const semanticWindows = strike.timing_evidence?.windows || [];
+    const hasOpenEndpoint = semanticWindows.some(w => w.start === null || w.end_kind === "end_of_service");
+    const isUnknownTime = !semanticWindows.length && (timeSlots.length === 0 || timeSlots.length === 1
         && timeSlots[0].start === '00:00'
         && timeSlots[0].end === '24:00'
-        && (strike.duration_hours === '多时段' || strike.duration_hours === '待定' || strike.duration_hours === '部分时段');
+        && (strike.duration_hours === '多时段' || strike.duration_hours === '待定' || strike.duration_hours === '部分时段'));
 
-    const durationString = strike.duration_hours || "24小时";
-    const timeLabelLines = durationString === "24小时"
+    const durationString = strike.duration_hours || "时段待公布";
+    const localizedDurationString = translateDuration(durationString, language);
+    const timeLabelLines = semanticWindows.length ? semanticWindows.map(w => evidenceTimeLabel(w, language)) : isUnknownTime ? [pickText(language, "具体时段待公布", "Time to be confirmed")] : durationString === "24小时"
         ? ["00:00 - 24:00"]
         : timeSlots.map((slot) => `${slot.start} - ${slot.end}`);
 
-    // Track Calculation Limits
-    let axisStartMin = 0;
-    let axisEndMin = 24 * 60; // 1440
-    let labelStart = "00:00";
-    let labelEnd = "24:00";
-
-    if (isMetro) {
-        axisStartMin = 5 * 60 + 30; // 05:30
-        axisEndMin = 24 * 60 + 30; // 24:30 (00:30 next day)
-        labelStart = "05:30";
-        labelEnd = "00:30 (次日)";
-    } else if (isTrain) {
-        axisStartMin = 5 * 60; // 05:00
-        axisEndMin = 25 * 60; // 25:00 (01:00 next day)
-        labelStart = "05:00";
-        labelEnd = "01:00 (次日)";
-    }
+    // A calendar-day axis works for every city and operator.
+    const axisStartMin = 0;
+    const axisEndMin = 1440;
+    const labelStart = semanticWindows.some(w=>w.start === null) ? pickText(language, '运营开始 →', 'Service starts →') : '00:00';
+    const labelEnd = semanticWindows.some(w=>w.end_kind === 'end_of_service') ? pickText(language, '→ 运营结束', '→ End of service') : '24:00';
 
     const currentTimeRatio = Math.min(1, Math.max(0, (currentMinutes - axisStartMin) / (axisEndMin - axisStartMin)));
     const currentTimePct = currentTimeRatio * 100;
@@ -321,93 +364,15 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
         background: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 7px, rgba(0,0,0,0) 7px, rgba(0,0,0,0) 14px)',
     } as const;
 
-    // Fix for missing guarantee windows (like Plane strikes)
-    // The background should be transparent grey like others (26% opacity of slate-200 or similar)
-    // We handle this in the render logic below by checking if segment is 'grey'
+    const guaranteeSource=strike.guaranteeSource || strike.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN';
+    const guaranteeWindows=guaranteeSource==='UNKNOWN'?[]:strike.guarantee_windows || [];
 
-    const guaranteeWindows = strike.guarantee_windows && strike.guarantee_windows.length > 0
-        ? strike.guarantee_windows
-        : buildFallbackGuarantees();
-
-    const guarantees: Interval[] = Array.isArray(guaranteeWindows)
-        ? guaranteeWindows.map((w: TimeWindow) => {
-            const [sh, sm] = w.start.split(':').map(Number);
-            const [eh, em] = w.end.split(':').map(Number);
-            let endMin = eh * 60 + em;
-            if (endMin === 0) endMin = 24 * 60; // 24:00 is 1440
-            return { s: sh * 60 + sm, e: endMin };
-        })
-        : [];
-
-    const strikeIntervals: Interval[] = timeSlots.map((slot: TimeWindow) => {
-        let startMin = 0;
-        let endMin = 24 * 60;
-
-        // Match the full visual track width if it's strictly a 24h event
-        if ((slot.start === '00:00' && slot.end === '24:00') || durationString.includes('24小时') || durationString.includes('24H')) {
-            const effectiveStartMin = (isMetro || isBus) || isTrain ? axisStartMin : 0;
-            const effectiveEndMin = (isMetro || isBus) || isTrain ? axisEndMin : 24 * 60;
-            return { s: effectiveStartMin, e: effectiveEndMin };
-        }
-
-        const [sh, sm] = slot.start.split(':').map(Number);
-        const [eh, em] = slot.end.split(':').map(Number);
-        startMin = sh * 60 + sm;
-        endMin = eh * 60 + em;
-        if (endMin <= startMin && endMin === 0) endMin = 24 * 60;
-        if (endMin < startMin) endMin += 24 * 60;
-        return { s: startMin, e: endMin };
-    });
-
-    const getSegmentColor = (min: number) => {
-        const isStriking = strikeIntervals.some(inv => min >= inv.s && min < inv.e);
-        if (!isStriking) return 'grey';
-        const isGuaranteed = guarantees.some(inv => min >= inv.s && min < inv.e);
-        if (isGuaranteed) return 'green';
-        return 'red';
-    };
-
-    const points = new Set([axisStartMin, axisEndMin]);
-    strikeIntervals.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
-    guarantees.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
-
-    const sortedPoints = Array.from(points).filter(p => p >= axisStartMin && p <= axisEndMin).sort((a, b) => a - b);
-    const segments: Array<{ colorType: string; widthPct: number }> = [];
-    for (let i = 0; i < sortedPoints.length - 1; i++) {
-        const segStart = sortedPoints[i];
-        const segEnd = sortedPoints[i + 1];
-        if (segStart === segEnd) continue;
-        const mid = (segStart + segEnd) / 2;
-        const colorType = getSegmentColor(mid);
-        const widthPct = ((segEnd - segStart) / (axisEndMin - axisStartMin)) * 100;
-        segments.push({ colorType, widthPct });
-    }
-
-    // Calculate intersected guarantees text for display
-    const intersectedGuarantees: Interval[] = [];
-    guarantees.forEach((g) => {
-        strikeIntervals.forEach((s) => {
-            const overlapS = Math.max(g.s, s.s);
-            const overlapE = Math.min(g.e, s.e);
-            if (overlapS < overlapE) {
-                intersectedGuarantees.push({ s: overlapS, e: overlapE });
-            }
-        });
-    });
-
-    intersectedGuarantees.sort((a, b) => a.s - b.s);
-    const formatMin = (m: number) => {
-        const h = Math.floor(m / 60) % 24;
-        const mm = m % 60;
-        return `${h.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-    };
-
-    // De-duplicate any identical guarantees
-    const uniqueIntersected = Array.from(new Set(intersectedGuarantees.map(g => `${formatMin(g.s)} - ${formatMin(g.e)}`)));
-
+    const segments = strikeTimeline(semanticWindows.length ? semanticWindows : timeSlots.map(w=>({...w,end_kind:'clock' as const})), guaranteeWindows, strike.status === 'CANCELLED', strike.has_unknown_timing);
+    const uniqueIntersected = guaranteeWindows.map(w => `${w.start} - ${w.end}`);
+    const formatMin = (m: number) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
 
     return (
-        <div className={`w-full transition-all duration-300 ${isDark
+        <div data-strike-card={strike.category} className={`w-full transition-all duration-300 ${isDark
             ? 'bg-black/70 ring-[3px] ring-black/20 rounded-[32px] overflow-hidden shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)]'
             : 'bg-white border-[3px] border-white/20 rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)] overflow-hidden'
             }`}>
@@ -435,26 +400,33 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                     {timeLabelLines.map((line, index) => (
                         <span
                             key={`${line}-${index}`}
-                            className={`text-[36px] font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1E293B]'} leading-tight`}
+                            className={`${hasOpenEndpoint ? "text-[30px]" : "text-[36px]"} font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1E293B]'} leading-tight`}
                         >
                             {line}
                         </span>
                     ))}
                 </div>
 
+                {strike.has_unknown_timing && <p className={`text-[12px] ${isDark ? 'text-white/70' : 'text-[#64748b]'}`}>
+                    {pickText(language, '另有公告的具体时段待核实', 'Some additional timing is awaiting verification')}
+                </p>}
                 <div className={`mt-2 rounded-lg px-3 py-1 flex items-center border ${isDark ? 'bg-white/20 border-white/10' : 'bg-[#F1F5F9] border-transparent'}`}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`mr-2 ${isDark ? 'text-white/70' : 'text-[#475569]'}`}>
                         <circle cx="12" cy="12" r="10"></circle>
                         <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
-                    <span className={`text-[12px] font-medium ${isDark ? 'text-white/70' : 'text-[#475569]'}`}>{durationString}</span>
+                    <span className={`text-[12px] font-medium ${isDark ? 'text-white/70' : 'text-[#475569]'}`}>{localizedDurationString}</span>
                 </div>
             </div>
 
+            {/* An operator-relative endpoint cannot be plotted at a fictitious clock time. */}
+            {hasOpenEndpoint && <p className={`px-6 mt-3 text-center text-[12px] ${isDark ? 'text-white/60' : 'text-[#64748b]'}`}>
+                {pickText(language, '斜纹表示按线路运营时间，非固定钟点', 'Striped intervals follow service hours, which vary by line')}
+            </p>}
             {/* Strict Single Track Visualization */}
             <div className="mt-8 px-6 w-full">
-                <div className={`relative h-[8px] w-full rounded-full overflow-hidden flex ${isDark ? 'bg-[#E2E8F0]/25' : 'bg-gray-200'}`}>
-                    {isUnknownTime ? (
+                <div data-strike-timeline aria-label={pickText(language, '罢工时段时间轴', 'Strike timing timeline')} className={`relative h-[8px] w-full rounded-full overflow-hidden flex ${isDark ? 'bg-[#E2E8F0]/25' : 'bg-gray-200'}`}>
+                    {isUnknownTime && strike.status !== 'CANCELLED' ? (
                         <div className="h-full w-full" style={{
                             background: isDark
                                 ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.5) 0, rgba(0,0,0,0.5) 10px, #ca8a04 10px, #ca8a04 20px)'
@@ -466,21 +438,40 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                             let glowStyle = '';
                             let zIndex = 'z-0';
 
+                            if (seg.colorType === 'open') bgColor = 'bg-[#EF4444]';
+                            if (seg.colorType === 'unknown') bgColor = 'bg-[#facc15]';
                             if (seg.colorType === 'red') bgColor = isDark ? 'bg-[#de4141]' : 'bg-[#EF4444]';
                             if (seg.colorType === 'green') {
                                 bgColor = isDark ? 'bg-[#5ab91b]' : 'bg-[#10B981]';
-                                // Apply glow if expanded
-                                if (isExpanded) {
+                                if (isGuaranteePulseActive) {
                                     glowStyle = isDark ? 'drop-shadow-[0_0_12px_rgba(90,185,27,1)] brightness-[1.3]' : 'drop-shadow-[0_0_12px_rgba(16,185,129,0.8)] brightness-110';
                                     zIndex = 'z-10 relative'; // lift above overflow hidden if possible, but keeping inline glow
                                 }
                             }
+                            const isGuaranteeSegment = seg.colorType === 'green' && uniqueIntersected.length > 0;
+                            const className = `${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full ${isGuaranteeSegment ? 'appearance-none border-0 p-0 cursor-pointer hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#87ff38]' : ''}`;
+                            const style = { width: `${seg.widthPct}%`, ...(seg.colorType === 'open' || seg.colorType === 'unknown' ? { backgroundImage: 'repeating-linear-gradient(135deg, transparent 0px, transparent 4px, rgba(255,255,255,0.6) 4px, rgba(255,255,255,0.6) 7px)' } : {}) };
+
+                            if (isGuaranteeSegment) {
+                                return (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        className={className}
+                                        style={style}
+                                        aria-label={pickText(language, `展开保障时间 ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `Show protected service window ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
+                                        title={pickText(language, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
+                                        onClick={pulseGuaranteeSegments}
+                                    />
+                                );
+                            }
+
                             return (
-                                <div key={idx} className={`${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full`} style={{ width: `${seg.widthPct}%` }} />
+                                <div key={idx} className={className} style={style} />
                             )
                         })
                     )}
-                    {showElapsedOverlay && (
+                    {!isUnknownTime && showElapsedOverlay && (
                         <div
                             className="absolute inset-y-0 left-0 z-10 pointer-events-none overflow-hidden"
                             style={{
@@ -499,7 +490,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                             />
                         </div>
                     )}
-                    {isToday && currentTimePct > 0 && currentTimePct < 100 && (
+                    {!isUnknownTime && isToday && currentTimePct > 0 && currentTimePct < 100 && (
                         <div
                             className={`absolute top-0 bottom-0 w-[2px] z-20 rounded-full ${isDark ? 'bg-white/95 shadow-[0_0_10px_rgba(255,255,255,0.35)]' : 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]'}`}
                             style={{ left: `calc(${currentTimePct}% - 1px)` }}
@@ -509,10 +500,12 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
             </div>
 
             {/* Labels under track */}
-            <div className="flex justify-between px-6 pt-2 w-full text-[10px] font-medium text-[#94A3B8]">
-                <span>{labelStart}</span>
-                <span>{labelEnd}</span>
-            </div>
+            {!isUnknownTime && (
+                <div className="flex justify-between px-6 pt-2 w-full text-[10px] font-medium text-[#94A3B8]">
+                    <span>{translateAxisLabel(labelStart, language)}</span>
+                    <span>{translateAxisLabel(labelEnd, language)}</span>
+                </div>
+            )}
 
             {/* Collapsible content block */}
             <div className={`mx-6 mt-8 mb-4 rounded-2xl ${isDark ? 'bg-white/5 p-[16px]' : 'bg-[#F8FAFC] p-4'}`}>
@@ -524,12 +517,16 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full border ${uniqueIntersected.length > 0 ? (isDark ? 'bg-[#5ab91b] border-black/20' : 'bg-[#10B981] border-black/20') : (isDark ? 'bg-[#de4141] border-black/20' : 'bg-[#EF4444] border-black/20')}`} />
                         <span className={`text-[14px] font-normal leading-[20px] ${isDark ? 'text-white' : 'text-[#334155]'}`}>
-                            {uniqueIntersected.length > 0 ? "保障时间段" : "无保障计划"}
+                            {uniqueIntersected.length > 0
+                                ? pickText(language,guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?"公告确认的保障时段":"常规保护时段",guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?"Notice-confirmed protected service":"Standard protected service bands")
+                                : guaranteeWindows.length > 0
+                                    ? pickText(language, "此时段无保障", "No protected service during this period")
+                                    : pickText(language, "保障信息暂未公布", "Protected service information not published")}
                         </span>
                     </div>
                     {uniqueIntersected.length > 0 && (
                         <div className="flex items-center">
-                            <span className={`text-[12px] font-medium ${isDark ? 'text-[#5dcdff]' : 'text-[#0EA5E9]'}`}>{isExpanded ? '收起' : '展开'}</span>
+                            <span className={`text-[12px] font-medium ${isDark ? 'text-[#5dcdff]' : 'text-[#0EA5E9]'}`}>{isExpanded ? pickText(language, '收起', 'Collapse') : pickText(language, '展开', 'Expand')}</span>
                             <svg className={`w-3 h-3 ml-1 transition-transform ${isExpanded ? 'rotate-180' : ''} ${isDark ? 'text-[#5dcdff]' : 'text-[#0EA5E9]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                         </div>
                     )}
@@ -552,11 +549,15 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                     )}
                 </div>
 
+                {guaranteeWindows.length>0 && <p className={`mt-2 text-[12px] ${isDark?'text-white/60':'text-[#64748B]'}`}>{pickText(language,'保障仅针对规定的最低服务或受保护航班，不代表全部班次正常；请核对具体班次。','Protection covers specified minimum services or protected flights; verify your train or flight.')}</p>}
+
+                {(strike.strike_events || []).flatMap(e=>e.timing_evidence?.fields?.exclusions?.value || []).length>0 && <p className={`mt-2 text-[12px] ${isDark?'text-white/60':'text-[#64748B]'}`}>{pickText(language,'原公告排除项：','Official exclusions: ')}{[...new Set((strike.strike_events || []).flatMap(e=>e.timing_evidence?.fields?.exclusions?.value || []))].join(' / ')}</p>}
                 {/* Persistent Separator */}
                 <div className={`mt-3 pt-3 border-t ${isDark ? 'border-[#e2e8f0]/20' : 'border-[#E2E8F0]'}`}>
-                    <span className={`text-[12px] mb-2 block font-normal ${isDark ? 'text-white' : 'text-[#64748B]'}`}>{isPlane ? '受影响机场' : '受影响线路'}</span>
+                    <span className={`text-[12px] mb-2 block font-normal ${isDark ? 'text-white' : 'text-[#64748B]'}`}>{isPlane ? pickText(language, ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?'涉事航司的航班（非整个机场）':'受影响机场 / 服务', ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?'Flights of this airline (not the entire airport)':'Affected airports / services') : pickText(language, '受影响线路', 'Affected lines')}</span>
+                    {strike.has_unknown_lines && displayLines.length>0 && <p className="text-[12px] mb-2">{pickText(language,'部分公告未注明线路，以上信息并非完整范围。','Some notices omit line details; this list may be incomplete.')}</p>}
                     <div className="flex gap-2 flex-wrap">
-                        {displayLines.map((line: string, i: number) => (
+                        {localizedDisplayLines.map((line: string, i: number) => (
                             <div key={i} className={`flex items-center justify-center text-center px-[13px] py-[6px] rounded-[6px] shadow-sm border ${isDark ? 'bg-white/10 border-white/20 text-white shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]' : 'bg-white border-[#F1F5F9] text-[#334155]'}`}>
                                 <span className="text-[12px] font-normal leading-none pt-[1px]">{line}</span>
                             </div>
@@ -565,11 +566,22 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                 </div>
             </div>
 
+            {strike.strike_events && strike.strike_events.length > 1 && (
+                <details className={`mx-6 mb-4 text-[12px] ${isDark ? 'text-white/70' : 'text-[#64748b]'}`}>
+                    <summary className="cursor-pointer">{pickText(language, '查看各公告时段', 'Timing by announcement')}</summary>
+                    <ul className="mt-2 space-y-2">
+                        {strike.strike_events.map((event,index) => <li key={event.source_key || event.id || index}>
+                            {translateProvider(event.provider || getProviderFallback(strike.category,language),language)}{event.unions ? ` · ${event.unions}` : ''}: {event.status === 'CANCELLED' ? pickText(language, '已取消', 'Cancelled') : windowsDisplay(event.windows, language)}
+                        </li>)}
+                    </ul>
+                </details>
+            )}
             {/* Actions */}
             <div className="mx-6 mb-4 flex gap-3">
                 <button
                     onClick={async () => {
-                        const shareUrl = window.location.origin + '?date=' + strike.date;
+                        // Keep the city path: a Rome card must not share a Milan link.
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?date=${strike.date}`;
                         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                         const platform = isWeChatBrowser() ? '微信' : (isMobile ? '系统原生' : 'desktop');
 
@@ -583,8 +595,8 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                         if (isMobile && navigator.share && window.isSecureContext) {
                             try {
                                 await navigator.share({
-                                    title: '意大利罢工信息',
-                                    text: '我想和你分享一个关于意大利的罢工信息，点击查看！',
+                                    title: pickText(language, '意大利罢工信息', 'Italy strike alert'),
+                                    text: pickText(language, '我想和你分享一个关于意大利的罢工信息，点击查看！', 'Sharing an Italy transport strike alert with you. Tap to view it.'),
                                     url: shareUrl
                                 });
                                 // User completed share
@@ -630,7 +642,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-white">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
-                            <span className="text-[14px] font-bold text-white">已复制链接</span>
+                            <span className="text-[14px] font-bold text-white">{pickText(language, '已复制链接', 'Link copied')}</span>
                         </>
                     ) : (
                         <>
@@ -639,7 +651,7 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                                 <polyline points="16 6 12 2 8 6"></polyline>
                                 <line x1="12" y1="2" x2="12" y2="15"></line>
                             </svg>
-                            <span className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#4C6982]'}`}>分享</span>
+                            <span className={`text-[14px] font-bold ${isDark ? 'text-white' : 'text-[#4C6982]'}`}>{pickText(language, '分享', 'Share')}</span>
                         </>
                     )}
                 </button>
@@ -668,10 +680,10 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                     </svg>
                     <span className={`text-[15px] font-bold tracking-wide transition-colors text-white`}>
                         {!isDoodleCountLoaded && hasDoodled
-                            ? '获取中...'
+                            ? pickText(language, '获取中...', 'Loading...')
                             : hasDoodled
-                                ? (doodleCount > 0 ? `${doodleCount} 人已表达不满` : '1 人被影响了')
-                                : '我受影响了'
+                                ? (doodleCount > 0 ? pickText(language, `${doodleCount} 人已表达不满`, `${doodleCount} people reacted`) : pickText(language, '1 人被影响了', '1 person affected'))
+                                : pickText(language, '我受影响了', 'I am affected')
                         }
                     </span>
                 </button>
@@ -704,14 +716,38 @@ export default function StrikeCard({ strike, isDark }: { strike: StrikeRecord, i
                         animation: 'shimmerSweep 1.5s ease-in-out',
                     } : { color: isDark ? 'rgba(255,255,255,0.65)' : '#64748b' }}
                 >
-                    还有 <strong style={isAnimating ? {} : { color: isDark ? 'rgba(255,255,255,0.92)' : '#334155', fontWeight: 700 }}>{doodleCount > 0 ? doodleCount : 1} 人</strong> 也被影响了，和你一起在{doodleTransportLabel[doodleCat]}上猛猛涂鸦                </span>
+                    {language === 'en' ? (
+                        <>Another <strong style={isAnimating ? {} : { color: isDark ? 'rgba(255,255,255,0.92)' : '#334155', fontWeight: 700 }}>{doodleCount > 0 ? doodleCount : 1}</strong> people were affected and reacted to this {doodleTransportLabel[doodleCat]} strike too</>
+                    ) : (
+                        <>还有 <strong style={isAnimating ? {} : { color: isDark ? 'rgba(255,255,255,0.92)' : '#334155', fontWeight: 700 }}>{doodleCount > 0 ? doodleCount : 1} 人</strong> 也被影响了，和你一起在{doodleTransportLabel[doodleCat]}上猛猛涂鸦</>
+                    )}
+                </span>
             </div>
 
-            {/* Outgoing Source Link */}
-            <div className={`w-full text-center py-4 border-t ${isDark ? 'border-white/20' : 'border-[#94A3B8]'}`}>
-                <a href="http://scioperi.mit.gov.it/mit2/public/scioperi" target="_blank" rel="noopener noreferrer" className={`text-[10px] font-bold tracking-[0.5px] uppercase transition-colors underline underline-offset-2 ${isDark ? 'text-white/35 hover:text-white' : 'text-[#94A3B8] hover:text-[#0F172A]'}`}>
-                    来源: 意大利交通部官网 (MIT) ➔
+            {/* All source attribution stays inside the original bottom section. */}
+            <div className={`w-full text-center py-4 px-6 border-t ${isDark ? 'border-white/20 text-white/50' : 'border-[#94A3B8] text-[#94A3B8]'}`}>
+                <a href={strike.source_url || "https://scioperi.mit.gov.it/mit2/public/scioperi"} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold tracking-[0.5px] underline underline-offset-2">
+                    {pickText(language, '来源: 意大利交通部官网 (MIT) ➔', 'Source: Italian Ministry of Transport (MIT) →')}
                 </a>
+                {guaranteeSource==='STANDARD_RULE' && <div className="mt-2"><a className="text-[10px] underline underline-offset-2" href="https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/prestazioni-minime-garantite/" target="_blank" rel="noopener noreferrer">{pickText(language,'常规保护规则：ENAC','Standard protection rules: ENAC')} ↗</a></div>}
+                {strike.timing_evidence && strike.timing_evidence.sources.length > 0 && <>
+                    <p className="text-[10px] mt-2 mb-2">{strike.timing_evidence.confidence === 'conflict'
+                        ? pickText(language, '采用的时段来源与其他来源有差异，请查看原公告', 'Adopted timing differs from other sources; check the notices')
+                        : strike.timing_evidence.sources.some(s=>s.authority === 'reported')
+                            ? pickText(language, '补充公告时段 · 以运营商最新通知为准', 'Reported timing · check the latest operator notice')
+                            : pickText(language, '补充官方公告', 'Additional official notices')}</p>
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px]">
+                        {strike.timing_evidence.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.name} ↗</a>)}
+                    </div>
+                    {strike.timing_evidence.conflicts.length > 0 && <details className="text-[10px] mt-2">
+                        <summary className="cursor-pointer">{pickText(language, '查看来源时段差异', 'Compare source timings')}</summary>
+                        <ul className="mt-2 space-y-1">
+                            {strike.timing_evidence.conflicts.map((conflict,index)=><li key={`${conflict.url}-${index}`}>
+                                {windowsDisplay(conflict.windows,language)} · <a href={conflict.url} target="_blank" rel="noopener noreferrer" className="underline">{pickText(language, '原公告', 'Source notice')} ↗</a>
+                            </li>)}
+                        </ul>
+                    </details>}
+                </>}
             </div>
 
         </div>

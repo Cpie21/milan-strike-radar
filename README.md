@@ -1,5 +1,33 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Strike synchronization
+
+The dashboard and calendar read Supabase. Refreshing a page does **not** fetch
+new MIT announcements. `/api/cron/sync-strikes` performs that separate job.
+
+`vercel.json` schedules it daily at 05:00 UTC (07:00 in Italian summer time,
+06:00 in winter). Include this file in the production deployment; a local file
+or a preview deployment alone does not activate the production schedule.
+After deployment, verify the job is enabled in the project's Cron Jobs page
+and check that the next scheduled invocation succeeds in runtime logs.
+
+Required server environment variables: `NEXT_PUBLIC_SUPABASE_URL` and
+`SUPABASE_SERVICE_ROLE_KEY`. Set `CRON_SECRET` in production; Vercel sends it
+as the Bearer authorization header. Never put the service role key in browser
+code. `DEEPL_API_KEY` is optional.
+
+The sync uses the official HTTPS page, retries failed fetches up to three times
+with a 15-second timeout per attempt, and returns an error if the official
+table is missing instead of reporting a successful empty sync. The function
+has a 300-second execution budget for database writes. A successful sync
+invalidates the city pages, strike API, and calendar route.
+
+Run `npm run test:sync` for parsing, regional-scope, retry, and schedule tests.
+For incidents, compare the official MIT list with the database and inspect
+`[sync-strikes]` runtime logs. No future database records is not proof that
+there are no strikes. A successful manual sync proves fetching and writing
+work, but does not prove the scheduler is running.
+
 ## Getting Started
 
 First, run the development server:
