@@ -51,7 +51,7 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 ## Open cross-module issues
 
-- `main` is far behind `codex/英语功能测试`; merge it back and make `main` the trunk.
+- `main` is behind the committed production backend; review `codex/strike-evidence-handoff` before integrating it. PR body is prepared in `docs/archive/2026-10-backend-handoff-pr.md`; local Git push is blocked by missing HTTPS authentication, so the branch/PR has not been published yet.
 - Latest backend production build is committed (`e4ed9d7`), excluding Claude's Ask feature. Claude's `df13f07` is based on that backend commit; preserve its Rome-date and dashboard changes during integration. Collaboration docs originated in Claude's `361f3ed` and were cherry-picked, then updated here.
 - Evidence coverage remains incomplete: 2 future active supported-city records have operator official matches, 9 have reported supplements, 20 are MIT-only (31 source records including cargo, not cards). Firenze/Pisa 14 October TPL still has unknown clock times; some official sites block fetches. Never describe these as all officially verified.
 - `/api/ask` rate limiting and Jev calibration on real questions are unverified.
