@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, MotionConfig, useAnimation } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { CITY_OPTIONS, resolveCity } from '../lib/cities';
 import StrikeCard from "./StrikeCard";
 import WechatGuide from "./WechatGuide";
 import CalendarSyncModal from "./CalendarSyncModal";
@@ -78,18 +79,18 @@ function RegionCityIcon({
             case "MILANO": return "/assets/milano-icon.png";
             case "ROMA": return "/assets/roma-icon.png";
             case "TORINO": return "/assets/torino-icon.png";
-            default: return "/assets/milano-icon.png";
+            default: return "";
         }
     }, [tag]);
 
     return (
         <div className="relative w-[34px] h-[34px] flex items-center justify-center shrink-0">
-            <img
+            {iconSrc ? <img
                 src={iconSrc}
                 alt={tag}
                 className={`w-full h-full object-contain transition-all duration-300 ${active ? "opacity-100 scale-110 brightness-110" : "opacity-45 grayscale scale-100"
                     }`}
-            />
+            /> : <span className="text-xs font-bold">{resolveCity(tag)?.zh.slice(0, 2)}</span>}
         </div>
     );
 }
@@ -215,11 +216,7 @@ export default function StrikeDashboard({
     const CN_DAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
     const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const REGION_OPTIONS = [
-        { tag: "MILANO", path: "/" },
-        { tag: "ROMA", path: "/roma" },
-        { tag: "TORINO", path: "/torino" },
-    ];
+    const REGION_OPTIONS = CITY_OPTIONS;
     const [language, setLanguage] = useState<AppLanguage>('zh');
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const activeRegionLabel = regionLabels[language][regionTag.toUpperCase()] || regionLabels[language].MILANO;
@@ -266,10 +263,11 @@ export default function StrikeDashboard({
     }, [language]);
 
     useEffect(() => {
-        REGION_OPTIONS.forEach((opt) => {
-            router.prefetch(opt.path);
-        });
-    }, [router]);
+        if (showRegionSelector) {
+            const focused = REGION_OPTIONS.find(option => option.tag === selectorFocusTag);
+            if (focused) router.prefetch(focused.path);
+        }
+    }, [router, showRegionSelector, selectorFocusTag]);
 
     useEffect(() => {
         setSelectorFocusTag(regionTag.toUpperCase());

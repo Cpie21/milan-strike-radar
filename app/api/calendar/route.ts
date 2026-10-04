@@ -1,71 +1,24 @@
+import { resolveCity, cityPath } from '../../../lib/cities';
+import { readCityStrikes, romeToday } from '../../../lib/strikeQuery';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { aggregateStrikes, categoryMap, filterStrikesForRegion } from '../../../components/utils';
-import { canonicalizeRegionValue } from '../../../lib/strikeNormalization';
-
-const REGION_PAGE_PATHS: Record<string, string> = {
-    MILANO: '/',
-    ROMA: '/roma',
-    TORINO: '/torino',
-};
-
-const REGION_LABELS: Record<string, string> = {
-    MILANO: '米兰',
-    ROMA: '罗马',
-    TORINO: '都灵',
-};
-
-function resolveRegionTag(input: string | null) {
-    const raw = (input || '').trim();
-    if (!raw) return 'MILANO';
-
-    const canonical = canonicalizeRegionValue(raw.toUpperCase());
-    if (canonical === 'MILANO' || canonical === 'ROMA' || canonical === 'TORINO') {
-        return canonical;
-    }
-
-    const lower = raw.toLowerCase();
-    if (lower === 'milan' || lower === 'milano') return 'MILANO';
-    if (lower === 'rome' || lower === 'roma') return 'ROMA';
-    if (lower === 'turin' || lower === 'torino') return 'TORINO';
-    return 'MILANO';
-}
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const typesParam = searchParams.get('types') || 'train,subway,bus,airport';
     const selectedTypes = new Set(typesParam.toLowerCase().split(','));
-    const regionTag = resolveRegionTag(searchParams.get('region'));
-    const regionLabel = REGION_LABELS[regionTag] || '米兰';
-    const pagePath = REGION_PAGE_PATHS[regionTag] || '/';
+    const city = resolveCity(searchParams.get('region') || 'MILANO');
+    if (!city) return NextResponse.json({ error: 'Unsupported city' }, { status: 400 });
+    const regionTag = city.tag;
+    const regionLabel = city.zh;
+    const pagePath = cityPath(regionTag);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-        return new NextResponse('Internal Server Error: Missing Database Keys', { status: 500 });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch strikes from today onwards
-    const today = new Date();
-    // Use local Italy timezone approximate or just server time start of day
-    const startDateStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-    // Alternatively, just fetch all from 30 days ago to allow calendar to see recent past too
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - 30);
-    const filterDateStr = startDate.toISOString().split('T')[0];
-
-    const { data: strikes, error } = await supabase
-        .from('strikes')
-        .select('*')
-        .gte('date', filterDateStr)
-        .order('date', { ascending: true });
-
-    if (error || !strikes) {
-        return new NextResponse('Error fetching data', { status: 500 });
+    const date = new Date(`${romeToday()}T12:00:00Z`);
+    let strikes;
+    try {
+      strikes = await readCityStrikes(regionTag, date.toISOString().slice(0, 10));
+    } catch {
+      return NextResponse.json({ error: 'Strike data unavailable' }, { status: 503 });
     }
 
     // Process strikes using the same regional logic as the main app
@@ -73,7 +26,7 @@ export async function GET(request: NextRequest) {
     const aggregatedData = filterStrikesForRegion(aggregateStrikes(regionScoped), regionTag);
 
     // Filter by requested types
-    const filtered = aggregatedData.filter((s: any) => {
+    const filtered = aggregatedData.filter((s) => {
         if (!s.category) return false;
         const cat = s.category.toLowerCase();
         return selectedTypes.has(cat);
@@ -83,6 +36,7 @@ export async function GET(request: NextRequest) {
     let icsData = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Italy Strike Query//CN\nCALSCALE:GREGORIAN\nMETHOD:PUBLISH\nX-WR-CALNAME:${regionLabel}罢工预警\nX-WR-TIMEZONE:Europe/Rome\nREFRESH-INTERVAL;VALUE=DURATION:PT1H\nX-PUBLISHED-TTL:PT1H\n`;
 
     filtered.forEach(strike => {
+        if (!strike.date || !strike.category) return;
         const dateStr = strike.date.replace(/-/g, ''); // e.g. 20250518
         const nextDate = new Date(strike.date);
         nextDate.setDate(nextDate.getDate() + 1);
@@ -101,11 +55,12 @@ export async function GET(request: NextRequest) {
         const detailUrl = `https://theitalystrike.com${pagePath}?date=${strike.date}`;
 
         // As requested: Describe who is striking and add the website link. Don't add guarantee times.
-        const description = `城市: ${regionLabel}\\n罢工主体: ${strike.provider}\\n\\n点击下方链接查看受影响线路和详情👇:\\n${detailUrl}`;
+        const description = `城市: ${regionLabel}\\n罢工主体: ${strike.provider}\\n罢工时段: ${strike.display_time || "具体时段待公布"}\\n官方来源: ${strike.source_url || "https://scioperi.mit.gov.it/mit2/public/scioperi"}\\n\\n点击下方链接查看受影响线路和详情👇:\\n${detailUrl}`;
 
         icsData += `BEGIN:VEVENT\n`;
-        icsData += `UID:strike-${strike.id}@milanstrikeradar.com\n`;
+        icsData += `UID:strike-${strike.id}-${strike.category}-${regionTag}@milanstrikeradar.com\n`;
         icsData += `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z\n`;
+        if (strike.status === 'CANCELLED') icsData += `STATUS:CANCELLED\n`;
         icsData += `DTSTART;VALUE=DATE:${dateStr}\n`;
         icsData += `DTEND;VALUE=DATE:${nextDateStr}\n`;
         icsData += `SUMMARY:${summary}\n`;
@@ -121,7 +76,7 @@ export async function GET(request: NextRequest) {
         headers: {
             'Content-Type': 'text/calendar; charset=utf-8',
             'Content-Disposition': `inline; filename="${encodeURIComponent(`${regionLabel}-strike-calendar.ics`)}"`,
-            'Cache-Control': 's-maxage=3600, stale-while-revalidate'
+            'Cache-Control': 'no-store'
         },
     });
 }

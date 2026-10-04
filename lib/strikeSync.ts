@@ -1,9 +1,10 @@
+import { createHash } from 'node:crypto';
+import { parseStrikeTiming, scopeTiming } from './strikeTiming';
 import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
 import {
   canonicalizeRegionValue,
-  classifyRegionTag,
-  inferRegionTagFromText,
+  classifyRegionTags,
   normalizeAirportAffectedLines,
   normalizeProviderList,
 } from './strikeNormalization';
@@ -28,6 +29,10 @@ export interface StrikeRecord {
   affected_lines: string[];
   region: string;
   data_source?: string;
+  source_key?: string;
+  source_url?: string;
+  raw_payload?: RawStrikeRow;
+  last_seen_at?: string;
 }
 
 export interface RawStrikeRow {
@@ -41,12 +46,18 @@ export interface RawStrikeRow {
   note: string;
   rilevanza: string;
   proclamationDate: string;
+  unions?: string;
+  sourceKey?: string;
+  sourceUrl?: string;
+  sourceStatus?: string;
+  rawRegion?: string;
 }
 
 const MIT_URL = 'https://scioperi.mit.gov.it/mit2/public/scioperi';
-const NATIONAL_KEYWORDS = ['nazionale', 'plurisettoriale'];
 const TRANSPORT_SECTORS = ['trasporto pubblico', 'ferroviario', 'aereo'];
 const TRANSPORT_CONTEXT_KEYWORDS = [
+  'ferroviario',
+  'ferrovie',
   'settore ferroviario',
   'ferroviario:',
   'trasporto pubblico locale',
@@ -54,14 +65,6 @@ const TRANSPORT_CONTEXT_KEYWORDS = [
   'trasporto aereo',
   'aeroport',
   'enav',
-];
-const TRANSPORT_EXCLUSION_KEYWORDS = [
-  'esclusi settori trasporto aereo, ferroviario, trasporto pubblico locale',
-  'esclusi settori trasporto aereo',
-  'esclusi settori ferroviario',
-  'escluso settore ferroviario',
-  'escluso settore trasporto pubblico locale',
-  'escluso settore trasporto aereo',
 ];
 const PASSENGER_RAIL_IMPACT_KEYWORDS = [
   'trenord',
@@ -129,25 +132,35 @@ function normalizeHeader(header: string) {
   return header.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\*/g, '').replace(/\s+/g, ' ').trim();
 }
 
-export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
-  // Bound every attempt, including reading the body. Do not report a failed
-  // upstream fetch (or an HTML error page with status 200) as an empty calendar.
+async function fetchOfficial(url: string, options: RequestInit = {}) {
   let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const response = await fetch(MIT_URL, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MilanStrikeBot/1.0)' },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) throw new Error(`MIT fetch failed: ${response.status}`);
+      const response = await fetch(url, { ...options, cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+      if (!response.ok) throw new Error(`MIT returned HTTP ${response.status}`);
       return parseStrikeHtml(await response.text());
     } catch (error) {
       lastError = error;
-      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1_000 * (attempt + 1)));
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
     }
   }
-  throw new Error(`MIT sync failed after 3 attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+  throw lastError;
+}
+
+export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
+  return fetchOfficial(MIT_URL);
+}
+
+// The upcoming list drops yesterday's records and withdrawn future events.
+// Search all states so both late changes and upcoming cancellations are seen.
+export async function fetchRecentRows(todayIso = getRomeTodayIso()): Promise<RawStrikeRow[]> {
+  const start = new Date(`${todayIso}T12:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - 7);
+  const end = new Date(`${todayIso}T12:00:00Z`);
+  end.setUTCDate(end.getUTCDate() + 90);
+  const italianDate = (iso: string) => iso.split('-').reverse().join('/');
+  const body = new URLSearchParams({ dataInizio: italianDate(start.toISOString().slice(0, 10)), dataFine: italianDate(end.toISOString().slice(0, 10)), settore: '0', rilevanza: '0', stato: '0', categoria: '', sindacato: '', submit: 'Ricerca' });
+  return fetchOfficial(`${MIT_URL}/ricerca`, { method: 'POST', body });
 }
 
 export function parseStrikeHtml(html: string): RawStrikeRow[] {
@@ -193,29 +206,25 @@ export function parseStrikeHtml(html: string): RawStrikeRow[] {
       rilevanza: getByHeader('rilevanza', dateCol + 6).trim(),
       note: getByHeader('note', dateCol + 7).trim(),
       proclamationDate: getByHeader('data proclamazione').trim(),
+      unions: getByHeader('sindacati', dateCol + 2).trim(),
+      sourceStatus: getByHeader('stato').trim(),
+      sourceUrl: MIT_URL,
       region: getByHeader('regione', dateCol + 9).trim(),
+      rawRegion: getByHeader('regione', dateCol + 9).trim(),
       province: getByHeader('provincia', dateCol + 10).trim(),
     };
 
-    const regionTag = classifyRegionTag({
-      regionText: raw.region,
-      provinceText: raw.province,
-      sectorText: raw.sector,
-      providerText: raw.provider,
-      noteText: `${raw.note} ${raw.rilevanza}`,
-    });
-
-    let finalRegion = regionTag;
-    if (!finalRegion && NATIONAL_KEYWORDS.some((keyword) => raw.rilevanza.toLowerCase().includes(keyword))) {
-      const fallback = inferRegionTagFromText(`${raw.provider} ${raw.note}`);
-      finalRegion = fallback && fallback !== 'OTHER' ? fallback : '';
-    }
-
-    if (!finalRegion || finalRegion === 'OTHER') return;
-
     if (!isTransportRelevantRow(raw)) return;
-
-    rows.push({ ...raw, region: canonicalizeRegionValue(finalRegion) });
+    const regionTags = classifyRegionTags({
+      regionText: raw.region, provinceText: raw.province, sectorText: raw.sector,
+      providerText: raw.provider, noteText: `${raw.note} ${raw.rilevanza}`,
+    });
+    // Identity intentionally excludes timing, so an official timing revision
+    // replaces its previous version rather than creating a second full-day row.
+    raw.sourceKey = createHash('sha256').update(JSON.stringify([
+      raw.date, raw.provider, raw.unions, raw.proclamationDate, raw.region, raw.province,
+    ])).digest('hex');
+    regionTags.forEach(region => rows.push({ ...raw, region: canonicalizeRegionValue(region) }));
   });
 
   if (!foundStrikeTable) {
@@ -228,7 +237,7 @@ function isTransportRelevantRow(row: RawStrikeRow) {
   const sectorLow = row.sector.toLowerCase();
   const combined = `${row.sector} ${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
 
-  if (TRANSPORT_EXCLUSION_KEYWORDS.some((keyword) => combined.includes(keyword))) return false;
+
   if (isCommuterIrrelevantFreightRailRow(row)) return false;
   if (TRANSPORT_SECTORS.some((sector) => sectorLow.includes(sector))) return true;
 
@@ -350,10 +359,10 @@ function splitTimeInfoForDate(
     return [];
   });
 
-  const resolvedWindows = windows.length > 0 ? windows : [{ start: '00:00', end: '24:00' }];
+  const resolvedWindows = windows;
   return {
     hours: buildDurationFromWindows(resolvedWindows, baseTimeInfo.hours),
-    display: buildDisplayFromWindows(resolvedWindows),
+    display: resolvedWindows.length ? buildDisplayFromWindows(resolvedWindows) : '具体时段待公布',
     windows: resolvedWindows,
   };
 }
@@ -370,34 +379,8 @@ function getLeadDaysBeforeStrike(dateIso: string, proclamationDate: string) {
   return Math.round(diffMs / (24 * 60 * 60 * 1000));
 }
 
-function getDaysUntilStrike(dateIso: string, todayIso = getRomeTodayIso()) {
-  const [yyyy, mm, dd] = dateIso.split('-');
-  const [todayYyyy, todayMm, todayDd] = todayIso.split('-');
-  if (!yyyy || !mm || !dd || !todayYyyy || !todayMm || !todayDd) return null;
-
-  const strikeDate = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  const today = new Date(Number(todayYyyy), Number(todayMm) - 1, Number(todayDd));
-  if (Number.isNaN(strikeDate.getTime()) || Number.isNaN(today.getTime())) return null;
-
-  return Math.round((strikeDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
-}
-
 function getCategoryModalitaText(modalita: string, category?: StrikeRecord['category']) {
-  if (!category) return modalita;
-
-  const segments = modalita.split(/\s+\/\s+/).map((segment) => segment.trim()).filter(Boolean);
-  const matchesCategory = (segment: string) => {
-    const upper = segment.toUpperCase();
-    if (category === 'TRAIN') return upper.includes('FERROVIARIO') || upper.includes('FERROV');
-    if (category === 'AIRPORT') return upper.includes('AEREO') || upper.includes('AEROPORT');
-    if (category === 'BUS' || category === 'SUBWAY') {
-      return upper.includes('TPL') || upper.includes('TRASPORTO PUBBLICO') || upper.includes('AUTOFERRO');
-    }
-    return false;
-  };
-
-  const categorySegments = segments.filter(matchesCategory);
-  return categorySegments.length > 0 ? categorySegments.join(' / ') : modalita;
+  return scopeTiming(modalita, category);
 }
 
 function hasConcreteStrikeTiming(row: RawStrikeRow, category: StrikeRecord['category'], dateIso: string) {
@@ -426,17 +409,10 @@ function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['categor
   const hasConcreteTime = hasConcreteStrikeTiming(row, category, dateIso);
   const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
   const hasRailScopeSignal = hasPassengerImpactSignal || combined.includes('ferroviario') || combined.includes('ferrovie');
-  const daysUntilStrike = getDaysUntilStrike(dateIso);
 
-  if (
-    daysUntilStrike !== null &&
-    daysUntilStrike >= 0 &&
-    daysUntilStrike <= 3 &&
-    hasConcreteTime &&
-    hasRailScopeSignal
-  ) {
-    return false;
-  }
+  // An explicit railway window in the official table is evidence even after
+  // the date has passed; archive corrections must not become pending again.
+  if (hasConcreteTime && hasRailScopeSignal) return false;
 
   return !hasConcreteTime || !hasPassengerImpactSignal;
 }
@@ -463,7 +439,7 @@ async function translateText(text: string): Promise<string> {
   }
 }
 
-async function normalizeProvider(raw: string) {
+async function normalizeProvider(raw: string, translator = translateText) {
   let source = raw.toUpperCase();
   source = source.replace(/SOC\. /g, '');
   source = source.replace(/SOC\./g, '');
@@ -472,7 +448,7 @@ async function normalizeProvider(raw: string) {
   source = source.replace(/S\.C\.A\.R\.L\./g, '');
   source = source.trim();
 
-  const translated = await translateText(source);
+  const translated = await translator(source);
   return normalizeProviderList(source, translated).join(' / ');
 }
 
@@ -514,8 +490,14 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
     categories.add('BUS');
   }
 
-  if (categories.size > 0) return Array.from(categories);
-  return ['BUS'];
+  if (!categories.size && sectorLow.includes('trasporto pubblico')) categories.add('BUS');
+  if (/metropolitan|\bmetro\b/.test(providerLow)) categories.add('SUBWAY');
+  // An excluded mode does not exclude the other transport modes of a general strike.
+  const excluded = combinedLow.match(/esclus[oaie]\s+(?:il\s+)?settor[ei]\s+([^.;]+)/)?.[1] || '';
+  if (/aereo/.test(excluded)) categories.delete('AIRPORT');
+  if (/ferroviario/.test(excluded)) categories.delete('TRAIN');
+  if (/trasporto pubblico|tpl/.test(excluded)) { categories.delete('BUS'); categories.delete('SUBWAY'); }
+  return Array.from(categories);
 }
 
 function extractAffectedLines(note: string) {
@@ -524,173 +506,35 @@ function extractAffectedLines(note: string) {
   return found.length > 0 ? found : ['全部线路'];
 }
 
-function buildIsoFromDayMonth(day: string, month: string, fallbackYear: number) {
-  return `${fallbackYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
-function buildWindowForTargetDate(
-  startTime: string,
-  endTime: string,
-  startDateIso?: string,
-  endDateIso?: string,
-  targetDateIso?: string
-) {
-  if (!startDateIso && !endDateIso) return { start: startTime, end: endTime };
-  if (!targetDateIso) return { start: startTime, end: endTime };
-
-  const startDate = startDateIso || targetDateIso;
-  let endDate = endDateIso || startDate;
-  if (endDate < startDate) {
-    const [yyyy, mm, dd] = endDate.split('-').map(Number);
-    endDate = `${yyyy + 1}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
-  }
-
-  if (targetDateIso < startDate || targetDateIso > endDate) return null;
-  if (startDate === endDate) return { start: startTime, end: endTime };
-  if (targetDateIso === startDate) return { start: startTime, end: '24:00' };
-  if (targetDateIso === endDate) return { start: '00:00', end: endTime };
-  return { start: '00:00', end: '24:00' };
-}
-
-function parseTimeWindows(
-  durationRaw: string,
-  modalita: string,
-  note: string,
-  category?: StrikeRecord['category'],
-  dateIso?: string
-) {
-  const scopedDuration = getCategoryModalitaText(durationRaw, category);
-  const combined = `${scopedDuration} ${modalita} ${note}`.toUpperCase();
-  const targetYear = Number((dateIso || '').slice(0, 4)) || new Date().getFullYear();
-  let hours = '部分时段';
-  const windows: StrikeWindow[] = [];
-  let dateSpecific = false;
-  let matchedConcreteWindow = false;
-
-  if (combined.includes('24 ORE') || combined.includes('INTERO TURNO')) {
-    hours = '24小时';
-    windows.push({ start: '00:00', end: '24:00' });
-    matchedConcreteWindow = true;
-  } else {
-    const hourMatch = combined.match(/(\d+)\s*ORE/);
-    if (hourMatch) hours = `${hourMatch[1]}小时`;
-
-    const optionalDate = String.raw`(?:\s+DEL\s+\d{1,2}\/\d{1,2})?`;
-    const timeRegex = new RegExp(String.raw`DALLE\s+(\d{1,2})[\.:](\d{2})${optionalDate}\s+ALLE\s+(\d{1,2})[\.:](\d{2})`, 'g');
-    const endOfServiceRegex = new RegExp(String.raw`DALLE\s+(\d{1,2})[\.:](\d{2})${optionalDate}\s+A\s+FINE\s+SERVIZIO`, 'g');
-    let match: RegExpExecArray | null;
-    while ((match = timeRegex.exec(combined)) !== null) {
-      windows.push({
-        start: `${match[1].padStart(2, '0')}:${match[2]}`,
-        end: `${match[3].padStart(2, '0')}:${match[4]}`,
-      });
-      matchedConcreteWindow = true;
-    }
-    while ((match = endOfServiceRegex.exec(combined)) !== null) {
-      windows.push({
-        start: `${match[1].padStart(2, '0')}:${match[2]}`,
-        end: '24:00',
-      });
-      matchedConcreteWindow = true;
-    }
-
-    const rangeRegex = /(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?\s*[-–]\s*(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?/g;
-    while ((match = rangeRegex.exec(combined)) !== null) {
-      const startTime = `${match[1].padStart(2, '0')}:${match[2]}`;
-      const rawEndTime = `${match[5].padStart(2, '0')}:${match[6]}`;
-      const endTime = rawEndTime === '23:59' ? '24:00' : rawEndTime;
-      const startDate = match[3] && match[4] ? buildIsoFromDayMonth(match[3], match[4], targetYear) : undefined;
-      const endDate = match[7] && match[8] ? buildIsoFromDayMonth(match[7], match[8], targetYear) : undefined;
-      const window = buildWindowForTargetDate(startTime, endTime, startDate, endDate, dateIso);
-      if (window) {
-        windows.push(window);
-        matchedConcreteWindow = true;
-        if (startDate || endDate) dateSpecific = true;
-      }
-    }
-  }
-
-  if (windows.length === 0) windows.push({ start: '00:00', end: '24:00' });
-  windows.sort((a, b) => a.start.localeCompare(b.start));
-  const resolvedHours = matchedConcreteWindow && hours === '部分时段'
-    ? buildDurationFromWindows(windows, hours)
-    : hours;
-
-  return {
-    hours: resolvedHours,
-    windows,
-    display: buildDisplayFromWindows(windows),
-    dateSpecific,
-  };
-}
-
-function parseIsoDateToDate(dateIso: string) {
-  const [yyyy, mm, dd] = dateIso.split('-');
-  if (!yyyy || !mm || !dd) return null;
-  const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatIsoDate(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function getDateSpanFromIsoRange(startIso: string, endIso: string) {
-  const start = parseIsoDateToDate(startIso);
-  const end = parseIsoDateToDate(endIso);
-  if (!start || !end || end < start) return [startIso];
-
-  const dates: string[] = [];
-  const cursor = new Date(start);
-  while (cursor <= end && dates.length < 10) {
-    dates.push(formatIsoDate(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return dates;
+export function parseTimeWindows(durationRaw: string, note: string, _relevance: string, category?: StrikeRecord['category'], dateIso?: string) {
+  // Notes are not mixed into durations: they can contain exclusions, guaranteed
+  // service windows and times belonging to a different mode of transport.
+  return parseStrikeTiming(durationRaw, category, dateIso);
 }
 
 function getCategoryDateSpan(row: RawStrikeRow, category: StrikeRecord['category'], fallbackDateSpan: string[]) {
-  const baseYear = Number((fallbackDateSpan[0] || '').slice(0, 4)) || new Date().getFullYear();
-  const scoped = getCategoryModalitaText(row.modalita, category).toUpperCase();
-  const explicitDates = new Set<string>();
-  const rangeRegex = /(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?\s*[-–]\s*(\d{1,2})[\.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2}))?/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = rangeRegex.exec(scoped)) !== null) {
-    if (!match[3] || !match[4] || !match[7] || !match[8]) continue;
-
-    const startDate = buildIsoFromDayMonth(match[3], match[4], baseYear);
-    const endDate = buildIsoFromDayMonth(match[7], match[8], baseYear);
-    getDateSpanFromIsoRange(startDate, endDate).forEach((dateIso) => explicitDates.add(dateIso));
-  }
-
-  return Array.from(new Set([...fallbackDateSpan, ...explicitDates])).sort();
-}
-
-async function fetchSecondarySource(category: string, provider: string): Promise<{ windows?: StrikeWindow[]; lines?: string[] } | null> {
-  try {
-    if ((category === 'SUBWAY' || category === 'BUS') && provider.toUpperCase().includes('ATM')) {
-      return null;
-    }
-    if (category === 'AIRPORT') {
-      return null;
-    }
-    return null;
-  } catch (error) {
-    console.error('Secondary fetch failed:', error);
-    return null;
-  }
+  const timing = parseStrikeTiming(row.modalita, category, fallbackDateSpan[0]);
+  return timing.explicitDates.length ? timing.explicitDates : fallbackDateSpan;
 }
 
 export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
-  const rawRecordGroups = await Promise.all(rawRows.map(async (row) => {
-    const baseProviderNorm = await normalizeProvider(row.provider);
+  // Memoize translation work per run and bound concurrency as city coverage grows.
+  const translations = new Map<string, Promise<string>>();
+  const translate = (text: string) => {
+    if (!translations.has(text)) translations.set(text, translateText(text));
+    return translations.get(text)!;
+  };
+  const rawRecordGroups: StrikeRecord[][] = [];
+  for (let offset = 0; offset < rawRows.length; offset += 6) {
+  const batch = rawRows.slice(offset, offset + 6);
+  rawRecordGroups.push(...await Promise.all(batch.map(async (row) => {
+    const baseProviderNorm = await normalizeProvider(row.provider, translate);
     const categories = resolveCategories(row.provider, row.sector, `${row.modalita} ${row.note} ${row.rilevanza}`);
     const dateSpan = getDateSpan(row.date, row.endDate);
 
     let status: StrikeStatus = 'CONFIRMED';
     const combinedRaw = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
-    if (combinedRaw.includes('revocat') || combinedRaw.includes('differit')) {
+    if (`${combinedRaw} ${row.sourceStatus || ''}`.toLowerCase().match(/revocat|differit|sospes/)) {
       status = 'CANCELLED';
     } else if (combinedRaw.includes('da definire')) {
       status = 'REQUIRES_DETAIL';
@@ -709,14 +553,16 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
       }
       const parsedTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso);
       const timeInfo = splitTimeInfoForDate(parsedTimeInfo, dateSpan, dateIndex);
-      const guaranteeWindows = getGuaranteeWindows({
+      const guaranteeWindows = timeInfo.windows.length ? getGuaranteeWindows({
         category,
         dateIso,
         region: row.region,
         isFullDay:
           timeInfo.hours === '24小时' ||
           (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00'),
-      });
+      }) : [];
+
+      if (!timeInfo.windows.length && resolvedStatus === 'CONFIRMED') resolvedStatus = 'UNCERTAIN';
 
       let lines = category === 'AIRPORT'
         ? normalizeAirportAffectedLines([], { contextText: `${row.provider} ${row.note}`, regionTag: row.region })
@@ -724,7 +570,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
 
       const excludeNotes = ['nazionale', 'provinciale', 'regionale', 'territoriale'];
       if (lines.length === 1 && lines[0] === '全部线路' && row.note.trim().length > 3 && !excludeNotes.includes(row.note.toLowerCase().trim())) {
-        const translatedNote = await translateText(row.note);
+        const translatedNote = await translate(row.note);
         if (translatedNote && translatedNote !== row.note) lines = [translatedNote];
       }
 
@@ -735,29 +581,8 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
         });
       }
 
-      let dataSource = 'MIT_PRIMARY';
-      if (resolvedStatus === 'REQUIRES_DETAIL' || (lines.length === 1 && lines[0] === '全部线路')) {
-        const secondaryResult = await fetchSecondarySource(category, providerNorm);
-        if (secondaryResult) {
-          if (secondaryResult.windows?.length) {
-            timeInfo.windows = secondaryResult.windows;
-            timeInfo.display = secondaryResult.windows.map((window) => `${window.start} - ${window.end}`).join(', ');
-            timeInfo.hours = '精确时段';
-          }
-          if (secondaryResult.lines?.length) {
-            lines = category === 'AIRPORT'
-              ? normalizeAirportAffectedLines(secondaryResult.lines, {
-                  contextText: `${row.provider} ${row.note}`,
-                  regionTag: row.region,
-                })
-              : secondaryResult.lines;
-          }
-          resolvedStatus = 'CONFIRMED';
-          dataSource = 'SECONDARY_LIVE';
-        } else if (resolvedStatus === 'REQUIRES_DETAIL') {
-          resolvedStatus = 'UNCERTAIN';
-        }
-      }
+      const dataSource = 'MIT_PRIMARY';
+      if (resolvedStatus === 'REQUIRES_DETAIL') resolvedStatus = 'UNCERTAIN';
 
       return {
         date: dateIso,
@@ -771,15 +596,18 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
         guarantee_windows: guaranteeWindows,
         affected_lines: lines,
         data_source: dataSource,
+        ...(row.sourceKey ? { source_key: row.sourceKey, source_url: row.sourceUrl || MIT_URL, raw_payload: row, last_seen_at: new Date().toISOString() } : {}),
       } satisfies StrikeRecord;
     }));
-  }));
+  })));
+  }
   const rawRecords = rawRecordGroups.flat();
 
   const recordsMap = new Map<string, StrikeRecord>();
-  [...rawRecords, ...VERIFIED_SUPPLEMENTS].forEach((record) => {
-    const key = `${record.date}|${record.region}|${record.category}|${record.provider}|${record.display_time}`;
+  [...rawRecords, ...VERIFIED_SUPPLEMENTS.filter(record => record.date >= getRomeTodayIso())].forEach((record) => {
+    const key = `${record.source_key || record.provider}|${record.date}|${record.region}|${record.category}`;
     const existing = recordsMap.get(key);
+    if (record.source_key) { recordsMap.set(key, record); return; }
     if (!existing) {
       recordsMap.set(key, record);
       return;
@@ -801,7 +629,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
 
     recordsMap.set(key, {
       ...existing,
-      status: existing.status === 'CONFIRMED' || record.status === 'CONFIRMED' ? 'CONFIRMED' : record.status,
+      status: existing.status === 'CANCELLED' || record.status === 'CANCELLED' ? 'CANCELLED' : record.status,
       duration_hours: isFullDay ? '24小时' : existing.duration_hours || record.duration_hours,
       display_time: isFullDay
         ? '全天 24小时'
@@ -923,18 +751,45 @@ function canSupersedePendingRecord(
   return providerCanSupersedePending(candidate.provider, nextRecord.provider);
 }
 
-export async function upsertToSupabase(records: StrikeRecord[]) {
+function createDatabaseClient(url: string, key: string) {
+  return createClient(url, key);
+}
+
+export async function upsertToSupabase(records: StrikeRecord[], database?: ReturnType<typeof createDatabaseClient>) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) {
+  if (!database && (!supabaseUrl || !supabaseKey)) {
     throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const supabase = database || createDatabaseClient(supabaseUrl!, supabaseKey!);
   let affected = 0;
-
-  for (const record of records) {
+  const sourced = records.filter(record => record.source_key);
+  const adoptedIds = new Set<string>();
+  if (sourced.length) {
+    const dates = [...new Set(sourced.map(record => record.date))];
+    const { data: legacy, error } = await supabase.from('strikes').select('id,date,region,category,provider,source_key').in('date', dates).is('source_key', null);
+    if (error) throw new Error(`Source schema unavailable: ${error.message}; apply the strike-source migration first`);
+    const rows = [];
+    for (const record of sourced) {
+      const candidates = (legacy || []).filter(row => row.date === record.date && row.region === record.region && row.category === record.category && row.provider === record.provider && !adoptedIds.has(row.id));
+      if (candidates.length > 1) throw new Error(`Ambiguous legacy strike: ${record.date} ${record.region} ${record.provider}; reconcile before syncing`);
+      const existing = candidates[0];
+      if (existing) {
+        adoptedIds.add(existing.id);
+        const { error: adoptError } = await supabase.from('strikes').update({ source_key: record.source_key }).eq('id', existing.id).is('source_key', null);
+        if (adoptError) throw new Error(`Legacy adoption failed: ${adoptError.message}`);
+      }
+      rows.push({ ...record, updated_at: new Date().toISOString() });
+    }
+    // A stable source key means corrections to arbitrary times and cancelled
+    // events overwrite the same row. Timing is deliberately not part of identity.
+    const { error: upsertError } = await supabase.from('strikes').upsert(rows, { onConflict: 'source_key,date,region,category', defaultToNull: false });
+    if (upsertError) throw new Error(`Source upsert failed: ${upsertError.message}`);
+    affected += sourced.length;
+  }
+  for (const record of records.filter(record => !record.source_key)) {
     const { data: existing, error: lookupError } = await supabase
       .from('strikes')
       .select('id')
@@ -993,52 +848,7 @@ export async function upsertToSupabase(records: StrikeRecord[]) {
 
     const { error: insertError } = await supabase.from('strikes').insert(record);
     if (insertError) {
-      const isLegacyConstraint = insertError.message.includes('strikes_date_provider_key');
-      if (!isLegacyConstraint) {
-        throw new Error(`Supabase insert error: ${insertError.message}`);
-      }
-
-      const { data: legacyExisting, error: legacyLookupError } = await supabase
-        .from('strikes')
-        .select('id, region, category, provider, status, display_time, duration_hours, strike_windows, guarantee_windows, affected_lines')
-        .eq('date', record.date)
-        .eq('provider', record.provider)
-        .maybeSingle();
-
-      if (legacyLookupError || !legacyExisting?.id) {
-        throw new Error(`Supabase legacy lookup error: ${legacyLookupError?.message || insertError.message}`);
-      }
-
-      const mergedStrikeWindows = mergeWindows([...(legacyExisting.strike_windows || []), ...record.strike_windows]);
-      const mergedGuarantees = mergeWindows([...(legacyExisting.guarantee_windows || []), ...record.guarantee_windows]);
-      const mergedAffectedLines = Array.from(new Set([...(legacyExisting.affected_lines || []), ...record.affected_lines]));
-      const isFullDay =
-        legacyExisting.duration_hours === '24小时' ||
-        record.duration_hours === '24小时' ||
-        mergedStrikeWindows.some((window) => window.start === '00:00' && window.end === '24:00');
-
-      const mergedRecord = {
-        ...record,
-        region: legacyExisting.region || record.region,
-        category: legacyExisting.category || record.category,
-        status: legacyExisting.status === 'CONFIRMED' || record.status === 'CONFIRMED' ? 'CONFIRMED' : record.status,
-        strike_windows: isFullDay ? [{ start: '00:00', end: '24:00' }] : mergedStrikeWindows,
-        guarantee_windows: mergedGuarantees,
-        affected_lines: mergedAffectedLines,
-        duration_hours: isFullDay ? '24小时' : record.duration_hours,
-        display_time: isFullDay
-          ? '全天 24小时'
-          : mergedStrikeWindows.map((window) => `${window.start} - ${window.end}`).join(', '),
-      } satisfies StrikeRecord;
-
-      const { error: legacyUpdateError } = await supabase
-        .from('strikes')
-        .update(mergedRecord)
-        .eq('id', legacyExisting.id);
-
-      if (legacyUpdateError) {
-        throw new Error(`Supabase legacy update error: ${legacyUpdateError.message}`);
-      }
+      throw new Error(`Supabase insert error: ${insertError.message}. Apply the strike-source migration; incompatible records must never be merged to bypass a constraint.`);
     }
     affected += 1;
   }

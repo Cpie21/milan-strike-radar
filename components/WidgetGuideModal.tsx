@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { captureOnce } from '../utils/analytics';
+import { cityPath } from '../lib/cities';
 import { AppLanguage, categoryLabels, pickText, regionLabels } from './i18n';
 
 interface WidgetGuideModalProps {
@@ -11,12 +12,6 @@ interface WidgetGuideModalProps {
     language?: AppLanguage;
 }
 
-const REGION_PAGE_PATHS: Record<string, string> = {
-    MILANO: '/',
-    ROMA: '/roma',
-    TORINO: '/torino',
-};
-
 export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 'MILANO', language = 'zh' }: WidgetGuideModalProps) {
     const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['train', 'subway', 'bus', 'plane']));
     const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
@@ -24,7 +19,7 @@ export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const normalizedRegion = (regionTag || 'MILANO').toUpperCase();
     const regionLabel = regionLabels[language][normalizedRegion] || regionLabels[language].MILANO;
-    const regionPagePath = REGION_PAGE_PATHS[normalizedRegion] || '/';
+    const regionPagePath = cityPath(normalizedRegion);
 
     // Track Widgets_tutorial_success once per device if open for 3+ seconds
     useEffect(() => {
@@ -118,7 +113,7 @@ function getMinutes(v) {
 }
 
 function formatTime(item) {
-  if (!item || !item.strike_windows || !item.strike_windows.length) return "00:00 - 24:00";
+  if (!item || !item.strike_windows || !item.strike_windows.length) return "Time to be confirmed";
   const w = item.strike_windows[0];
   return String(w.start || "00:00") + " - " + String(w.end || "24:00");
 }
@@ -153,7 +148,7 @@ function dedupeStrikes(items) {
 }
 
 function getDotColor(item, nowMin) {
-  if (!item || !item.strike_windows || !item.strike_windows.length) return C.red;
+  if (!item || !item.strike_windows || !item.strike_windows.length) return C.grayDot;
   let hasFuture = false;
   let hasActive = false;
   for (const w of item.strike_windows) {

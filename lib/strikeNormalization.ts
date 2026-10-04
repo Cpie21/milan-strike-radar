@@ -1,3 +1,4 @@
+import { CITIES, resolveCity } from './cities';
 const AFFECTED_LINE_BLACKLIST = [
   '语言环境',
   'ambiente linguistico',
@@ -12,36 +13,16 @@ const AFFECTED_LINE_BLACKLIST = [
 ];
 
 export const REGION_LABELS: Record<string, string> = {
-  MILANO: '米兰',
-  ROMA: '罗马',
-  TORINO: '都灵',
-  NATIONAL: '全国',
-  OTHER: '其他地区',
+  ...Object.fromEntries(CITIES.map(city => [city.tag, city.zh])),
+  NATIONAL: '全国', OTHER: '其他地区',
 };
-
-const TARGET_LOCATION_RULES = {
-  MILANO: {
-    regions: ['lombardia'],
-    provinces: ['milano'],
-    airportProvinces: ['varese', 'bergamo'],
-  },
-  ROMA: {
-    regions: ['lazio'],
-    provinces: ['roma'],
-    airportProvinces: [],
-  },
-  TORINO: {
-    regions: ['piemonte'],
-    provinces: ['torino'],
-    airportProvinces: [],
-  },
-} as const;
-
-const REGION_ALIASES: Record<string, string[]> = {
-  MILANO: ['MILANO', 'MILAN', '米兰', 'MALPENSA', 'MXP', 'LINATE', 'LIN', 'BERGAMO', 'ORIO', 'BGY', '马尔彭萨', '利纳特', '贝加莫'],
-  ROMA: ['ROMA', 'ROME', '罗马', 'FIUMICINO', 'FCO', 'CIAMPINO', 'CIA', '菲乌米奇诺', '钱皮诺'],
-  TORINO: ['TORINO', 'TURIN', '都灵', 'CASELLE', 'TRN', '卡塞莱'],
-};
+const TARGET_LOCATION_RULES = Object.fromEntries(CITIES.map(city => [city.tag, {
+  regions: [city.region], provinces: [city.slug],
+  airportProvinces: city.tag === 'MILANO' ? ['varese', 'bergamo'] : [],
+}]));
+const REGION_ALIASES: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag,
+  [city.tag, city.en, city.zh, ...city.aliases, ...city.airportAliases, ...city.airports]
+]));
 
 const NON_TARGET_LOCATION_ALIASES = [
   'ABRUZZO',
@@ -80,7 +61,7 @@ const NON_TARGET_LOCATION_ALIASES = [
 ];
 
 type AirportDef = {
-  tag: 'MILANO' | 'ROMA' | 'TORINO';
+  tag: string;
   name: string;
   aliases: string[];
 };
@@ -88,10 +69,13 @@ type AirportDef = {
 const AIRPORTS: AirportDef[] = [
   { tag: 'MILANO', name: '马尔彭萨', aliases: ['MALPENSA', 'MXP', '马尔彭萨'] },
   { tag: 'MILANO', name: '利纳特', aliases: ['LINATE', 'LIN', '利纳特'] },
-  { tag: 'MILANO', name: '贝加莫', aliases: ['BERGAMO', 'ORIO', 'BGY', '贝加莫'] },
+  { tag: 'BERGAMO', name: '贝加莫', aliases: ['BERGAMO', 'ORIO', 'BGY', '贝加莫'] },
   { tag: 'ROMA', name: '菲乌米奇诺', aliases: ['FIUMICINO', 'FCO', '菲乌米奇诺'] },
   { tag: 'ROMA', name: '钱皮诺', aliases: ['CIAMPINO', 'CIA', '钱皮诺'] },
   { tag: 'TORINO', name: '卡塞莱', aliases: ['CASELLE', 'TRN', '卡塞莱'] },
+  ...CITIES.filter(city => !['MILANO', 'ROMA', 'TORINO', 'BERGAMO'].includes(city.tag)).flatMap(city =>
+    city.airports.map(name => ({ tag: city.tag, name, aliases: [city.tag, city.en, city.zh, ...city.airportAliases] }))
+  ),
 ];
 
 const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
@@ -192,6 +176,9 @@ function inferAirportScope(contextText: string, regionTag?: string): string | nu
 export function inferRegionTagFromText(text: string) {
   const upper = (text || '').toUpperCase();
   if (!upper) return '';
+  for (const city of CITIES) {
+    if ([city.tag, city.en, city.zh].some(alias => containsAlias(upper, alias))) return city.tag;
+  }
   for (const [tag, aliases] of Object.entries(REGION_ALIASES)) {
     if (aliases.some((alias) => containsAlias(upper, alias))) return tag;
   }
@@ -257,6 +244,27 @@ export function classifyRegionTag(input: {
   }
 
   return inferred;
+}
+
+// Regional strikes cover every supported city in that region; a named local
+// operator remains scoped to its city. National events are stored only once.
+export function classifyRegionTags(input: Parameters<typeof classifyRegionTag>[0]): string[] {
+  const region = (input.regionText || '').trim().toLowerCase();
+  const province = (input.provinceText || '').trim().toLowerCase();
+  const tag = classifyRegionTag(input);
+  const scopeNotes = (input.noteText || '').replace(/\besclus[oaie]\b.*$/i, '');
+  const scopeText = `${input.providerText || ''} ${scopeNotes}`.toUpperCase();
+  const inferred = inferRegionTagFromText(scopeText);
+  const namedCities = CITIES.filter(city => city.region === region &&
+    [city.tag, city.en, city.zh, ...city.airportAliases].some(alias => containsAlias(scopeText, alias))
+  ).map(city => city.tag);
+  if (namedCities.length > 1) return namedCities;
+  if (province === 'tutte' && region !== 'italia' && (!inferred || inferred === 'OTHER' || inferred === 'NATIONAL')) {
+    const cities = CITIES.filter(city => city.region === region).map(city => city.tag);
+    if (cities.length) return cities;
+  }
+  if ((input.sectorText || '').toLowerCase().includes('aereo') && tag === 'BERGAMO') return ['MILANO', 'BERGAMO'];
+  return tag && tag !== 'OTHER' ? [tag] : [];
 }
 
 export function normalizeAirportAffectedLines(
@@ -414,6 +422,8 @@ export function normalizeProviderList(text: string, translatedText?: string) {
 export function canonicalizeRegionValue(region: string) {
   const value = (region || '').trim().toLowerCase();
   if (!value) return '';
+  const city = resolveCity(value);
+  if (city) return city.tag;
   if (value === 'milano' || value === 'milan' || value === '米兰') return 'MILANO';
   if (value === 'roma' || value === 'rome' || value === '罗马') return 'ROMA';
   if (value === 'torino' || value === 'turin' || value === '都灵') return 'TORINO';

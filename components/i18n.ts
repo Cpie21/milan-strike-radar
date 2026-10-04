@@ -1,3 +1,4 @@
+import { CITIES } from '../lib/cities';
 export type AppLanguage = 'zh' | 'en';
 
 export const LANGUAGE_STORAGE_KEY = 'italy_strike_language';
@@ -15,18 +16,8 @@ export function pickText(language: AppLanguage, zh: string, en: string) {
 }
 
 export const regionLabels: Record<AppLanguage, Record<string, string>> = {
-    zh: {
-        MILANO: '米兰',
-        ROMA: '罗马',
-        TORINO: '都灵',
-        NATIONAL: '全国',
-    },
-    en: {
-        MILANO: 'Milan',
-        ROMA: 'Rome',
-        TORINO: 'Turin',
-        NATIONAL: 'Nationwide',
-    },
+    zh: { ...Object.fromEntries(CITIES.map(city => [city.tag, city.zh])), NATIONAL: '全国' },
+    en: { ...Object.fromEntries(CITIES.map(city => [city.tag, city.en])), NATIONAL: 'Nationwide' },
 };
 
 export const categoryLabels: Record<AppLanguage, Record<string, string>> = {

@@ -70,3 +70,157 @@ test('daily production schedule points at the real sync route', () => {
   assert.deepEqual(config.crons, [{ path: '/api/cron/sync-strikes', schedule: '0 5 * * *' }]);
   assert.ok(fs.existsSync(require('node:path').join(__dirname, '../app/api/cron/sync-strikes/route.ts')));
 });
+
+const { parseStrikeTiming } = require('../lib/strikeTiming.ts');
+const { classifyRegionTags } = require('../lib/strikeNormalization.ts');
+const { aggregateStrikes, filterStrikesForRegion } = require('../components/utils.ts');
+const { CITIES, resolveCity, cityPath } = require('../lib/cities.ts');
+const { getGuaranteeWindows } = require('../lib/guaranteeWindows.ts');
+
+test('Oct 2 official railway exception overrides general 24 hours', () => {
+  const timing = parseStrikeTiming("FINO A 24 ORE: SETTORE FERROVIARIO 3 ORE: DALLE 11.00 ALLE 14.00; SETTORE MARITTIMO: MODALITA' NON SPECIFICATE", 'TRAIN', '2026-10-02');
+  assert.equal(timing.hours, '3小时');
+  assert.deepEqual(timing.windows, [{ start: '11:00', end: '14:00' }]);
+});
+
+test('explicit overnight times override 24-hour duration and split by date', () => {
+  const text = '24 ORE: DALLE 21.01 DEL 12/10 ALLE 21.00 DEL 13/10';
+  assert.deepEqual(parseStrikeTiming(text, 'TRAIN', '2026-10-12').windows, [{ start: '21:01', end: '24:00' }]);
+  assert.deepEqual(parseStrikeTiming(text, 'TRAIN', '2026-10-13').windows, [{ start: '00:00', end: '21:00' }]);
+  assert.deepEqual(parseStrikeTiming(text, 'TRAIN', '2026-10-14').windows, []);
+});
+
+test('general strikes isolate railway, bus and highway timing', () => {
+  const text = 'INTERA GIORNATA - FERROVIARIO DALLE 21.00 DEL 3/12 ALLE 21.00 DEL 4/12; AUTOSTRADE: DALLE 22.00 DEL 3/12 ALLE 22.00 DEL 4/12 / TPL: 4 ORE VARIE MODALITA';
+  assert.deepEqual(parseStrikeTiming(text, 'TRAIN', '2026-12-03').windows, [{ start: '21:00', end: '24:00' }]);
+  assert.deepEqual(parseStrikeTiming(text, 'BUS', '2026-12-04').windows, []);
+  assert.deepEqual(parseStrikeTiming(text, 'AIRPORT', '2026-12-04').windows, []);
+});
+
+test('general sector rows without a colon still include explicit railway timing', async () => {
+  const general = [...row];
+  general[0] = '04/12/2026'; general[1] = '04/12/2026';
+  general[3] = 'Generale'; general[4] = 'SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE';
+  general[5] = 'INTERA GIORNATA - FERROVIARIO DALLE 21.00 DEL 3/12 ALLE 21.00 DEL 4/12; AUTOSTRADE: DALLE 22.00 DEL 3/12 ALLE 22.00 DEL 4/12';
+  general[9] = 'Italia'; general[10] = 'Tutte';
+  const records = (await transformRows(parseStrikeHtml(table([general])))).filter(record => record.category === 'TRAIN');
+  assert.deepEqual(records.map(record => [record.date, record.display_time]), [['2026-12-03', '21:00 - 24:00'], ['2026-12-04', '00:00 - 21:00']]);
+});
+
+test('unspecified and varying timings are never invented as full days', () => {
+  for (const text of ['4 ORE', 'DA DEFINIRE', '24 ORE: VARIE MODALITA', 'INTERO TURNO']) {
+    assert.deepEqual(parseStrikeTiming(text, 'BUS', '2026-10-10').windows, []);
+  }
+  assert.deepEqual(parseStrikeTiming('24 ORE', 'AIRPORT', '2026-10-16').windows, [{ start: '00:00', end: '24:00' }]);
+});
+
+test('archive parsing preserves source identity across timing and status revisions', async () => {
+  const archivedHeaders = ['Stato', ...headers];
+  const old = ['Effettuato', ...row];
+  old[6] = 'FINO A 24 ORE: SETTORE FERROVIARIO 3 ORE: DALLE 11.00 ALLE 14.00';
+  old[4] = 'Plurisettoriale';
+  const html = values => `<table><tr>${archivedHeaders.map(h => `<th>${h}</th>`).join('')}</tr><tr>${values.map(c => `<td>${c}</td>`).join('')}</tr></table>`;
+  const initial = parseStrikeHtml(html(old));
+  const revised = [...old]; revised[0] = 'Revocato'; revised[6] = 'FERROVIARIO: DALLE 12.00 ALLE 15.00';
+  const next = parseStrikeHtml(html(revised));
+  assert.equal(initial[0].sourceKey, next[0].sourceKey);
+  assert.equal((await transformRows(next))[0].status, 'CANCELLED');
+});
+
+test('city routes, aliases and local scope support all 20 cities', () => {
+  assert.equal(CITIES.length, 20);
+  for (const city of CITIES) {
+    assert.equal(resolveCity(city.en)?.tag, city.tag);
+    assert.equal(resolveCity(city.zh)?.tag, city.tag);
+    assert.equal(classifyRegionTags({ regionText: city.region, provinceText: city.slug, providerText: `PERSONALE DI ${city.tag}` })[0], city.tag);
+    assert.equal(cityPath(city.tag), city.tag === 'MILANO' ? '/' : `/${city.slug}`);
+  }
+  assert.equal(resolveCity('unknown'), undefined);
+});
+
+test('regional Tuscany scope reaches Florence and Pisa; local Florence does not reach Pisa', () => {
+  assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Tutte', providerText: 'PERSONALE REGIONALE' }), ['FIRENZE', 'PISA']);
+  assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Firenze', providerText: 'GEST DI FIRENZE' }), ['FIRENZE']);
+});
+
+test('rail timings and cancellations on the same day remain separate cards', () => {
+  const base = { date: '2026-10-02', category: 'TRAIN', region: 'NATIONAL', provider: 'Trenord', status: 'CONFIRMED', duration_hours: '3小时', display_time: '11:00 - 14:00', strike_windows: [{ start: '11:00', end: '14:00' }] };
+  const cards = aggregateStrikes([base, { ...base, provider: 'Trenitalia', duration_hours: '24小时', display_time: '全天 24小时', strike_windows: [{ start: '00:00', end: '24:00' }] }, { ...base, status: 'CANCELLED' }]);
+  assert.equal(cards.length, 3);
+  assert.deepEqual(cards[0].strike_windows, base.strike_windows);
+});
+
+test('new city filtering includes national events and rejects another city', () => {
+  const base = { category: 'BUS', date: '2026-10-16', provider: 'ANM', status: 'CONFIRMED' };
+  const rows = filterStrikesForRegion([{ ...base, region: 'NAPOLI' }, { ...base, region: 'ROMA' }, { ...base, region: 'NATIONAL' }], 'NAPOLI');
+  assert.deepEqual(rows.map(row => row.region), ['NAPOLI', 'NATIONAL']);
+});
+
+test('unknown timings and new cities do not receive Milan guarantee windows', () => {
+  for (const city of CITIES.filter(city => !['MILANO', 'ROMA', 'TORINO'].includes(city.tag))) {
+    assert.deepEqual(getGuaranteeWindows({ category: 'BUS', dateIso: '2026-10-16', region: city.tag }), []);
+  }
+});
+
+test('archive lookback posts a Rome date range and preserves withdrawal status', async () => {
+  const { fetchRecentRows } = require('../lib/strikeSync.ts');
+  const original = global.fetch;
+  global.fetch = async (url, options) => {
+    assert.ok(url.endsWith('/ricerca'));
+    assert.equal(options.method, 'POST');
+    assert.equal(options.body.get('dataInizio'), '26/09/2026');
+    assert.equal(options.body.get('dataFine'), '01/01/2027');
+    assert.equal(options.body.get('stato'), '0');
+    return new Response(table([]));
+  };
+  try { assert.deepEqual(await fetchRecentRows('2026-10-03'), []); }
+  finally { global.fetch = original; }
+});
+
+test('source upsert replaces stale time in the original row, preserves ID, and applies cancellation', async () => {
+  const { upsertToSupabase } = require('../lib/strikeSync.ts');
+  const stored = [{ id: 'original-id', date: '2026-10-02', category: 'TRAIN', region: 'NATIONAL', provider: '铁路相关人员', source_key: null, status: 'CONFIRMED', display_time: '全天 24小时' }];
+  const db = { from: () => {
+    let patch, predicates = [];
+    const query = {
+      select: () => query,
+      in: (key, values) => { predicates.push(row => values.includes(row[key])); return query; },
+      is: (key, value) => { predicates.push(row => (row[key] ?? null) === value); return query; },
+      eq: (key, value) => { predicates.push(row => row[key] === value); return query; },
+      update: value => { patch = value; return query; },
+      then: resolve => {
+        const matching = stored.filter(row => predicates.every(test => test(row)));
+        if (patch) matching.forEach(row => Object.assign(row, patch));
+        return Promise.resolve({ data: matching, error: null }).then(resolve);
+      },
+      upsert: async (rows, { onConflict }) => {
+        const keys = onConflict.split(',');
+        rows.forEach(row => {
+          const existing = stored.find(item => keys.every(key => item[key] === row[key]));
+          if (existing) Object.assign(existing, row);
+          else stored.push({ id: `new-${stored.length}`, ...row });
+        });
+        return { error: null };
+      },
+    };
+    return query;
+  } };
+  const corrected = { ...stored[0], source_key: 'official-event-key', display_time: '11:00 - 14:00', duration_hours: '3小时', strike_windows: [{ start: '11:00', end: '14:00' }], guarantee_windows: [], affected_lines: [] };
+  delete corrected.id;
+  assert.equal(await upsertToSupabase([corrected], db), 1);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].id, 'original-id');
+  assert.equal(stored[0].display_time, '11:00 - 14:00');
+  await upsertToSupabase([{ ...corrected, display_time: '12:00 - 15:00', strike_windows: [{ start: '12:00', end: '15:00' }], status: 'CANCELLED' }], db);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].status, 'CANCELLED');
+  assert.equal(stored[0].display_time, '12:00 - 15:00');
+});
+
+test('generic railway events do not promise regional guarantees for high speed trains', () => {
+  assert.deepEqual(getGuaranteeWindows({ category: 'TRAIN', dateIso: '2026-10-02', region: 'NATIONAL' }), []);
+});
+
+test('a named two-airport strike reaches both Florence and Pisa', () => {
+  assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Tutte', sectorText: 'Aereo', providerText: 'PERSONALE OPERANTE PRESSO GLI AEROPORTI DI PISA E FIRENZE' }), ['FIRENZE', 'PISA']);
+});

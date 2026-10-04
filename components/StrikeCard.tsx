@@ -37,6 +37,7 @@ interface StrikeRecord {
     id: string;
     date: string;
     region?: string;
+    data_source?: string;
     category: 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
     provider: string;
     status: 'CONFIRMED' | 'REQUIRES_DETAIL' | 'CANCELLED' | 'CONFIRMED (STRIKE)';
@@ -341,16 +342,16 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     // Time ranges parsing directly from server schema
     const timeSlots: TimeWindow[] = strike.strike_windows && strike.strike_windows.length > 0
         ? strike.strike_windows
-        : [{ start: "00:00", end: "24:00" }];
+        : [];
 
-    const isUnknownTime = timeSlots.length === 1
+    const isUnknownTime = timeSlots.length === 0 || timeSlots.length === 1
         && timeSlots[0].start === '00:00'
         && timeSlots[0].end === '24:00'
         && (strike.duration_hours === '多时段' || strike.duration_hours === '待定' || strike.duration_hours === '部分时段');
 
-    const durationString = strike.duration_hours || "24小时";
+    const durationString = strike.duration_hours || "时段待公布";
     const localizedDurationString = translateDuration(durationString, language);
-    const timeLabelLines = durationString === "24小时"
+    const timeLabelLines = isUnknownTime ? [pickText(language, "具体时段待公布", "Time to be confirmed")] : durationString === "24小时"
         ? ["00:00 - 24:00"]
         : timeSlots.map((slot) => `${slot.start} - ${slot.end}`);
 
@@ -386,7 +387,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     // The background should be transparent grey like others (26% opacity of slate-200 or similar)
     // We handle this in the render logic below by checking if segment is 'grey'
 
-    const guaranteeWindows = strike.guarantee_windows && strike.guarantee_windows.length > 0
+    const guaranteeWindows = strike.category === 'TRAIN' && strike.data_source === 'MIT_PRIMARY' ? [] : strike.guarantee_windows && strike.guarantee_windows.length > 0
         ? strike.guarantee_windows
         : buildFallbackGuarantees();
 
@@ -602,7 +603,11 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                     <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full border ${uniqueIntersected.length > 0 ? (isDark ? 'bg-[#5ab91b] border-black/20' : 'bg-[#10B981] border-black/20') : (isDark ? 'bg-[#de4141] border-black/20' : 'bg-[#EF4444] border-black/20')}`} />
                         <span className={`text-[14px] font-normal leading-[20px] ${isDark ? 'text-white' : 'text-[#334155]'}`}>
-                            {uniqueIntersected.length > 0 ? pickText(language, "保障时间段", "Protected service windows") : pickText(language, "无保障计划", "No protected service")}
+                            {uniqueIntersected.length > 0
+                                ? pickText(language, "保障时间段", "Protected service windows")
+                                : guarantees.length > 0
+                                    ? pickText(language, "此时段无保障", "No protected service during this period")
+                                    : pickText(language, "保障信息待核实", "Protected service information unverified")}
                         </span>
                     </div>
                     {uniqueIntersected.length > 0 && (

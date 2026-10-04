@@ -1,45 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-import StrikeDashboard from '../components/StrikeDashboard';
+import CityPage from '../components/CityPage';
 
-export const revalidate = 3600; // Cache for 1 hour, or revalidate on demand
+export const revalidate = 3600;
 
-export default async function Page() {
-    // Use service role key server-side (safe — this is a Server Component)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-        console.error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
-        return <StrikeDashboard strikesData={[]} />;
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch strikes starting from Sept 1st of last year
-    const today = new Date();
-    const lastYearSept1 = new Date(today.getFullYear() - 1, 8, 1);
-    const startDateStr = new Date(lastYearSept1.getTime() - lastYearSept1.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-
-    const regionFilter = [
-        'region.in.(MILANO,NATIONAL)',
-        'region.ilike.%milan%',
-        'region.eq.米兰',
-        'region.eq.国家的',
-        'region.ilike.%nazional%',
-    ].join(',');
-
-    const { data: strikes, error } = await supabase
-        .from('strikes')
-        .select('*')
-        .gte('date', startDateStr)
-        .or(regionFilter)
-        .order('date', { ascending: true });
-
-    if (error) {
-        console.error('Error fetching strikes:', error);
-    }
-
-    const rawStrikes = strikes || [];
-
-    return <StrikeDashboard strikesData={rawStrikes} regionTag="MILANO" />;
+export default function Page() {
+  return <CityPage tag="MILANO" />;
 }

@@ -1,3 +1,4 @@
+import { CITIES } from '../lib/cities';
 import {
   canonicalizeRegionValue,
   inferRegionTagFromText,
@@ -16,6 +17,8 @@ type StrikeLike = {
   category?: string;
   date?: string;
   data_source?: string;
+  source_url?: string;
+  source_key?: string;
   display_time?: string;
   duration_hours?: string;
   strike_windows?: StrikeWindow[];
@@ -27,17 +30,8 @@ type StrikeLike = {
   status?: string;
 };
 
-const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = {
-  MILANO: ['马尔彭萨', '利纳特', '贝加莫', '米兰相关机场'],
-  ROMA: ['菲乌米奇诺', '钱皮诺', '罗马相关机场'],
-  TORINO: ['卡塞莱', '都灵相关机场'],
-};
-
-const REGION_DEFAULT_AIRPORT_LINES: Record<string, string[]> = {
-  MILANO: ['马尔彭萨机场', '利纳特机场', '贝加莫机场'],
-  ROMA: ['菲乌米奇诺机场', '钱皮诺机场'],
-  TORINO: ['卡塞莱机场'],
-};
+const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag, [...city.airports, `${city.zh}相关机场`]]));
+const REGION_DEFAULT_AIRPORT_LINES: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag, city.airports.map(name => `${name}机场`)]));
 
 export function parseDate(dateStr: string) {
   return new Date(dateStr);
@@ -72,7 +66,6 @@ function resolveStrikeRegion(strike: StrikeLike) {
     `${strike?.provider || ''} ${strike?.affected_lines?.join(' ') || ''} ${strike?.note || ''}`
   );
   if (!explicit) return inferred;
-  if (inferred && inferred !== explicit && inferred !== 'NATIONAL') return inferred;
   return explicit;
 }
 
@@ -101,33 +94,6 @@ const VAGUE_PROVIDER_LABELS = new Set(['相关人员', '( )人员', '()人员'])
 function normalizeProviderForDisplay(provider: string | undefined, category: string | undefined) {
   const normalized = normalizeProviderList(provider || '').filter((label) => !VAGUE_PROVIDER_LABELS.has(label));
   return normalized.join(' / ') || CATEGORY_PROVIDER_FALLBACKS[category || ''] || '相关人员';
-}
-
-function getRomeTodayIso() {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Rome',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-
-  return formatter.format(new Date());
-}
-
-function requiresRegionalTrainImpactVerification(strike: StrikeLike) {
-  const status = (strike.status || '').toUpperCase();
-  if (status !== 'REQUIRES_DETAIL' && status !== 'UNCERTAIN') return false;
-  if ((strike.data_source || 'MIT_PRIMARY') !== 'MIT_PRIMARY') return false;
-  if (strike.category !== 'TRAIN') return false;
-  if (canonicalizeRegionValue(strike.region || '') !== 'NATIONAL') return false;
-  return true;
-}
-
-function shouldHideExpiredPendingStrike(strike: StrikeLike) {
-  if (!requiresRegionalTrainImpactVerification(strike)) return false;
-  if (!strike.date) return false;
-
-  return strike.date < getRomeTodayIso();
 }
 
 function shouldDeriveBusVariantForMilanAtm(strike: StrikeLike) {
@@ -167,7 +133,7 @@ export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | und
     .map((strike) => {
       if (!strike) return null;
       if (!strike.category || !allowedCategories.has(strike.category)) return null;
-      if (shouldHideExpiredPendingStrike(strike)) return null;
+
       const normalizedRegion = resolveStrikeRegion(strike);
       if (normalizedRegion && normalizedRegion !== currentRegion && normalizedRegion !== 'NATIONAL') {
         return null;
@@ -235,11 +201,9 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
         })
       : sanitizeAffectedLines(strike.affected_lines || []);
 
-    // Group by Date + Category + Time (for Airport)
-    let key = `${strike.date}|${strike.category}`;
-    if (strike.category === 'AIRPORT') {
-      key += `|${strike.display_time}`;
-    }
+    // Different rail operators can strike at different times on the same day.
+    // Keep them distinct, including cancellations and unknown timings.
+    const key = `${strike.date}|${strike.region}|${strike.category}|${strike.status}|${strike.display_time}|${JSON.stringify(strike.strike_windows || [])}`;
 
     if (!map.has(key)) {
       map.set(key, {
