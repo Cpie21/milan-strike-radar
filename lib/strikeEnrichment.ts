@@ -213,7 +213,7 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
         output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:part.unions || text,sector:sourceCategory(url)||title,field_text:part.text,section_heading:part.heading,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,part.text,checkedAt)});
       }
       for(const notice of output) {
-        const clauses=parts.filter(p=>isGuarantee(p) && (p.heading===notice.section_heading || /garant/i.test(p.heading)) && p.dates.includes(notice.date) && (!namedUnion || p.unions===notice.unions));
+        const clauses=parts.filter(p=>isGuarantee(p) && (p.heading===notice.section_heading || /garan|fasce/i.test(p.heading)) && p.dates.includes(notice.date) && (!namedUnion || p.unions===notice.unions));
         if(clauses.length) {
           notice.guarantee_clauses=clauses.map(p=>p.heading+' '+p.text);
           notice.guarantee_windows=clauses.flatMap(p=>parseStrikeTiming(p.text).windows);
