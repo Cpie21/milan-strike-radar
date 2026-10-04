@@ -224,3 +224,67 @@ test('generic railway events do not promise regional guarantees for high speed t
 test('a named two-airport strike reaches both Florence and Pisa', () => {
   assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Tutte', sectorText: 'Aereo', providerText: 'PERSONALE OPERANTE PRESSO GLI AEROPORTI DI PISA E FIRENZE' }), ['FIRENZE', 'PISA']);
 });
+
+test('rules support hour-only and comma-separated Italian clocks without AI', () => {
+  for (const text of ['DALLE ORE 8 ALLE ORE 12', 'DALLE 8:00 ALLE 12:00', '8.00–12.00']) {
+    assert.deepEqual(parseStrikeTiming(text, 'BUS', '2026-10-09').windows, [{ start: '08:00', end: '12:00' }]);
+  }
+  assert.deepEqual(parseStrikeTiming('DALLE 8,30 ALLE 12,30', 'BUS', '2026-10-09').windows, [{ start: '08:30', end: '12:30' }]);
+  assert.deepEqual(parseStrikeTiming('DALLE 8.45 ALLE 15.00 E DALLE 18.00 ALLE 22.00', 'BUS').windows, [{ start: '08:45', end: '15:00' }, { start: '18:00', end: '22:00' }]);
+});
+
+test('end of service, shifts and invalid dates never become invented midnight endpoints', () => {
+  for (const text of ['24 ORE: DALLE 18.00 A FINE SERVIZIO', '4 ORE A FINE TURNO', '24 ORE: DALLE 09.00 DEL 31/2 ALLE 12.00 DEL 31/2', '24 ORE: DALLE 25.00 ALLE 27.00', '24 ORE: DALLE 13.00 ALLE 13.00']) {
+    assert.deepEqual(parseStrikeTiming(text, 'BUS', '2026-10-09').windows, [], text);
+  }
+});
+
+test('unknown multi-day timings stay unknown on every date', async () => {
+  const values = [...row]; values[1] = '10/10/2026'; values[5] = '24 ORE: VARIE MODALITA';
+  const records = await transformRows(parseStrikeHtml(table([values])));
+  assert.equal(records.length, 4);
+  for (const record of records) { assert.deepEqual(record.strike_windows, []); assert.equal(record.status, 'UNCERTAIN'); }
+});
+
+test('invalid official dates stop reconciliation instead of silently normalizing', async () => {
+  const values = [...row]; values[1] = '31/02/2026';
+  await assert.rejects(transformRows(parseStrikeHtml(table([values]))), /Invalid official date span/);
+});
+
+test('unknown cards preserve their label and retired records stay hidden', () => {
+  const base = { category: 'BUS', date: '2026-10-09', region: 'MILANO', status: 'UNCERTAIN', provider: 'ATM', display_time: '具体时段待公布', strike_windows: [] };
+  const merged = aggregateStrikes([base, { ...base, provider: 'Busitalia' }]);
+  assert.equal(merged[0].display_time, '具体时段待公布');
+  assert.deepEqual(filterStrikesForRegion([{ ...base, status: 'STALE' }], 'MILANO'), []);
+});
+
+test('distinct official railway notices survive alongside legacy placeholder cleanup', () => {
+  const base = { category: 'TRAIN', date: '2020-01-01', region: 'NATIONAL', status: 'UNCERTAIN', provider: 'Trenitalia' };
+  const rows = filterStrikesForRegion([base, { ...base, source_key: 'official-a' }, { ...base, region: 'MILANO', status: 'CONFIRMED', source_key: 'official-b' }], 'MILANO');
+  assert.equal(rows.length, 2);
+});
+
+test('hung sync is unhealthy even when the last completed run was recent', () => {
+  const { syncHealth } = require('../lib/syncHealth.ts');
+  const now = Date.parse('2026-10-04T12:00:00Z');
+  assert.equal(syncHealth({ status: 'running', started_at: '2026-10-04T11:50:00Z' }, '2026-10-04T10:00:00Z', now).healthy, false);
+  assert.equal(syncHealth({ status: 'running', started_at: '2026-10-04T11:59:00Z' }, '2026-10-04T10:00:00Z', now).healthy, true);
+  assert.equal(syncHealth({ status: 'success', started_at: '2026-10-02T00:00:00Z' }, '2026-10-02T00:00:00Z', now).healthy, false);
+});
+
+test('feedback rejects empty, oversized and untyped input', () => {
+  const { validateFeedback } = require('../lib/feedback.ts');
+  for (const value of ['', ' ', 'x'.repeat(1001), {}, 123]) assert.equal(validateFeedback(value, undefined), null);
+  assert.equal(validateFeedback('hello', 'x'.repeat(61)), null);
+  assert.deepEqual(validateFeedback(' hello ', ' reader '), { content: 'hello', nickname: 'reader' });
+});
+
+test('calendar escaping and byte folds round-trip Chinese, punctuation and newlines', () => {
+  const { escapeCalendarText, serializeCalendar } = require('../lib/ical.ts');
+  const value = '公交,机场;线路\\名称\n中文'.repeat(20);
+  const serialized = serializeCalendar(['BEGIN:VCALENDAR', `DESCRIPTION:${escapeCalendarText(value)}`, 'END:VCALENDAR']);
+  assert.equal(serialized.replace(/\r\n /g, '').split('\r\n')[1], `DESCRIPTION:${escapeCalendarText(value)}`);
+  for (const line of serialized.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
+  assert.ok(!serialized.replace(/\r\n/g, '').includes('\n'));
+  assert.equal(escapeCalendarText('a,b;c\\d\ne'), 'a\\,b\\;c\\\\d\\ne');
+});

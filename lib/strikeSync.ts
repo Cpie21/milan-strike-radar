@@ -154,13 +154,18 @@ export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
 // The upcoming list drops yesterday's records and withdrawn future events.
 // Search all states so both late changes and upcoming cancellations are seen.
 export async function fetchRecentRows(todayIso = getRomeTodayIso()): Promise<RawStrikeRow[]> {
+  const { start, end } = syncDateWindow(todayIso);
+  const italianDate = (iso: string) => iso.split('-').reverse().join('/');
+  const body = new URLSearchParams({ dataInizio: italianDate(start), dataFine: italianDate(end), settore: '0', rilevanza: '0', stato: '0', categoria: '', sindacato: '', submit: 'Ricerca' });
+  return fetchOfficial(`${MIT_URL}/ricerca`, { method: 'POST', body });
+}
+
+export function syncDateWindow(todayIso = getRomeTodayIso()) {
   const start = new Date(`${todayIso}T12:00:00Z`);
   start.setUTCDate(start.getUTCDate() - 7);
   const end = new Date(`${todayIso}T12:00:00Z`);
   end.setUTCDate(end.getUTCDate() + 90);
-  const italianDate = (iso: string) => iso.split('-').reverse().join('/');
-  const body = new URLSearchParams({ dataInizio: italianDate(start.toISOString().slice(0, 10)), dataFine: italianDate(end.toISOString().slice(0, 10)), settore: '0', rilevanza: '0', stato: '0', categoria: '', sindacato: '', submit: 'Ricerca' });
-  return fetchOfficial(`${MIT_URL}/ricerca`, { method: 'POST', body });
+  return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
 }
 
 export function parseStrikeHtml(html: string): RawStrikeRow[] {
@@ -259,34 +264,29 @@ function isCommuterIrrelevantFreightRailRow(row: RawStrikeRow) {
   return FREIGHT_ONLY_RAIL_KEYWORDS.some((keyword) => combined.includes(keyword));
 }
 
-function parseItalianDate(dateStr: string) {
-  const [dd, mm, yyyy] = dateStr.split('/');
-  if (!dd || !mm || !yyyy) return dateStr;
-  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-}
-
 function parseItalianDateToDate(dateStr: string) {
   const [dd, mm, yyyy] = dateStr.split('/');
   if (!dd || !mm || !yyyy) return null;
 
   const date = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-  return Number.isNaN(date.getTime()) ? null : date;
+  return Number.isNaN(date.getTime()) || date.getFullYear() !== Number(yyyy) || date.getMonth() !== Number(mm) - 1 || date.getDate() !== Number(dd) ? null : date;
 }
 
 function getDateSpan(startDateStr: string, endDateStr?: string) {
   const start = parseItalianDateToDate(startDateStr);
-  const end = parseItalianDateToDate(endDateStr || startDateStr) || start;
-  if (!start || !end || end < start) return [parseItalianDate(startDateStr)];
+  const end = parseItalianDateToDate(endDateStr || startDateStr);
+  if (!start || !end || end < start) throw new Error(`Invalid official date span: ${startDateStr} - ${endDateStr}`);
 
   const dates: string[] = [];
   const cursor = new Date(start);
-  while (cursor <= end && dates.length < 10) {
+  while (cursor <= end && dates.length < 32) {
     const yyyy = String(cursor.getFullYear());
     const mm = String(cursor.getMonth() + 1).padStart(2, '0');
     const dd = String(cursor.getDate()).padStart(2, '0');
     dates.push(`${yyyy}-${mm}-${dd}`);
     cursor.setDate(cursor.getDate() + 1);
   }
+  if (cursor <= end) throw new Error('Official date span exceeds 32 days; refusing to publish a truncated span');
 
   return dates;
 }
@@ -332,8 +332,6 @@ function splitTimeInfoForDate(
   }
 
   const isFullDay =
-    baseTimeInfo.hours === '24小时' ||
-    baseTimeInfo.hours === '48小时' ||
     baseTimeInfo.windows.some((window) => window.start === '00:00' && window.end === '24:00');
 
   if (isFullDay) {
@@ -518,6 +516,9 @@ function getCategoryDateSpan(row: RawStrikeRow, category: StrikeRecord['category
 }
 
 export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
+  // The status-search snapshot follows the upcoming snapshot and is authoritative
+  // for revisions. Deduplicate before translations and transformations.
+  rawRows = [...new Map(rawRows.map(row => [`${row.sourceKey || JSON.stringify(row)}|${row.region}`, row])).values()];
   // Memoize translation work per run and bound concurrency as city coverage grows.
   const translations = new Map<string, Promise<string>>();
   const translate = (text: string) => {
@@ -755,7 +756,7 @@ function createDatabaseClient(url: string, key: string) {
   return createClient(url, key);
 }
 
-export async function upsertToSupabase(records: StrikeRecord[], database?: ReturnType<typeof createDatabaseClient>) {
+export async function upsertToSupabase(records: StrikeRecord[], database?: ReturnType<typeof createDatabaseClient>, warnings: string[] = []) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -774,8 +775,11 @@ export async function upsertToSupabase(records: StrikeRecord[], database?: Retur
     const rows = [];
     for (const record of sourced) {
       const candidates = (legacy || []).filter(row => row.date === record.date && row.region === record.region && row.category === record.category && row.provider === record.provider && !adoptedIds.has(row.id));
-      if (candidates.length > 1) throw new Error(`Ambiguous legacy strike: ${record.date} ${record.region} ${record.provider}; reconcile before syncing`);
-      const existing = candidates[0];
+      // A legacy ambiguity must not stop unrelated, authoritative announcements.
+      // Do not guess an identity; write a new sourced row. The successful snapshot
+      // soft-retires unmatched legacy rows and retains them for later review.
+      if (candidates.length > 1) warnings.push(`Ambiguous legacy strike: ${record.date} ${record.region} ${record.category}; retained for review`);
+      const existing = candidates.length === 1 ? candidates[0] : undefined;
       if (existing) {
         adoptedIds.add(existing.id);
         const { error: adoptError } = await supabase.from('strikes').update({ source_key: record.source_key }).eq('id', existing.id).is('source_key', null);

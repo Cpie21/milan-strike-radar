@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:sync": "node --test scripts/test-strike-sync.cjs"
+    "test:sync": "node --test scripts/test-strike-sync.cjs",
+    "test:database": "node --test scripts/test-strike-database.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
@@ -23,6 +24,7 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

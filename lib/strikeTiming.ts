@@ -49,23 +49,33 @@ export function timingFromWindows(windows: TimeWindow[], fallback = '时段待�
 }
 
 export function parseStrikeTiming(text: string, category?: TimingCategory, dateIso?: string) {
-  const scoped = scopeTiming(text, category).toUpperCase();
+  const scoped = scopeTiming(text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[，,](?=\d{2}\b)/g, ':').replace(/[–—]/g, '-'), category).toUpperCase();
   const fallbackHours = scoped.match(/\b(\d+)\s*ORE\b/)?.[1];
   const windows: TimeWindow[] = [];
   const explicitDates = new Set<string>();
   const year = Number(dateIso?.slice(0, 4)) || new Date().getFullYear();
-  const iso = (day: string, month: string, givenYear?: string) => `${givenYear || year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  const range = /(?:DALLE\s+(?:ORE\s+)?)?(\d{1,2})[.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?\s*(?:ALLE\s+(?:ORE\s+)?|[-–])\s*(\d{1,2})[.:](\d{2})(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?/g;
+  const iso = (day: string, month: string, givenYear?: string) => {
+    const value = `${givenYear || year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    const parsed = new Date(`${value}T12:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : null;
+  };
+  const range = /(?:DALLE?\s+(?:ORE\s+)?)?\b(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?\s*(?:ALLE?\s+(?:ORE\s+)?|-)\s*(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?(?![\d.:])/g;
   let dateSpecific = false;
+  let attemptedRange = false;
   for (const match of scoped.matchAll(range)) {
-    let start = `${match[1].padStart(2, '0')}:${match[2]}`;
-    let end = `${match[6].padStart(2, '0')}:${match[7]}`;
-    if (minutes(start) >= 1440 || minutes(end) > 1440 || Number(match[2]) > 59 || Number(match[7]) > 59) continue;
+    attemptedRange = true;
+    let start = `${match[1].padStart(2, '0')}:${match[2] || '00'}`;
+    let end = `${match[6].padStart(2, '0')}:${match[7] || '00'}`;
+    if (minutes(start) >= 1440 || minutes(end) > 1440 || Number(match[2] || 0) > 59 || Number(match[7] || 0) > 59) continue;
     if (end === '23:59') end = '24:00';
+    if (Boolean(match[3]) !== Boolean(match[8])) continue;
+    if (start === end && !match[3]) continue;
     if (match[3] && match[4] && match[8] && match[9]) {
       const from = iso(match[3], match[4], match[5]);
       let to = iso(match[8], match[9], match[10]);
+      if (!from || !to || (from === to && start === end)) continue;
       if (to < from && !match[10]) to = `${year + 1}${to.slice(4)}`;
+      if (to < from || (Date.parse(to) - Date.parse(from)) / 86400000 > 31) continue;
       const cursor = new Date(`${from}T12:00:00Z`);
       for (let i = 0; i < 32 && cursor.toISOString().slice(0, 10) <= to; i++, cursor.setUTCDate(cursor.getUTCDate() + 1)) explicitDates.add(cursor.toISOString().slice(0, 10));
       dateSpecific = true;
@@ -77,13 +87,13 @@ export function parseStrikeTiming(text: string, category?: TimingCategory, dateI
     }
     windows.push({ start, end });
   }
-  for (const match of scoped.matchAll(/DALLE\s+(?:ORE\s+)?(\d{1,2})[.:](\d{2})\s+A\s+FINE\s+SERVIZIO/g)) {
-    if (Number(match[1]) < 24 && Number(match[2]) < 60) windows.push({ start: `${match[1].padStart(2, '0')}:${match[2]}`, end: '24:00' });
-  }
+  // End of service is operator/line-specific and can be after midnight. It is
+  // not an exact 24:00 endpoint. Likewise a work shift is not a clock interval.
+  const unresolved = /FINE\s+(?:SERVIZIO|TURNO)|INIZIO\s+(?:SERVIZIO|TURNO)|DA\s+DEFINIRE|NON\s+SPECIFICAT/.test(scoped);
   // Only an unqualified full day is a midnight-to-midnight window.
-  if (!windows.length && !dateSpecific && /\b24\s*ORE\b/.test(scoped) && !/FINO\s+A|VARIE|MODALIT|TURNO/.test(scoped)) windows.push({ start: '00:00', end: '24:00' });
+  if (!windows.length && !dateSpecific && !attemptedRange && !unresolved && /\b24\s*ORE\b/.test(scoped) && !/FINO\s+A|VARIE|MODALIT|TURNO/.test(scoped)) windows.push({ start: '00:00', end: '24:00' });
   return {
-    ...timingFromWindows(windows, fallbackHours ? `${fallbackHours}小时（时段待公布）` : '时段待公布'),
+    ...timingFromWindows(unresolved ? [] : windows, fallbackHours ? `${fallbackHours}小时（时段待公布）` : '时段待公布'),
     dateSpecific,
     explicitDates: [...explicitDates].sort(),
   };

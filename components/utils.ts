@@ -132,6 +132,12 @@ export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | und
   const normalizedStrikes: Array<StrikeLike | null> = rawStrikes
     .map((strike) => {
       if (!strike) return null;
+      if (strike.status === 'STALE') return null;
+      // Only hide expired unverifiable legacy placeholders. Distinct official
+      // announcements must not supersede each other just because providers match.
+      if (!strike.source_key && strike.region === 'NATIONAL' && strike.category === 'TRAIN' &&
+          ['UNCERTAIN', 'REQUIRES_DETAIL'].includes(strike.status || '') && strike.date &&
+          strike.date < new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())) return null;
       if (!strike.category || !allowedCategories.has(strike.category)) return null;
 
       const normalizedRegion = resolveStrikeRegion(strike);
@@ -226,7 +232,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
         existing.strike_windows = [{ start: '00:00', end: '24:00' }];
       } else {
         existing.strike_windows = mergeTimeWindows(allWindows);
-        existing.display_time = existing.strike_windows.map((w) => `${w.start} - ${w.end}`).join(', ');
+        existing.display_time = existing.strike_windows.length ? existing.strike_windows.map((w) => `${w.start} - ${w.end}`).join(', ') : '具体时段待公布';
       }
       existing.guarantee_windows = mergeTimeWindows(allGuaranteeWindows);
 

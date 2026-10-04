@@ -387,7 +387,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     // The background should be transparent grey like others (26% opacity of slate-200 or similar)
     // We handle this in the render logic below by checking if segment is 'grey'
 
-    const guaranteeWindows = strike.category === 'TRAIN' && strike.data_source === 'MIT_PRIMARY' ? [] : strike.guarantee_windows && strike.guarantee_windows.length > 0
+    const guaranteeWindows = isUnknownTime || strike.category === 'TRAIN' && strike.data_source === 'MIT_PRIMARY' ? [] : strike.guarantee_windows && strike.guarantee_windows.length > 0
         ? strike.guarantee_windows
         : buildFallbackGuarantees();
 
@@ -406,7 +406,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         let endMin = 24 * 60;
 
         // Match the full visual track width if it's strictly a 24h event
-        if ((slot.start === '00:00' && slot.end === '24:00') || durationString.includes('24小时') || durationString.includes('24H')) {
+        if (slot.start === '00:00' && slot.end === '24:00') {
             const effectiveStartMin = (isMetro || isBus) || isTrain ? axisStartMin : 0;
             const effectiveEndMin = (isMetro || isBus) || isTrain ? axisEndMin : 24 * 60;
             return { s: effectiveStartMin, e: effectiveEndMin };
@@ -559,7 +559,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             )
                         })
                     )}
-                    {showElapsedOverlay && (
+                    {!isUnknownTime && showElapsedOverlay && (
                         <div
                             className="absolute inset-y-0 left-0 z-10 pointer-events-none overflow-hidden"
                             style={{
@@ -578,7 +578,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             />
                         </div>
                     )}
-                    {isToday && currentTimePct > 0 && currentTimePct < 100 && (
+                    {!isUnknownTime && isToday && currentTimePct > 0 && currentTimePct < 100 && (
                         <div
                             className={`absolute top-0 bottom-0 w-[2px] z-20 rounded-full ${isDark ? 'bg-white/95 shadow-[0_0_10px_rgba(255,255,255,0.35)]' : 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]'}`}
                             style={{ left: `calc(${currentTimePct}% - 1px)` }}
@@ -588,10 +588,12 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
             </div>
 
             {/* Labels under track */}
-            <div className="flex justify-between px-6 pt-2 w-full text-[10px] font-medium text-[#94A3B8]">
-                <span>{translateAxisLabel(labelStart, language)}</span>
-                <span>{translateAxisLabel(labelEnd, language)}</span>
-            </div>
+            {!isUnknownTime && (
+                <div className="flex justify-between px-6 pt-2 w-full text-[10px] font-medium text-[#94A3B8]">
+                    <span>{translateAxisLabel(labelStart, language)}</span>
+                    <span>{translateAxisLabel(labelEnd, language)}</span>
+                </div>
+            )}
 
             {/* Collapsible content block */}
             <div className={`mx-6 mt-8 mb-4 rounded-2xl ${isDark ? 'bg-white/5 p-[16px]' : 'bg-[#F8FAFC] p-4'}`}>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { serverDatabase } from '../../../lib/strikeQuery';
+import { syncHealth } from '../../../lib/syncHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,9 +14,8 @@ export async function GET() {
     ]);
     if (latest.error || success.error) throw new Error('Sync status unavailable');
     const lastSuccess = success.data?.completed_at;
-    const stale = !lastSuccess || Date.now() - Date.parse(lastSuccess) > 26 * 3600_000;
-    const healthy = !stale && latest.data?.status !== 'failed';
-    return NextResponse.json({ healthy, stale, latest: latest.data, last_success: success.data }, { status: healthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
+    const health = syncHealth(latest.data, lastSuccess);
+    return NextResponse.json({ ...health, latest: latest.data, last_success: success.data }, { status: health.healthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ healthy: false, error: 'Synchronization status unavailable' }, { status: 503 });
   }

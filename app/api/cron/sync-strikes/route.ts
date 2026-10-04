@@ -1,6 +1,6 @@
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { fetchAndFilter, fetchRecentRows, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
+import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
 import { serverDatabase } from '../../../../lib/strikeQuery';
 import { CITIES, cityPath } from '../../../../lib/cities';
 
@@ -20,28 +20,37 @@ export async function GET(request: Request): Promise<NextResponse> {
   let runId: string | undefined;
   try {
     const db = serverDatabase();
-    const { data: run, error: startError } = await db.from('strike_sync_runs').insert({ status: 'running' }).select('id').single();
+    const { data: runs, error: startError } = await db.rpc('begin_strike_sync');
     if (startError) throw new Error(`Cannot record sync run: ${startError.message}; apply migration first`);
+    const run = runs?.[0];
+    if (!run) return NextResponse.json({ success: false, error: 'A synchronization is already running' }, { status: 409 });
     runId = run.id;
+    const window = syncDateWindow(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(run.started_at)));
     const [upcoming, recent] = await Promise.all([fetchAndFilter(), fetchRecentRows()]);
     const rawRows = [...upcoming, ...recent];
     // Processing an empty valid table is successful, unlike a missing/error table.
-    const records = rawRows.length ? await transformRows(rawRows) : [];
-    const upserted = records.length ? await upsertToSupabase(records) : 0;
+    const records = rawRows.length ? (await transformRows(rawRows)).map(record => ({ ...record, last_seen_at: run.started_at })) : [];
+    const warnings: string[] = [];
+    const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
     const unknownTiming = records.filter(record => !record.strike_windows.length).length;
-    const { error: finishError } = await db.from('strike_sync_runs').update({ status: 'success', completed_at: new Date().toISOString(), fetched: rawRows.length, upserted, unknown_timing: unknownTiming }).eq('id', runId);
+    const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {
+      run_id: runId, window_start: window.start, window_end: window.end,
+      fetched_count: rawRows.length, upserted_count: upserted, unknown_count: unknownTiming,
+      run_warnings: warnings,
+    });
     if (finishError) throw new Error(`Cannot finish sync log: ${finishError.message}`);
     CITIES.forEach(city => revalidatePath(cityPath(city.tag)));
     revalidatePath('/[region]', 'page');
     revalidatePath('/api/strikes');
     revalidatePath('/api/calendar');
-    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming });
+    revalidateTag('strikes', { expire: 0 });
+    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, warnings }));
+    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);
     if (runId) {
-      await serverDatabase().from('strike_sync_runs').update({ status: 'failed', completed_at: new Date().toISOString(), error: message }).eq('id', runId);
+      await serverDatabase().from('strike_sync_runs').update({ status: 'failed', completed_at: new Date().toISOString(), error: message }).eq('id', runId).eq('status', 'running');
     }
     return NextResponse.json({ success: false, error: 'Strike synchronization failed; check the sync run log' }, { status: 500 });
   }
