@@ -16,6 +16,7 @@ Backend, data logic and engineering: sync, enrichment, timing evidence, APIs, sc
 
 - Work in your own worktree on `codex/<task>`. Don't edit Claude's worktree or rewrite `claude/*` branches.
 - Stage only files you changed; never `git add -A` in a folder another agent may use.
+- Finish independently reviewable changes with a PR: problem, approach, key files, API/schema/core logic impact, unfinished work, and points for Claude to review. Prefer compatibility and small focused changes over unnecessary rewrites.
 - Schema or API shape changes: describe them in the PR and in `AI_HANDOFF.md` — the frontend and `/api/ask` depend on them. Ship migrations in the PR that needs them.
 - Deploy only committed code. Production deploys need the user's approval.
 - When your quota is running out: commit what works, push the branch or open a PR, and write status and next steps so Claude can continue.
