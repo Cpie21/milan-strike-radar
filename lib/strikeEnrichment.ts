@@ -390,7 +390,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   await collect(pageDetails);
   const attachments: string[]=[];
   for (const [url,html] of documents) {
-    if (!OFFICIAL_HOSTS.has(new URL(url).hostname) || !/scioper/i.test(cheerio.load(html)('h1').first().text())) continue;
+    if (!OFFICIAL_HOSTS.has(new URL(url).hostname) || !/scioper/i.test(cheerio.load(html)('h1,h2').text())) continue;
     const $=cheerio.load(html);
     const eventPage=dates.some(d=>exactDate($('h1,h2').text()+' '+$('article,main').first().text().slice(0,2000),d));
     $('a[href]').each((_,a)=>{

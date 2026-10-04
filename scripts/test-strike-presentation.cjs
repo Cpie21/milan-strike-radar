@@ -109,9 +109,9 @@ function plainPdf(text){
  const xref=Buffer.byteLength(pdf);pdf+=`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(n=>String(n).padStart(10,'0')+' 00000 n \n').join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
  return Buffer.from(pdf);
 }
-test('discovered official PDF attachments pass through actual text extraction and matching',async()=>{
+test('official PDF attachments under h2 event headings pass through actual text extraction and matching',async()=>{
  const original=global.fetch,base=CITY_STRIKE_SOURCES[0].urls[0],url='https://www.atm.it/it/sciopero-current',pdfUrl='https://www.atm.it/it/avviso.pdf';
- global.fetch=async input=>new Response(String(input)===pdfUrl?plainPdf('Sciopero Milano 1 marzo 2030 USB Lavoro Privato dalle 9:15 alle 13:45.'):String(input)===url?`<main><h1>Sciopero Milano 1 marzo 2030</h1><a href="${pdfUrl}">Allegato PDF</a></main>`:String(input)===base?`<a href="${url}">Sciopero</a>`:'<main>News</main>',{headers:{'content-type':String(input)===pdfUrl?'application/pdf':'text/html'}});
+ global.fetch=async input=>new Response(String(input)===pdfUrl?plainPdf('Sciopero Milano 1 marzo 2030 USB Lavoro Privato dalle 9:15 alle 13:45.'):String(input)===url?`<main><h1>Notizie</h1><h2>Sciopero Milano 1 marzo 2030</h2><a href="${pdfUrl}">Allegato PDF</a></main>`:String(input)===base?`<a href="${url}">Sciopero</a>`:'<main>News</main>',{headers:{'content-type':String(input)===pdfUrl?'application/pdf':'text/html'}});
  try{const warnings=[],result=await enrichStrikeTiming([row()],warnings,new Date('2029-12-29T12:00:00Z'));assert.equal(result.records[0].display_time,'09:15 - 13:45',warnings.join('\n'));assert.equal(result.records[0].timing_evidence.sources[0].url,pdfUrl);}finally{global.fetch=original;}
 });
 test('real AMTAB notice distinguishes interruption from slash-separated protected clocks',()=>{
