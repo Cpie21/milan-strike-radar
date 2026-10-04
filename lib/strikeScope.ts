@@ -1,11 +1,12 @@
 import type { TimingEvidence, TimingSource } from './strikeEvidence';
 import { affectedScopeText, normalizeAirportAffectedLines } from './strikeNormalization';
 
-export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'UNKNOWN';
+export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'UNKNOWN';
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
-export type FieldEvidence<T> = { value: T; confidence: 'HIGH' | 'MEDIUM' | 'UNKNOWN' | 'CONFLICT'; source: 'MIT' | 'OPERATOR_OFFICIAL' | 'STANDARD_RULE' | 'REPORTED' | 'UNKNOWN'; url?: string; excerpt?: string };
+export type FieldEvidence<T> = { value: T; confidence: 'HIGH' | 'MEDIUM' | 'UNKNOWN' | 'CONFLICT'; source: 'MIT' | 'OPERATOR_OFFICIAL' | 'STANDARD_RULE' | 'REPORTED' | 'UNKNOWN'; url?: string; excerpt?: string; method?: 'OFFICIAL' | 'CODE' | 'JEV' };
 export type ScopeEvidence = {
   location: FieldEvidence<string>;
+  passengerImpact?: FieldEvidence<'DIRECT_SERVICE' | 'INDIRECT_OR_UNCONFIRMED' | 'UNKNOWN'>;
   scopeType: FieldEvidence<ScopeType>;
   affectedLines: FieldEvidence<string[] | 'ALL_LINES' | 'UNKNOWN'>;
   affectedAirports: FieldEvidence<string[]>;
@@ -18,6 +19,7 @@ export type ScopeEvidence = {
 };
 
 export function aviationScope(text: string, region: string): ScopeType {
+  if (/toscana aeroporti/i.test(text) && /gh toscana|consulta|handling/i.test(text)) return 'MIXED_AIRPORT_SERVICES';
   if (/cargo|trasporto merci|航空货运/i.test(text)) return 'CARGO';
   if (/handling|地服|地勤|GH TOSCANA|dnata|swissport/i.test(text)) return 'GROUND_HANDLING';
   const airline=/easyjet|ryanair|wizz|ITA AIRWAYS|alitalia|airlines|compagnia aerea|航空/i.test(text);
@@ -26,6 +28,29 @@ export function aviationScope(text: string, region: string): ScopeType {
   if(region==='NATIONAL' && /\bENAV\b|sciopero generale|settore aereo|trasporto aereo/i.test(text)) return 'NATIONAL_AVIATION';
   if(/aeroport|airport|\bAPT\b|security|sicuritalia|\bENAV\b|\bSEA\b/i.test(text)) return 'AIRPORT';
   return 'UNKNOWN';
+}
+
+export function railScope(text: string): ScopeType {
+  if (/\bFS SECURITY\b|rail.*security|铁路安保/i.test(text)) return 'RAIL_SECURITY';
+  if (/\bRFI\b|\bDOIT\b|infrastruttur|infrastructure|基础设施/i.test(text)) return 'RAIL_INFRASTRUCTURE';
+  if (/personale.*(?:macchina|bordo)|macchinist|capotren|train crew|司乘/i.test(text)) return 'RAIL_CREW';
+  if (/\bTRENITALIA\b|\bTRENORD\b|\bITALO\b|ferrovie dello stato|国家铁路|高铁/i.test(text)) return 'RAIL_OPERATOR';
+  if (/pulizi|manutenzione|appalto|support|清洁|维护/i.test(text)) return 'RAIL_SUPPORT';
+  return 'UNKNOWN';
+}
+export function railTitle(scope: ScopeType, language: 'zh' | 'en' = 'zh') {
+  const titles: Partial<Record<ScopeType,[string,string]>> = {
+    RAIL_SECURITY:['铁路安保人员罢工','Railway security staff strike'],
+    RAIL_INFRASTRUCTURE:['铁路基础设施人员罢工','Rail infrastructure staff strike'],
+    RAIL_SUPPORT:['铁路配套服务人员罢工','Rail support staff strike'],
+    RAIL_CREW:['铁路司乘人员罢工','Train crew strike'],
+    RAIL_OPERATOR:['铁路运营人员罢工','Rail operator strike'],
+    UNKNOWN:['铁路相关罢工（范围待核实）','Rail strike (scope unverified)'],
+  };
+  return (titles[scope] || titles.UNKNOWN!)[language==='zh'?0:1];
+}
+export function indirectRail(scope: ScopeType) {
+  return ['RAIL_SECURITY','RAIL_INFRASTRUCTURE','RAIL_SUPPORT'].includes(scope);
 }
 
 export function extractLineScope(text: string): string[] | 'ALL_LINES' | 'UNKNOWN' {
@@ -40,14 +65,14 @@ export function extractLineScope(text: string): string[] | 'ALL_LINES' | 'UNKNOW
   return values.length ? values : 'UNKNOWN';
 }
 
-export function makeScopeEvidence(row: {provider:string; note:string; sector:string; modalita:string; sourceUrl?:string}, region: string, category: string, windows: {start:string;end:string}[], guarantees: {start:string;end:string}[] = []): ScopeEvidence {
+export function makeScopeEvidence(row: {provider:string; note:string; sector:string; modalita:string; sourceUrl?:string; rawRegion?:string; province?:string; rilevanza?:string}, region: string, category: string, windows: {start:string;end:string}[], guarantees: {start:string;end:string}[] = []): ScopeEvidence {
   const url=row.sourceUrl || 'https://scioperi.mit.gov.it/mit2/public/scioperi';
-  const fact=<T>(value:T, known=true, excerpt=row.provider):FieldEvidence<T>=>({value,confidence:known?'HIGH':'UNKNOWN',source:known?'MIT':'UNKNOWN',...(known?{url,excerpt}:{})});
-  const scope=category==='AIRPORT'?aviationScope(row.provider,region):'UNKNOWN';
+  const fact=<T>(value:T, known=true, excerpt=row.provider):FieldEvidence<T>=>({value,confidence:known?'HIGH':'UNKNOWN',source:known?'MIT':'UNKNOWN',method:'CODE',...(known?{url,excerpt}:{})});
+  const scope=category==='AIRPORT'?aviationScope(row.provider,region):category==='TRAIN'?railScope(row.provider):'UNKNOWN';
   const lines=extractLineScope(row.note);
   const airports=category==='AIRPORT' && !['AIRLINE','AIRLINE_CREW','CARGO'].includes(scope) ? normalizeAirportAffectedLines([],{contextText:affectedScopeText(row.provider)+' '+affectedScopeText(row.note)}) : [];
   return {
-    location:fact(region,region!=='UNKNOWN',row.provider), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN'),
+    location:fact(region,region!=='UNKNOWN',[row.rawRegion,row.province,row.rilevanza,row.provider].filter(Boolean).join(' | ')), passengerImpact:fact(indirectRail(scope)?'INDIRECT_OR_UNCONFIRMED':scope==='RAIL_OPERATOR'||scope==='RAIL_CREW'?'DIRECT_SERVICE':'UNKNOWN',scope!=='UNKNOWN'), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN'),
     affectedLines:fact(lines,lines!=='UNKNOWN',row.note), affectedAirports:fact(airports,!!airports.length),
     // Do not treat a list of all staff as a list of all operators.
     affectedOperators:fact(/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)?[]:row.provider?[row.provider]:[],!!row.provider && !/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)),
@@ -57,13 +82,13 @@ export function makeScopeEvidence(row: {provider:string; note:string; sector:str
   };
 }
 
-export function scopeOf(row: {timing_evidence?: TimingEvidence|null; provider?:string; region?:string; scopeType?:ScopeType}) {
-  return row.scopeType || row.timing_evidence?.fields?.scopeType.value || aviationScope(row.provider || '',row.region || '');
+export function scopeOf(row: {timing_evidence?: TimingEvidence|null; provider?:string; region?:string; scopeType?:ScopeType; category?:string}) {
+  return row.scopeType || row.timing_evidence?.fields?.scopeType.value || (row.category==='TRAIN'?railScope(row.provider || ''):aviationScope(row.provider || '',row.region || ''));
 }
 export function sourceFact<T>(value:T, source:TimingSource):FieldEvidence<T> {
-  return {value,confidence:source.authority==='official'?'HIGH':'MEDIUM',source:source.authority==='official'?'OPERATOR_OFFICIAL':'REPORTED',url:source.url,excerpt:source.excerpt};
+  return {value,confidence:source.authority==='official'?'HIGH':'MEDIUM',source:source.authority==='official'?'OPERATOR_OFFICIAL':'REPORTED',method:source.authority==='official'?'OFFICIAL':'CODE',url:source.url,excerpt:source.excerpt};
 }
 export function scopeTitle(scope: ScopeType, language:'zh'|'en'='zh') {
-  const titles:Record<ScopeType,[string,string]>={AIRPORT:['机场人员罢工','Airport staff strike'],AIRLINE:['航司罢工','Airline strike'],AIRLINE_CREW:['航司机组罢工','Airline crew strike'],GROUND_HANDLING:['地面服务人员罢工','Ground handling strike'],CARGO:['货运航空罢工','Cargo airline strike'],NATIONAL_AVIATION:['全国航空人员罢工','National aviation strike'],UNKNOWN:['航空相关罢工（范围待核实）','Aviation strike (scope unverified)']};
-  return titles[scope][language==='zh'?0:1];
+  const titles:Partial<Record<ScopeType,[string,string]>>={AIRPORT:['机场人员罢工','Airport staff strike'],AIRLINE:['航司罢工','Airline strike'],AIRLINE_CREW:['航司机组罢工','Airline crew strike'],MIXED_AIRPORT_SERVICES:['机场综合服务人员罢工','Mixed airport services strike'],GROUND_HANDLING:['地面服务人员罢工','Ground handling strike'],CARGO:['货运航空罢工','Cargo airline strike'],NATIONAL_AVIATION:['全国航空人员罢工','National aviation strike'],UNKNOWN:['航空相关罢工（范围待核实）','Aviation strike (scope unverified)']};
+  return (titles[scope] || titles.UNKNOWN!)[language==='zh'?0:1];
 }

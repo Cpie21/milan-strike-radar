@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "runId": "333420d9-9d2e-4f8d-85ed-7ec4bfdb87bf",
+  "fetched": 76,
+  "upserted": 56,
+  "unknownTiming": 6,
+  "retired": 0,
+  "enriched": 4,
+  "sourcesChecked": 98,
+  "conflicts": 3,
+  "semantic": {
+    "called": 26,
+    "cached": 0,
+    "flagged": 0,
+    "inconclusive": 18,
+    "failed": 0,
+    "skipped": 0,
+    "budgetExhausted": false
+  },
+  "semanticEnabled": true,
+  "verification": {
+    "operatorOfficial": 6,
+    "reported": 5,
+    "mitOnly": 24
+  },
+  "warningCount": 20
+}
