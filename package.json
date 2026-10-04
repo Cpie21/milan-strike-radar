@@ -12,7 +12,8 @@
     "test:enrichment": "node --test scripts/test-strike-enrichment.cjs",
     "test:presentation": "node --test scripts/test-strike-presentation.cjs",
     "test:ask": "node --test scripts/test-ask.cjs",
-    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-ask.cjs"
+    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-ask.cjs scripts/test-lab.cjs",
+    "test:lab": "node --test scripts/test-lab.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
