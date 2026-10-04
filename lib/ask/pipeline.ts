@@ -15,7 +15,6 @@ export type Intent = 'trip_check' | 'day_check' | 'period_check' | 'claim_check'
 export type Impact = 'high' | 'unknown' | 'medium' | 'low' | 'none' | 'cancelled';
 export type Overlap = 'strike' | 'guarantee' | 'outside' | 'unknown';
 export type Reason = 'direct' | 'broad' | 'adjacent' | 'other_operator' | 'unrelated';
-export type Action = 'as_planned' | 'guarantee_window' | 'switch_mode' | 'extra_time' | 'reschedule' | 'watch_updates';
 export type ClaimVerdict = 'confirms' | 'exaggerates' | 'contradicts';
 export type By = 'rule' | 'jev' | 'default';
 
@@ -54,7 +53,6 @@ export type Candidate = {
 export type Judged = Candidate & {
   relevance: number | null;
   reason: Reason | null;
-  action: Action;
   evidence: number | null;
   claim: ClaimVerdict | null;
   overlap: Overlap | null;
@@ -125,18 +123,6 @@ function judgeQuestions(claim: boolean) {
         unrelated: 'Unrelated to the user\'s question',
       },
     },
-    action: {
-      type: 'choice' as const,
-      instructions: 'Given the strike hours and guaranteed service, what should the user most sensibly do?',
-      criteria: {
-        as_planned: 'Travel as planned',
-        guarantee_window: 'Travel during the guaranteed service hours',
-        switch_mode: 'Use another transport mode or operator',
-        extra_time: 'Travel but allow extra time',
-        reschedule: 'Move the trip to another day or time',
-        watch_updates: 'Wait for the operator to publish details',
-      },
-    },
     evidence: {
       type: 'noul' as const,
       instructions: 'The official record states hours and scope concretely enough to answer the user\'s question.',
@@ -184,14 +170,6 @@ export function computeImpact(status: string, windows: EvidenceWindow[], overlap
   if (overlap === 'outside') return 'none';
   const covered = spans(windows).reduce((sum, s) => sum + s.end - s.start, 0);
   return covered >= 12 * 60 ? 'high' : 'medium';
-}
-
-function guardAction(impact: Impact, overlap: Overlap | null, suggested: Action | null): Action {
-  // Facts the code knows outrank the model's suggestion.
-  if (impact === 'cancelled' || overlap === 'outside') return 'as_planned';
-  if (impact === 'unknown') return 'watch_updates';
-  if (overlap === 'guarantee') return 'guarantee_window';
-  return suggested && suggested !== 'as_planned' ? suggested : 'extra_time';
 }
 
 function heuristicIntent(parsed: ParsedQuery): Intent {
@@ -414,12 +392,10 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
       jevFailures += 1;
       console.error('[ask] judgement fallback:', error instanceof Error ? error.message : error);
     }
-    const suggested = choice(result, 'action')?.value as Action | undefined;
     return {
       ...candidate,
       relevance: result ? noul(result, 'relevant') : wanted.size ? (modeSet.has(candidate.category) ? 1 : 0.4) : null,
       reason: (choice(result, 'reason')?.value as Reason) ?? null,
-      action: guardAction(impact, overlap, suggested ?? null),
       evidence: noul(result, 'evidence'),
       claim: (choice(result, 'claim')?.value as ClaimVerdict) ?? null,
       overlap,

@@ -1,23 +1,28 @@
 import type { EvidenceWindow } from '../strikeEvidence';
 import { addDaysIso, weekdayOfIso } from '../romeDate';
 
-// View model for the redesign. Built from aggregateStrikes output on the
-// server; everything here is pure so the rail and status copy are testable.
+// View model for the redesign. Built on the server from aggregateStrikes
+// output; everything here is pure so rail, copy and geometry are testable.
 
+export type Lang = 'zh' | 'en';
 export type Mode = 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
 export type CardStatus = 'CONFIRMED' | 'UNCERTAIN' | 'CANCELLED';
 export type Source = { name: string; url: string; authority: string };
+export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
 
 export type ModeCard = {
   id: string;
   date: string;
-  scope: string; // airport cards are split by scope (whole airport vs one airline)
   category: Mode;
+  scope: string; // airport cards are split by scope (whole airport vs one airline)
   status: CardStatus;
   provider: string;
   national: boolean;
+  displayTime: string; // kept for the existing "I'm affected" grouping key
   windows: EvidenceWindow[];
   guarantees: { start: string; end: string }[];
+  guaranteeSource: GuaranteeSource;
+  guaranteeKind: 'GUARANTEED_SERVICE' | 'PROTECTED_FLIGHTS';
   lines: string[];
   unknownTiming: boolean;
   confidence: string;
@@ -29,6 +34,7 @@ export const MODES: Mode[] = ['SUBWAY', 'BUS', 'TRAIN', 'AIRPORT'];
 const SEVERITY: Record<CardStatus, number> = { CONFIRMED: 0, UNCERTAIN: 1, CANCELLED: 2 };
 
 export const isActive = (card: ModeCard) => card.status !== 'CANCELLED';
+export const tx = (lang: Lang, zh: string, en: string) => (lang === 'en' ? en : zh);
 
 export function sortCards(cards: ModeCard[]) {
   return [...cards].sort((a, b) => SEVERITY[a.status] - SEVERITY[b.status] || MODES.indexOf(a.category) - MODES.indexOf(b.category));
@@ -45,17 +51,18 @@ export function groupIdentical(cards: ModeCard[]): ModeCard[][] {
   return [...groups.values()];
 }
 
-// ── Rail ────────────────────────────────────────────────────────────────
-
-export type RailDay = { kind: 'day'; date: string; weight: 'event' | 'calm'; cards: ModeCard[]; joinPrev: Mode[]; joinNext: Mode[] };
-export type RailGap = { kind: 'gap'; from: string; to: string; days: number };
-export type RailMonth = { kind: 'month'; month: number };
-export type RailItem = RailDay | RailGap | RailMonth;
-
 const minutes = (value: string) => {
   const [h, m] = value.split(':').map(Number);
   return h * 60 + m;
 };
+
+// ── Rail ────────────────────────────────────────────────────────────────
+// Every tile has the same width. Emphasis comes from fill and glyphs, not
+// size; a run of calm days folds into a single tile of that same width.
+
+export type RailDay = { kind: 'day'; date: string; cards: ModeCard[]; joinPrev: boolean; joinNext: boolean; monthStart: boolean };
+export type RailFold = { kind: 'fold'; from: string; to: string; days: number; monthStart: boolean };
+export type RailTile = RailDay | RailFold;
 
 // A strike continues overnight when one day runs to its end and the next
 // day's same-mode strike starts at the beginning — not merely two strikes
@@ -67,101 +74,130 @@ export function continuesOvernight(a: ModeCard | undefined, b: ModeCard | undefi
   return runsToEnd && startsAtMidnight;
 }
 
-export function buildRail(byDate: Map<string, ModeCard[]>, from: string, to: string, today: string, selected: string, expanded: Set<string>): RailItem[] {
-  const items: RailItem[] = [];
-  let gap: string[] = [];
-  let month = 0;
-  const flushGap = () => {
-    if (!gap.length) return;
-    const key = gap[0];
-    if (gap.length >= 2 && !expanded.has(key)) items.push({ kind: 'gap', from: gap[0], to: gap[gap.length - 1], days: gap.length });
-    else gap.forEach(date => items.push(day(date)));
-    gap = [];
-  };
-  const day = (date: string): RailDay => {
-    const cards = byDate.get(date) || [];
-    const prev = byDate.get(addDaysIso(date, -1)) || [];
-    const next = byDate.get(addDaysIso(date, 1)) || [];
-    return {
-      kind: 'day',
-      date,
-      weight: cards.length ? 'event' : 'calm',
-      cards: sortCards(cards),
-      joinPrev: cards.filter(c => continuesOvernight(prev.find(p => p.category === c.category), c)).map(c => c.category),
-      joinNext: cards.filter(c => continuesOvernight(c, next.find(n => n.category === c.category))).map(c => c.category),
-    };
-  };
-  for (let date = from; date <= to; date = addDaysIso(date, 1)) {
-    const m = Number(date.slice(5, 7));
-    if (m !== month) {
-      flushGap();
-      if (month) items.push({ kind: 'month', month: m });
-      month = m;
-    }
-    const pinned = date === today || date === selected || (byDate.get(date)?.length ?? 0) > 0;
-    if (pinned) {
-      flushGap();
-      items.push(day(date));
-    } else gap.push(date);
-  }
-  flushGap();
-  return items;
+function joins(byDate: Map<string, ModeCard[]>, a: string, b: string) {
+  const left = byDate.get(a) || [];
+  const right = byDate.get(b) || [];
+  return left.some(card => continuesOvernight(card, right.find(r => r.category === card.category)));
 }
 
-// ── Status copy (opening-hours style) ───────────────────────────────────
+export function buildRail(byDate: Map<string, ModeCard[]>, from: string, to: string, today: string, selected: string, expanded: Set<string>): RailTile[] {
+  const tiles: RailTile[] = [];
+  let run: string[] = [];
+  let lastMonth = '';
+  const push = (date: string) => {
+    tiles.push({
+      kind: 'day',
+      date,
+      cards: sortCards(byDate.get(date) || []),
+      joinPrev: joins(byDate, addDaysIso(date, -1), date),
+      joinNext: joins(byDate, date, addDaysIso(date, 1)),
+      monthStart: date.slice(0, 7) !== lastMonth,
+    });
+    lastMonth = date.slice(0, 7);
+  };
+  const flush = () => {
+    if (!run.length) return;
+    if (run.length >= 2 && !expanded.has(run[0])) {
+      tiles.push({ kind: 'fold', from: run[0], to: run[run.length - 1], days: run.length, monthStart: run[0].slice(0, 7) !== lastMonth });
+      lastMonth = run[0].slice(0, 7);
+    } else run.forEach(push);
+    run = [];
+  };
+  for (let date = from; date <= to; date = addDaysIso(date, 1)) {
+    // A fold never spans two months, so month labels stay truthful.
+    if (run.length && date.slice(0, 7) !== run[0].slice(0, 7)) flush();
+    const pinned = date === today || date === selected || (byDate.get(date)?.length ?? 0) > 0;
+    if (pinned) {
+      flush();
+      push(date);
+    } else run.push(date);
+  }
+  flush();
+  return tiles;
+}
+
+// ── Copy ────────────────────────────────────────────────────────────────
 
 export type Tone = 'stop' | 'pending' | 'cancelled' | 'over';
 
-const clock = (w: EvidenceWindow, side: 'start' | 'end') =>
-  side === 'start' ? (w.start ?? '运营开始') : w.end_kind === 'end_of_service' ? '运营结束' : w.end ?? '运营结束';
+const clock = (w: EvidenceWindow, side: 'start' | 'end', lang: Lang) =>
+  side === 'start'
+    ? (w.start ?? tx(lang, '运营开始', 'start of service'))
+    : w.end_kind === 'end_of_service' ? tx(lang, '运营结束', 'end of service') : w.end ?? tx(lang, '运营结束', 'end of service');
 
-export function windowsText(windows: EvidenceWindow[]) {
-  return windows.map(w => `${clock(w, 'start')}–${clock(w, 'end')}`).join('、');
+export function windowsText(windows: EvidenceWindow[], lang: Lang = 'zh') {
+  return windows.map(w => `${clock(w, 'start', lang)}–${clock(w, 'end', lang)}`).join(tx(lang, '、', ', '));
 }
 
-export function statusLine(card: ModeCard, today: string, nowMinutes: number): { text: string; tone: Tone } {
-  if (card.status === 'CANCELLED') return { text: '已取消', tone: 'cancelled' };
-  if (!card.windows.length) return { text: '已宣布罢工 · 时段待公布', tone: 'pending' };
-  if (card.date !== today) return { text: `${windowsText(card.windows)} 停运`, tone: 'stop' };
+export function statusLine(card: ModeCard, today: string, nowMinutes: number, lang: Lang = 'zh'): { text: string; tone: Tone } {
+  if (card.status === 'CANCELLED') return { text: tx(lang, '已取消', 'Cancelled'), tone: 'cancelled' };
+  if (!card.windows.length) return { text: tx(lang, '已宣布罢工 · 时段待公布', 'Strike announced · hours pending'), tone: 'pending' };
+  if (card.date !== today) return { text: tx(lang, `${windowsText(card.windows, lang)} 停运`, `No service ${windowsText(card.windows, lang)}`), tone: 'stop' };
   const spans = card.windows.map(w => ({ w, start: w.start === null ? 0 : minutes(w.start), end: w.end_kind === 'end_of_service' || !w.end ? 1440 : minutes(w.end) }));
   const current = spans.find(s => nowMinutes >= s.start && nowMinutes < s.end);
   if (current) {
     const next = spans.find(s => s.start > current.end);
-    const resume = current.w.end_kind === 'end_of_service' ? '停运至运营结束' : `${clock(current.w, 'end')} 恢复`;
-    return { text: `停运中 · ${resume}${next ? ` · ${clock(next.w, 'start')} 再次停运` : ''}`, tone: 'stop' };
+    const resume = current.w.end_kind === 'end_of_service'
+      ? tx(lang, '停运至运营结束', 'until end of service')
+      : tx(lang, `${clock(current.w, 'end', lang)} 恢复`, `resumes ${clock(current.w, 'end', lang)}`);
+    const again = next ? tx(lang, ` · ${clock(next.w, 'start', lang)} 再次停运`, ` · stops again ${clock(next.w, 'start', lang)}`) : '';
+    return { text: tx(lang, `停运中 · ${resume}${again}`, `Stopped · ${resume}${again}`), tone: 'stop' };
   }
   const upcoming = spans.find(s => s.start > nowMinutes);
-  if (upcoming) return { text: `${clock(upcoming.w, 'start')} 起停运`, tone: 'stop' };
-  return { text: '今天的罢工时段已结束', tone: 'over' };
+  if (upcoming) return { text: tx(lang, `${clock(upcoming.w, 'start', lang)} 起停运`, `Stops at ${clock(upcoming.w, 'start', lang)}`), tone: 'stop' };
+  return { text: tx(lang, '今天的罢工时段已结束', 'Today’s strike hours are over'), tone: 'over' };
 }
 
 // An overnight strike reads as one span across both days.
-export function overnightLine(card: ModeCard, prev?: ModeCard, next?: ModeCard) {
-  const d = (iso: string) => `${Number(iso.slice(8, 10))}日`;
-  if (next) {
-    const start = card.windows.find(w => w.end_kind === 'end_of_service' || (w.end && w.end >= '23:59'))?.start ?? '运营开始';
-    const end = next.windows.find(w => w.start === null || w.start <= '00:01');
-    return `${d(card.date)} ${start} → ${d(next.date)} ${end ? clock(end, 'end') : ''} 停运`;
-  }
-  if (prev) {
-    const start = prev.windows.find(w => w.end_kind === 'end_of_service' || (w.end && w.end >= '23:59'))?.start ?? '运营开始';
-    const end = card.windows.find(w => w.start === null || w.start <= '00:01');
-    return `${d(prev.date)} ${start} → ${d(card.date)} ${end ? clock(end, 'end') : ''} 停运`;
-  }
-  return null;
+export function overnightLine(card: ModeCard, prev: ModeCard | undefined, next: ModeCard | undefined, lang: Lang = 'zh') {
+  const d = (iso: string) => tx(lang, `${Number(iso.slice(8, 10))}日`, `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}`);
+  const first = next ? card : prev;
+  const second = next ? next : card;
+  if (!first || !second) return null;
+  const start = first.windows.find(w => w.end_kind === 'end_of_service' || (w.end && w.end >= '23:59'))?.start ?? tx(lang, '运营开始', 'start of service');
+  const endWindow = second.windows.find(w => w.start === null || w.start <= '00:01');
+  const end = endWindow ? clock(endWindow, 'end', lang) : '';
+  return tx(lang, `${d(first.date)} ${start} → ${d(second.date)} ${end} 停运`, `No service ${d(first.date)} ${start} → ${d(second.date)} ${end}`);
+}
+
+// ── Time ────────────────────────────────────────────────────────────────
+
+export function daysBetween(from: string, to: string) {
+  return Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 86_400_000);
+}
+
+export function relativeDay(date: string, today: string, lang: Lang = 'zh') {
+  const diff = daysBetween(today, date);
+  if (diff === 0) return tx(lang, '今天', 'Today');
+  if (diff === 1) return tx(lang, '明天', 'Tomorrow');
+  if (diff === -1) return tx(lang, '昨天', 'Yesterday');
+  return diff > 0 ? tx(lang, `${diff} 天后`, `In ${diff} days`) : tx(lang, `${-diff} 天前`, `${-diff} days ago`);
+}
+
+export function nextEventDate(byDate: Map<string, ModeCard[]>, after: string) {
+  return [...byDate.keys()].filter(d => d > after && (byDate.get(d) || []).some(isActive)).sort()[0] ?? null;
+}
+
+// The sky follows the selected day's state and Rome's time of day — the
+// "strike weather" the page is built around.
+export type Sky = 'clear-day' | 'clear-night' | 'storm-day' | 'storm-night';
+export function skyFor(cards: ModeCard[], romeMinutes: number): Sky {
+  const night = romeMinutes < 6 * 60 + 30 || romeMinutes >= 20 * 60;
+  const storm = cards.some(isActive);
+  return `${storm ? 'storm' : 'clear'}-${night ? 'night' : 'day'}` as Sky;
 }
 
 // ── Service bar geometry ────────────────────────────────────────────────
-
 // Service runs roughly 05:00 to end of service; the axis starts there so
 // the dead night hours don't take a quarter of the bar.
+
 export const AXIS_START = 5 * 60;
 export const AXIS_END = 24 * 60;
+export const axisPos = (m: number) => (Math.min(Math.max(m, AXIS_START), AXIS_END) - AXIS_START) / (AXIS_END - AXIS_START);
 
 export type Segment = { left: number; width: number; fade: boolean; fromNight: boolean };
 
 export function segments(windows: { start: string | null; end: string | null; end_kind?: string }[]): Segment[] {
-  const span = AXIS_END - AXIS_START;
   return windows.flatMap(w => {
     const rawStart = w.start === null ? 0 : minutes(w.start);
     const toEnd = w.end_kind === 'end_of_service' || !w.end;
@@ -170,22 +206,22 @@ export function segments(windows: { start: string | null; end: string | null; en
     const start = Math.max(rawStart, AXIS_START);
     const end = Math.min(rawEnd, AXIS_END);
     if (end <= start) return [];
-    return [{ left: (start - AXIS_START) / span, width: (end - start) / span, fade: toEnd, fromNight: rawStart < AXIS_START }];
+    return [{ left: axisPos(start), width: axisPos(end) - axisPos(start), fade: toEnd, fromNight: rawStart < AXIS_START }];
   });
 }
 
 export function nowPosition(nowMinutes: number) {
-  if (nowMinutes < AXIS_START || nowMinutes > AXIS_END) return null;
-  return (nowMinutes - AXIS_START) / (AXIS_END - AXIS_START);
+  return nowMinutes < AXIS_START || nowMinutes > AXIS_END ? null : axisPos(nowMinutes);
 }
 
 // ── Labels ──────────────────────────────────────────────────────────────
 
-const WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-export const weekday = (iso: string) => WEEK[weekdayOfIso(iso)];
-export const dayLabel = (iso: string) => `${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日 ${weekday(iso)}`;
-export const MODE_ZH: Record<Mode, string> = { TRAIN: '火车', SUBWAY: '地铁', BUS: '公交', AIRPORT: '机场' };
-
-export function nextEventDate(byDate: Map<string, ModeCard[]>, after: string) {
-  return [...byDate.keys()].filter(d => d > after && (byDate.get(d) || []).some(isActive)).sort()[0] ?? null;
-}
+const WEEK_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEK_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const weekday = (iso: string, lang: Lang = 'zh') => (lang === 'en' ? WEEK_EN : WEEK_ZH)[weekdayOfIso(iso)];
+export const monthLabel = (iso: string, lang: Lang = 'zh') => tx(lang, `${Number(iso.slice(5, 7))}月`, MONTH_EN[Number(iso.slice(5, 7)) - 1]);
+export const dayLabel = (iso: string, lang: Lang = 'zh') =>
+  tx(lang, `${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日 ${weekday(iso)}`, `${weekday(iso, 'en')} ${Number(iso.slice(8, 10))} ${MONTH_EN[Number(iso.slice(5, 7)) - 1]}`);
+export const MODE_LABEL: Record<Mode, [string, string]> = { TRAIN: ['火车', 'Train'], SUBWAY: ['地铁', 'Metro'], BUS: ['公交', 'Bus'], AIRPORT: ['机场', 'Airport'] };
+export const modeName = (mode: Mode, lang: Lang = 'zh') => MODE_LABEL[mode][lang === 'en' ? 1 : 0];

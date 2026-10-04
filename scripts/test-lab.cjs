@@ -8,11 +8,11 @@ require.extensions['.ts'] = (module, filename) => {
     compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2020 },
   }).outputText, filename);
 };
-const { buildRail, continuesOvernight, groupIdentical, overnightLine, statusLine, segments } = require('../lib/lab/model.ts');
+const { buildRail, continuesOvernight, groupIdentical, overnightLine, relativeDay, skyFor, statusLine, segments } = require('../lib/lab/model.ts');
 
 const card = (date, category, windows, extra = {}) => ({
-  id: `${date}-${category}`, date, scope: '', category, status: 'CONFIRMED', provider: 'ATM', national: false,
-  windows, guarantees: [], lines: [], unknownTiming: false, confidence: 'official', sources: [], events: [], ...extra,
+  id: `${date}-${category}`, date, scope: '', category, status: 'CONFIRMED', provider: 'ATM', national: false, displayTime: '',
+  windows, guarantees: [], guaranteeSource: 'UNKNOWN', guaranteeKind: 'GUARANTEED_SERVICE', lines: [], unknownTiming: false, confidence: 'official', sources: [], events: [], ...extra,
 });
 const clock = (start, end) => ({ start, end, end_kind: 'clock' });
 const toEnd = start => ({ start, end: null, end_kind: 'end_of_service' });
@@ -20,7 +20,7 @@ const toEnd = start => ({ start, end: null, end_kind: 'end_of_service' });
 test('calm stretches fold into one gap; event days, today and the selection stay', () => {
   const byDate = new Map([['2026-10-09', [card('2026-10-09', 'SUBWAY', [clock('08:45', '15:00')])]]]);
   const items = buildRail(byDate, '2026-10-04', '2026-10-12', '2026-10-04', '2026-10-04', new Set());
-  assert.deepEqual(items.map(i => i.kind === 'gap' ? `${i.from}..${i.to}` : i.date), ['2026-10-04', '2026-10-05..2026-10-08', '2026-10-09', '2026-10-10..2026-10-12']);
+  assert.deepEqual(items.map(i => i.kind === 'fold' ? `${i.from}..${i.to}` : i.date), ['2026-10-04', '2026-10-05..2026-10-08', '2026-10-09', '2026-10-10..2026-10-12']);
   const opened = buildRail(byDate, '2026-10-04', '2026-10-12', '2026-10-04', '2026-10-04', new Set(['2026-10-05']));
   assert.equal(opened.filter(i => i.kind === 'day').length, 1 + 4 + 1 + 0);
 });
@@ -34,9 +34,10 @@ test('a single calm day between events is shown, not folded', () => {
   assert.deepEqual(items.map(i => i.kind), ['day', 'day', 'day']);
 });
 
-test('month boundaries insert a label', () => {
-  const items = buildRail(new Map(), '2026-10-30', '2026-11-02', '2026-10-30', '2026-10-30', new Set());
-  assert.ok(items.some(i => i.kind === 'month' && i.month === 11));
+test('every tile has one width: folds never cross a month, and month starts are flagged', () => {
+  const items = buildRail(new Map(), '2026-10-30', '2026-11-03', '2026-10-30', '2026-10-30', new Set());
+  assert.deepEqual(items.map(i => i.kind === 'fold' ? `${i.from}..${i.to}` : i.date), ['2026-10-30', '2026-10-31', '2026-11-01..2026-11-03']);
+  assert.deepEqual(items.map(i => i.monthStart), [true, false, true]);
 });
 
 test('only a strike running through midnight joins two days', () => {
@@ -46,8 +47,9 @@ test('only a strike running through midnight joins two days', () => {
   assert.equal(continuesOvernight(card('2026-12-03', 'TRAIN', [clock('09:00', '17:00')]), day2), false);
   assert.equal(continuesOvernight(day1, { ...day2, status: 'CANCELLED' }), false);
   const rail = buildRail(new Map([['2026-12-03', [day1]], ['2026-12-04', [day2]]]), '2026-12-03', '2026-12-04', '2026-10-04', '2026-12-03', new Set());
-  assert.deepEqual(rail[0].joinNext, ['TRAIN']);
-  assert.deepEqual(rail[1].joinPrev, ['TRAIN']);
+  assert.equal(rail[0].joinNext, true);
+  assert.equal(rail[1].joinPrev, true);
+  assert.equal(rail[0].joinPrev, false);
 });
 
 test('status reads like opening hours on the day and as a range otherwise', () => {
@@ -82,4 +84,18 @@ test('an overnight strike is described as one span on both days', () => {
   const day2 = card('2026-12-04', 'TRAIN', [clock('00:00', '21:00')]);
   assert.equal(overnightLine(day1, undefined, day2), '3日 21:00 → 4日 21:00 停运');
   assert.equal(overnightLine(day2, day1, undefined), '3日 21:00 → 4日 21:00 停运');
+});
+
+test('the sky follows the selected day and Rome night', () => {
+  const strike = [card('2026-10-09', 'BUS', [clock('08:45', '15:00')])];
+  assert.equal(skyFor([], 12 * 60), 'clear-day');
+  assert.equal(skyFor(strike, 12 * 60), 'storm-day');
+  assert.equal(skyFor(strike, 23 * 60), 'storm-night');
+  assert.equal(skyFor([{ ...strike[0], status: 'CANCELLED' }], 23 * 60), 'clear-night');
+});
+
+test('relative day labels in both languages', () => {
+  assert.equal(relativeDay('2026-10-09', '2026-10-04'), '5 天后');
+  assert.equal(relativeDay('2026-10-05', '2026-10-04', 'en'), 'Tomorrow');
+  assert.equal(relativeDay('2026-10-02', '2026-10-04'), '2 天前');
 });

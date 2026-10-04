@@ -50,13 +50,11 @@ const REASON: Record<string, [string, string]> = {
   other_operator: ['同类交通，但不是你乘坐的运营方', 'Same mode, different operator'],
   unrelated: ['与你的问题无关', 'Unrelated'],
 };
-const ACTION: Record<string, [string, string]> = {
-  as_planned: ['按原计划出行', 'Travel as planned'],
-  guarantee_window: ['在保障时段内出行', 'Travel in guaranteed hours'],
-  switch_mode: ['改用其他交通方式', 'Use another mode'],
-  extra_time: ['预留更多时间', 'Allow extra time'],
-  reschedule: ['考虑改期或改时间', 'Consider rescheduling'],
-  watch_updates: ['留意运营方公布的时段', 'Watch for operator updates'],
+// Facts the code computed from the user's time; no advice we can't back.
+const OVERLAP: Record<string, [string, string]> = {
+  strike: ['你的时间在罢工时段内', 'Your time is inside the strike hours'],
+  guarantee: ['你的时间在保障时段内', 'Your time is inside the guaranteed hours'],
+  outside: ['你的时间不在罢工时段内', 'Your time is outside the strike hours'],
 };
 const EXAMPLES: [string, string][] = [
   ['周五早上9点坐 M1 会受影响吗？', 'Is the M1 affected Friday at 9am?'],
@@ -166,10 +164,12 @@ function MatchCard({ match, time, language, onOpenDate }: { match: Judged; time:
             <SourceTag by="jev" p={match.relevance} language={language} />
           </div>
         )}
-        <div className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.06] px-3 py-2">
-          <span className="text-[13px] font-semibold text-white">→ {t(language, ACTION[match.action])}</span>
-          <SourceTag by={match.impact === 'cancelled' || match.impact === 'unknown' || match.overlap === 'guarantee' || match.overlap === 'outside' ? 'rule' : 'jev'} language={language} />
-        </div>
+        {match.overlap && match.overlap !== 'unknown' && (
+          <div className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.06] px-3 py-2">
+            <span className="text-[13px] font-semibold text-white">{t(language, OVERLAP[match.overlap])}</span>
+            <SourceTag by="rule" language={language} />
+          </div>
+        )}
       </div>
       <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-2 text-[11px]">

@@ -16,6 +16,7 @@
     "test:lab": "node --test scripts/test-lab.cjs"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "@supabase/supabase-js": "^2.98.0",
     "cheerio": "^1.2.0",
     "clsx": "^2.1.1",

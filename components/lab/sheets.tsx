@@ -1,0 +1,264 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/react';
+import { submitFeedback } from '../../app/actions';
+import { buildWidgetScript } from '../../lib/widgetScript';
+import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
+import { ModeGlyph, PrimaryButton, Sheet } from './ui';
+import { C } from './theme';
+import { track } from './track';
+
+type City = { tag: string; zh: string; en: string; path: string };
+type Base = { open: boolean; onClose: () => void; tint: string; lang: Lang };
+
+const PROD_HOST = 'theitalystrike.com';
+const isLocal = (host: string) => host.includes('localhost') || /^[0-9.]+(:[0-9]+)?$/.test(host);
+
+// Opening a guide for three seconds counts as "seen", as on the live page.
+function useSeen(open: boolean, event: string) {
+  useEffect(() => {
+    if (!open) return;
+    const started = Date.now();
+    const timer = setTimeout(() => track(event, { seconds: Math.round((Date.now() - started) / 1000) }), 3000);
+    return () => clearTimeout(timer);
+  }, [open, event]);
+}
+
+function ModeToggles({ value, onChange, lang }: { value: Set<Mode>; onChange: (v: Set<Mode>) => void; lang: Lang }) {
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {MODES.map(mode => {
+        const on = value.has(mode);
+        return (
+          <button key={mode} aria-pressed={on} onClick={() => { const next = new Set(value); if (on) next.delete(mode); else next.add(mode); onChange(next); }}
+            className="h-[68px] rounded-[14px] flex flex-col items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors"
+            style={{ background: on ? '#FFFFFF' : 'rgba(255,255,255,0.1)', color: on ? '#0E1A2E' : C.text2 }}>
+            <ModeGlyph mode={mode} size={20} />
+            {modeName(mode, lang)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Step({ n, title, children }: { n: number; title: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex gap-3 py-3">
+      <span className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[13px] font-semibold tabular-nums" style={{ background: 'rgba(255,255,255,0.16)' }}>{n}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-medium leading-6">{title}</p>
+        {children && <div className="mt-2.5">{children}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── City ───────────────────────────────────────────────────────────────
+
+export function CitySheet({ cities, current, status, today, ...base }: Base & { cities: City[]; current: string; status: Record<string, { today: Mode[]; next: string | null; nextModes: Mode[] }>; today: string }) {
+  const [q, setQ] = useState('');
+  const list = cities.filter(c => !q || c.zh.includes(q) || c.en.toLowerCase().includes(q.toLowerCase()) || c.tag.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '城市', 'Cities')}>
+      <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] mb-3" style={{ background: 'rgba(255,255,255,0.12)' }}>
+        <MagnifyingGlass size={16} color={C.text3} />
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder={tx(base.lang, '搜索城市', 'Search cities')} aria-label={tx(base.lang, '搜索城市', 'Search cities')}
+          className="flex-1 bg-transparent outline-none text-[16px] placeholder:text-white/40" />
+      </label>
+      <div className="flex flex-col gap-2 pb-2">
+        {list.map(city => (
+          <a key={city.tag} href={`/lab?city=${city.tag}`} className="flex items-center justify-between gap-3 h-[64px] px-4 rounded-[16px] active:scale-[0.99] transition-transform"
+            style={{ background: city.tag === current ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)' }}>
+            <span>
+              <span className="text-[17px] font-semibold">{base.lang === 'en' ? city.en : city.zh}</span>
+              <span className="ml-2 text-[13px]" style={{ color: C.text3 }}>{base.lang === 'en' ? city.zh : city.en}</span>
+            </span>
+            <CityHeadline s={status[city.tag]} today={today} lang={base.lang} current={city.tag === current} />
+          </a>
+        ))}
+        {!list.length && <p className="py-6 text-center text-[14px]" style={{ color: C.text3 }}>{tx(base.lang, '暂不支持这个城市', 'This city isn’t covered yet')}</p>}
+      </div>
+    </Sheet>
+  );
+}
+
+function CityHeadline({ s, today, lang, current }: { s?: { today: Mode[]; next: string | null; nextModes: Mode[] }; today: string; lang: Lang; current: boolean }) {
+  const glyphs = (modes: Mode[], color: string) => <span className="flex gap-0.5">{modes.map(m => <ModeGlyph key={m} mode={m} size={14} color={color} />)}</span>;
+  return (
+    <span className="flex items-center gap-2 shrink-0 text-[13px] font-semibold tabular-nums">
+      {s?.today.length ? <>{glyphs(s.today, C.stop)}<span style={{ color: C.stop }}>{tx(lang, '今天', 'Today')}</span></>
+        : s?.next ? <>{glyphs(s.nextModes, C.text2)}<span style={{ color: C.text2 }}>{relativeDay(s.next, today, lang)}</span></>
+        : <span style={{ color: C.text3 }}>{tx(lang, '近期无罢工', 'All clear')}</span>}
+      {current && <Check size={16} weight="bold" />}
+    </span>
+  );
+}
+
+// ── Calendar ───────────────────────────────────────────────────────────
+
+export function CalendarSheet({ region, cityName, ...base }: Base & { region: string; cityName: string }) {
+  const [types, setTypes] = useState<Set<Mode>>(new Set(MODES));
+  useSeen(base.open, 'CalendarSync_tutorial_success');
+  const subscribe = () => {
+    if (!types.size) return;
+    const host = isLocal(window.location.host) ? PROD_HOST : window.location.host;
+    const param = [...types].map(t => (t === 'AIRPORT' ? 'airport' : t.toLowerCase())).join(',');
+    track('calendar_sync_clicked', { region });
+    window.location.assign(`webcal://${host}/api/calendar?types=${encodeURIComponent(param)}&region=${encodeURIComponent(region)}`);
+  };
+  return (
+    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '订阅罢工日历', 'Subscribe to strikes')}>
+      <p className="text-[14.5px] leading-relaxed mb-4" style={{ color: C.text2 }}>
+        {tx(base.lang, `把${cityName}的罢工加入手机日历。新公布、改期或取消的罢工会自动同步，不用再回来查。`, `Add ${cityName} strikes to your calendar. New, moved or cancelled strikes update automatically.`)}
+      </p>
+      <p className="text-[13px] mb-2" style={{ color: C.text3 }}>{tx(base.lang, '同步哪些交通', 'Which transport')}</p>
+      <ModeToggles value={types} onChange={setTypes} lang={base.lang} />
+      <div className="mt-5">
+        <PrimaryButton onClick={subscribe}>{types.size ? tx(base.lang, '添加到日历', 'Add to Calendar') : tx(base.lang, '至少选择一种交通', 'Choose at least one')}</PrimaryButton>
+      </div>
+      <p className="mt-3 text-[12.5px] text-center" style={{ color: C.text3 }}>{tx(base.lang, 'iPhone 和 Mac 会弹出订阅确认；安卓可在 Google 日历中通过网址添加。', 'iPhone and Mac ask to confirm; on Android, add the URL in Google Calendar.')}</p>
+    </Sheet>
+  );
+}
+
+// ── Widget ─────────────────────────────────────────────────────────────
+
+export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { region: string; cityName: string; cityPath: string }) {
+  const [types, setTypes] = useState<Set<Mode>>(new Set(MODES));
+  const [copied, setCopied] = useState(false);
+  useSeen(base.open, 'Widgets_tutorial_success');
+  const labels = useMemo(() => JSON.stringify(base.lang === 'en'
+    ? { titleMap: { TRAIN: 'Train strike', SUBWAY: 'Metro strike', BUS: 'Bus strike', AIRPORT: 'Airport strike' }, fallbackTitle: 'Strike', todayStrike: 'Strikes', safeTravel: 'All clear', noStrikeToday: 'No strikes today', dataError: 'Data error' }
+    : { titleMap: { TRAIN: '火车罢工', SUBWAY: '地铁罢工', BUS: '公交罢工', AIRPORT: '机场罢工' }, fallbackTitle: '罢工', todayStrike: '今日罢工', safeTravel: '安心出行', noStrikeToday: '今日无罢工', dataError: '数据错误' }), [base.lang]);
+  const copy = async () => {
+    const origin = isLocal(window.location.host) ? `https://${PROD_HOST}` : window.location.origin;
+    const code = buildWidgetScript({ targetOrigin: origin, normalizedRegion: region, typesJson: JSON.stringify([...types]), regionLabel: cityName, widgetLabelsJson: labels, regionPagePath: cityPath });
+    await navigator.clipboard?.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '桌面小组件', 'Home Screen widget')}>
+      <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>
+        {tx(base.lang, `在桌面上直接看到${cityName}今天和最近的罢工。借助免费的 Scriptable 实现，只需设置一次。`, `See ${cityName} strikes on your Home Screen, via the free Scriptable app. Set it up once.`)}
+      </p>
+      <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={setTypes} lang={base.lang} /></Step>
+      <Step n={2} title={tx(base.lang, '复制代码，并安装 Scriptable', 'Copy the code and get Scriptable')}>
+        <div className="flex gap-2">
+          <button onClick={copy} disabled={!types.size} className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold disabled:opacity-40" style={{ background: '#FFFFFF', color: '#0E1A2E' }}>
+            {copied ? <Check size={16} weight="bold" /> : <Copy size={16} weight="bold" />}{copied ? tx(base.lang, '已复制', 'Copied') : tx(base.lang, '复制代码', 'Copy code')}
+          </button>
+          <a href="https://apps.apple.com/us/app/scriptable/id1405459188" target="_blank" rel="noreferrer" className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold" style={{ background: 'rgba(255,255,255,0.14)' }}>
+            Scriptable<ArrowSquareOut size={14} />
+          </a>
+        </div>
+      </Step>
+      <Step n={3} title={tx(base.lang, '在 Scriptable 右上角点 +，粘贴代码', 'In Scriptable, tap + and paste')}><Shot src="/assets/widget-step-1.png" /></Step>
+      <Step n={4} title={tx(base.lang, '回到桌面，添加 Scriptable 小组件', 'Add a Scriptable widget to your Home Screen')}><Shot src="/assets/widget-step-2.png" /></Step>
+      <Step n={5} title={tx(base.lang, '长按小组件，选择刚才的脚本', 'Long-press it and pick the script')}><Shot src="/assets/widget-step-3.png" /></Step>
+    </Sheet>
+  );
+}
+
+function Shot({ src }: { src: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" className="w-full max-w-[260px] rounded-[14px]" style={{ boxShadow: '0 0 0 0.5px rgba(255,255,255,0.2)' }} />;
+}
+
+// ── Add to Home Screen ─────────────────────────────────────────────────
+
+function useIsSafari() {
+  const [safari, setSafari] = useState(true);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const thirdParty = /CriOS|FxiOS|EdgiOS|OPiOS|mercury|DuckDuckGo|Brave|Arc/i.test(ua);
+    const standalone = window.matchMedia('(display-mode: standalone)').matches;
+    const macSafari = /Macintosh/.test(ua) && /Version\/[\d.]+.*Safari/.test(ua) && !/Chrome|Arc|Edg|Chromium/i.test(ua);
+    const id = setTimeout(() => setSafari(standalone || macSafari || (ios && !thirdParty && /Version/.test(ua))), 0);
+    return () => clearTimeout(id);
+  }, []);
+  return safari;
+}
+
+export function HomeScreenSheet(base: Base) {
+  const safari = useIsSafari();
+  const [copied, setCopied] = useState(false);
+  useSeen(base.open, 'AppToDesktop_tutorial_success');
+  return (
+    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '添加到主屏幕', 'Add to Home Screen')}>
+      <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>{tx(base.lang, '像 App 一样从桌面一键打开，不用每次搜索。', 'Open it from your Home Screen like an app.')}</p>
+      {!safari && (
+        <div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(255,203,107,0.16)' }}>
+          <p className="text-[14px] font-medium" style={{ color: C.pend }}>{tx(base.lang, '需要在 Safari 中操作', 'This works in Safari')}</p>
+          <button onClick={async () => { await navigator.clipboard?.writeText(window.location.href.replace('/lab', '')); setCopied(true); }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.16)' }}>
+            {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}{copied ? tx(base.lang, '已复制，去 Safari 粘贴', 'Copied — paste in Safari') : tx(base.lang, '复制链接', 'Copy link')}
+          </button>
+        </div>
+      )}
+      <Step n={1} title={tx(base.lang, '点击底部的分享按钮', 'Tap Share')}><Shot src="/assets/tutorial-step-1.png" /></Step>
+      <Step n={2} title={tx(base.lang, '向上滑，展开更多选项', 'Scroll for more options')}><Shot src="/assets/tutorial-step-2.png" /></Step>
+      <Step n={3} title={tx(base.lang, '选择“添加到主屏幕”', 'Choose “Add to Home Screen”')}><Shot src="/assets/tutorial-step-3.png" /></Step>
+      <Step n={4} title={tx(base.lang, '点右上角“添加”', 'Tap Add')}><Shot src="/assets/tutorial-step-4.png" /></Step>
+    </Sheet>
+  );
+}
+
+// ── Support and feedback ───────────────────────────────────────────────
+
+export function SupportSheet(base: Base) {
+  const [cups, setCups] = useState(1);
+  const [name, setName] = useState('');
+  const [text, setText] = useState('');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [error, setError] = useState('');
+  const send = async () => {
+    if (!text.trim()) { setState('error'); setError(tx(base.lang, '先写点内容', 'Write something first')); return; }
+    setState('sending');
+    const res = await submitFeedback(text, name);
+    if (res.success) { setState('sent'); setText(''); }
+    else { setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
+  };
+  return (
+    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '支持与反馈', 'Support and feedback')}>
+      <p className="text-[14.5px] leading-relaxed" style={{ color: C.text2 }}>{tx(base.lang, '这是一个独立开发的免费工具。如果它帮到了你，可以请作者喝杯奶茶。', 'This is a free, independently built tool. If it helped, you can buy the author a drink.')}</p>
+      <div className="mt-4 rounded-[18px] p-4" style={{ background: 'rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center justify-between">
+          <span className="text-[15px] font-medium">{tx(base.lang, '奶茶 · 每杯 2€', 'Drinks · 2€ each')}</span>
+          <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            {[1, 2, 3, 5].map(n => (
+              <button key={n} aria-pressed={cups === n} onClick={() => setCups(n)} className="w-9 h-8 rounded-full text-[14px] font-semibold tabular-nums transition-colors" style={{ background: cups === n ? '#FFFFFF' : 'transparent', color: cups === n ? '#0E1A2E' : C.text2 }}>{n}</button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3">
+          <PrimaryButton href="https://revolut.me/cpie21" onClick={() => track('donate_coffee_clicked', { payment_method: 'Revolut', amount: cups * 2 })}>
+            {tx(base.lang, `用 Revolut 支持 ${cups * 2}€`, `Support ${cups * 2}€ with Revolut`)}
+          </PrimaryButton>
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/wechat-qr-round.png" alt={tx(base.lang, '微信赞赏码', 'WeChat appreciation code')} className="w-[84px] h-[84px] rounded-full" />
+          <p className="text-[13.5px] leading-snug" style={{ color: C.text2 }}>{tx(base.lang, '或长按 / 扫描微信赞赏码', 'Or scan the WeChat appreciation code')}</p>
+        </div>
+      </div>
+
+      <h3 className="mt-6 mb-2 text-[15px] font-semibold">{tx(base.lang, '反馈与建议', 'Feedback')}</h3>
+      <p className="text-[13px] mb-3" style={{ color: C.text3 }}>{tx(base.lang, '信息有误、想要的城市、或者任何建议，都可以告诉我。', 'Wrong data, a missing city, or any idea — tell me.')}</p>
+      <input value={name} onChange={e => setName(e.target.value.slice(0, 60))} placeholder={tx(base.lang, '昵称（选填）', 'Name (optional)')} aria-label={tx(base.lang, '昵称', 'Name')}
+        className="w-full h-11 px-3 rounded-[12px] bg-transparent outline-none text-[15px] placeholder:text-white/40" style={{ background: 'rgba(255,255,255,0.1)' }} />
+      <textarea value={text} onChange={e => { setText(e.target.value.slice(0, 1000)); if (state === 'error') setState('idle'); }} rows={4} placeholder={tx(base.lang, '想说点什么？', 'What’s on your mind?')} aria-label={tx(base.lang, '反馈内容', 'Feedback')}
+        className="mt-2 w-full p-3 rounded-[12px] bg-transparent outline-none text-[15px] leading-relaxed resize-none placeholder:text-white/40" style={{ background: 'rgba(255,255,255,0.1)' }} />
+      {state === 'error' && <p className="mt-1 text-[13px]" style={{ color: C.stop }}>{error}</p>}
+      {state === 'sent' && <p className="mt-1 text-[13px]" style={{ color: C.ok }}>{tx(base.lang, '收到了，谢谢你。', 'Got it — thank you.')}</p>}
+      <div className="mt-3"><PrimaryButton tone="glass" onClick={send}>{state === 'sending' ? tx(base.lang, '发送中…', 'Sending…') : tx(base.lang, '发送反馈', 'Send feedback')}</PrimaryButton></div>
+
+      <a href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-5 mb-2 flex items-center justify-between h-12 px-4 rounded-[14px]" style={{ background: 'rgba(255,255,255,0.08)' }}>
+        <span className="text-[15px] font-medium">{tx(base.lang, '在小红书关注作者', 'Follow on Xiaohongshu')}</span>
+        <ArrowSquareOut size={15} color={C.text2} />
+      </a>
+    </Sheet>
+  );
+}
