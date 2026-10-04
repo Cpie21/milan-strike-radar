@@ -67,7 +67,7 @@ export function parseStrikeTiming(text: string, category?: TimingCategory, dateI
     let start = `${match[1].padStart(2, '0')}:${match[2] || '00'}`;
     let end = `${match[6].padStart(2, '0')}:${match[7] || '00'}`;
     if (minutes(start) >= 1440 || minutes(end) > 1440 || Number(match[2] || 0) > 59 || Number(match[7] || 0) > 59) continue;
-    if (end === '23:59') end = '24:00';
+    // Retain the published minute, rather than stretching 23:59 to midnight.
     if (Boolean(match[3]) !== Boolean(match[8])) continue;
     if (start === end && !match[3]) continue;
     if (match[3] && match[4] && match[8] && match[9]) {

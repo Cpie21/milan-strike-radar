@@ -34,7 +34,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const warnings: string[] = [];
     const enrichment = await enrichStrikeTiming(records, warnings).catch(error => {
       warnings.push(`External timing discovery failed: ${error instanceof Error ? error.message : 'unknown error'}`);
-      return { records: records.map(record => ({ ...record, timing_evidence: null })), enriched: 0, sourcesChecked: 0, conflicts: 0 };
+      return { records, enriched: 0, sourcesChecked: 0, conflicts: 0 };
     });
     records = enrichment.records;
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
@@ -50,8 +50,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/api/strikes');
     revalidatePath('/api/calendar');
     revalidateTag('strikes', { expire: 0 });
-    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, warnings }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, warningCount: warnings.length });
+    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
+    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);

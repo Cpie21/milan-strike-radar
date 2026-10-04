@@ -10,6 +10,8 @@ export type StrikeEvent = {
   windows: EvidenceWindow[];
   guarantee_windows: { start: string; end: string }[];
   timing_evidence?: TimingEvidence | null;
+  affected_lines?: string[];
+  region?: string;
 };
 
 export function clockMinutes(value: string) {

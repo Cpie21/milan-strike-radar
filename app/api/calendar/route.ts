@@ -1,3 +1,4 @@
+import { scopeTitle, scopeOf } from '../../../lib/strikeScope';
 import { resolveCity, cityPath } from '../../../lib/cities';
 import { readCityStrikes, romeToday } from '../../../lib/strikeQuery';
 import { NextRequest, NextResponse } from 'next/server';
@@ -46,11 +47,15 @@ export async function GET(request: NextRequest) {
         nextDate.setUTCDate(nextDate.getUTCDate() + 1);
         const nextDateStr = nextDate.toISOString().slice(0, 10).replace(/-/g, '');
         const labels: Record<string, string> = { TRAIN: '火车', SUBWAY: '地铁', BUS: '公交', AIRPORT: '机场' };
-        const catDisplay = labels[strike.category] || categoryMap[strike.category] || strike.category;
+        const catDisplay = strike.category==='AIRPORT'?scopeTitle(scopeOf(strike)):labels[strike.category] || categoryMap[strike.category] || strike.category;
         const detailUrl = `https://theitalystrike.com${pagePath}?date=${strike.date}`;
         const description = [
             `城市: ${regionLabel}`, `罢工主体: ${strike.provider}`,
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
+            `受影响线路 / 机场: ${strike.affected_lines?.length?strike.affected_lines.join(', '):'官方暂未注明'}`,
+            `保障来源: ${strike.guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?'当天官方公告':strike.guaranteeSource==='STANDARD_RULE'?'常规保护规则':'暂未公布'}`,
+            ...(strike.guarantee_windows?.length?['保障仅针对规定的最低服务或受保护航班，请核对具体班次。']:[]),
+            ...(strike.strike_events || []).flatMap(event=>event.timing_evidence?.fields?.exclusions?.value || []).map(text=>`原公告排除项: ${text}`),
             ...(strike.has_unknown_timing ? ['另有公告的具体时段待核实'] : []),
             ...(strike.strike_events || []).map(event=>`${event.provider || '交通运营商'} ${event.unions || ''}: ${event.status === 'CANCELLED' ? '已取消' : event.windows.length ? event.windows.map(w=>`${w.start || '运营开始'} - ${w.end || '运营结束'}`).join(', ') : '具体时段待公布'}`),
             ...(strike.timing_evidence ? [

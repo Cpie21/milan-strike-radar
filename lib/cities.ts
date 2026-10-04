@@ -1,6 +1,6 @@
 // One registry shared by ingestion, pages, APIs, subscriptions and widgets.
 export const CITIES = [
-  { tag: 'MILANO', slug: 'milano', zh: '米兰', en: 'Milan', region: 'lombardia', aliases: ['milan'], airports: ['马尔彭萨', '利纳特', '贝加莫'], airportAliases: ['malpensa', 'mxp', 'linate', 'lin', 'orio', 'bgy'] },
+  { tag: 'MILANO', slug: 'milano', zh: '米兰', en: 'Milan', region: 'lombardia', aliases: ['milan'], airports: ['马尔彭萨', '利纳特'], airportAliases: ['malpensa', 'mxp', 'linate', 'lin'] },
   { tag: 'ROMA', slug: 'roma', zh: '罗马', en: 'Rome', region: 'lazio', aliases: ['rome'], airports: ['菲乌米奇诺', '钱皮诺'], airportAliases: ['fiumicino', 'fco', 'ciampino', 'cia'] },
   { tag: 'TORINO', slug: 'torino', zh: '都灵', en: 'Turin', region: 'piemonte', aliases: ['turin'], airports: ['卡塞莱'], airportAliases: ['caselle', 'trn'] },
   { tag: 'NAPOLI', slug: 'napoli', zh: '那不勒斯', en: 'Naples', region: 'campania', aliases: ['naples'], airports: ['那不勒斯'], airportAliases: ['capodichino', 'nap'] },

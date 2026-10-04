@@ -78,5 +78,5 @@ test('scheduled discovery finds a new article from the current index, then notic
 });
 test('source outage clears previous supplemental evidence instead of keeping obsolete hours', async () => {
   const original=global.fetch;global.fetch=async()=>new Response('outage',{status:503});
-  try {const warnings=[];const r=await enrichStrikeTiming([record({timing_evidence:{windows:expected}})],warnings,new Date('2026-10-04T12:00:00Z'));assert.ok(warnings.length);assert.equal(r.records[0].timing_evidence,null);assert.equal(r.records[0].status,'UNCERTAIN');}finally{global.fetch=original;}
+  try {const warnings=[];const r=await enrichStrikeTiming([record({timing_evidence:{windows:expected}})],warnings,new Date('2026-10-04T12:00:00Z'));assert.ok(warnings.length);assert.deepEqual(r.records[0].timing_evidence.windows,[]);assert.deepEqual(r.records[0].timing_evidence.sources,[]);assert.equal(r.records[0].status,'UNCERTAIN');}finally{global.fetch=original;}
 });

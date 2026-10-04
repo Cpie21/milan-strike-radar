@@ -1,4 +1,3 @@
-import { canonicalizeRegionValue } from './strikeNormalization';
 
 export type GuaranteeWindow = {
   start: string;
@@ -12,8 +11,7 @@ type GuaranteeInput = {
   isFullDay?: boolean;
 };
 
-export function getGuaranteeWindows({ category, region, isFullDay }: GuaranteeInput): GuaranteeWindow[] {
-  const normalizedRegion = canonicalizeRegionValue(region || '');
+export function getGuaranteeWindows({ category, isFullDay }: GuaranteeInput): GuaranteeWindow[] {
 
   if (category === 'AIRPORT') {
     if (!isFullDay) return [];
@@ -23,31 +21,7 @@ export function getGuaranteeWindows({ category, region, isFullDay }: GuaranteeIn
     ];
   }
 
-  // Railway guarantees depend on operator, service type, holiday and the
-  // published train list. MIT timing alone cannot certify a guaranteed train.
-  if (category === 'TRAIN') return [];
-
-  if (category === 'BUS' || category === 'SUBWAY') {
-    if (normalizedRegion === 'TORINO') {
-      return [
-        { start: '06:00', end: '09:00' },
-        { start: '12:00', end: '15:00' },
-      ];
-    }
-
-    if (normalizedRegion === 'ROMA') {
-      return [
-        { start: '00:00', end: '08:29' },
-        { start: '17:00', end: '19:59' },
-      ];
-    }
-
-    if (normalizedRegion !== 'MILANO') return [];
-    return [
-      { start: '00:00', end: '08:45' },
-      { start: '15:00', end: '18:00' },
-    ];
-  }
-
+  // A city does not identify an operator or a dated strike notice.
+  // Operator guarantees are read from that announcement by enrichment.
   return [];
 }

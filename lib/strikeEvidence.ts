@@ -1,3 +1,4 @@
+import type { ScopeEvidence } from './strikeScope';
 // Semantic endpoints must survive all the way to cards, calendars and widgets.
 // 'Fine servizio' is not midnight and varies between lines.
 export type EvidenceWindow = {
@@ -14,6 +15,7 @@ export type TimingSource = {
   content_hash: string;
 };
 export type TimingEvidence = {
+  fields?: ScopeEvidence;
   windows: EvidenceWindow[];
   confidence: 'official' | 'reported' | 'corroborated' | 'conflict';
   sources: TimingSource[];

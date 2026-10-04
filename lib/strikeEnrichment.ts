@@ -2,8 +2,9 @@ import { createHash } from 'node:crypto';
 import * as cheerio from 'cheerio';
 import { CITIES, resolveCity } from './cities';
 import { parseStrikeTiming, scopeTiming, timingFromWindows } from './strikeTiming';
-import { CITY_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES, OFFICIAL_STRIKE_HOSTS, METRO_CITY_TAGS, sourceCities, sourceOperatorNames, assertCitySourceCoverage } from './strikeSources';
+import { CITY_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES, OFFICIAL_STRIKE_HOSTS, METRO_CITY_TAGS, sourceCities, sourceCategory, sourceOperatorNames, assertCitySourceCoverage } from './strikeSources';
 import { mergeEvidenceWindows, numericWindows } from './strikePresentation';
+import { extractLineScope, sourceFact, makeScopeEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence, type TimingSource } from './strikeEvidence';
 
@@ -20,8 +21,8 @@ const OPERATORS = ['atm', 'atac', 'gtt', 'trenord', 'trenitalia', 'italo', 'ntv'
 const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const unionKey = (s: string) => normalize(s).replace(/\bal[\s-]*cobas\b/g, 'alcobas').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const matchingUnion = (raw: string, other: string) => {
-  const canon=unionKey(raw).replace(/\busb lavoro privato\b/g,'usb').replace(/\bconfial trasporti\b/g,'confial').replace(/\bosr\s+/g,'');
-  const text=` ${unionKey(other).replace(/\bconfial trasporti\b/g,'confial').replace(/\busb lavoro privato\b/g,'usb')} `;
+  const canon=unionKey(raw).replace(/\builtransporti\b|\built\b/g,'uil').replace(/\busb lavoro privato\b/g,'usb').replace(/\bconfial trasporti\b/g,'confial').replace(/\bosr\s+/g,'');
+  const text=` ${unionKey(other).replace(/\builtransporti\b|\built\b/g,'uil').replace(/\bconfial trasporti\b/g,'confial').replace(/\busb lavoro privato\b/g,'usb')} `;
   const names=canon.match(/\balcobas\b|\bcobas\b|\bconfial\b|\busb\b|\bcub\b|\bcgil\b|\bcisl\b|\buil\b|\bugl\b|\bfaisa\b|\bfast\b|\borsa\b|\bsul\b/g);
   return names?.length ? names.every(n=>text.includes(` ${n} `)) : Boolean(canon) && text.includes(` ${canon} `);
 };
@@ -43,6 +44,8 @@ export interface ExternalNotice {
   operator_day?: boolean;
   guarantee_windows?: { start: string; end: string }[];
   cities?: string[];
+  field_text?: string;
+  guarantee_clauses?: string[];
 }
 
 export function allowedSourceUrl(input: string) {
@@ -138,6 +141,9 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     const date = dates.find(d => exactDate(cells[0], d));
     if (date) output.push({ date, provider: cells[0], territory: cells[0], unions: cells[1], sector: cells[0], timing: cells.slice(2).join(' '), status: '', source: sourceFor(url, cells.join(' | '), checkedAt) });
   });
+  // Index pages contain several unrelated announcements. Follow their dated
+  // links, never treat the entire list as one operator-wide strike notice.
+  if (!output.length && [...CITY_STRIKE_SOURCES,...AVIATION_STRIKE_SOURCES,...NATIONAL_STRIKE_SOURCES].some(s=>s.urls.includes(url))) return [];
   // Article dates may be in the body, or omit the year in a title. A
   // publication date anchors yearless dates and rejects old recurring notices.
   const title = $('h1,h2').filter((_,el)=>/scioper/i.test($(el).text())).first().text() || $('h1').first().text();
@@ -173,7 +179,7 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     for (const date of eventDates) for (const part of parts) {
       const candidate=part.text;
       if (!/\d{1,2}[.:]\d{2}|dalle?\s+\d|inizio\s+(?:del\s+)?servizio/i.test(candidate)) continue;
-      const guarantee = /garant|fasce di garanzia/i.test(part.heading + ' ' + candidate);
+      const guarantee = /garant|fasce di garanzia/i.test(part.heading + ' ' + candidate) && !/non\s+(?:saranno\s+)?garant/i.test(candidate);
       // A lone 24-hour duration without an actual interruption clause is not
       // operational timing, and generic guarantee pages cannot supply dates.
       if (guarantee || /ultimi scioperi|precedent[ei] scioperi/i.test(candidate)) continue;
@@ -184,12 +190,15 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
       };
       const cities = mentioned(part.heading+' '+candidate).length ? mentioned(part.heading+' '+candidate) : mentioned(title).length ? mentioned(title) : knownCities;
       const territory = [title,...cities.map(c=>resolveCity(c)?.slug || c)].join(' ');
-      output.push({ date, provider: title+' '+operatorContext+' '+text.slice(0,1000), territory, cities, unions:text, sector:knownCities.length ? 'Trasporto pubblico locale' : title, timing:candidate, status:'', operator_day:official && !namedUnion, source:sourceFor(url,candidate,checkedAt) });
+      output.push({ date, provider: title+' '+operatorContext+' '+text.slice(0,1000), territory, cities, unions:text, sector:sourceCategory(url) || title, field_text:text, timing:candidate, status:'', operator_day:official && !namedUnion, source:sourceFor(url,candidate,checkedAt) });
     }
     // Keep guarantees only when stated for this event in a separate clause.
     if (hasParts) {
-      const guarantees = parts.filter(p=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text)).flatMap(p=>parseStrikeTiming(p.text).windows);
-      if (guarantees.length) output.forEach(n=>{ if(n.source.url===url) n.guarantee_windows=guarantees; });
+      const guarantees = parts.filter(p=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:saranno\s+)?garant/i.test(p.text)).flatMap(p=>parseStrikeTiming(p.text).windows);
+      if(official && guarantees.length && !output.length) {
+        for(const date of eventDates) output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:text,sector:sourceCategory(url)||title,field_text:text,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,parts.filter(p=>/garant/i.test(p.text)).map(p=>p.text).join(' '),checkedAt)});
+      }
+      if (guarantees.length) output.forEach(n=>{ if(n.source.url===url) { n.guarantee_windows=guarantees; n.guarantee_clauses=parts.filter(p=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:saranno\s+)?garant/i.test(p.text)).map(p=>p.heading+' '+p.text); } });
     }
   }
 
@@ -229,6 +238,7 @@ export function matchesNotice(notice: ExternalNotice, record: StrikeRecord) {
 
 export function parseExternalWindows(text: string, record: StrikeRecord): EvidenceWindow[] {
   let scoped = scopeTiming(normalize(text).replace(/[–—]/g, '-').replace(/\b(\d{1,2}),(\d{2})\b/g,'$1:$2'), record.category);
+  scoped=scoped.replace(/non\s+(?:saranno\s+)?garantit[ioea]/g,'disruptions').replace(/sino\s+a|fino\s+a/g,'a');
   if (/garanti|fasce di garanzia|ultimi scioperi|ipotizz|presum/i.test(scoped)) return [];
   const metroOnly = /metropolitan|\bmetro\b/.test(scoped) && !/superficie|autobus|\bbus\b|\btram\b/.test(scoped);
   const surfaceOnly = /superficie|autobus|\bbus\b|\btram\b/.test(scoped) && !/metropolitan|\bmetro\b/.test(scoped);
@@ -281,7 +291,40 @@ export function parseExternalWindows(text: string, record: StrikeRecord): Eviden
 }
 
 export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotice[]) {
-  const result: StrikeRecord = { ...record, timing_evidence: null };
+  const fields=record.timing_evidence?.fields || (record.raw_payload ? makeScopeEvidence({...record.raw_payload,note:record.raw_payload.note || ''},record.region,record.category,record.strike_windows,record.guarantee_windows) : undefined);
+  const result: StrikeRecord = { ...record, timing_evidence:{windows:record.strike_windows.map(w=>({...w,end_kind:'clock' as const})),confidence:'official',sources:[],unions:record.raw_payload?.unions || '',conflicts:[],fields} };
+  const matched=notices.filter(n=>matchesNotice(n,record));
+  // Event-specific guarantees and lines must be considered even when MIT's
+  // exact clock range is already known. Retain all field sources for tracing.
+  const official=matched.filter(n=>n.source.authority==='official').map(n=>{
+    if(!n.guarantee_clauses) return n;
+    const city=resolveCity(record.region);
+    const clauses=n.guarantee_clauses.filter(text=>!city || !CITIES.some(c=>c.tag!==city.tag && hasWord(text,c.slug)) || hasWord(text,city.slug));
+    const windows=clauses.flatMap(text=>numericWindows(parseExternalWindows(text.replace(/garant\w*|fasce di garanzia/gi,'service').replace(/(\d{1,2}[.:]\d{2})\s*\/\s*(\d{1,2}[.:]\d{2})/g,'$1-$2'),record)));
+    return {...n,guarantee_windows:windows};
+  });
+  if(fields && official.length) {
+    const locationNotice=official.find(n=>n.cities?.includes(record.region) || sourceCities(n.source.url).includes(record.region));
+    if(locationNotice) result.timing_evidence!.fields={...fields,location:sourceFact(record.region,{...locationNotice.source,excerpt:locationNotice.territory+' '+(locationNotice.field_text || locationNotice.provider).slice(0,500)})};
+    const baseFields=result.timing_evidence!.fields!;
+    const guarantees=official.filter(n=>n.guarantee_windows?.length);
+    const guaranteeKeys=new Set(guarantees.map(n=>JSON.stringify(n.guarantee_windows)));
+    if(guaranteeKeys.size===1) {
+      result.guarantee_windows=guarantees[0].guarantee_windows!;
+      result.timing_evidence!.fields={...baseFields,guaranteeSource:'OFFICIAL_STRIKE_NOTICE',guaranteedServiceWindow:sourceFact(result.guarantee_windows,{...guarantees[0].source,excerpt:guarantees[0].guarantee_clauses?.join(' ').slice(0,800) || JSON.stringify(result.guarantee_windows)})};
+    } else if(guaranteeKeys.size>1) {
+      result.guarantee_windows=[];
+      result.timing_evidence!.fields={...baseFields,guaranteeSource:'UNKNOWN',guaranteedServiceWindow:{value:[],confidence:'CONFLICT',source:'UNKNOWN'}};
+    }
+    const named=official.map(n=>({notice:n,lines:extractLineScope(n.field_text || n.timing)})).filter(n=>n.lines!=='UNKNOWN');
+    if(named.length && new Set(named.map(n=>JSON.stringify(n.lines))).size===1 && record.category!=='AIRPORT') {
+      result.affected_lines=named[0].lines==='ALL_LINES'?['全部线路']:named[0].lines as string[];
+      result.timing_evidence!.fields={...result.timing_evidence!.fields!,affectedLines:sourceFact(named[0].lines,{...named[0].notice.source,excerpt:(named[0].notice.field_text || named[0].notice.timing).slice(0,800)})};
+    }
+  }
+  const updatedFields=result.timing_evidence!.fields;
+  const verificationSources=[...new Map(matched.map(n=>[n.source.url,n.source])).values()];
+  result.timing_evidence!.sources=verificationSources;
   if (record.status === 'CANCELLED') return result;
   if (record.raw_payload && /(?:fine|termine|inizio)\s+(?:del\s+)?servizio/i.test(record.raw_payload.modalita)) {
     notices = [...notices, { date: record.date, provider: record.raw_payload.provider, territory: record.region, unions: record.raw_payload.unions || '', sector: record.raw_payload.sector, timing: record.raw_payload.modalita, status: record.raw_payload.sourceStatus || '', source: sourceFor(record.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi', record.raw_payload.modalita, new Date().toISOString()) }];
@@ -307,20 +350,21 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   const genericFullDay = record.strike_windows.length === 1 && record.strike_windows[0].start === '00:00' && record.strike_windows[0].end === '24:00' && !/\d{1,2}[.:]\d{2}/.test(record.raw_payload?.modalita || '');
   const mitKnown = record.strike_windows.length > 0 && !genericFullDay;
   const primaryWindows: EvidenceWindow[] = record.strike_windows.map(w => ({ ...w, end_kind: 'clock' }));
-  if (!selected || mitKnown && timeKey(selected.windows) !== timeKey(primaryWindows)) {
-    result.timing_evidence = { windows: primaryWindows, confidence: 'conflict', sources: candidates.map(c => c.notice.source), unions: record.raw_payload?.unions || '', conflicts: candidates.map(c => ({ url: c.notice.source.url, windows: c.windows })) };
+  if (!selected || !officials.length && mitKnown && timeKey(selected.windows) !== timeKey(primaryWindows)) {
+    result.timing_evidence = { fields:updatedFields?{...updatedFields,timing:{...updatedFields.timing,value:primaryWindows,confidence:'CONFLICT'}}:undefined, windows: primaryWindows, confidence: 'conflict', sources: candidates.map(c => c.notice.source), unions: record.raw_payload?.unions || '', conflicts: candidates.map(c => ({ url: c.notice.source.url, windows: c.windows })) };
     return result;
   }
   const aligned = candidates.filter(c => timeKey(c.windows) === timeKey(selected.windows));
   const sources = [...new Map(aligned.map(c => [c.notice.source.url, c.notice.source])).values()];
   // Matching hosts corroborate the transcription; they may share an upstream source.
-  const evidence: TimingEvidence = { windows: selected.windows, confidence: officials.length || mitKnown ? 'official' : new Set(sources.map(s => new URL(s.url).hostname)).size > 1 ? 'corroborated' : 'reported', sources, unions: record.raw_payload?.unions || '', conflicts: candidates.filter(c => timeKey(c.windows) !== timeKey(selected.windows)).map(c => ({ url: c.notice.source.url, windows: c.windows })) };
+  const evidence: TimingEvidence = { fields:updatedFields, windows: selected.windows, confidence: officials.length || mitKnown ? 'official' : new Set(sources.map(s => new URL(s.url).hostname)).size > 1 ? 'corroborated' : 'reported', sources:[...new Map([...verificationSources,...sources].map(s=>[s.url,s])).values()], unions: record.raw_payload?.unions || '', conflicts: [...candidates.filter(c => timeKey(c.windows) !== timeKey(selected.windows)).map(c => ({ url: c.notice.source.url, windows: c.windows })), ...(mitKnown && timeKey(primaryWindows)!==timeKey(selected.windows) ? [{url:record.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',windows:primaryWindows}] : [])] };
   result.timing_evidence = evidence;
-  if (mitKnown) return result;
+  if(evidence.fields && (officials.length || !mitKnown)) evidence.fields={...evidence.fields,timing:sourceFact(selected.windows,selected.notice.source)};
+  if (mitKnown && !officials.length) return result;
   result.strike_windows = numericWindows(selected.windows);
   result.display_time = selected.windows.map(w => evidenceTimeLabel(w)).join(', ');
   result.duration_hours = selected.windows.some(w => w.start === null || w.end_kind === 'end_of_service') ? '分时段（按运营时间）' : timingFromWindows(result.strike_windows).hours;
-  result.guarantee_windows = aligned.filter(c=>c.notice.source.authority === selected.notice.source.authority).flatMap(c=>c.notice.guarantee_windows || []); // Explicit event-specific statements only.
+  // Keep provenance from the independent guarantee extraction above.
   // 'Uncertain' timing is separate from MIT's confirmation that a strike exists.
   result.status = record.raw_payload?.sourceStatus && /revocat|differit|sospes/i.test(record.raw_payload.sourceStatus) ? 'CANCELLED' : 'CONFIRMED';
   return result;
@@ -331,7 +375,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(now);
   const horizon = new Date(now.getTime() + 90 * 86400000).toISOString().slice(0, 10);
   const targets = records.filter(r => r.status !== 'CANCELLED' && r.date >= today && r.date <= horizon && r.raw_payload);
-  const output = records.map(r => ({ ...r, timing_evidence: null } as StrikeRecord));
+  const output = records.map(r => ({ ...r } as StrikeRecord));
   if (!targets.length) return { records: output, enriched: 0, sourcesChecked: 0, conflicts: 0 };
   const dates = [...new Set(targets.map(r => r.date))].sort();
   const documents = new Map<string, string>();
@@ -353,6 +397,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   assertCitySourceCoverage();
   const operatorIndexes = [
     ...CITY_STRIKE_SOURCES.filter(o=>targets.some(r=>(r.region === 'NATIONAL' || o.cities.includes(r.region)) && ['BUS','SUBWAY'].includes(r.category))).flatMap(o=>o.urls),
+    ...AVIATION_STRIKE_SOURCES.filter(o=>targets.some(r=>r.category==='AIRPORT' && (o.cities.includes(r.region) || recordOperators(r).some(op=>o.aliases.includes(op))))).flatMap(o=>o.urls),
     ...NATIONAL_STRIKE_SOURCES.filter(o=>targets.some(r=>recordOperators(r).some(op=>o.aliases.includes(op)) || r.region === 'NATIONAL' && (r.category === 'TRAIN' || r.category === 'AIRPORT'))).flatMap(o=>o.urls),
   ];
   await collect([...operatorIndexes, ...MEDIA_INDEXES, ...search]);
@@ -422,10 +467,16 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   }
   const enrichedRecords = output.map(r => targets.some(t => t.source_key === r.source_key && t.date === r.date && t.category === r.category && t.region === r.region) ? applyTimingEvidence(r, notices) : r);
   let enriched = 0, conflicts = 0;
+  const verification={operatorOfficial:0,reported:0,mitOnly:0};
   enrichedRecords.forEach((r, i) => {
-    if (r.timing_evidence?.confidence === 'conflict') { conflicts++; warnings.push(`Timing conflict requires review: ${r.date} ${r.region} ${r.category} ${r.raw_payload?.unions}`); }
+    if(r.status!=='CANCELLED' && r.date>=today && r.region!=='UNKNOWN') {
+      if(r.timing_evidence?.sources.some(s=>s.authority==='official')) verification.operatorOfficial++;
+      else if(r.timing_evidence?.sources.length) verification.reported++;
+      else verification.mitOnly++;
+    }
+    if (r.timing_evidence?.conflicts.length) { conflicts++; warnings.push(`Timing conflict requires review: ${r.date} ${r.region} ${r.category} ${r.raw_payload?.unions}`); }
     if (!records[i].strike_windows.length && r.timing_evidence?.windows.length) enriched++;
     if (r.status !== 'CANCELLED' && !r.strike_windows.length && !r.timing_evidence?.windows.length) warnings.push(`Operational timing unresolved: ${r.date} ${r.region} ${r.category} ${r.raw_payload?.provider || r.provider}`);
   });
-  return { records: [...enrichedRecords,...cityVariants], enriched:enriched+cityVariants.length, sourcesChecked, conflicts };
+  return { records: [...enrichedRecords,...cityVariants], enriched:enriched+cityVariants.length, sourcesChecked, conflicts, verification };
 }

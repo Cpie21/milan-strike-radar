@@ -8,6 +8,7 @@ import {
   normalizeAirportAffectedLines,
   normalizeProviderList,
 } from './strikeNormalization';
+import { makeScopeEvidence, extractLineScope } from './strikeScope';
 import { getGuaranteeWindows } from './guaranteeWindows';
 import type { TimingEvidence } from './strikeEvidence';
 
@@ -224,7 +225,7 @@ export function parseStrikeHtml(html: string): RawStrikeRow[] {
     if (!isTransportRelevantRow(raw)) return;
     const regionTags = classifyRegionTags({
       regionText: raw.region, provinceText: raw.province, sectorText: raw.sector,
-      providerText: raw.provider, noteText: `${raw.note} ${raw.rilevanza}`,
+      providerText: raw.provider, noteText: raw.note, relevanceText:raw.rilevanza,
     });
     // Identity intentionally excludes timing, so an official timing revision
     // replaces its previous version rather than creating a second full-day row.
@@ -258,7 +259,7 @@ function isCommuterIrrelevantFreightRailRow(row: RawStrikeRow) {
     combined.includes('ferroviario') ||
     combined.includes('ferrov');
 
-  if (!railContext) return false;
+  if (!railContext || /generale|plurisettorial/i.test(row.sector+' '+row.provider)) return false;
 
   const hasPassengerImpactSignal = PASSENGER_RAIL_IMPACT_KEYWORDS.some((keyword) => combined.includes(keyword));
   if (hasPassengerImpactSignal) return false;
@@ -484,7 +485,7 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
   ) {
     categories.add('AIRPORT');
   }
-  if (combinedLow.includes('trasporto pubblico locale') || combinedLow.includes('autoferro')) {
+  if (combinedLow.includes('trasporto pubblico locale') || combinedLow.includes('autoferro') || /\btpl\b/.test(combinedLow)) {
     categories.add('BUS');
   }
 
@@ -500,12 +501,6 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
   if (/ferroviario/.test(excluded)) categories.delete('TRAIN');
   if (/trasporto pubblico|tpl/.test(excluded)) { categories.delete('BUS'); categories.delete('SUBWAY'); }
   return Array.from(categories);
-}
-
-function extractAffectedLines(note: string) {
-  const keywords = ['Linate', 'Malpensa', 'Bergamo', 'M1', 'M2', 'M3', 'M4', 'M5', 'Trenord', 'Trenitalia'];
-  const found = keywords.filter((keyword) => note.toLowerCase().includes(keyword.toLowerCase()));
-  return found.length > 0 ? found : ['全部线路'];
 }
 
 export function parseTimeWindows(durationRaw: string, note: string, _relevance: string, category?: StrikeRecord['category'], dateIso?: string) {
@@ -558,33 +553,13 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
       }
       const parsedTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso);
       const timeInfo = splitTimeInfoForDate(parsedTimeInfo, dateSpan, dateIndex);
-      const guaranteeWindows = timeInfo.windows.length ? getGuaranteeWindows({
-        category,
-        dateIso,
-        region: row.region,
-        isFullDay:
-          timeInfo.hours === '24小时' ||
-          (timeInfo.windows.length === 1 && timeInfo.windows[0].start === '00:00' && timeInfo.windows[0].end === '24:00'),
-      }) : [];
-
+      // Only aviation's protected flight bands are a documented general rule.
+      // A city is not an operator, so never donate ATM/ATAC/GTT guarantees.
+      const guaranteeWindows = category === 'AIRPORT' && !/cargo/i.test(row.provider) && timeInfo.windows.length ? getGuaranteeWindows({category,dateIso,region:row.region,isFullDay:/\b24\s*ORE\b/i.test(row.modalita) && timeInfo.windows.some(w=>w.start<='07:00' && w.end>='21:00')}) : [];
       if (!timeInfo.windows.length && resolvedStatus === 'CONFIRMED') resolvedStatus = 'UNCERTAIN';
-
-      let lines = category === 'AIRPORT'
-        ? normalizeAirportAffectedLines([], { contextText: `${row.provider} ${row.note}`, regionTag: row.region })
-        : extractAffectedLines(row.note);
-
-      const excludeNotes = ['nazionale', 'provinciale', 'regionale', 'territoriale'];
-      if (lines.length === 1 && lines[0] === '全部线路' && row.note.trim().length > 3 && !excludeNotes.includes(row.note.toLowerCase().trim())) {
-        const translatedNote = await translate(row.note);
-        if (translatedNote && translatedNote !== row.note) lines = [translatedNote];
-      }
-
-      if (category === 'AIRPORT') {
-        lines = normalizeAirportAffectedLines(lines, {
-          contextText: `${row.provider} ${row.note}`,
-          regionTag: row.region,
-        });
-      }
+      const fields=makeScopeEvidence(row,row.region,category,timeInfo.windows,guaranteeWindows);
+      const lineScope=extractLineScope(row.note);
+      const lines=category==='AIRPORT' ? fields.affectedAirports.value : lineScope==='ALL_LINES' ? ['全部线路'] : lineScope==='UNKNOWN' ? [] : lineScope;
 
       const dataSource = 'MIT_PRIMARY';
       if (resolvedStatus === 'REQUIRES_DETAIL') resolvedStatus = 'UNCERTAIN';
@@ -600,6 +575,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
         strike_windows: timeInfo.windows,
         guarantee_windows: guaranteeWindows,
         affected_lines: lines,
+        timing_evidence:{windows:timeInfo.windows.map(w=>({...w,end_kind:'clock' as const})),confidence:'official',sources:[],unions:row.unions || '',conflicts:[],fields},
         data_source: dataSource,
         ...(row.sourceKey ? { source_key: row.sourceKey, source_url: row.sourceUrl || MIT_URL, raw_payload: row, last_seen_at: new Date().toISOString() } : {}),
       } satisfies StrikeRecord;

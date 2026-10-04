@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
-import { getGuaranteeWindows } from '../lib/guaranteeWindows';
+import { scopeTitle, scopeOf, type GuaranteeSource } from '../lib/strikeScope';
 import DoodleCanvas, { DoodleCategory } from './DoodleOverlay';
 import { capture, isWeChatBrowser } from '../utils/analytics';
 import {
@@ -44,6 +44,7 @@ interface StrikeRecord {
     timing_evidence?: TimingEvidence | null;
     strike_events?: StrikeEvent[];
     has_unknown_timing?: boolean;
+    has_unknown_lines?: boolean;
     category: 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
     provider: string;
     status: 'CONFIRMED' | 'REQUIRES_DETAIL' | 'CANCELLED' | 'CONFIRMED (STRIKE)';
@@ -51,6 +52,7 @@ interface StrikeRecord {
     duration_hours: string;
     strike_windows: Array<{ start: string, end: string }>;
     guarantee_windows: Array<{ start: string, end: string }>;
+    guaranteeSource?: GuaranteeSource;
     affected_lines?: string[];
 }
 
@@ -108,16 +110,6 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     const manualDoodleBaseCount = getManualDoodleBaseCount(strike);
     const usesManualDoodleCount = manualDoodleBaseCount !== null;
     const doodleBaseOffset = getDoodleBaseOffset(strike);
-    const buildFallbackGuarantees = () => {
-        const currentSlots = strike.strike_windows || [];
-        const isFullDay = currentSlots.some((slot) => slot.start === '00:00' && slot.end === '24:00') || strike.duration_hours === '24小时';
-        return getGuaranteeWindows({
-            category: strike.category,
-            dateIso: strike.date,
-            region: strike.region,
-            isFullDay,
-        });
-    };
     // Expandable state for guarantee info
     const [isExpanded, setIsExpanded] = useState(false);
     const [isGuaranteePulseActive, setIsGuaranteePulseActive] = useState(false);
@@ -307,7 +299,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     // Exact mapping requested from Figma, using actual provider if available
     if (isTrain) { title = categoryTitles[language].TRAIN; subTitle = localizedProvider || pickText(language, "国家铁路局", "rail operator staff"); icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
     else if (isPlane) {
-        title = categoryTitles[language].AIRPORT;
+        title = scopeTitle(scopeOf(strike),language);
         subTitle = localizedProvider || pickText(language, "航司与机场人员", "airline and airport staff");
         icon = getPlaneIcon(isDark ? '#0F172A' : 'white');
     }
@@ -315,11 +307,8 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     else if (isBus) { title = categoryTitles[language].BUS; subTitle = localizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
 
     // Strip Airport Title from tags if we used it as the main title
-    let displayLines = strike.affected_lines && strike.affected_lines.length > 0 && strike.affected_lines[0] !== '全部线路' && strike.affected_lines[0] !== '全部车次'
-        ? strike.affected_lines
-        : (isPlane ? ['全部机场'] : ['全部线路']);
-    displayLines = normalizeDisplayLines(displayLines, strike.category);
-    const localizedDisplayLines = displayLines.map((line) => translateLine(line, language));
+    const displayLines=normalizeDisplayLines(strike.affected_lines || [],strike.category);
+    const localizedDisplayLines=isPlane && ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?[subTitle]:displayLines.length?displayLines.map(line=>line==='全部线路' || line==='全部车次'?pickText(language,'该运营商全部线路','All lines of this operator'):translateLine(line,language)):[pickText(language,isPlane?'官方暂未注明具体机场':'官方暂未注明具体线路',isPlane?'Specific airports not stated by officials':'Specific lines not stated by officials')];
 
     // Status Tag Logic
     const isConfirmed = strike.status === 'CONFIRMED' || strike.status === 'CONFIRMED (STRIKE)';
@@ -375,13 +364,8 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         background: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 7px, rgba(0,0,0,0) 7px, rgba(0,0,0,0) 14px)',
     } as const;
 
-    // Fix for missing guarantee windows (like Plane strikes)
-    // The background should be transparent grey like others (26% opacity of slate-200 or similar)
-    // We handle this in the render logic below by checking if segment is 'grey'
-
-    const guaranteeWindows = strike.timing_evidence ? strike.guarantee_windows || [] : isUnknownTime || strike.category === 'TRAIN' && strike.data_source === 'MIT_PRIMARY' ? [] : strike.guarantee_windows && strike.guarantee_windows.length > 0
-        ? strike.guarantee_windows
-        : buildFallbackGuarantees();
+    const guaranteeSource=strike.guaranteeSource || strike.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN';
+    const guaranteeWindows=guaranteeSource==='UNKNOWN'?[]:strike.guarantee_windows || [];
 
     const segments = strikeTimeline(semanticWindows.length ? semanticWindows : timeSlots.map(w=>({...w,end_kind:'clock' as const})), guaranteeWindows, strike.status === 'CANCELLED', strike.has_unknown_timing);
     const uniqueIntersected = guaranteeWindows.map(w => `${w.start} - ${w.end}`);
@@ -534,10 +518,10 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                         <div className={`w-2 h-2 rounded-full border ${uniqueIntersected.length > 0 ? (isDark ? 'bg-[#5ab91b] border-black/20' : 'bg-[#10B981] border-black/20') : (isDark ? 'bg-[#de4141] border-black/20' : 'bg-[#EF4444] border-black/20')}`} />
                         <span className={`text-[14px] font-normal leading-[20px] ${isDark ? 'text-white' : 'text-[#334155]'}`}>
                             {uniqueIntersected.length > 0
-                                ? pickText(language, "保障时间段", "Protected service windows")
+                                ? pickText(language,guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?"公告确认的保障时段":"常规保护时段",guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?"Notice-confirmed protected service":"Standard protected service bands")
                                 : guaranteeWindows.length > 0
                                     ? pickText(language, "此时段无保障", "No protected service during this period")
-                                    : pickText(language, "保障信息待核实", "Protected service information unverified")}
+                                    : pickText(language, "保障信息暂未公布", "Protected service information not published")}
                         </span>
                     </div>
                     {uniqueIntersected.length > 0 && (
@@ -565,9 +549,13 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                     )}
                 </div>
 
+                {guaranteeWindows.length>0 && <p className={`mt-2 text-[12px] ${isDark?'text-white/60':'text-[#64748B]'}`}>{pickText(language,'保障仅针对规定的最低服务或受保护航班，不代表全部班次正常；请核对具体班次。','Protection covers specified minimum services or protected flights; verify your train or flight.')}</p>}
+
+                {(strike.strike_events || []).flatMap(e=>e.timing_evidence?.fields?.exclusions?.value || []).length>0 && <p className={`mt-2 text-[12px] ${isDark?'text-white/60':'text-[#64748B]'}`}>{pickText(language,'原公告排除项：','Official exclusions: ')}{[...new Set((strike.strike_events || []).flatMap(e=>e.timing_evidence?.fields?.exclusions?.value || []))].join(' / ')}</p>}
                 {/* Persistent Separator */}
                 <div className={`mt-3 pt-3 border-t ${isDark ? 'border-[#e2e8f0]/20' : 'border-[#E2E8F0]'}`}>
-                    <span className={`text-[12px] mb-2 block font-normal ${isDark ? 'text-white' : 'text-[#64748B]'}`}>{isPlane ? pickText(language, '受影响机场', 'Affected airports') : pickText(language, '受影响线路', 'Affected lines')}</span>
+                    <span className={`text-[12px] mb-2 block font-normal ${isDark ? 'text-white' : 'text-[#64748B]'}`}>{isPlane ? pickText(language, ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?'涉事航司的航班（非整个机场）':'受影响机场 / 服务', ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?'Flights of this airline (not the entire airport)':'Affected airports / services') : pickText(language, '受影响线路', 'Affected lines')}</span>
+                    {strike.has_unknown_lines && displayLines.length>0 && <p className="text-[12px] mb-2">{pickText(language,'部分公告未注明线路，以上信息并非完整范围。','Some notices omit line details; this list may be incomplete.')}</p>}
                     <div className="flex gap-2 flex-wrap">
                         {localizedDisplayLines.map((line: string, i: number) => (
                             <div key={i} className={`flex items-center justify-center text-center px-[13px] py-[6px] rounded-[6px] shadow-sm border ${isDark ? 'bg-white/10 border-white/20 text-white shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]' : 'bg-white border-[#F1F5F9] text-[#334155]'}`}>
@@ -741,9 +729,10 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                 <a href={strike.source_url || "https://scioperi.mit.gov.it/mit2/public/scioperi"} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold tracking-[0.5px] underline underline-offset-2">
                     {pickText(language, '来源: 意大利交通部官网 (MIT) ➔', 'Source: Italian Ministry of Transport (MIT) →')}
                 </a>
+                {guaranteeSource==='STANDARD_RULE' && <div className="mt-2"><a className="text-[10px] underline underline-offset-2" href="https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/prestazioni-minime-garantite/" target="_blank" rel="noopener noreferrer">{pickText(language,'常规保护规则：ENAC','Standard protection rules: ENAC')} ↗</a></div>}
                 {strike.timing_evidence && strike.timing_evidence.sources.length > 0 && <>
                     <p className="text-[10px] mt-2 mb-2">{strike.timing_evidence.confidence === 'conflict'
-                        ? pickText(language, '部分来源有出入，待核实', 'Some sources disagree; awaiting verification')
+                        ? pickText(language, '采用的时段来源与其他来源有差异，请查看原公告', 'Adopted timing differs from other sources; check the notices')
                         : strike.timing_evidence.sources.some(s=>s.authority === 'reported')
                             ? pickText(language, '补充公告时段 · 以运营商最新通知为准', 'Reported timing · check the latest operator notice')
                             : pickText(language, '补充官方公告', 'Additional official notices')}</p>

@@ -96,7 +96,7 @@ test('national general strike gets independent city timings without exporting on
  global.fetch=async input=>{const url=String(input),root=templates.get(url),page=[...templates.values()].find(v=>v.url===url);return new Response(root?`<a href="${root.url}">Sciopero</a>`:page?article(page.city,`dalle ${page.hour} alle 13:00`):'<main>News</main>',{headers:{'content-type':'text/html'}});};
  try{
  const result=await enrichStrikeTiming([row({region:'NATIONAL',raw_payload:{...row().raw_payload,provider:'SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE'}})],[],new Date('2029-12-29T12:00:00Z'));
- assert.equal(result.records.length,5);assert.equal(result.records.find(r=>r.region==='NATIONAL').timing_evidence,null);
+ assert.equal(result.records.length,5);assert.deepEqual(result.records.find(r=>r.region==='NATIONAL').timing_evidence.windows,[]);
  for(const [city,hour] of [['MILANO','09:00'],['PADOVA','10:00'],['PERUGIA','11:00']]){const card=aggregateStrikes(filterStrikesForRegion(result.records,city),city)[0];assert.equal(card.strike_events.length,1);assert.equal(card.display_time,`${hour} - 13:00`);assert.equal(card.has_unknown_timing,false);}
  assert.equal(result.records.filter(r=>r.category==='SUBWAY').length,1);assert.equal(result.records.find(r=>r.category==='SUBWAY').region,'MILANO');
  assert.equal(aggregateStrikes(filterStrikesForRegion(result.records,'TORINO'),'TORINO')[0].has_unknown_timing,true);

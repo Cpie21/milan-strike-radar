@@ -38,7 +38,7 @@ test('all provinces in Marche does not mean a national strike', () => {
 
 test('regional strikes with all provinces still reach the target cities', () => {
   for (const [regionText, expected] of [['Lombardia', 'MILANO'], ['Lazio', 'ROMA'], ['Piemonte', 'TORINO']]) {
-    assert.equal(classifyRegionTag({ regionText, provinceText: 'Tutte' }), expected);
+    assert.equal(classifyRegionTag({ regionText, provinceText: 'Tutte',relevanceText:'Regionale' }), expected);
   }
 });
 
@@ -139,7 +139,7 @@ test('city routes, aliases and local scope support all 20 cities', () => {
 });
 
 test('regional Tuscany scope reaches Florence and Pisa; local Florence does not reach Pisa', () => {
-  assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Tutte', providerText: 'PERSONALE REGIONALE' }), ['FIRENZE', 'PISA']);
+  assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Tutte', providerText: 'PERSONALE REGIONALE',relevanceText:'Regionale' }), ['FIRENZE', 'PISA']);
   assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Firenze', providerText: 'GEST DI FIRENZE' }), ['FIRENZE']);
 });
 
