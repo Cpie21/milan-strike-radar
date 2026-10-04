@@ -339,7 +339,7 @@ export function normalizeProviderPart(part: string, translatedText?: string) {
   cleaned = cleaned.replace(/[0-9]{2,}/g, ' ');
   cleaned = cleaned.replace(/[()[\]{}（）【】]/g, ' ');
   cleaned = cleaned.replace(EXTRA_SPACES_RE, ' ').trim();
-  if (!cleaned || cleaned === '人员' || MEANINGLESS_PROVIDER_RE.test(cleaned)) {
+  if (!cleaned || cleaned === '人员' || MEANINGLESS_PROVIDER_RE.test(cleaned.replace(/人员/g,''))) {
     // New operators must remain identifiable even before a Chinese synonym
     // is registered. Preserve their source name rather than dropping it.
     const sourceName=(part || '').replace(COMPANY_SUFFIX_RE,' ').replace(/\b(?:PERSONALE|GRUPPO|DI|DEL|DELLA|SOC)\b/gi,' ').replace(/[()[\]{}]/g,' ').replace(EXTRA_SPACES_RE,' ').trim();

@@ -111,3 +111,8 @@ test('Tuscany general notice retains TPL uncertainty, publishes passenger rail c
  const rows=await transformRows([{...base,region:'FIRENZE',sector:'Generale',provider:'SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI REGIONE TOSCANA',date:'14/10/2026',endDate:'14/10/2026',modalita:"FERROVIARIO: DALLE 09.01 ALLE 17.00 / TPL: 4 ORE VARIE MODALITA / TRASPORTO MERCI SU ROTAIA: INTERA PRESTAZIONE",note:'ESCLUSO SETTORE TRASPORTO AEREO E PERSONALE GEST DI FIRENZE'}]);
  assert.deepEqual(rows.map(r=>r.category).sort(),['BUS','TRAIN']);assert.deepEqual(rows.find(r=>r.category==='BUS').strike_windows,[]);assert.ok(rows[0].timing_evidence.fields.exclusions.value[0].includes('GEST'));
 });
+
+test('unregistered operator with apostrophes remains identifiable after repeated display normalization',()=>{
+ const {normalizeProviderList}=require('../lib/strikeNormalization.ts');const name="ARRIVA ITALIA UNITA' PRODUTTIVA BERGAMO人员";
+ const first=normalizeProviderList(name).join(' / ');assert.ok(first.includes('ARRIVA'));assert.ok(normalizeProviderList(first).join(' / ').includes('BERGAMO'));
+});
