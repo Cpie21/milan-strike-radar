@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test:sync": "node --test scripts/test-strike-sync.cjs",
-    "test:database": "node --test scripts/test-strike-database.cjs"
+    "test:database": "node --test scripts/test-strike-database.cjs",
+    "test:enrichment": "node --test scripts/test-strike-enrichment.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",

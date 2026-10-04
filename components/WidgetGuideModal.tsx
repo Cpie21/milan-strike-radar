@@ -113,12 +113,18 @@ function getMinutes(v) {
 }
 
 function formatTime(item) {
+  if (item && item.timing_evidence && item.timing_evidence.windows.length) {
+    return item.timing_evidence.windows.map(function(w) {
+      return w.start + " - " + (w.end_kind === "end_of_service" ? "end of service" : w.end);
+    }).join(", ");
+  }
   if (!item || !item.strike_windows || !item.strike_windows.length) return "Time to be confirmed";
   const w = item.strike_windows[0];
   return String(w.start || "00:00") + " - " + String(w.end || "24:00");
 }
 
 function getTimeKey(item) {
+  if (item && item.timing_evidence && item.timing_evidence.windows.length) return formatTime(item);
   if (!item) return "00:00-24:00";
   if (Array.isArray(item.strike_windows) && item.strike_windows.length) {
     return item.strike_windows.map(function(w) {
@@ -148,6 +154,10 @@ function dedupeStrikes(items) {
 }
 
 function getDotColor(item, nowMin) {
+  if (item && item.timing_evidence && item.timing_evidence.windows.some(w => w.end_kind === "end_of_service")) {
+    if (item.timing_evidence.windows.some(w => nowMin >= getMinutes(w.start) && (w.end_kind === "end_of_service" || nowMin < getMinutes(w.end)))) return C.red;
+    return C.yellow;
+  }
   if (!item || !item.strike_windows || !item.strike_windows.length) return C.grayDot;
   let hasFuture = false;
   let hasActive = false;

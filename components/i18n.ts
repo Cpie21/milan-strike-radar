@@ -111,6 +111,7 @@ export function translateLine(value: string, language: AppLanguage) {
 }
 
 export function translateDuration(value: string, language: AppLanguage) {
+    if (value === '分时段（至运营结束）') return language === 'en' ? 'Separate windows; until end of service' : value;
     if (language === 'zh') return value;
     return value
         .replace(/全天\s*24小时/g, 'all day, 24 hours')

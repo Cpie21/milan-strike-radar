@@ -9,6 +9,7 @@ import {
   normalizeProviderList,
 } from './strikeNormalization';
 import { getGuaranteeWindows } from './guaranteeWindows';
+import type { TimingEvidence } from './strikeEvidence';
 
 export type StrikeStatus = 'CONFIRMED' | 'CANCELLED' | 'REQUIRES_DETAIL' | 'UNCERTAIN';
 
@@ -33,6 +34,7 @@ export interface StrikeRecord {
   source_url?: string;
   raw_payload?: RawStrikeRow;
   last_seen_at?: string;
+  timing_evidence?: TimingEvidence | null;
 }
 
 export interface RawStrikeRow {

@@ -1,3 +1,4 @@
+import type { TimingEvidence } from '../lib/strikeEvidence';
 import { CITIES } from '../lib/cities';
 import {
   canonicalizeRegionValue,
@@ -19,6 +20,7 @@ type StrikeLike = {
   data_source?: string;
   source_url?: string;
   source_key?: string;
+  timing_evidence?: TimingEvidence | null;
   display_time?: string;
   duration_hours?: string;
   strike_windows?: StrikeWindow[];
@@ -209,7 +211,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
 
     // Different rail operators can strike at different times on the same day.
     // Keep them distinct, including cancellations and unknown timings.
-    const key = `${strike.date}|${strike.region}|${strike.category}|${strike.status}|${strike.display_time}|${JSON.stringify(strike.strike_windows || [])}`;
+    const key = `${strike.date}|${strike.region}|${strike.category}|${strike.status}|${strike.display_time}|${JSON.stringify(strike.strike_windows || [])}|${JSON.stringify(strike.timing_evidence?.windows || [])}|${strike.timing_evidence?.confidence || ""}`;
 
     if (!map.has(key)) {
       map.set(key, {
@@ -226,7 +228,12 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       // Merge Strike Windows
       const allWindows = [...(existing.strike_windows || []), ...(strike.strike_windows || [])];
       const allGuaranteeWindows = [...(existing.guarantee_windows || []), ...(strike.guarantee_windows || [])];
-      if (strike.duration_hours === '24小时' || existing.duration_hours === '24小时') {
+      if (existing.timing_evidence?.windows.length) {
+        const evidence = existing.timing_evidence;
+        evidence.sources = [...new Map([...evidence.sources, ...(strike.timing_evidence?.sources || [])].map(s => [s.url, s])).values()];
+        evidence.unions = [...new Set([evidence.unions, strike.timing_evidence?.unions].filter(Boolean))].join(' / ');
+        // Keep semantic endpoints and their display text intact.
+      } else if (strike.duration_hours === '24小时' || existing.duration_hours === '24小时') {
         existing.duration_hours = '24小时';
         existing.display_time = '全天 24小时';
         existing.strike_windows = [{ start: '00:00', end: '24:00' }];

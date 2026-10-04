@@ -51,6 +51,10 @@ export async function GET(request: NextRequest) {
         const description = [
             `城市: ${regionLabel}`, `罢工主体: ${strike.provider}`,
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
+            ...(strike.timing_evidence ? [
+                `时段信息: ${strike.timing_evidence.confidence === 'official' ? '官方公告' : strike.timing_evidence.confidence === 'conflict' ? '来源冲突，待核实' : '外部公告，以运营商最新通知为准'}`,
+                ...strike.timing_evidence.sources.map((source: { url: string; name: string }) => `时段来源: ${source.name} ${source.url}`),
+            ] : []),
             `官方来源: ${strike.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi'}`,
             '', `查看受影响线路和详情: ${detailUrl}`,
         ].join('\n');

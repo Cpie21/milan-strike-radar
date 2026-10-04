@@ -21,13 +21,13 @@ const cachedCityStrikes = unstable_cache(async (tag: string, startDate: string) 
   const db = serverDatabase();
   const records = [];
   for (let offset = 0; offset < 10000; offset += 1000) {
-    const { data, error } = await db.from('strikes').select('id,date,category,provider,region,status,display_time,duration_hours,strike_windows,guarantee_windows,affected_lines,data_source,source_url,source_key').gte('date', startDate).in('region', aliases).neq('status', 'STALE').order('date').order('id').range(offset, offset + 999);
+    const { data, error } = await db.from('strikes').select('id,date,category,provider,region,status,display_time,duration_hours,strike_windows,guarantee_windows,affected_lines,data_source,source_url,source_key,timing_evidence').gte('date', startDate).in('region', aliases).neq('status', 'STALE').order('date').order('id').range(offset, offset + 999);
     if (error) throw new Error(`Cannot read strikes: ${error.message}`);
     records.push(...(data || []));
     if (!data || data.length < 1000) return records;
   }
   throw new Error('Strike query exceeded pagination bound; refusing to return truncated data');
-}, ['city-strikes-v2'], { revalidate: 600, tags: ['strikes'] });
+}, ['city-strikes-v3'], { revalidate: 600, tags: ['strikes'] });
 
 // Validate freshness outside the cache: a failed background refresh must not
 // allow stale cached data to masquerade as a healthy synchronization.

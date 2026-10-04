@@ -17,9 +17,14 @@ test('PostgreSQL sync reconciliation, locking and feedback protections', async (
       CREATE TABLE public.feedback (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), content text);
       GRANT INSERT ON public.feedback TO anon, authenticated;
     `);
-    for (const filename of ['20261003190000_strike_sources_and_sync_runs.sql', '20261004134223_sync_reconciliation_and_feedback.sql']) {
+    for (const filename of ['20261003190000_strike_sources_and_sync_runs.sql', '20261004134223_sync_reconciliation_and_feedback.sql', '20261004142222_external_strike_timing.sql']) {
       await db.exec(fs.readFileSync(path.join(__dirname, '../supabase/migrations', filename), 'utf8'));
     }
+    await t.test('timing evidence accepts an object and rejects malformed scalar data', async () => {
+      await db.query(`INSERT INTO strikes(timing_evidence) VALUES ($1)`, [JSON.stringify({windows:[{start:'18:00',end:null,end_kind:'end_of_service'}],confidence:'reported'})]);
+      await assert.rejects(db.query(`INSERT INTO strikes(timing_evidence) VALUES ('[]')`), /check constraint/i);
+      await db.exec('DELETE FROM strikes');
+    });
     const begin = async () => (await db.query('SELECT * FROM public.begin_strike_sync()')).rows;
     const finish = async (id) => (await db.query(`SELECT public.finish_strike_sync($1,'2026-09-27','2027-01-02',12,12,2,'[]') AS retired`, [id])).rows[0].retired;
 

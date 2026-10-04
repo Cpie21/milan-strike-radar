@@ -1,7 +1,8 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase } from '../../../../lib/strikeSync';
+import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase, type StrikeRecord } from '../../../../lib/strikeSync';
 import { serverDatabase } from '../../../../lib/strikeQuery';
+import { enrichStrikeTiming } from '../../../../lib/strikeEnrichment';
 import { CITIES, cityPath } from '../../../../lib/cities';
 
 export { fetchAndFilter, fetchRecentRows, transformRows, upsertToSupabase };
@@ -29,10 +30,15 @@ export async function GET(request: Request): Promise<NextResponse> {
     const [upcoming, recent] = await Promise.all([fetchAndFilter(), fetchRecentRows()]);
     const rawRows = [...upcoming, ...recent];
     // Processing an empty valid table is successful, unlike a missing/error table.
-    const records = rawRows.length ? (await transformRows(rawRows)).map(record => ({ ...record, last_seen_at: run.started_at })) : [];
+    let records: StrikeRecord[] = rawRows.length ? (await transformRows(rawRows)).map(record => ({ ...record, last_seen_at: run.started_at })) : [];
     const warnings: string[] = [];
+    const enrichment = await enrichStrikeTiming(records, warnings).catch(error => {
+      warnings.push(`External timing discovery failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      return { records: records.map(record => ({ ...record, timing_evidence: null })), enriched: 0, sourcesChecked: 0, conflicts: 0 };
+    });
+    records = enrichment.records;
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
-    const unknownTiming = records.filter(record => !record.strike_windows.length).length;
+    const unknownTiming = records.filter(record => !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
     const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {
       run_id: runId, window_start: window.start, window_end: window.end,
       fetched_count: rawRows.length, upserted_count: upserted, unknown_count: unknownTiming,
@@ -44,8 +50,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/api/strikes');
     revalidatePath('/api/calendar');
     revalidateTag('strikes', { expire: 0 });
-    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, warnings }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, warningCount: warnings.length });
+    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, warnings }));
+    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);
