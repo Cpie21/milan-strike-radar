@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import * as cheerio from 'cheerio';
+import { classifyRegionTags } from './strikeNormalization';
 import { CITIES, resolveCity } from './cities';
 import { parseStrikeTiming, scopeTiming, timingFromWindows } from './strikeTiming';
 import { CITY_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES, OFFICIAL_STRIKE_HOSTS, METRO_CITY_TAGS, sourceCities, sourceCategory, sourceOperatorNames, assertCitySourceCoverage } from './strikeSources';
@@ -118,7 +119,7 @@ function sourceFor(url: string, text: string, checkedAt: string): TimingSource {
 }
 
 // Structured detail pages carry date, union, transport mode and territorial scope.
-export function parseExternalNotices(html: string, url: string, dates: string[], checkedAt = new Date().toISOString()): ExternalNotice[] {
+export function parseExternalNotices(html: string, url: string, dates: string[], checkedAt = new Date().toISOString(), fromCurrentOfficialIndex = false): ExternalNotice[] {
   const $ = cheerio.load(html);
   const published = $('meta[property="article:published_time"]').attr('content') || $('time[datetime]').first().attr('datetime') || html.match(/"datePublished"\s*:\s*"([^"]+)/)?.[1];
   $('script,style,nav,footer,header,aside').remove();
@@ -158,7 +159,15 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
   const operatorContext = official ? sourceOperatorNames(url) : '';
   const eventDates = dates.filter(d => {
     if (exactDate(title, d) || exactDate(text.slice(0,2500), d)) return true;
-    if (!published || !/scioper/i.test(title)) return false;
+    if (!/scioper/i.test(title)) return false;
+    if (!published && fromCurrentOfficialIndex && official) {
+      const event=Date.parse(d),stamp=Date.parse(checkedAt);
+      const yearless=new RegExp(`\\b${Number(d.slice(8))}\\s+${MONTHS[Number(d.slice(5,7))-1]}(?!\\s+20\\d{2})`,'i').test(title);
+      const weekdays=['domenica','lunedi','martedi','mercoledi','giovedi','venerdi','sabato'];
+      const weekday=weekdays.findIndex(w=>normalize(title).includes(w));
+      return yearless && event>=stamp-86400000 && event<=stamp+90*86400000 && weekday>=0 && new Date(d).getUTCDay()===weekday;
+    }
+    if(!published) return false;
     const [year,month,day]=d.split('-').map(Number);
     const stamp=Date.parse(published), event=Date.parse(d);
     return Number.isFinite(stamp) && event >= stamp-7*86400000 && event <= stamp+90*86400000 && new RegExp(`\\b${day}\\s+${MONTHS[month-1]}(?!\\s+20\\d{2})`, 'i').test(title) && year >= new Date(stamp).getUTCFullYear();
@@ -167,10 +176,14 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     const names = /\b(?:alcobas|al[ -]cobas|confial|usb|cub|cobas|cgil|cisl|uiltransporti|uilt|uil|ugl|faisa|fast|orsa|sul)\b/i;
     const parts: {text:string;heading:string;unions:string;dates:string[]}[]=[];
     let heading=title, unionContext=names.test(title)?title:'', dateContext=eventDates;
+    let sectionCities=knownCities;
+    const cityByHeading=new Map<string,string[]>();
 
     body.find('h2,h3,p,li,pre').each((_,el)=>{
       if (/^h[23]$/.test(el.tagName)) {
         heading=$(el).text();
+        if(/linee|funicolare|aeroport|rete|servizio.*(?:a|di|per) /i.test(heading)) sectionCities=classifyRegionTags({providerText:heading,sectorText:sourceCategory(url)});
+        cityByHeading.set(heading,sectionCities);
         if(names.test(heading)) unionContext=heading;
         const scopedDates=dates.filter(d=>exactDate(heading,d));if(scopedDates.length)dateContext=scopedDates;
         return;
@@ -191,7 +204,7 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
       if(!part.dates.includes(date)) continue;
       const candidate=part.text;
       if (!/\d{1,2}[.:]\d{2}|dalle?\s+\d|inizio\s+(?:del\s+)?servizio/i.test(candidate)) continue;
-      const guarantee = /garant|fasce di garanzia/i.test(part.heading + ' ' + candidate) && !/non\s+(?:saranno\s+)?garant/i.test(candidate);
+      const guarantee = /garant|fasce di garanzia/i.test(part.heading + ' ' + candidate) && !/non\s+(?:(?:saranno|essere)\s+)?garant/i.test(candidate);
       // A lone 24-hour duration without an actual interruption clause is not
       // operational timing, and generic guarantee pages cannot supply dates.
       if (guarantee || /ultimi scioperi|precedent[ei] scioperi/i.test(candidate)) continue;
@@ -200,14 +213,14 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
         const specific=knownCities.filter(tag=>hasWord(value,resolveCity(tag)!.slug));
         return specific.length ? specific : knownCities.filter(tag=>hasWord(value,resolveCity(tag)!.region));
       };
-      const cities = mentioned(part.heading+' '+candidate).length ? mentioned(part.heading+' '+candidate) : mentioned(title).length ? mentioned(title) : knownCities;
+      const cities = cityByHeading.has(part.heading) ? cityByHeading.get(part.heading)! : mentioned(part.heading+' '+candidate).length ? mentioned(part.heading+' '+candidate) : mentioned(title).length ? mentioned(title) : knownCities;
       const territory = [title,...cities.map(c=>resolveCity(c)?.slug || c)].join(' ');
       output.push({ date, provider: title+' '+operatorContext+' '+text.slice(0,1000), territory, cities, unions:part.unions || text, sector:sourceCategory(url) || title, field_text:parts.filter(p=>p.heading===part.heading && p.unions===part.unions && p.dates.includes(date)).map(p=>p.text).join(' '), section_heading:part.heading, timing:candidate, status:'', operator_day:official && !namedUnion, source:sourceFor(url,candidate,checkedAt) });
     }
     // Guarantees belong to the same dated union/mode section, never the
     // whole page. A dated notice with only guarantees can still verify fields.
     if(hasParts) {
-      const isGuarantee=(p:typeof parts[number])=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:saranno\s+)?garant/i.test(p.text);
+      const isGuarantee=(p:typeof parts[number])=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:(?:saranno|essere)\s+)?garant/i.test(p.text);
       if(official && !output.length) for(const part of parts.filter(isGuarantee)) for(const date of part.dates) {
         if(!parseStrikeTiming(part.text).windows.length) continue;
         output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:part.unions || text,sector:sourceCategory(url)||title,field_text:part.text,section_heading:part.heading,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,part.text,checkedAt)});
@@ -258,7 +271,8 @@ export function matchesNotice(notice: ExternalNotice, record: StrikeRecord) {
 
 export function parseExternalWindows(text: string, record: StrikeRecord): EvidenceWindow[] {
   let scoped = scopeTiming(normalize(text).replace(/[–—]/g, '-').replace(/\b(\d{1,2}),(\d{2})\b/g,'$1:$2'), record.category);
-  scoped=scoped.replace(/non\s+(?:saranno\s+)?garantit[ioea]/g,'disruptions').replace(/sino\s+a|fino\s+a/g,'a');
+  scoped=scoped.replace(/non\s+(?:(?:saranno|essere)\s+)?garantit[ioea]/g,'disruptions').replace(/sino\s+a|fino\s+a/g,'a');
+  scoped=scoped.replace(/dopo\s+le\s+(\d{1,2})(?:[.:](\d{2}))?\s*,?\s*(?:a|al|alle?|fino al)\s+termine\s+(?:del\s+)?servizio/g,(_,h,m)=>`dalle ${h}:${m || '00'} a termine servizio`);
   if (/garanti|fasce di garanzia|ultimi scioperi|ipotizz|presum/i.test(scoped)) return [];
   const metroOnly = /metropolitan|\bmetro\b/.test(scoped) && !/superficie|autobus|\bbus\b|\btram\b/.test(scoped);
   const surfaceOnly = /superficie|autobus|\bbus\b|\btram\b/.test(scoped) && !/metropolitan|\bmetro\b/.test(scoped);
@@ -422,6 +436,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   ];
   await collect([...operatorIndexes, ...MEDIA_INDEXES, ...search]);
   const articles: string[] = [];
+  const linkedByOfficialIndex=new Set<string>();
   for (const [url, html] of documents) {
     const $ = cheerio.load(html);
     if (new URL(url).hostname === 'sciopero.net') {
@@ -440,7 +455,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
         const href = $(a).attr('href');
         if (!href) return;
         const candidate = linkUrl(href, url);
-        if (candidate && /scioper/i.test($(a).text() + ' ' + href) && (OFFICIAL_HOSTS.has(new URL(url).hostname) || dates.some(d => exactDate($(a).text(), d) || exactDate(href.replace(/-/g, ' '), d)) || /scioperi-settimana|scioperi-.*calendario/.test(candidate)) && candidate !== url && !/garantiti-incasodisciopero|in-caso-di-sciopero|tag\/|economia\/scioperi/.test(candidate)) articles.push(candidate);
+        if (candidate && /scioper/i.test($(a).text() + ' ' + href) && (OFFICIAL_HOSTS.has(new URL(url).hostname) || dates.some(d => exactDate($(a).text(), d) || exactDate(href.replace(/-/g, ' '), d)) || /scioperi-settimana|scioperi-.*calendario/.test(candidate)) && candidate !== url && !/garantiti-incasodisciopero|in-caso-di-sciopero|tag\/|economia\/scioperi/.test(candidate)) { articles.push(candidate); if(operatorIndexes.includes(url) && OFFICIAL_HOSTS.has(new URL(url).hostname)) linkedByOfficialIndex.add(candidate); }
       });
     }
   }
@@ -465,10 +480,10 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     });
   }
   await collect(attachments);
-  let notices = [...documents].flatMap(([url, html]) => parseExternalNotices(html, url, dates, now.toISOString()));
+  let notices = [...documents].flatMap(([url, html]) => parseExternalNotices(html, url, dates, now.toISOString(),linkedByOfficialIndex.has(url)));
   // Prefer the primary regulator details whenever reachable; do not bypass TLS.
   await collect(notices.filter(n => targets.some(r => matchesNotice(n, r))).map(n => n.official_url).filter((u): u is string => Boolean(u)));
-  notices = [...documents].flatMap(([url, html]) => parseExternalNotices(html, url, dates, now.toISOString()));
+  notices = [...documents].flatMap(([url, html]) => parseExternalNotices(html, url, dates, now.toISOString(),linkedByOfficialIndex.has(url)));
   const cityVariants: StrikeRecord[]=[];
   for (const record of targets.filter(r=>r.region==='NATIONAL' && ['BUS','SUBWAY'].includes(r.category))) {
     for (const city of CITIES) {

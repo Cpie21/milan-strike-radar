@@ -42,7 +42,21 @@ const origin=process.env.STRIKE_AUDIT_ORIGIN || 'https://www.theitalystrike.com'
   assert.equal(day.find(r=>r.category==='TRAIN').display_time,'09:01 - 17:00');assert.ok(day.find(r=>r.category==='BUS').has_unknown_timing);
  }
  const bari=cityData.BARI.find(r=>r.date==='2026-10-12');assert.ok(bari);assert.equal(bari.display_time,'08:30 - 12:29');assert.equal(bari.guaranteeSource,'OFFICIAL_STRIKE_NOTICE');assert.ok(bari.timing_evidence.conflicts.length);
+ for(const tag of ['FIRENZE','PISA']) assert.ok(cityData[tag].some(r=>r.date==='2026-10-16'&&r.scopeType==='MIXED_AIRPORT_SERVICES'));
+ for(const tag of ['PALERMO','CATANIA','MESSINA']) {
+  const security=cityData[tag].find(r=>r.date==='2026-10-08'&&r.scopeType==='RAIL_SECURITY');assert.ok(security);
+  assert.ok(security.field_evidence.every(f=>f.passengerImpact.value==='INDIRECT_OR_UNCONFIRMED'));
+  assert.ok(security.field_evidence.every(f=>f.guaranteedServiceWindow.value.length===0));
+  for(const date of ['2026-10-12','2026-10-13']) assert.ok(cityData[tag].some(r=>r.date===date&&r.scopeType==='RAIL_INFRASTRUCTURE'));
+ }
+ const atm=notices('MILANO').filter(({card,event})=>card.date==='2026-10-09'&&['BUS','SUBWAY'].includes(card.category)&&/ATM/i.test(event.timing_evidence?.fields?.affectedOperators.value.join(' ') || ''));
+ assert.equal(atm.length,4);
+ for(const {event} of atm) {
+  assert.deepEqual(event.windows,[{start:'08:45',end:'15:00',end_kind:'clock'},{start:'18:00',end:null,end_kind:'end_of_service'}]);
+  assert.equal(event.timing_evidence.fields.timing.source,'OPERATOR_OFFICIAL');
+  assert.ok(event.timing_evidence.sources.some(s=>s.url==='https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx'&&s.authority==='official'));
+ }
  const health=await (await fetch(origin+'/api/sync-status')).json();assert.equal(health.healthy,true);
- const report={checked_at:new Date().toISOString(),origin,cityChecks:cityChecks.sort((a,b)=>a.city.localeCompare(b.city)),regressions:{arrivaLocalAndOfficialHours:true,veniceLocalOnly:true,cargoExcluded:true,airlineNotEntireAirport:true,protectedBariNotAffectedBari:true,tuscanyRailAndUnknownTPL:true,officialBariTimingAndGuarantees:true,fieldEvidencePresent:true},health};
+ const report={checked_at:new Date().toISOString(),origin,cityChecks:cityChecks.sort((a,b)=>a.city.localeCompare(b.city)),regressions:{arrivaLocalAndOfficialHours:true,veniceLocalOnly:true,cargoExcluded:true,airlineNotEntireAirport:true,protectedBariNotAffectedBari:true,tuscanyRailAndUnknownTPL:true,officialBariTimingAndGuarantees:true,fieldEvidencePresent:true,mixedAirportServices:true,railSecurityNotTrainOperation:true,rfiRegionalCoverage:true,atmOfficialIndividualEventTiming:true},health};
  const output=process.argv[2] || '/tmp/strike-scope-production-checks.json';fs.writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify({cities:cityChecks.length,allPassed:true,regressions:report.regressions,output}));
 })().catch(e=>{console.error(e.message);process.exitCode=1});
