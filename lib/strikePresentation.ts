@@ -17,6 +17,14 @@ export function clockMinutes(value: string) {
   return h * 60 + m;
 }
 
+export function upcomingJourneyDays(now = new Date()) {
+  const today=new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+  const cursor=new Date(`${today}T12:00:00Z`), days:string[]=[];
+  // The date navigator must expose the same 90-day span as synchronization.
+  for(let i=0;i<=90;i++,cursor.setUTCDate(cursor.getUTCDate()+1)) days.push(cursor.toISOString().slice(0,10));
+  return days;
+}
+
 // Merge impact intervals, retaining symbolic endpoints. These describe the
 // union of possible disruptions, not a promise that every operator is stopped.
 export function mergeEvidenceWindows(input: EvidenceWindow[]) {

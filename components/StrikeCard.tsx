@@ -583,7 +583,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                     <summary className="cursor-pointer">{pickText(language, '查看各公告时段', 'Timing by announcement')}</summary>
                     <ul className="mt-2 space-y-2">
                         {strike.strike_events.map((event,index) => <li key={event.source_key || event.id || index}>
-                            {event.provider}{event.unions ? ` · ${event.unions}` : ''}: {event.status === 'CANCELLED' ? pickText(language, '已取消', 'Cancelled') : windowsDisplay(event.windows, language)}
+                            {translateProvider(event.provider || getProviderFallback(strike.category,language),language)}{event.unions ? ` · ${event.unions}` : ''}: {event.status === 'CANCELLED' ? pickText(language, '已取消', 'Cancelled') : windowsDisplay(event.windows, language)}
                         </li>)}
                     </ul>
                 </details>
@@ -750,6 +750,14 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                     <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px]">
                         {strike.timing_evidence.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.name} ↗</a>)}
                     </div>
+                    {strike.timing_evidence.conflicts.length > 0 && <details className="text-[10px] mt-2">
+                        <summary className="cursor-pointer">{pickText(language, '查看来源时段差异', 'Compare source timings')}</summary>
+                        <ul className="mt-2 space-y-1">
+                            {strike.timing_evidence.conflicts.map((conflict,index)=><li key={`${conflict.url}-${index}`}>
+                                {windowsDisplay(conflict.windows,language)} · <a href={conflict.url} target="_blank" rel="noopener noreferrer" className="underline">{pickText(language, '原公告', 'Source notice')} ↗</a>
+                            </li>)}
+                        </ul>
+                    </details>}
                 </>}
             </div>
 

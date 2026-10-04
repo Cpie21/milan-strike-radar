@@ -392,7 +392,12 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   for (const [url,html] of documents) {
     if (!OFFICIAL_HOSTS.has(new URL(url).hostname) || !/scioper/i.test(cheerio.load(html)('h1').first().text())) continue;
     const $=cheerio.load(html);
-    $('a[href]').each((_,a)=>{const u=linkUrl($(a).attr('href') || '',url);if(u && /\.pdf(?:$|\?)/i.test(u)) attachments.push(u);});
+    const eventPage=dates.some(d=>exactDate($('h1,h2').text()+' '+$('article,main').first().text().slice(0,2000),d));
+    $('a[href]').each((_,a)=>{
+      const href=$(a).attr('href') || '',u=linkUrl(href,url);
+      const datedLink=dates.some(d=>exactDate(($(a).text()+' '+href).replace(/-/g,' '),d));
+      if(u && /\.pdf(?:$|\?)/i.test(u) && (eventPage || datedLink)) attachments.push(u);
+    });
   }
   await collect(attachments);
   let notices = [...documents].flatMap(([url, html]) => parseExternalNotices(html, url, dates, now.toISOString()));

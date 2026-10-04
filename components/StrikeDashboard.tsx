@@ -5,6 +5,7 @@ import { motion, AnimatePresence, MotionConfig, useAnimation } from "framer-moti
 import { useRouter } from "next/navigation";
 import { CITY_OPTIONS, resolveCity } from '../lib/cities';
 import StrikeCard from "./StrikeCard";
+import { upcomingJourneyDays } from '../lib/strikePresentation';
 import WechatGuide from "./WechatGuide";
 import CalendarSyncModal from "./CalendarSyncModal";
 import WidgetGuideModal from "./WidgetGuideModal";
@@ -470,7 +471,7 @@ export default function StrikeDashboard({
             const dateParam = params.get('date');
             if (dateParam) {
                 // Ensure the date is selected
-                const targetDate = new Date(dateParam);
+                const targetDate = new Date(`${dateParam}T12:00:00`);
                 if (!isNaN(targetDate.getTime())) {
                     setSelectedDate(targetDate);
                     setHighlightedDate(dateParam);
@@ -594,24 +595,9 @@ export default function StrikeDashboard({
         }, 50);
     };
 
-    // Days strip generated from March 1st of current year to 30 days in the future
+    // Expose the entire synchronization range, including year and DST changes.
     const generateDays = () => {
-        const today = new Date();
-        const start = new Date(today); // Start from today
-        const end = new Date(today);
-        end.setDate(today.getDate() + 30);
-
-        const days = [];
-        let curr = new Date(start);
-        curr.setHours(0, 0, 0, 0);
-        const endDay = new Date(end);
-        endDay.setHours(0, 0, 0, 0);
-
-        while (curr <= endDay) {
-            days.push(new Date(curr));
-            curr.setDate(curr.getDate() + 1);
-        }
-        return days;
+        return upcomingJourneyDays().map(iso=>new Date(`${iso}T12:00:00`));
     };
     const daysStrip = generateDays();
 

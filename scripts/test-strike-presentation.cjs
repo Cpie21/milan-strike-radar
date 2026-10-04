@@ -124,3 +124,13 @@ test('all registered and previously unknown operator names survive presentation 
  for(const source of CITY_STRIKE_SOURCES) assert.ok(normalizeProviderList(source.name).length,source.name);
  assert.deepEqual(normalizeProviderList('PERSONALE NUOVALINEA SPA'),['NUOVALINEA人员']);
 });
+test('date navigation spans the entire 90-day backend range in Rome across years and DST',()=>{
+ const {upcomingJourneyDays}=require('../lib/strikePresentation.ts');
+ for(const now of [new Date('2029-12-29T23:30:00Z'),new Date('2030-03-30T23:30:00Z')]){const days=upcomingJourneyDays(now);assert.equal(days.length,91);assert.equal(new Set(days).size,91);assert.equal(Date.parse(days.at(-1))-Date.parse(days[0]),90*86400000);}
+ assert.equal(upcomingJourneyDays(new Date('2029-12-29T23:30:00Z'))[0],'2029-12-30');
+});
+test('generic official pages do not fetch unrelated PDF documents',async()=>{
+ const original=global.fetch;let downloaded=false;
+ global.fetch=async input=>{const url=String(input);if(url.endsWith('manual.pdf'))downloaded=true;return new Response(url.includes('trenitalia.com')?'<main><h1>Treni garantiti in caso di sciopero</h1><a href="/manual.pdf">Manuale privacy</a></main>':'<main>News</main>',{headers:{'content-type':'text/html'}});};
+ try{await enrichStrikeTiming([row({region:'NATIONAL',category:'TRAIN',provider:'Trenitalia',raw_payload:{...row().raw_payload,provider:'Trenitalia',sector:'Ferroviario'}})],[],new Date('2029-12-29T12:00:00Z'));assert.equal(downloaded,false);}finally{global.fetch=original;}
+});
