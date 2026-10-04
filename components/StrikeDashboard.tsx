@@ -625,7 +625,7 @@ export default function StrikeDashboard({
 
     const aggregatedData = useMemo(() => {
         const regionScoped = filterStrikesForRegion(strikesData, regionTag);
-        const aggregated = aggregateStrikes(regionScoped);
+        const aggregated = aggregateStrikes(regionScoped, regionTag);
         return filterStrikesForRegion(aggregated, regionTag);
     }, [strikesData, regionTag]);
 

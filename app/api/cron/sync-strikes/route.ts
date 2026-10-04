@@ -38,7 +38,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     });
     records = enrichment.records;
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
-    const unknownTiming = records.filter(record => !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
+    const unknownTiming = records.filter(record => record.status !== 'CANCELLED' && !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
     const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {
       run_id: runId, window_start: window.start, window_end: window.end,
       fetched_count: rawRows.length, upserted_count: upserted, unknown_count: unknownTiming,

@@ -1,7 +1,7 @@
 // Semantic endpoints must survive all the way to cards, calendars and widgets.
 // 'Fine servizio' is not midnight and varies between lines.
 export type EvidenceWindow = {
-  start: string;
+  start: string | null;
   end: string | null;
   end_kind: 'clock' | 'end_of_service';
 };
@@ -22,5 +22,5 @@ export type TimingEvidence = {
 };
 
 export function evidenceTimeLabel(window: EvidenceWindow, language: 'zh' | 'en' = 'zh') {
-  return `${window.start} - ${window.end_kind === 'end_of_service' ? (language === 'en' ? 'end of service' : '运营结束') : window.end}`;
+  return `${window.start === null ? (language === 'en' ? 'start of service' : '运营开始') : window.start} - ${window.end_kind === 'end_of_service' ? (language === 'en' ? 'end of service' : '运营结束') : window.end}`;
 }

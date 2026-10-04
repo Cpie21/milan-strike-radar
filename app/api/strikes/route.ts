@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     const rawStrikes = strikes || [];
     const regionScoped = filterStrikesForRegion(rawStrikes, regionTag);
-    const aggregated = filterStrikesForRegion(aggregateStrikes(regionScoped), regionTag);
+    const aggregated = filterStrikesForRegion(aggregateStrikes(regionScoped, regionTag), regionTag);
 
     return new NextResponse(JSON.stringify(aggregated), {
         headers: {

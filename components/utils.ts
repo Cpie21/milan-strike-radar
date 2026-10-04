@@ -1,3 +1,4 @@
+import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, type StrikeEvent } from '../lib/strikePresentation';
 import type { TimingEvidence } from '../lib/strikeEvidence';
 import { CITIES } from '../lib/cities';
 import {
@@ -30,6 +31,8 @@ type StrikeLike = {
   region?: string;
   note?: string;
   status?: string;
+  strike_events?: StrikeEvent[];
+  has_unknown_timing?: boolean;
 };
 
 const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag, [...city.airports, `${city.zh}相关机场`]]));
@@ -130,14 +133,16 @@ export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | und
   if (!Array.isArray(rawStrikes)) return [];
   const allowedCategories = new Set(['TRAIN', 'SUBWAY', 'BUS', 'AIRPORT']);
   const currentRegion = canonicalizeRegionValue(regionTag) || 'MILANO';
+  const localKeys = new Set(rawStrikes.filter(s=>s && s.source_key && resolveStrikeRegion(s) === currentRegion && s.status !== 'STALE' && eventWindows(s).length).map(s=>`${s!.source_key}|${s!.date}|${s!.category}`));
 
   const normalizedStrikes: Array<StrikeLike | null> = rawStrikes
     .map((strike) => {
       if (!strike) return null;
       if (strike.status === 'STALE') return null;
+      if (strike.region === 'NATIONAL' && strike.source_key && localKeys.has(`${strike.source_key}|${strike.date}|${strike.category}`)) return null;
       // Only hide expired unverifiable legacy placeholders. Distinct official
       // announcements must not supersede each other just because providers match.
-      if (!strike.source_key && strike.region === 'NATIONAL' && strike.category === 'TRAIN' &&
+      if (!strike.source_key && !strike.strike_events?.length && strike.region === 'NATIONAL' && strike.category === 'TRAIN' &&
           ['UNCERTAIN', 'REQUIRES_DETAIL'].includes(strike.status || '') && strike.date &&
           strike.date < new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())) return null;
       if (!strike.category || !allowedCategories.has(strike.category)) return null;
@@ -174,100 +179,52 @@ export function filterStrikesForRegion(rawStrikes: Array<StrikeLike | null | und
     .filter((strike): strike is StrikeLike => Boolean(strike));
 }
 
-/**
- * Union overlaps helper
- */
-function mergeTimeWindows(windows: StrikeWindow[]) {
-  if (windows.length <= 1) return windows;
-  windows.sort((a, b) => a.start.localeCompare(b.start));
-  const merged = [windows[0]];
-  for (let i = 1; i < windows.length; i++) {
-    const last = merged[merged.length - 1];
-    const current = windows[i];
-    if (current.start <= last.end) {
-      last.end = current.end > last.end ? current.end : last.end;
-    } else {
-      merged.push(current);
-    }
+/** A single journey overview per city, date and transport type. Official
+ * notices keep their own identities, status and timings inside strike_events. */
+export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined>, regionTag?: string) {
+  const map = new Map<string, StrikeLike[]>();
+  const input = rawStrikes.filter((s): s is StrikeLike => Boolean(s));
+  // Legacy metro-only rows may derive a bus card, but never overwrite an
+  // explicitly scoped bus announcement with metro timing.
+  const expanded = expandDerivedStrikeVariants(input).filter(s => input.includes(s) || !input.some(b => b.category === 'BUS' && b.date === s.date && b.region === s.region && b.source_key === s.source_key && (s.source_key || b.provider === s.provider)));
+  for (const strike of expanded) {
+    const region = regionTag || strike.region;
+    const key = `${strike.date}|${region}|${strike.category}`;
+    map.set(key, [...(map.get(key) || []), strike]);
   }
-  return merged;
-}
-
-/**
- * Data Aggregation (Phase) per user PRD
- * Groups identically dated strikes inside the same category
- */
-export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined>) {
-  const map = new Map<string, StrikeLike>();
-
-  expandDerivedStrikeVariants(rawStrikes).forEach(strike => {
-    const normalizedProvider = normalizeProviderForDisplay(strike.provider, strike.category);
-    const normalizedLines = strike.category === 'AIRPORT'
-      ? normalizeAirportAffectedLines(strike.affected_lines || [], {
-          contextText: `${strike.provider || ''} ${(strike.affected_lines || []).join(' ')}`,
-          regionTag: canonicalizeRegionValue(strike.region || ''),
-        })
-      : sanitizeAffectedLines(strike.affected_lines || []);
-
-    // Different rail operators can strike at different times on the same day.
-    // Keep them distinct, including cancellations and unknown timings.
-    const key = `${strike.date}|${strike.region}|${strike.category}|${strike.status}|${strike.display_time}|${JSON.stringify(strike.strike_windows || [])}|${JSON.stringify(strike.timing_evidence?.windows || [])}|${strike.timing_evidence?.confidence || ""}`;
-
-    if (!map.has(key)) {
-      map.set(key, {
-        ...JSON.parse(JSON.stringify(strike)),
-        provider: normalizedProvider,
-        affected_lines: normalizedLines,
-      });
-    } else {
-      const existing = map.get(key);
-      if (!existing) return;
-
-      existing.provider = normalizeProviderForDisplay(`${existing.provider || ''} / ${normalizedProvider}`, existing.category);
-
-      // Merge Strike Windows
-      const allWindows = [...(existing.strike_windows || []), ...(strike.strike_windows || [])];
-      const allGuaranteeWindows = [...(existing.guarantee_windows || []), ...(strike.guarantee_windows || [])];
-      if (existing.timing_evidence?.windows.length) {
-        const evidence = existing.timing_evidence;
-        evidence.sources = [...new Map([...evidence.sources, ...(strike.timing_evidence?.sources || [])].map(s => [s.url, s])).values()];
-        evidence.unions = [...new Set([evidence.unions, strike.timing_evidence?.unions].filter(Boolean))].join(' / ');
-        // Keep semantic endpoints and their display text intact.
-      } else if (strike.duration_hours === '24小时' || existing.duration_hours === '24小时') {
-        existing.duration_hours = '24小时';
-        existing.display_time = '全天 24小时';
-        existing.strike_windows = [{ start: '00:00', end: '24:00' }];
-      } else {
-        existing.strike_windows = mergeTimeWindows(allWindows);
-        existing.display_time = existing.strike_windows.length ? existing.strike_windows.map((w) => `${w.start} - ${w.end}`).join(', ') : '具体时段待公布';
-      }
-      existing.guarantee_windows = mergeTimeWindows(allGuaranteeWindows);
-
-      // Merge Status
-      if (strike.status === 'CONFIRMED') existing.status = 'CONFIRMED';
-
-      // Merge Affected Lines
-      const mergedLines = [...(existing.affected_lines || []), ...normalizedLines];
-      existing.affected_lines = existing.category === 'AIRPORT'
-        ? normalizeAirportAffectedLines(mergedLines, {
-            contextText: `${existing.provider || ''} ${(mergedLines || []).join(' ')}`,
-            regionTag: canonicalizeRegionValue(existing.region || ''),
-          })
-        : sanitizeAffectedLines(mergedLines).filter(l => l !== '全部线路' && l !== '全部车次');
-      if (existing.affected_lines.length === 0) {
-        existing.affected_lines = existing.category === 'AIRPORT' ? ['全部机场'] : ['全部线路'];
+  return [...map].map(([key, rows]) => {
+    const eventMap = new Map<string, StrikeEvent>();
+    for (const row of rows) {
+      const events = row.strike_events || [{ id: row.id, source_key:row.source_key, source_url:row.source_url, provider: row.provider, status:row.status, unions:row.timing_evidence?.unions, windows:eventWindows(row), guarantee_windows:row.guarantee_windows || [], timing_evidence: row.timing_evidence }];
+      for (const event of events) {
+        const identity = event.source_key || String(event.id || JSON.stringify([event.provider,event.status,event.windows]));
+        eventMap.set(identity, event);
       }
     }
+    const events = [...eventMap.values()].sort((a,b)=>String(a.source_key || a.id || a.provider).localeCompare(String(b.source_key || b.id || b.provider)));
+    const active = events.filter(e => e.status !== 'CANCELLED');
+    const relevant = active.length ? active : events;
+    const windows = mergeEvidenceWindows(relevant.flatMap(e => e.windows));
+    const sources = [...new Map(relevant.flatMap(e => e.timing_evidence?.sources || []).map(source => [source.url, source])).values()];
+    const confidence = relevant.some(e=>e.timing_evidence?.confidence === 'conflict') ? 'conflict' : sources.some(s=>s.authority === 'reported') ? 'reported' : 'official';
+    const first = rows[0];
+    const allLines = rows.flatMap(r=>r.affected_lines || []);
+    const broad = allLines.some(line => NETWORK_WIDE_LINE_MARKERS.has(line));
+    return {
+      ...first,
+      id: `day-${key.replaceAll('|','-')}`,
+      region: regionTag || first.region,
+      source_key: undefined,
+      provider: normalizeProviderForDisplay(relevant.map(e=>e.provider).join(' / '),first.category),
+      status: !active.length ? 'CANCELLED' : active.some(e=>e.windows.length) ? 'CONFIRMED' : 'UNCERTAIN',
+      display_time: windowsDisplay(windows),
+      duration_hours: windowsDuration(windows),
+      strike_windows: numericWindows(windows),
+      guarantee_windows: active.some(e=>!e.windows.length) ? [] : intersectGuarantees(active),
+      timing_evidence: { windows, confidence, sources, unions:[...new Set(relevant.map(e=>e.unions).filter(Boolean))].join(' / '), conflicts:relevant.flatMap(e=>e.timing_evidence?.conflicts || []) } as TimingEvidence,
+      strike_events: events,
+      has_unknown_timing: active.some(e=>!e.windows.length),
+      affected_lines: first.category === 'AIRPORT' ? normalizeAirportAffectedLines(allLines, {contextText: rows.map(r=>r.provider).join(' '),regionTag:regionTag || first.region}) : broad ? ['全部线路'] : sanitizeAffectedLines([...new Set(allLines)]),
+    };
   });
-
-  return Array.from(map.values()).map(existing => ({
-    ...existing,
-    provider: normalizeProviderForDisplay(existing.provider, existing.category),
-    affected_lines: existing.category === 'AIRPORT'
-      ? normalizeAirportAffectedLines(existing.affected_lines || [], {
-          contextText: `${existing.provider || ''} ${(existing.affected_lines || []).join(' ')}`,
-          regionTag: canonicalizeRegionValue(existing.region || ''),
-        })
-      : sanitizeAffectedLines(existing.affected_lines || []),
-  }));
 }

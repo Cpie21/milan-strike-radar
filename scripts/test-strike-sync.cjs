@@ -143,11 +143,14 @@ test('regional Tuscany scope reaches Florence and Pisa; local Florence does not 
   assert.deepEqual(classifyRegionTags({ regionText: 'Toscana', provinceText: 'Firenze', providerText: 'GEST DI FIRENZE' }), ['FIRENZE']);
 });
 
-test('rail timings and cancellations on the same day remain separate cards', () => {
+test('rail notices share a journey card while retaining separate statuses and timings', () => {
   const base = { date: '2026-10-02', category: 'TRAIN', region: 'NATIONAL', provider: 'Trenord', status: 'CONFIRMED', duration_hours: '3小时', display_time: '11:00 - 14:00', strike_windows: [{ start: '11:00', end: '14:00' }] };
   const cards = aggregateStrikes([base, { ...base, provider: 'Trenitalia', duration_hours: '24小时', display_time: '全天 24小时', strike_windows: [{ start: '00:00', end: '24:00' }] }, { ...base, status: 'CANCELLED' }]);
-  assert.equal(cards.length, 3);
-  assert.deepEqual(cards[0].strike_windows, base.strike_windows);
+  assert.equal(cards.length, 1);
+  assert.deepEqual(cards[0].strike_windows, [{start:'00:00',end:'24:00'}]);
+  assert.equal(cards[0].strike_events.length,3);
+  assert.equal(cards[0].strike_events.filter(e=>e.status==='CANCELLED').length,1);
+  assert.deepEqual(cards[0].strike_events.find(e=>e.provider==='Trenord'&&e.status==='CONFIRMED').windows,[{...base.strike_windows[0],end_kind:'clock'}]);
 });
 
 test('new city filtering includes national events and rejects another city', () => {
@@ -287,4 +290,12 @@ test('calendar escaping and byte folds round-trip Chinese, punctuation and newli
   for (const line of serialized.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75);
   assert.ok(!serialized.replace(/\r\n/g, '').includes('\n'));
   assert.equal(escapeCalendarText('a,b;c\\d\ne'), 'a\\,b\\;c\\\\d\\ne');
+});
+
+test('local transit categories distinguish Messina ATM, metro divisions and broad city networks', async()=>{
+ const template=parseStrikeHtml(table([row]))[0];
+ for(const [provider,region,expected] of [['ATM MESSINA','MESSINA',['BUS']],['ATAC ROMA','ROMA',['BUS','SUBWAY']],['GTT TORINO','TORINO',['BUS','SUBWAY']],['ANM NAPOLI','NAPOLI',['BUS','SUBWAY']],['BRESCIA MOBILITA','BRESCIA',['BUS','SUBWAY']],['ATM MILANO METROPOLITANA','MILANO',['SUBWAY']],['ATM MILANO AUTOBUS','MILANO',['BUS']]]){
+ const records=await transformRows([{...template,provider,region,sourceKey:'category-'+region+provider,sector:'Trasporto pubblico locale'}]);assert.deepEqual([...new Set(records.map(r=>r.category))].sort(),expected,provider);
+ if(region==='MESSINA') assert.ok(records.every(r=>r.provider==='ATM Messina人员'));
+ }
 });

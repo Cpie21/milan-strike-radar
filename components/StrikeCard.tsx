@@ -1,5 +1,6 @@
 'use client';
 
+import { strikeTimeline, windowsDisplay, type StrikeEvent } from '../lib/strikePresentation';
 import { evidenceTimeLabel, type TimingEvidence } from '../lib/strikeEvidence';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { submitDoodle, getDoodleCount } from '../app/actions';
@@ -41,6 +42,8 @@ interface StrikeRecord {
     data_source?: string;
     source_url?: string;
     timing_evidence?: TimingEvidence | null;
+    strike_events?: StrikeEvent[];
+    has_unknown_timing?: boolean;
     category: 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
     provider: string;
     status: 'CONFIRMED' | 'REQUIRES_DETAIL' | 'CANCELLED' | 'CONFIRMED (STRIKE)';
@@ -54,11 +57,6 @@ interface StrikeRecord {
 type TimeWindow = {
     start: string;
     end: string;
-};
-
-type Interval = {
-    s: number;
-    e: number;
 };
 
 function getManualDoodleBaseCount(strike: StrikeRecord) {
@@ -288,11 +286,12 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
 
     // Calculate current day state once, then map it to each card's visible time axis.
     const { isToday, currentMinutes } = useMemo(() => {
-        const now = new Date();
-        const todayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        // Strike windows are Italian local times, so "now" is read in Rome.
+        const [hours, minutes] = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+            .format(new Date()).split(':').map(Number);
         return {
-            isToday: strike.date === todayStr,
-            currentMinutes: now.getHours() * 60 + now.getMinutes(),
+            isToday: strike.date === new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()),
+            currentMinutes: hours * 60 + minutes,
         };
     }, [strike.date]);
 
@@ -348,7 +347,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         : [];
 
     const semanticWindows = strike.timing_evidence?.windows || [];
-    const hideClockTrack = semanticWindows.some(w => w.end_kind === "end_of_service");
+    const hasOpenEndpoint = semanticWindows.some(w => w.start === null || w.end_kind === "end_of_service");
     const isUnknownTime = !semanticWindows.length && (timeSlots.length === 0 || timeSlots.length === 1
         && timeSlots[0].start === '00:00'
         && timeSlots[0].end === '24:00'
@@ -360,23 +359,11 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         ? ["00:00 - 24:00"]
         : timeSlots.map((slot) => `${slot.start} - ${slot.end}`);
 
-    // Track Calculation Limits
-    let axisStartMin = 0;
-    let axisEndMin = 24 * 60; // 1440
-    let labelStart = "00:00";
-    let labelEnd = "24:00";
-
-    if (isMetro) {
-        axisStartMin = 5 * 60 + 30; // 05:30
-        axisEndMin = 24 * 60 + 30; // 24:30 (00:30 next day)
-        labelStart = "05:30";
-        labelEnd = "00:30 (次日)";
-    } else if (isTrain) {
-        axisStartMin = 5 * 60; // 05:00
-        axisEndMin = 25 * 60; // 25:00 (01:00 next day)
-        labelStart = "05:00";
-        labelEnd = "01:00 (次日)";
-    }
+    // A calendar-day axis works for every city and operator.
+    const axisStartMin = 0;
+    const axisEndMin = 1440;
+    const labelStart = semanticWindows.some(w=>w.start === null) ? pickText(language, '运营开始 →', 'Service starts →') : '00:00';
+    const labelEnd = semanticWindows.some(w=>w.end_kind === 'end_of_service') ? pickText(language, '→ 运营结束', '→ End of service') : '24:00';
 
     const currentTimeRatio = Math.min(1, Math.max(0, (currentMinutes - axisStartMin) / (axisEndMin - axisStartMin)));
     const currentTimePct = currentTimeRatio * 100;
@@ -396,85 +383,12 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         ? strike.guarantee_windows
         : buildFallbackGuarantees();
 
-    const guarantees: Interval[] = Array.isArray(guaranteeWindows)
-        ? guaranteeWindows.map((w: TimeWindow) => {
-            const [sh, sm] = w.start.split(':').map(Number);
-            const [eh, em] = w.end.split(':').map(Number);
-            let endMin = eh * 60 + em;
-            if (endMin === 0) endMin = 24 * 60; // 24:00 is 1440
-            return { s: sh * 60 + sm, e: endMin };
-        })
-        : [];
-
-    const strikeIntervals: Interval[] = timeSlots.map((slot: TimeWindow) => {
-        let startMin = 0;
-        let endMin = 24 * 60;
-
-        // Match the full visual track width if it's strictly a 24h event
-        if (slot.start === '00:00' && slot.end === '24:00') {
-            const effectiveStartMin = (isMetro || isBus) || isTrain ? axisStartMin : 0;
-            const effectiveEndMin = (isMetro || isBus) || isTrain ? axisEndMin : 24 * 60;
-            return { s: effectiveStartMin, e: effectiveEndMin };
-        }
-
-        const [sh, sm] = slot.start.split(':').map(Number);
-        const [eh, em] = slot.end.split(':').map(Number);
-        startMin = sh * 60 + sm;
-        endMin = eh * 60 + em;
-        if (endMin <= startMin && endMin === 0) endMin = 24 * 60;
-        if (endMin < startMin) endMin += 24 * 60;
-        return { s: startMin, e: endMin };
-    });
-
-    const getSegmentColor = (min: number) => {
-        const isStriking = strikeIntervals.some(inv => min >= inv.s && min < inv.e);
-        if (!isStriking) return 'grey';
-        const isGuaranteed = guarantees.some(inv => min >= inv.s && min < inv.e);
-        if (isGuaranteed) return 'green';
-        return 'red';
-    };
-
-    const points = new Set([axisStartMin, axisEndMin]);
-    strikeIntervals.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
-    guarantees.forEach((inv) => { points.add(inv.s); points.add(inv.e); });
-
-    const sortedPoints = Array.from(points).filter(p => p >= axisStartMin && p <= axisEndMin).sort((a, b) => a - b);
-    const segments: Array<{ colorType: string; widthPct: number; startMin: number; endMin: number }> = [];
-    for (let i = 0; i < sortedPoints.length - 1; i++) {
-        const segStart = sortedPoints[i];
-        const segEnd = sortedPoints[i + 1];
-        if (segStart === segEnd) continue;
-        const mid = (segStart + segEnd) / 2;
-        const colorType = getSegmentColor(mid);
-        const widthPct = ((segEnd - segStart) / (axisEndMin - axisStartMin)) * 100;
-        segments.push({ colorType, widthPct, startMin: segStart, endMin: segEnd });
-    }
-
-    // Calculate intersected guarantees text for display
-    const intersectedGuarantees: Interval[] = [];
-    guarantees.forEach((g) => {
-        strikeIntervals.forEach((s) => {
-            const overlapS = Math.max(g.s, s.s);
-            const overlapE = Math.min(g.e, s.e);
-            if (overlapS < overlapE) {
-                intersectedGuarantees.push({ s: overlapS, e: overlapE });
-            }
-        });
-    });
-
-    intersectedGuarantees.sort((a, b) => a.s - b.s);
-    const formatMin = (m: number) => {
-        const h = Math.floor(m / 60) % 24;
-        const mm = m % 60;
-        return `${h.toString().padStart(2, '0')}:${mm.toString().padStart(2, '0')}`;
-    };
-
-    // De-duplicate any identical guarantees
-    const uniqueIntersected = Array.from(new Set(intersectedGuarantees.map(g => `${formatMin(g.s)} - ${formatMin(g.e)}`)));
-
+    const segments = strikeTimeline(semanticWindows.length ? semanticWindows : timeSlots.map(w=>({...w,end_kind:'clock' as const})), guaranteeWindows, strike.status === 'CANCELLED', strike.has_unknown_timing);
+    const uniqueIntersected = guaranteeWindows.map(w => `${w.start} - ${w.end}`);
+    const formatMin = (m: number) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
 
     return (
-        <div className={`w-full transition-all duration-300 ${isDark
+        <div data-strike-card={strike.category} className={`w-full transition-all duration-300 ${isDark
             ? 'bg-black/70 ring-[3px] ring-black/20 rounded-[32px] overflow-hidden shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)]'
             : 'bg-white border-[3px] border-white/20 rounded-[32px] shadow-[0px_10px_40px_-10px_rgba(0,0,0,0.08)] overflow-hidden'
             }`}>
@@ -502,23 +416,16 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                     {timeLabelLines.map((line, index) => (
                         <span
                             key={`${line}-${index}`}
-                            className={`${hideClockTrack ? "text-[30px]" : "text-[36px]"} font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1E293B]'} leading-tight`}
+                            className={`${hasOpenEndpoint ? "text-[30px]" : "text-[36px]"} font-bold tracking-tight ${isDark ? 'text-white' : 'text-[#1E293B]'} leading-tight`}
                         >
                             {line}
                         </span>
                     ))}
                 </div>
 
-                {strike.timing_evidence && (
-                    <div className={`text-center text-[12px] leading-5 ${isDark ? 'text-white/70' : 'text-[#64748b]'}`}>
-                        <p>{strike.timing_evidence.unions}</p>
-                        <p>{strike.timing_evidence.confidence === 'official'
-                            ? pickText(language, '官方公告时段', 'Official timing')
-                            : strike.timing_evidence.confidence === 'conflict'
-                                ? pickText(language, '来源时段有出入，待核实', 'Sources disagree; awaiting verification')
-                                : pickText(language, '外部公告时段 · 以运营商最新通知为准', 'Reported timing · check the latest operator notice')}</p>
-                    </div>
-                )}
+                {strike.has_unknown_timing && <p className={`text-[12px] ${isDark ? 'text-white/70' : 'text-[#64748b]'}`}>
+                    {pickText(language, '另有公告的具体时段待核实', 'Some additional timing is awaiting verification')}
+                </p>}
                 <div className={`mt-2 rounded-lg px-3 py-1 flex items-center border ${isDark ? 'bg-white/20 border-white/10' : 'bg-[#F1F5F9] border-transparent'}`}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`mr-2 ${isDark ? 'text-white/70' : 'text-[#475569]'}`}>
                         <circle cx="12" cy="12" r="10"></circle>
@@ -529,13 +436,13 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
             </div>
 
             {/* An operator-relative endpoint cannot be plotted at a fictitious clock time. */}
-            {hideClockTrack && <p className={`px-6 mt-3 text-center text-[12px] ${isDark ? 'text-white/60' : 'text-[#64748b]'}`}>
-                {pickText(language, '运营结束时间因线路而异', 'End of service varies by line')}
+            {hasOpenEndpoint && <p className={`px-6 mt-3 text-center text-[12px] ${isDark ? 'text-white/60' : 'text-[#64748b]'}`}>
+                {pickText(language, '斜纹表示按线路运营时间，非固定钟点', 'Striped intervals follow service hours, which vary by line')}
             </p>}
             {/* Strict Single Track Visualization */}
-            {!hideClockTrack && <div className="mt-8 px-6 w-full">
-                <div className={`relative h-[8px] w-full rounded-full overflow-hidden flex ${isDark ? 'bg-[#E2E8F0]/25' : 'bg-gray-200'}`}>
-                    {isUnknownTime || hideClockTrack ? (
+            <div className="mt-8 px-6 w-full">
+                <div data-strike-timeline aria-label={pickText(language, '罢工时段时间轴', 'Strike timing timeline')} className={`relative h-[8px] w-full rounded-full overflow-hidden flex ${isDark ? 'bg-[#E2E8F0]/25' : 'bg-gray-200'}`}>
+                    {isUnknownTime && strike.status !== 'CANCELLED' ? (
                         <div className="h-full w-full" style={{
                             background: isDark
                                 ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.5) 0, rgba(0,0,0,0.5) 10px, #ca8a04 10px, #ca8a04 20px)'
@@ -547,6 +454,8 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             let glowStyle = '';
                             let zIndex = 'z-0';
 
+                            if (seg.colorType === 'open') bgColor = 'bg-[#EF4444]';
+                            if (seg.colorType === 'unknown') bgColor = 'bg-[#facc15]';
                             if (seg.colorType === 'red') bgColor = isDark ? 'bg-[#de4141]' : 'bg-[#EF4444]';
                             if (seg.colorType === 'green') {
                                 bgColor = isDark ? 'bg-[#5ab91b]' : 'bg-[#10B981]';
@@ -557,7 +466,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             }
                             const isGuaranteeSegment = seg.colorType === 'green' && uniqueIntersected.length > 0;
                             const className = `${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full ${isGuaranteeSegment ? 'appearance-none border-0 p-0 cursor-pointer hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#87ff38]' : ''}`;
-                            const style = { width: `${seg.widthPct}%` };
+                            const style = { width: `${seg.widthPct}%`, ...(seg.colorType === 'open' || seg.colorType === 'unknown' ? { backgroundImage: 'repeating-linear-gradient(135deg, transparent 0px, transparent 4px, rgba(255,255,255,0.6) 4px, rgba(255,255,255,0.6) 7px)' } : {}) };
 
                             if (isGuaranteeSegment) {
                                 return (
@@ -578,7 +487,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             )
                         })
                     )}
-                    {!isUnknownTime && !hideClockTrack && showElapsedOverlay && (
+                    {!isUnknownTime && showElapsedOverlay && (
                         <div
                             className="absolute inset-y-0 left-0 z-10 pointer-events-none overflow-hidden"
                             style={{
@@ -597,17 +506,17 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             />
                         </div>
                     )}
-                    {!isUnknownTime && !hideClockTrack && isToday && currentTimePct > 0 && currentTimePct < 100 && (
+                    {!isUnknownTime && isToday && currentTimePct > 0 && currentTimePct < 100 && (
                         <div
                             className={`absolute top-0 bottom-0 w-[2px] z-20 rounded-full ${isDark ? 'bg-white/95 shadow-[0_0_10px_rgba(255,255,255,0.35)]' : 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.55)]'}`}
                             style={{ left: `calc(${currentTimePct}% - 1px)` }}
                         />
                     )}
                 </div>
-            </div>}
+            </div>
 
             {/* Labels under track */}
-            {!isUnknownTime && !hideClockTrack && (
+            {!isUnknownTime && (
                 <div className="flex justify-between px-6 pt-2 w-full text-[10px] font-medium text-[#94A3B8]">
                     <span>{translateAxisLabel(labelStart, language)}</span>
                     <span>{translateAxisLabel(labelEnd, language)}</span>
@@ -626,7 +535,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                         <span className={`text-[14px] font-normal leading-[20px] ${isDark ? 'text-white' : 'text-[#334155]'}`}>
                             {uniqueIntersected.length > 0
                                 ? pickText(language, "保障时间段", "Protected service windows")
-                                : guarantees.length > 0
+                                : guaranteeWindows.length > 0
                                     ? pickText(language, "此时段无保障", "No protected service during this period")
                                     : pickText(language, "保障信息待核实", "Protected service information unverified")}
                         </span>
@@ -669,11 +578,22 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                 </div>
             </div>
 
+            {strike.strike_events && strike.strike_events.length > 1 && (
+                <details className={`mx-6 mb-4 text-[12px] ${isDark ? 'text-white/70' : 'text-[#64748b]'}`}>
+                    <summary className="cursor-pointer">{pickText(language, '查看各公告时段', 'Timing by announcement')}</summary>
+                    <ul className="mt-2 space-y-2">
+                        {strike.strike_events.map((event,index) => <li key={event.source_key || event.id || index}>
+                            {event.provider}{event.unions ? ` · ${event.unions}` : ''}: {event.status === 'CANCELLED' ? pickText(language, '已取消', 'Cancelled') : windowsDisplay(event.windows, language)}
+                        </li>)}
+                    </ul>
+                </details>
+            )}
             {/* Actions */}
             <div className="mx-6 mb-4 flex gap-3">
                 <button
                     onClick={async () => {
-                        const shareUrl = window.location.origin + '?date=' + strike.date;
+                        // Keep the city path: a Rome card must not share a Milan link.
+                        const shareUrl = `${window.location.origin}${window.location.pathname}?date=${strike.date}`;
                         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                         const platform = isWeChatBrowser() ? '微信' : (isMobile ? '系统原生' : 'desktop');
 
@@ -816,20 +736,21 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                 </span>
             </div>
 
-            {strike.timing_evidence && (
-                <div className={`px-6 pb-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] ${isDark ? 'text-white/70' : 'text-[#64748b]'}`}>
-                    {strike.timing_evidence.sources.map(source => (
-                        <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                            {pickText(language, '时段来源：', 'Timing: ')}{source.name} ↗
-                        </a>
-                    ))}
-                </div>
-            )}
-            {/* Outgoing Source Link */}
-            <div className={`w-full text-center py-4 border-t ${isDark ? 'border-white/20' : 'border-[#94A3B8]'}`}>
-                <a href={strike.source_url || "https://scioperi.mit.gov.it/mit2/public/scioperi"} target="_blank" rel="noopener noreferrer" className={`text-[10px] font-bold tracking-[0.5px] uppercase transition-colors underline underline-offset-2 ${isDark ? 'text-white/35 hover:text-white' : 'text-[#94A3B8] hover:text-[#0F172A]'}`}>
-                    {pickText(language, '来源: 意大利交通部官网 (MIT) ➔', 'Source: Italian Ministry of Transport (MIT) ->')}
+            {/* All source attribution stays inside the original bottom section. */}
+            <div className={`w-full text-center py-4 px-6 border-t ${isDark ? 'border-white/20 text-white/50' : 'border-[#94A3B8] text-[#94A3B8]'}`}>
+                <a href={strike.source_url || "https://scioperi.mit.gov.it/mit2/public/scioperi"} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold tracking-[0.5px] underline underline-offset-2">
+                    {pickText(language, '来源: 意大利交通部官网 (MIT) ➔', 'Source: Italian Ministry of Transport (MIT) →')}
                 </a>
+                {strike.timing_evidence && strike.timing_evidence.sources.length > 0 && <>
+                    <p className="text-[10px] mt-2 mb-2">{strike.timing_evidence.confidence === 'conflict'
+                        ? pickText(language, '部分来源有出入，待核实', 'Some sources disagree; awaiting verification')
+                        : strike.timing_evidence.sources.some(s=>s.authority === 'reported')
+                            ? pickText(language, '补充公告时段 · 以运营商最新通知为准', 'Reported timing · check the latest operator notice')
+                            : pickText(language, '补充官方公告', 'Additional official notices')}</p>
+                    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px]">
+                        {strike.timing_evidence.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{source.name} ↗</a>)}
+                    </div>
+                </>}
             </div>
 
         </div>

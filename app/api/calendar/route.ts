@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Process strikes using the same regional logic as the main app
     const regionScoped = filterStrikesForRegion(strikes, regionTag);
-    const aggregatedData = filterStrikesForRegion(aggregateStrikes(regionScoped), regionTag);
+    const aggregatedData = filterStrikesForRegion(aggregateStrikes(regionScoped, regionTag), regionTag);
 
     // Filter by requested types
     const filtered = aggregatedData.filter((s) => {
@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
         const description = [
             `城市: ${regionLabel}`, `罢工主体: ${strike.provider}`,
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
+            ...(strike.has_unknown_timing ? ['另有公告的具体时段待核实'] : []),
+            ...(strike.strike_events || []).map(event=>`${event.provider || '交通运营商'} ${event.unions || ''}: ${event.status === 'CANCELLED' ? '已取消' : event.windows.length ? event.windows.map(w=>`${w.start || '运营开始'} - ${w.end || '运营结束'}`).join(', ') : '具体时段待公布'}`),
             ...(strike.timing_evidence ? [
                 `时段信息: ${strike.timing_evidence.confidence === 'official' ? '官方公告' : strike.timing_evidence.confidence === 'conflict' ? '来源冲突，待核实' : '外部公告，以运营商最新通知为准'}`,
                 ...strike.timing_evidence.sources.map((source: { url: string; name: string }) => `时段来源: ${source.name} ${source.url}`),

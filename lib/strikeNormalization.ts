@@ -103,6 +103,7 @@ const PROVIDER_SYNONYMS: Array<{ match: RegExp; label: string }> = [
   { match: /\bDNATA\b|德纳达/i, label: '德纳达地服人员' },
   { match: /\bGDA\b/i, label: 'GDA地服人员' },
   { match: /\bMH24\b/i, label: 'MH24机场人员' },
+  { match: /\bATM\s+(?:DI\s+)?MESSINA\b/i, label: 'ATM Messina人员' },
   { match: /\bATM\b|米兰交通局/i, label: '米兰交通局人员' },
   { match: /\bMERCITALIA\b/i, label: 'Mercitalia铁路货运人员' },
   { match: /\bBUSITALIA\b/i, label: 'Busitalia人员' },
@@ -391,7 +392,12 @@ export function normalizeProviderPart(part: string, translatedText?: string) {
   cleaned = cleaned.replace(/[0-9]{2,}/g, ' ');
   cleaned = cleaned.replace(/[()[\]{}（）【】]/g, ' ');
   cleaned = cleaned.replace(EXTRA_SPACES_RE, ' ').trim();
-  if (!cleaned || cleaned === '人员' || MEANINGLESS_PROVIDER_RE.test(cleaned)) return '';
+  if (!cleaned || cleaned === '人员' || MEANINGLESS_PROVIDER_RE.test(cleaned)) {
+    // New operators must remain identifiable even before a Chinese synonym
+    // is registered. Preserve their source name rather than dropping it.
+    const sourceName=(part || '').replace(COMPANY_SUFFIX_RE,' ').replace(/\b(?:PERSONALE|GRUPPO|DI|DEL|DELLA|SOC)\b/gi,' ').replace(/[()[\]{}]/g,' ').replace(EXTRA_SPACES_RE,' ').trim();
+    return /[A-Za-z]{2}/.test(sourceName) ? /人员$/.test(sourceName) ? sourceName : `${sourceName}人员` : '';
+  }
   if (!ROLE_SUFFIX_RE.test(cleaned)) cleaned = `${cleaned}人员`;
   return cleaned;
 }

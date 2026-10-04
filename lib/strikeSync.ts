@@ -460,11 +460,9 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
   const providerLow = provider.toLowerCase();
   const sectorLow = sector.toLowerCase();
   const combinedLow = `${provider} ${sector} ${context}`.toLowerCase();
-  const isMilanAtm = /\batm\b/.test(providerLow) && providerLow.includes('milano');
-
-  // ATM in Milan is the local transit operator, so broad TPL strikes affect both metro and bus.
-  if (isMilanAtm && sectorLow.includes('trasporto pubblico')) return ['SUBWAY', 'BUS'];
-  if (/\batm\b/.test(providerLow)) return ['SUBWAY'];
+  const localTransit = /trasporto pubblico|autoferro|\btpl\b/.test(sectorLow);
+  const metroNetwork = /\batm\b.*milano|\batac\b|\bgtt\b|\banm\b|\bamt\b.*genova|\bamts\b|circumetnea|brescia.*(?:mobilita|trasporti)/.test(providerLow);
+  const specificMode = /metropolitan|\bmetro\b|autobus|\bbus\b|superficie|\btram\b/.test(providerLow);
 
   const categories = new Set<StrikeRecord['category']>();
   if (
@@ -477,7 +475,7 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
     categories.add('TRAIN');
   }
   if (
-    providerLow.includes('sea') ||
+    /\bsea\b/.test(providerLow) ||
     providerLow.includes('enav') ||
     combinedLow.includes('aereo') ||
     combinedLow.includes('aeroport') ||
@@ -492,6 +490,10 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
 
   if (!categories.size && sectorLow.includes('trasporto pubblico')) categories.add('BUS');
   if (/metropolitan|\bmetro\b/.test(providerLow)) categories.add('SUBWAY');
+  if (localTransit && metroNetwork && !specificMode) { categories.add('BUS'); categories.add('SUBWAY'); }
+  // A named metro division is not a blanket bus announcement. Messina's ATM
+  // operates buses/trams, so its acronym alone must never create a metro card.
+  if (localTransit && /metropolitan|\bmetro\b/.test(providerLow) && !/autobus|\bbus\b|superficie|\btram\b/.test(providerLow)) categories.delete('BUS');
   // An excluded mode does not exclude the other transport modes of a general strike.
   const excluded = combinedLow.match(/esclus[oaie]\s+(?:il\s+)?settor[ei]\s+([^.;]+)/)?.[1] || '';
   if (/aereo/.test(excluded)) categories.delete('AIRPORT');
@@ -531,7 +533,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
   for (let offset = 0; offset < rawRows.length; offset += 6) {
   const batch = rawRows.slice(offset, offset + 6);
   rawRecordGroups.push(...await Promise.all(batch.map(async (row) => {
-    const baseProviderNorm = await normalizeProvider(row.provider, translate);
+    const baseProviderNorm = row.region === 'MESSINA' && /\bATM\b/i.test(row.provider) ? 'ATM Messina人员' : await normalizeProvider(row.provider, translate);
     const categories = resolveCategories(row.provider, row.sector, `${row.modalita} ${row.note} ${row.rilevanza}`);
     const dateSpan = getDateSpan(row.date, row.endDate);
 

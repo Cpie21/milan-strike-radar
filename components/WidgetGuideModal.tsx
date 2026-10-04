@@ -115,7 +115,7 @@ function getMinutes(v) {
 function formatTime(item) {
   if (item && item.timing_evidence && item.timing_evidence.windows.length) {
     return item.timing_evidence.windows.map(function(w) {
-      return w.start + " - " + (w.end_kind === "end_of_service" ? "end of service" : w.end);
+      return (w.start === null ? "start of service" : w.start) + " - " + (w.end_kind === "end_of_service" ? "end of service" : w.end);
     }).join(", ");
   }
   if (!item || !item.strike_windows || !item.strike_windows.length) return "Time to be confirmed";
@@ -154,10 +154,13 @@ function dedupeStrikes(items) {
 }
 
 function getDotColor(item, nowMin) {
-  if (item && item.timing_evidence && item.timing_evidence.windows.some(w => w.end_kind === "end_of_service")) {
-    if (item.timing_evidence.windows.some(w => nowMin >= getMinutes(w.start) && (w.end_kind === "end_of_service" || nowMin < getMinutes(w.end)))) return C.red;
+  if (item && item.status === "CANCELLED") return C.grayDot;
+  if (item && item.timing_evidence && item.timing_evidence.windows.some(w => w.start === null || w.end_kind === "end_of_service")) {
+    // A service-relative endpoint cannot establish whether a particular line
+    // is currently stopped. Keep the widget cautionary rather than claiming it.
     return C.yellow;
   }
+  if (item && item.has_unknown_timing) return C.yellow;
   if (!item || !item.strike_windows || !item.strike_windows.length) return C.grayDot;
   let hasFuture = false;
   let hasActive = false;

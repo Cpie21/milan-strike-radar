@@ -21,8 +21,8 @@ test('whole-hour phrasing and separate metro/bus clauses have the correct scope'
 test('AL COBAS staff clause never imports the separate Trezzo evening window', () => {
   assert.deepEqual(parseExternalWindows('Gruppo Atm Personale Viaggiante Di Superficie, Metropolitana, Agenti Di Stazione, Serv. Poma 8.45-15.00 Net - Urbano Monza: 9.00-11.50 e 14.50-fine Servizio, Extraurbano Trezzo 8.45-15.00 e 18.00-fine Servizio', record()), expected.slice(0,1));
 });
-test('guarantees, previous strikes, impossible clocks, and overnight dates are not reported strike windows', () => {
-  for (const text of ['Servizi garantiti dalle 8.45 alle 15.00', 'Negli ultimi scioperi dalle 8.45 alle 15.00', '8.80-15.00', '25.00-26.00', '21.00-6.00', 'dalle 21.00 del 9/10 alle 21.00 del 10/10']) assert.deepEqual(parseExternalWindows(text,record()), []);
+test('guarantees, previous strikes, impossible clocks, and unanchored overnight times remain unresolved', () => {
+  for (const text of ['Servizi garantiti dalle 8.45 alle 15.00', 'Negli ultimi scioperi dalle 8.45 alle 15.00', '8.80-15.00', '25.00-26.00', '21.00-6.00']) assert.deepEqual(parseExternalWindows(text,record()), []);
 });
 test('calendar rows do not mix dates and unions of neighboring announcements', () => {
   const html = '<main><table><tr><td>9 Ottobre 2026 ATM Milano</td><td>Confial Trasporti</td><td>8:45–15:00 e 18:00–fine servizio</td></tr><tr><td>10 Ottobre 2026 ATM Milano</td><td>AL-COBAS</td><td>9:00–11:00</td></tr></table></main>';
@@ -42,7 +42,7 @@ test('matching external notice fills operational hours, preserves MIT identity a
 test('same-authority disagreements are retained for review and never adopted by majority', () => {
   const changed = notice({timing:'Atm Milano 9.00-15.00',source:source('https://www.virgilio.it/notizie/test')});
   const updated = applyTimingEvidence(record(),[notice(),notice(),changed]);
-  assert.equal(updated.status,'UNCERTAIN');assert.equal(updated.timing_evidence.confidence,'conflict');assert.equal(updated.strike_windows.length,0);assert.equal(updated.timing_evidence.conflicts.length,3);
+  assert.equal(updated.status,'UNCERTAIN');assert.equal(updated.timing_evidence.confidence,'conflict');assert.equal(updated.strike_windows.length,0);assert.equal(updated.timing_evidence.conflicts.length,2);
 });
 test('explicit MIT clocks win; an unqualified 24-hour duration can receive operational detail', () => {
   const explicit=record({status:'CONFIRMED',strike_windows:[{start:'09:00',end:'15:00'}]});
@@ -55,11 +55,11 @@ test('operator announcement outranks media, but the media disagreement remains v
   const updated=applyTimingEvidence(record(),[notice(),official]);
   assert.equal(updated.display_time,'09:00 - 15:00');assert.equal(updated.timing_evidence.confidence,'official');assert.equal(updated.timing_evidence.conflicts.length,1);
 });
-test('aggregation does not lose symbolic endpoints or merge unequal union windows', () => {
+test('journey aggregation preserves symbolic endpoints and underlying distinct notices', () => {
   const a=applyTimingEvidence(record(),[notice()]);
   const b=applyTimingEvidence(record({source_key:'other'}),[notice()]);
   const c=applyTimingEvidence(record({source_key:'third'}),[notice({timing:'Atm Milano 8.45-15.00'})]);
-  const rows=aggregateStrikes([a,b,c]).filter(r=>r.category === "SUBWAY");assert.equal(rows.length,2);assert.equal(rows[0].display_time,a.display_time);assert.deepEqual(rows[0].timing_evidence.windows,expected);
+  const rows=aggregateStrikes([a,b,c]).filter(r=>r.category === "SUBWAY");assert.equal(rows.length,1);assert.equal(rows[0].strike_events.length,3);assert.equal(rows[0].display_time,a.display_time);assert.deepEqual(rows[0].timing_evidence.windows,expected);
 });
 test('discovery rejects private URLs, credentials, nonstandard ports and redirects outside approved hosts', () => {
   for(const url of ['http://sciopero.net/', 'https://127.0.0.1/', 'https://localhost/', 'https://sciopero.net.evil.example/', 'https://user:pass@sciopero.net/', 'https://sciopero.net:8443/']) assert.equal(allowedSourceUrl(url),false);

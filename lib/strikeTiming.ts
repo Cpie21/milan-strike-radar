@@ -49,7 +49,7 @@ export function timingFromWindows(windows: TimeWindow[], fallback = '时段待�
 }
 
 export function parseStrikeTiming(text: string, category?: TimingCategory, dateIso?: string) {
-  const scoped = scopeTiming(text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[，,](?=\d{2}\b)/g, ':').replace(/[–—]/g, '-'), category).toUpperCase();
+  const scoped = scopeTiming(text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[，,](?=\d{2}\b)/g, ':').replace(/[–—]/g, '-').replace(/\b(\d{1,2}[.:]\d{2})\s*\/\s*(\d{1,2}[.:]\d{2})\b/g,'$1 - $2'), category).toUpperCase();
   const fallbackHours = scoped.match(/\b(\d+)\s*ORE\b/)?.[1];
   const windows: TimeWindow[] = [];
   const explicitDates = new Set<string>();
@@ -59,7 +59,7 @@ export function parseStrikeTiming(text: string, category?: TimingCategory, dateI
     const parsed = new Date(`${value}T12:00:00Z`);
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value ? value : null;
   };
-  const range = /(?:DALLE?\s+(?:ORE\s+)?)?\b(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?\s*(?:ALLE?\s+(?:ORE\s+)?|-)\s*(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?(?![\d.:])/g;
+  const range = /(?:DALLE?\s+(?:ORE\s+)?)?\b(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?\s*(?:ALLE?\s+(?:ORE\s+)?|-)\s*(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?(?![\d:]|\.\d)/g;
   let dateSpecific = false;
   let attemptedRange = false;
   for (const match of scoped.matchAll(range)) {
