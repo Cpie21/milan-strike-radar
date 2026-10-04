@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, MotionConfig, useAnimation } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { CITY_OPTIONS, resolveCity } from '../lib/cities';
+import { addDaysIso, dateFromIso, isIsoDate, romeTodayIso } from '../lib/romeDate';
 import StrikeCard from "./StrikeCard";
-import { upcomingJourneyDays } from '../lib/strikePresentation';
+import AskBar from "./ask/AskBar";
 import WechatGuide from "./WechatGuide";
 import CalendarSyncModal from "./CalendarSyncModal";
 import WidgetGuideModal from "./WidgetGuideModal";
@@ -205,14 +206,7 @@ export default function StrikeDashboard({
         return `${year}-${month}-${day}`;
     };
 
-    const isToday = (date: Date) => {
-        const today = new Date();
-        return (
-            date.getDate() === today.getDate() &&
-            date.getMonth() === today.getMonth() &&
-            date.getFullYear() === today.getFullYear()
-        );
-    };
+    const isToday = (date: Date) => getLocalDateStr(date) === romeTodayIso();
 
     const CN_DAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
     const EN_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -329,7 +323,7 @@ export default function StrikeDashboard({
         triggerRegionChange(selectorWheelOptions[nextWheelIndex]?.tag || REGION_OPTIONS[((nextWheelIndex % REGION_OPTIONS.length) + REGION_OPTIONS.length) % REGION_OPTIONS.length].tag);
     }, [selectorWheelIndex, selectorWheelOptions, syncWheelIndex, triggerRegionChange]);
     // States
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date>(() => dateFromIso(romeTodayIso()));
     const [selectedCategories, setSelectedCategories] = useState<
         Record<string, boolean>
     >({
@@ -362,7 +356,7 @@ export default function StrikeDashboard({
 
     const [showTutorial, setShowTutorial] = useState<boolean>(false);
     const [visibleMonth, setVisibleMonth] = useState<number>(
-        new Date().getMonth() + 1,
+        Number(romeTodayIso().slice(5, 7)),
     );
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const container = e.currentTarget;
@@ -469,25 +463,19 @@ export default function StrikeDashboard({
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const dateParam = params.get('date');
-            if (dateParam) {
-                // Ensure the date is selected
-                const targetDate = new Date(`${dateParam}T12:00:00`);
-                if (!isNaN(targetDate.getTime())) {
-                    setSelectedDate(targetDate);
-                    setHighlightedDate(dateParam);
-
-                    setTimeout(() => {
-                        const el = document.getElementById(`cards-list-top`);
-                        if (el) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                        // Remove highlight after 3 seconds
-                        setTimeout(() => setHighlightedDate(null), 3000);
-                    }, 500); // Give it time to render
-                }
-            }
+            if (isIsoDate(dateParam)) openDate(dateParam);
         }
     }, []);
+
+    // Selects a day, centres it in the strip and brings its cards into view.
+    function openDate(iso: string) {
+        scrollToDate(dateFromIso(iso));
+        setHighlightedDate(iso);
+        setTimeout(() => {
+            document.getElementById('cards-list-top')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => setHighlightedDate(null), 3000);
+        }, 500);
+    }
     const [donateAmount, setDonateAmount] = useState<number | string>(1);
     const [isCustomAmount, setIsCustomAmount] = useState(false);
 
@@ -569,8 +557,8 @@ export default function StrikeDashboard({
 
     // Initial scroll to today
     useEffect(() => {
-        const dateStr = getLocalDateStr(new Date());
-        const el = document.getElementById(`date-btn-${dateStr}`);
+        if (isIsoDate(new URLSearchParams(window.location.search).get('date'))) return;
+        const el = document.getElementById(`date-btn-${romeTodayIso()}`);
         if (el) {
             el.scrollIntoView({
                 behavior: "auto",
@@ -584,20 +572,34 @@ export default function StrikeDashboard({
 
     const scrollToDate = (d: Date) => {
         setSelectedDate(d);
+        setVisibleMonth(d.getMonth() + 1);
         setTimeout(() => {
+            // Scroll the strip itself: a second scrollIntoView on the page
+            // (to the cards) would cancel a smooth horizontal one.
             const el = document.getElementById(`date-btn-${getLocalDateStr(d)}`);
-            if (el)
-                el.scrollIntoView({
-                    behavior: "smooth",
-                    inline: "center",
-                    block: "nearest",
-                });
+            const strip = scrollContainerRef.current;
+            if (el && strip) {
+                strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+            }
         }, 50);
     };
 
-    // Expose the entire synchronization range, including year and DST changes.
+    // The strip covers the past week and every announced strike, at least 30
+    // days ahead, so no published strike is unreachable.
+    const lastStrikeIso = useMemo(
+        () => strikesData.reduce((last: string, strike: any) => (strike?.date > last ? strike.date : last), ''),
+        [strikesData],
+    );
     const generateDays = () => {
-        return upcomingJourneyDays().map(iso=>new Date(`${iso}T12:00:00`));
+        const todayIso = romeTodayIso();
+        const selectedIso = getLocalDateStr(selectedDate);
+        const candidatesStart = [addDaysIso(todayIso, -7), selectedIso].sort();
+        const candidatesEnd = [addDaysIso(todayIso, 90), lastStrikeIso, selectedIso].sort();
+        const days = [];
+        for (let iso = candidatesStart[0]; iso <= candidatesEnd[candidatesEnd.length - 1]; iso = addDaysIso(iso, 1)) {
+            days.push(dateFromIso(iso));
+        }
+        return days;
     };
     const daysStrip = generateDays();
 
@@ -785,7 +787,7 @@ export default function StrikeDashboard({
                                     <input
                                         type="date"
                                         className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:top-0 [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:z-30"
-                                        min={getLocalDateStr(new Date()) > getLocalDateStr(daysStrip[0]) ? getLocalDateStr(new Date()) : getLocalDateStr(daysStrip[0])}
+                                        min={getLocalDateStr(daysStrip[0])}
                                         max={getLocalDateStr(daysStrip[daysStrip.length - 1])}
                                         onChange={(e) => {
                                             if (e.target.value) {
@@ -803,7 +805,8 @@ export default function StrikeDashboard({
                     {/* 2. Controls & Strip */}
                     <div className="flex flex-col gap-2 w-full shrink-0 z-30 relative pt-0 pb-0">
                         {/* Date Strip */}
-                        <div
+                        <motion.div
+                            layoutScroll
                             ref={scrollContainerRef}
                             onScroll={handleScroll}
                             onMouseDown={handleMouseDown}
@@ -864,7 +867,7 @@ export default function StrikeDashboard({
                                     })}
                                 </motion.div>
                             </AnimatePresence>
-                        </div>
+                        </motion.div>
                     </div>
 
                     {/* Transport Filter Toggles */}
@@ -1766,6 +1769,14 @@ export default function StrikeDashboard({
                         </motion.div>
                     )}
                 </AnimatePresence>
+                <AskBar
+                    regionTag={regionTag}
+                    language={language}
+                    onOpenDate={(date, path) => {
+                        if (path === (REGION_OPTIONS.find(option => option.tag === regionTag.toUpperCase())?.path ?? '/')) openDate(date);
+                        else router.push(`${path}?date=${date}`);
+                    }}
+                />
             </main>
         </MotionConfig >
     );

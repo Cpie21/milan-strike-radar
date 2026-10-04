@@ -7,6 +7,7 @@ import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
 import { scopeTitle, scopeOf, type GuaranteeSource } from '../lib/strikeScope';
+import { romeTodayIso } from '../lib/romeDate';
 import DoodleCanvas, { DoodleCategory } from './DoodleOverlay';
 import { capture, isWeChatBrowser } from '../utils/analytics';
 import {
@@ -282,7 +283,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         const [hours, minutes] = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
             .format(new Date()).split(':').map(Number);
         return {
-            isToday: strike.date === new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()),
+            isToday: strike.date === romeTodayIso(),
             currentMinutes: hours * 60 + minutes,
         };
     }, [strike.date]);

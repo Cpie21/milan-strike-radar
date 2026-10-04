@@ -1,0 +1,455 @@
+import { cityPath, resolveCity } from '../cities';
+import { addDaysIso } from '../romeDate';
+import { readCityStrikes, romeToday, serverDatabase } from '../strikeQuery';
+import { windowsDisplay } from '../strikePresentation';
+import type { EvidenceWindow } from '../strikeEvidence';
+import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
+import { choice, decide, noul, type DecisionResult } from './jev';
+import { parseQuery, weekEnd, type DateScope, type Mode, type ParsedQuery } from './parseQuery';
+
+// Query → understanding → retrieval → parallel decisions → evidence.
+// Jev classifies and judges relevance; code owns dates, clock arithmetic,
+// impact levels and every fact shown to the user; the database owns the facts.
+
+export type Intent = 'trip_check' | 'day_check' | 'period_check' | 'claim_check' | 'other';
+export type Impact = 'high' | 'unknown' | 'medium' | 'low' | 'none' | 'cancelled';
+export type Overlap = 'strike' | 'guarantee' | 'outside' | 'unknown';
+export type Reason = 'direct' | 'broad' | 'adjacent' | 'other_operator' | 'unrelated';
+export type Action = 'as_planned' | 'guarantee_window' | 'switch_mode' | 'extra_time' | 'reschedule' | 'watch_updates';
+export type ClaimVerdict = 'confirms' | 'exaggerates' | 'contradicts';
+export type By = 'rule' | 'jev' | 'default';
+
+export type Hints = { date?: string; range?: 'week' | 'upcoming'; modes?: Mode[] };
+
+export type Understanding = {
+  query: string;
+  intent: Intent;
+  intentP: number | null;
+  scope: DateScope | null;
+  scopeBy: By;
+  time: string | null;
+  city: string;
+  cityBy: By;
+  modes: { mode: Mode; by: By; p: number | null }[];
+  lines: string[];
+  fallback: boolean;
+};
+
+export type Candidate = {
+  key: string;
+  date: string;
+  category: Mode;
+  city: string;
+  path: string;
+  provider: string;
+  status: string;
+  national: boolean;
+  windows: EvidenceWindow[];
+  display: string;
+  guarantees: { start: string; end: string }[];
+  lines: string[];
+  sources: { name: string; url: string; authority: string }[];
+};
+
+export type Judged = Candidate & {
+  relevance: number | null;
+  reason: Reason | null;
+  action: Action;
+  evidence: number | null;
+  claim: ClaimVerdict | null;
+  overlap: Overlap | null;
+  impact: Impact;
+};
+
+export type DaySummary = { date: string; path: string; items: { category: Mode; status: string; display: string }[] };
+
+export type AskResult =
+  | { kind: 'clarify'; missing: 'date' | 'mode'; understanding: Understanding }
+  | { kind: 'navigate'; understanding: Understanding; path: string; date: string }
+  | { kind: 'out_of_scope'; understanding: Understanding }
+  | {
+      kind: 'result';
+      view: 'trip' | 'day' | 'period' | 'claim';
+      understanding: Understanding;
+      level: Impact | 'clear';
+      matches: Judged[];
+      excluded: Judged[];
+      days: DaySummary[];
+      range: { from: string; to: string };
+      lastSync: string | null;
+      cost: number;
+    };
+
+export type Fact = { label: string; value: string; by: By | 'db'; p?: number | null };
+export type StageEvent = { type: 'stage'; id: 'understand' | 'retrieve' | 'judge' | 'evidence'; facts: Fact[]; ms: number; note?: string };
+
+const MODES: Mode[] = ['TRAIN', 'SUBWAY', 'BUS', 'AIRPORT'];
+const MODE_EN: Record<Mode, string> = { TRAIN: 'train / railway', SUBWAY: 'metro', BUS: 'bus / tram', AIRPORT: 'flights / airport' };
+const MODE_ZH: Record<Mode, string> = { TRAIN: '火车', SUBWAY: '地铁', BUS: '公交', AIRPORT: '机场' };
+const IMPACT_ORDER: Impact[] = ['high', 'unknown', 'medium', 'low', 'none', 'cancelled'];
+const MAX_JUDGED = 8;
+
+const UNDERSTAND_QUESTIONS = {
+  intent: {
+    type: 'choice' as const,
+    instructions: 'What is the user asking about Italian transport strikes?',
+    criteria: {
+      trip_check: 'Whether one planned journey of theirs (a trip, commute, train, flight or line at some time) will be affected',
+      day_check: 'Which strikes happen on one particular day, without describing a journey',
+      period_check: 'Which strikes happen over a period such as this week, next week, this month or upcoming days',
+      claim_check: 'Whether a message, news item or rumour they heard about a strike is true',
+      other: 'Not a question about Italian transport strikes',
+    },
+  },
+  ...Object.fromEntries(MODES.map(mode => [`mode_${mode}`, {
+    type: 'noul' as const,
+    instructions: `The user's question involves ${MODE_EN[mode]}${mode === 'AIRPORT' ? ', including catching a flight' : ''}.`,
+  }])),
+};
+
+function judgeQuestions(claim: boolean) {
+  return {
+    relevant: {
+      type: 'noul' as const,
+      instructions: 'Would this strike plausibly disrupt the journey or answer the question the user described? Judge operator, line, transport mode and place. A strike by a different operator than the one the user relies on (for example a regional Trenord strike for a high-speed Frecciarossa trip) is not relevant; a national or general strike of the same mode is relevant.',
+      criteria: { true: 'The strike can affect what the user asked about', false: 'The strike does not concern what the user asked about' },
+    },
+    reason: {
+      type: 'choice' as const,
+      instructions: 'How does this strike relate to what the user asked?',
+      criteria: {
+        direct: 'Same transport mode and the operator or line the user uses',
+        broad: 'A general or national strike that covers the user\'s transport mode',
+        adjacent: 'Affects how the user reaches their trip, such as trains or buses to the airport',
+        other_operator: 'Same mode but a different operator or line than the user\'s',
+        unrelated: 'Unrelated to the user\'s question',
+      },
+    },
+    action: {
+      type: 'choice' as const,
+      instructions: 'Given the strike hours and guaranteed service, what should the user most sensibly do?',
+      criteria: {
+        as_planned: 'Travel as planned',
+        guarantee_window: 'Travel during the guaranteed service hours',
+        switch_mode: 'Use another transport mode or operator',
+        extra_time: 'Travel but allow extra time',
+        reschedule: 'Move the trip to another day or time',
+        watch_updates: 'Wait for the operator to publish details',
+      },
+    },
+    evidence: {
+      type: 'noul' as const,
+      instructions: 'The official record states hours and scope concretely enough to answer the user\'s question.',
+    },
+    ...(claim ? {
+      claim: {
+        type: 'choice' as const,
+        instructions: 'Compare the message the user heard with this official strike record.',
+        criteria: {
+          confirms: 'The official record supports the message',
+          exaggerates: 'There is a strike, but the message overstates its scope, modes or hours',
+          contradicts: 'The official record contradicts the message',
+        },
+      },
+    } : {}),
+  };
+}
+
+function minutes(value: string) {
+  const [h, m] = value.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function spans(windows: EvidenceWindow[]) {
+  return windows.map(w => {
+    const start = w.start === null ? 0 : minutes(w.start);
+    const end = w.end_kind === 'end_of_service' || w.end === null ? 1440 : minutes(w.end);
+    return { start, end: end <= start ? 1440 : end };
+  });
+}
+
+export function computeOverlap(time: string | null, windows: EvidenceWindow[], guarantees: { start: string; end: string }[]): Overlap | null {
+  if (!time) return null;
+  if (!windows.length) return 'unknown';
+  const t = minutes(time);
+  if (guarantees.some(g => t >= minutes(g.start) && t < minutes(g.end))) return 'guarantee';
+  return spans(windows).some(s => t >= s.start && t < s.end) ? 'strike' : 'outside';
+}
+
+export function computeImpact(status: string, windows: EvidenceWindow[], overlap: Overlap | null): Impact {
+  if (status === 'CANCELLED') return 'cancelled';
+  if (!windows.length) return 'unknown';
+  if (overlap === 'guarantee') return 'low';
+  if (overlap === 'strike') return 'high';
+  if (overlap === 'outside') return 'none';
+  const covered = spans(windows).reduce((sum, s) => sum + s.end - s.start, 0);
+  return covered >= 12 * 60 ? 'high' : 'medium';
+}
+
+function guardAction(impact: Impact, overlap: Overlap | null, suggested: Action | null): Action {
+  // Facts the code knows outrank the model's suggestion.
+  if (impact === 'cancelled' || overlap === 'outside') return 'as_planned';
+  if (impact === 'unknown') return 'watch_updates';
+  if (overlap === 'guarantee') return 'guarantee_window';
+  return suggested && suggested !== 'as_planned' ? suggested : 'extra_time';
+}
+
+function heuristicIntent(parsed: ParsedQuery): Intent {
+  if (/真的吗|是真的|属实|听说|群里|据说|谣言|\btrue\b|rumou?r/i.test(parsed.text)) return 'claim_check';
+  if (parsed.scope?.kind === 'range') return 'period_check';
+  if (parsed.time || parsed.lines.length || /我|坐|乘|赶|去|回|飞|commute|\bmy\b|\bi\b/i.test(parsed.text)) return 'trip_check';
+  return parsed.scope ? 'day_check' : 'trip_check';
+}
+
+function applyHints(parsed: ParsedQuery, hints: Hints): { scopeBy: By } {
+  if (hints.date && /^\d{4}-\d{2}-\d{2}$/.test(hints.date)) parsed.scope = { kind: 'day', date: hints.date, text: hints.date };
+  if (hints.range === 'week') parsed.scope = { kind: 'range', from: parsed.today, to: weekEnd(parsed.today), text: 'this week' };
+  if (hints.range === 'upcoming') parsed.scope = { kind: 'range', from: parsed.today, to: addDaysIso(parsed.today, 14), text: 'upcoming' };
+  if (hints.modes?.length) parsed.modes = [...new Set([...parsed.modes, ...hints.modes.filter(m => MODES.includes(m))])];
+  return { scopeBy: 'rule' };
+}
+
+async function lastSuccessfulSync() {
+  const { data } = await serverDatabase().from('strike_sync_runs').select('completed_at').eq('status', 'success').order('completed_at', { ascending: false }).limit(1).maybeSingle();
+  return data?.completed_at ?? null;
+}
+
+type EventRow = {
+  id?: string | number;
+  source_key?: string;
+  source_url?: string;
+  provider?: string;
+  status?: string;
+  region?: string;
+  windows?: EvidenceWindow[];
+  guarantee_windows?: { start: string; end: string }[];
+  timing_evidence?: { sources?: { name: string; url: string; authority: string }[] } | null;
+};
+type DayRow = EventRow & { date: string; category: Mode; affected_lines?: string[]; strike_events?: EventRow[] };
+
+async function loadCandidates(cityTags: string[], from: string, to: string): Promise<Candidate[]> {
+  const seen = new Set<string>();
+  const out: Candidate[] = [];
+  for (const tag of cityTags) {
+    const scoped = filterStrikesForRegion(await readCityStrikes(tag, from), tag);
+    const rows = scoped as unknown as EventRow[];
+    const nationalIds = new Set(rows.filter(r => String(r.region).toUpperCase() === 'NATIONAL').map(r => String(r.source_key || r.id)));
+    for (const row of aggregateStrikes(scoped, tag) as unknown as DayRow[]) {
+      if (row.date < from || row.date > to || !MODES.includes(row.category)) continue;
+      const events = row.strike_events?.length ? row.strike_events : [row];
+      for (const event of events) {
+        const national = nationalIds.has(String(event.source_key || event.id));
+        const key = `${event.source_key || event.id || event.provider}|${row.date}|${row.category}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const windows: EvidenceWindow[] = event.windows || [];
+        out.push({
+          key,
+          date: row.date,
+          category: row.category,
+          city: tag,
+          path: cityPath(tag),
+          provider: event.provider || row.provider || '',
+          status: event.status || row.status || 'CONFIRMED',
+          national,
+          windows,
+          display: windows.length ? windowsDisplay(windows) : '',
+          guarantees: event.guarantee_windows || [],
+          lines: row.affected_lines || [],
+          sources: [
+            ...(event.source_url ? [{ name: '意大利交通部 MIT', url: event.source_url, authority: 'official' }] : []),
+            ...(event.timing_evidence?.sources || []).map(s => ({ name: s.name, url: s.url, authority: s.authority })),
+          ].filter((s, i, all) => all.findIndex(o => o.url === s.url) === i),
+        });
+      }
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.category.localeCompare(b.category));
+}
+
+export async function runAsk(query: string, pageCity: string, hints: Hints, emit: (event: StageEvent) => void): Promise<AskResult> {
+  const today = romeToday();
+  let cost = 0;
+
+  // 1. Understanding: rules for facts, Jev for intent and semantic modes.
+  let started = Date.now();
+  const parsed = parseQuery(query, today);
+  const { scopeBy } = applyHints(parsed, hints);
+  let understood: DecisionResult | null = null;
+  try {
+    understood = await decide({ query, today, page_city: resolveCity(pageCity)?.en }, UNDERSTAND_QUESTIONS);
+    cost += understood.cost;
+  } catch (error) {
+    console.error('[ask] understanding fallback:', error instanceof Error ? error.message : error);
+  }
+  const intentAnswer = choice(understood, 'intent');
+  const intent = (intentAnswer?.value as Intent) || heuristicIntent(parsed);
+  const modeSet = new Map<Mode, { by: By; p: number | null }>();
+  parsed.modes.forEach(mode => modeSet.set(mode, { by: 'rule', p: null }));
+  for (const mode of MODES) {
+    const p = noul(understood, `mode_${mode}`);
+    // Explicit keywords already name the mode; then only a strong semantic signal adds another.
+    const threshold = parsed.modes.length ? 0.85 : 0.5;
+    if (p !== null && p >= threshold && !modeSet.has(mode)) modeSet.set(mode, { by: 'jev', p });
+    else if (p !== null && modeSet.has(mode)) modeSet.set(mode, { by: 'rule', p });
+  }
+  const pageTag = resolveCity(pageCity)?.tag || 'MILANO';
+  // The page city is where the user is; a named city may be a destination, so both are searched.
+  const city = parsed.cities.includes(pageTag) ? pageTag : parsed.cities[0] || pageTag;
+  const understanding: Understanding = {
+    query,
+    intent,
+    intentP: intentAnswer?.p ?? null,
+    scope: parsed.scope,
+    scopeBy: parsed.scope ? scopeBy : 'default',
+    time: parsed.time,
+    city,
+    cityBy: parsed.cities.length ? 'rule' : 'default',
+    modes: [...modeSet].map(([mode, v]) => ({ mode, ...v })),
+    lines: parsed.lines,
+    fallback: !understood,
+  };
+  const cityLabel = resolveCity(city)?.zh || city;
+  emit({
+    type: 'stage', id: 'understand', ms: Date.now() - started,
+    note: understood ? undefined : 'jev_unavailable',
+    facts: [
+      { label: 'intent', value: intent, by: understood ? 'jev' : 'rule', p: understanding.intentP },
+      { label: 'date', value: parsed.scope ? (parsed.scope.kind === 'day' ? parsed.scope.date : `${parsed.scope.from} → ${parsed.scope.to}`) : '', by: parsed.scope ? 'rule' : 'default' },
+      { label: 'time', value: parsed.time || '', by: 'rule' },
+      { label: 'city', value: cityLabel, by: understanding.cityBy },
+      ...understanding.modes.map(m => ({ label: 'mode', value: MODE_ZH[m.mode], by: m.by, p: m.p })),
+      ...parsed.lines.map(line => ({ label: 'line', value: line, by: 'rule' as const })),
+    ],
+  });
+
+  // 2. Branching: decide what is still missing before touching the database.
+  if (intent === 'other' && (intentAnswer?.p ?? 0) >= 0.6 && !modeSet.size) return { kind: 'out_of_scope', understanding };
+  let view: 'trip' | 'day' | 'period' | 'claim';
+  if (intent === 'claim_check') view = 'claim';
+  else if (intent === 'period_check' || parsed.scope?.kind === 'range') view = 'period';
+  else if (intent === 'day_check') view = 'day';
+  else view = 'trip';
+
+  if (!parsed.scope) {
+    if (view === 'trip' || view === 'day') return { kind: 'clarify', missing: 'date', understanding };
+    parsed.scope = { kind: 'range', from: today, to: addDaysIso(today, 14), text: 'upcoming' };
+    understanding.scope = parsed.scope;
+  }
+  if (view === 'trip' && !modeSet.size) return { kind: 'clarify', missing: 'mode', understanding };
+  if (view === 'day' && !modeSet.size && parsed.scope.kind === 'day') {
+    return { kind: 'navigate', understanding, path: cityPath(city), date: parsed.scope.date };
+  }
+
+  // 3. Retrieval: deterministic date and city filtering in the database.
+  started = Date.now();
+  const from = parsed.scope.kind === 'day' ? parsed.scope.date : parsed.scope.from;
+  const to = parsed.scope.kind === 'day' ? parsed.scope.date : parsed.scope.to;
+  const cityTags = [...new Set([city, ...parsed.cities, pageTag])].slice(0, 3);
+  const [all, lastSync] = await Promise.all([loadCandidates(cityTags, from, to), lastSuccessfulSync()]);
+  const wanted = new Set(modeSet.keys());
+  // Trains and buses reach airports, so an airport trip also judges them.
+  if (wanted.has('AIRPORT') && view === 'trip') { wanted.add('TRAIN'); wanted.add('BUS'); }
+  const pool = wanted.size ? all.filter(c => wanted.has(c.category)) : all;
+  emit({
+    type: 'stage', id: 'retrieve', ms: Date.now() - started,
+    facts: [
+      { label: 'range', value: from === to ? from : `${from} → ${to}`, by: 'db' },
+      { label: 'records', value: String(all.length), by: 'db' },
+      { label: 'candidates', value: String(pool.length), by: 'db' },
+    ],
+  });
+
+  // Period overviews list facts per day; no per-record judgement is needed.
+  if (view === 'period') {
+    const byDay = new Map<string, DaySummary>();
+    for (const c of pool) {
+      const day = byDay.get(c.date) || { date: c.date, path: c.path, items: [] };
+      const same = day.items.find(i => i.category === c.category && i.status === c.status);
+      if (!same) day.items.push({ category: c.category, status: c.status, display: c.display });
+      else if (c.display && !same.display.includes(c.display)) same.display = same.display ? `${same.display}; ${c.display}` : c.display;
+      byDay.set(c.date, day);
+    }
+    const days = [...byDay.values()];
+    const active = pool.filter(c => c.status !== 'CANCELLED');
+    emit({ type: 'stage', id: 'evidence', ms: 0, facts: [{ label: 'sync', value: lastSync || '', by: 'db' }] });
+    return { kind: 'result', view, understanding, level: active.length ? 'medium' : 'clear', matches: [], excluded: [], days, range: { from, to }, lastSync, cost };
+  }
+
+  // 4. Parallel decisions: one Jev call per candidate, all at once.
+  started = Date.now();
+  const judgedPool = pool.slice(0, MAX_JUDGED);
+  let jevFailures = 0;
+  const judged: Judged[] = await Promise.all(judgedPool.map(async candidate => {
+    const overlap = computeOverlap(parsed.time, candidate.windows, candidate.guarantees);
+    const impact = computeImpact(candidate.status, candidate.windows, overlap);
+    let result: DecisionResult | null = null;
+    try {
+      result = await decide({
+        user_question: query,
+        user_trip: {
+          date: parsed.scope?.kind === 'day' ? parsed.scope.date : `${from} to ${to}`,
+          time: parsed.time || 'not specified',
+          transport: understanding.modes.map(m => MODE_EN[m.mode]),
+          lines: parsed.lines,
+          city: resolveCity(city)?.en,
+        },
+        strike: {
+          date: candidate.date,
+          transport: MODE_EN[candidate.category],
+          striking_staff: candidate.provider,
+          scope: candidate.national ? 'national, all of Italy' : `local to ${resolveCity(candidate.city)?.en}`,
+          status: candidate.status === 'CANCELLED' ? 'cancelled / revoked' : candidate.status === 'UNCERTAIN' ? 'announced, hours not yet published' : 'confirmed',
+          hours: candidate.display || 'not published',
+          hours_covered_of_24: candidate.windows.length ? Math.round(spans(candidate.windows).reduce((sum, s) => sum + s.end - s.start, 0) / 60) : null,
+          guaranteed_service: candidate.guarantees.map(g => `${g.start}-${g.end}`).join(', ') || 'none published',
+          affected_lines: candidate.lines,
+        },
+        computed_by_code: {
+          user_time_vs_strike: overlap === 'strike' ? 'inside strike hours' : overlap === 'guarantee' ? 'inside guaranteed service hours' : overlap === 'outside' ? 'outside strike hours' : overlap === 'unknown' ? 'strike hours unknown' : 'user gave no time',
+        },
+      }, judgeQuestions(view === 'claim'));
+      cost += result.cost;
+    } catch (error) {
+      jevFailures += 1;
+      console.error('[ask] judgement fallback:', error instanceof Error ? error.message : error);
+    }
+    const suggested = choice(result, 'action')?.value as Action | undefined;
+    return {
+      ...candidate,
+      relevance: result ? noul(result, 'relevant') : wanted.size ? (modeSet.has(candidate.category) ? 1 : 0.4) : null,
+      reason: (choice(result, 'reason')?.value as Reason) ?? null,
+      action: guardAction(impact, overlap, suggested ?? null),
+      evidence: noul(result, 'evidence'),
+      claim: (choice(result, 'claim')?.value as ClaimVerdict) ?? null,
+      overlap,
+      impact,
+    };
+  }));
+  emit({
+    type: 'stage', id: 'judge', ms: Date.now() - started,
+    note: jevFailures ? 'jev_unavailable' : undefined,
+    facts: [
+      { label: 'judged', value: String(judged.length), by: 'jev' },
+      ...(pool.length > MAX_JUDGED ? [{ label: 'skipped', value: String(pool.length - MAX_JUDGED), by: 'rule' as const }] : []),
+      { label: 'cost', value: `$${cost.toFixed(5)}`, by: 'jev' },
+    ],
+  });
+
+  // 5. Evidence assembly: relevance threshold, ordering and the overall level.
+  started = Date.now();
+  const isRelevant = (j: Judged) => j.relevance === null || j.relevance >= 0.35;
+  const matches = judged.filter(isRelevant).sort((a, b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact) || (b.relevance ?? 1) - (a.relevance ?? 1));
+  const excluded = judged.filter(j => !isRelevant(j));
+  const level: Impact | 'clear' = matches.length ? matches[0].impact : 'clear';
+  emit({
+    type: 'stage', id: 'evidence', ms: Date.now() - started,
+    facts: [
+      { label: 'matches', value: String(matches.length), by: 'rule' },
+      { label: 'excluded', value: String(excluded.length), by: 'jev' },
+      { label: 'sync', value: lastSync || '', by: 'db' },
+    ],
+  });
+  return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, lastSync, cost };
+}
+
