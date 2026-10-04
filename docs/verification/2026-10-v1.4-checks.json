@@ -1,0 +1,214 @@
+{
+  "checked_at": "2026-10-04T15:44:24.711Z",
+  "cities": [
+    {
+      "city": "MILANO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "ROMA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "TORINO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "NAPOLI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "FIRENZE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "BOLOGNA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "VENEZIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "GENOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "PALERMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "CATANIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "BARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "VERONA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "PADOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "TRIESTE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "CAGLIARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "BERGAMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "BRESCIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "PISA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "MESSINA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    },
+    {
+      "city": "PERUGIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "calendarValid": true,
+      "unique": true
+    }
+  ],
+  "health": {
+    "healthy": true,
+    "stale": false,
+    "timedOut": false,
+    "latest": {
+      "started_at": "2026-10-04T15:40:07.646761+00:00",
+      "completed_at": "2026-10-04T15:41:00.838016+00:00",
+      "status": "success",
+      "fetched": 65,
+      "upserted": 45,
+      "unknown_timing": 4
+    },
+    "last_success": {
+      "started_at": "2026-10-04T15:40:07.646761+00:00",
+      "completed_at": "2026-10-04T15:41:00.838016+00:00",
+      "status": "success",
+      "fetched": 65,
+      "upserted": 45,
+      "unknown_timing": 4
+    }
+  },
+  "sync": {
+    "success": true,
+    "runId": "e2a2e71f-34bd-41d9-8c17-5bbf838276ca",
+    "fetched": 65,
+    "upserted": 45,
+    "unknownTiming": 4,
+    "retired": 0,
+    "enriched": 4,
+    "sourcesChecked": 85,
+    "conflicts": 2,
+    "warningCount": 14
+  },
+  "cron": {
+    "production": "dpl_641uMrdxnPf6yE5yViTX3WaHTwqN",
+    "crons": {
+      "enabledAt": 1772652953949,
+      "disabledAt": null,
+      "updatedAt": 1791128352844,
+      "deploymentId": "dpl_641uMrdxnPf6yE5yViTX3WaHTwqN",
+      "definitions": [
+        {
+          "host": "milan-strike-radar-1qn9g6yu8-zourongcheng554-2935s-projects.vercel.app",
+          "path": "/api/cron/sync-strikes",
+          "schedule": "0 5 * * *"
+        }
+      ]
+    }
+  }
+}
