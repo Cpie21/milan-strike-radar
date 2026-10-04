@@ -116,3 +116,11 @@ test('unregistered operator with apostrophes remains identifiable after repeated
  const {normalizeProviderList}=require('../lib/strikeNormalization.ts');const name="ARRIVA ITALIA UNITA' PRODUTTIVA BERGAMO人员";
  const first=normalizeProviderList(name).join(' / ');assert.ok(first.includes('ARRIVA'));assert.ok(normalizeProviderList(first).join(' / ').includes('BERGAMO'));
 });
+test('one operator article keeps different union dates, clocks, lines and guarantees in their own sections',async()=>{
+ const html='<main><article><h1>Scioperi Arriva Italia Bergamo</h1><h2>USB 16 ottobre 2026</h2><p>linea 23</p><p>Servizio interrotto dalle 09:00 alle 12:00.</p><p>Servizi garantiti dalle 06:00 alle 09:00.</p><h2>CGIL 20 ottobre 2026</h2><p>linea 45</p><p>Servizio interrotto dalle 16:00 alle 19:00.</p><p>Servizi garantiti dalle 12:00 alle 15:00.</p></article></main>';
+ const notices=parseExternalNotices(html,'https://bergamo.arriva.it/notice/multiple/',['2026-10-16','2026-10-20']);
+ const records=await transformRows([{...base,unions:'USB LAVORO PRIVATO'},{...base,date:'20/10/2026',endDate:'20/10/2026',unions:'CGIL',sourceKey:'second'}]);
+ const first=applyTimingEvidence(records[0],notices),second=applyTimingEvidence(records[1],notices);
+ assert.equal(first.display_time,'09:00 - 12:00');assert.deepEqual(first.affected_lines,['23']);assert.deepEqual(first.guarantee_windows,[{start:'06:00',end:'09:00'}]);
+ assert.equal(second.display_time,'16:00 - 19:00');assert.deepEqual(second.affected_lines,['45']);assert.deepEqual(second.guarantee_windows,[{start:'12:00',end:'15:00'}]);
+});

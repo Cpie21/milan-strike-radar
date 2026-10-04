@@ -46,6 +46,7 @@ export interface ExternalNotice {
   cities?: string[];
   field_text?: string;
   guarantee_clauses?: string[];
+  section_heading?: string;
 }
 
 export function allowedSourceUrl(input: string) {
@@ -163,20 +164,31 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     return Number.isFinite(stamp) && event >= stamp-7*86400000 && event <= stamp+90*86400000 && new RegExp(`\\b${day}\\s+${MONTHS[month-1]}(?!\\s+20\\d{2})`, 'i').test(title) && year >= new Date(stamp).getUTCFullYear();
   });
   if (!output.length && eventDates.length && /scioper/i.test(title + ' ' + text.slice(0,1500)) && !/\brevocat|\bdifferit|\bsospes|annullat/i.test(text)) {
-    const parts: { text:string; heading:string }[]=[];
-    let heading=title;
+    const names = /\b(?:alcobas|al[ -]cobas|confial|usb|cub|cobas|cgil|cisl|uiltransporti|uilt|uil|ugl|faisa|fast|orsa|sul)\b/i;
+    const parts: {text:string;heading:string;unions:string;dates:string[]}[]=[];
+    let heading=title, unionContext=names.test(title)?title:'', dateContext=eventDates;
+
     body.find('h2,h3,p,li,pre').each((_,el)=>{
-      if (/^h[23]$/.test(el.tagName)) { heading=$(el).text(); return; }
+      if (/^h[23]$/.test(el.tagName)) {
+        heading=$(el).text();
+        if(names.test(heading)) unionContext=heading;
+        const scopedDates=dates.filter(d=>exactDate(heading,d));if(scopedDates.length)dateContext=scopedDates;
+        return;
+      }
       const t=$(el).text().replace(/\s+/g,' ').trim();
-      if (t) parts.push({text:t,heading});
+      if(t) {
+        if(names.test(t)) unionContext=t;
+        const scopedDates=dates.filter(d=>exactDate(t,d));if(scopedDates.length)dateContext=scopedDates;
+        parts.push({text:t,heading,unions:unionContext,dates:dateContext});
+      }
     });
-    if (!parts.length) parts.push({text,heading:title});
+    if (!parts.length) parts.push({text,heading:title,unions:text,dates:eventDates});
     // Source union abbreviations are allowed for official operator notices;
     // date + operator-wide announcements without named unions cover that day.
-    const names = /alcobas|al[ -]cobas|confial|usb|cub|cobas|cgil|cisl|uil|ugl|faisa|fast|orsa|sul/i;
     const namedUnion=names.test(text);
     const hasParts = /garant|fasce/i.test(text);
     for (const date of eventDates) for (const part of parts) {
+      if(!part.dates.includes(date)) continue;
       const candidate=part.text;
       if (!/\d{1,2}[.:]\d{2}|dalle?\s+\d|inizio\s+(?:del\s+)?servizio/i.test(candidate)) continue;
       const guarantee = /garant|fasce di garanzia/i.test(part.heading + ' ' + candidate) && !/non\s+(?:saranno\s+)?garant/i.test(candidate);
@@ -190,15 +202,23 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
       };
       const cities = mentioned(part.heading+' '+candidate).length ? mentioned(part.heading+' '+candidate) : mentioned(title).length ? mentioned(title) : knownCities;
       const territory = [title,...cities.map(c=>resolveCity(c)?.slug || c)].join(' ');
-      output.push({ date, provider: title+' '+operatorContext+' '+text.slice(0,1000), territory, cities, unions:text, sector:sourceCategory(url) || title, field_text:text, timing:candidate, status:'', operator_day:official && !namedUnion, source:sourceFor(url,candidate,checkedAt) });
+      output.push({ date, provider: title+' '+operatorContext+' '+text.slice(0,1000), territory, cities, unions:part.unions || text, sector:sourceCategory(url) || title, field_text:parts.filter(p=>p.heading===part.heading && p.unions===part.unions && p.dates.includes(date)).map(p=>p.text).join(' '), section_heading:part.heading, timing:candidate, status:'', operator_day:official && !namedUnion, source:sourceFor(url,candidate,checkedAt) });
     }
-    // Keep guarantees only when stated for this event in a separate clause.
-    if (hasParts) {
-      const guarantees = parts.filter(p=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:saranno\s+)?garant/i.test(p.text)).flatMap(p=>parseStrikeTiming(p.text).windows);
-      if(official && guarantees.length && !output.length) {
-        for(const date of eventDates) output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:text,sector:sourceCategory(url)||title,field_text:text,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,parts.filter(p=>/garant/i.test(p.text)).map(p=>p.text).join(' '),checkedAt)});
+    // Guarantees belong to the same dated union/mode section, never the
+    // whole page. A dated notice with only guarantees can still verify fields.
+    if(hasParts) {
+      const isGuarantee=(p:typeof parts[number])=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:saranno\s+)?garant/i.test(p.text);
+      if(official && !output.length) for(const part of parts.filter(isGuarantee)) for(const date of part.dates) {
+        if(!parseStrikeTiming(part.text).windows.length) continue;
+        output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:part.unions || text,sector:sourceCategory(url)||title,field_text:part.text,section_heading:part.heading,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,part.text,checkedAt)});
       }
-      if (guarantees.length) output.forEach(n=>{ if(n.source.url===url) { n.guarantee_windows=guarantees; n.guarantee_clauses=parts.filter(p=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:saranno\s+)?garant/i.test(p.text)).map(p=>p.heading+' '+p.text); } });
+      for(const notice of output) {
+        const clauses=parts.filter(p=>isGuarantee(p) && (p.heading===notice.section_heading || /garant/i.test(p.heading)) && p.dates.includes(notice.date) && (!namedUnion || p.unions===notice.unions));
+        if(clauses.length) {
+          notice.guarantee_clauses=clauses.map(p=>p.heading+' '+p.text);
+          notice.guarantee_windows=clauses.flatMap(p=>parseStrikeTiming(p.text).windows);
+        }
+      }
     }
   }
 
