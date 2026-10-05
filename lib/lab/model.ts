@@ -102,7 +102,7 @@ function joins(byDate: Map<string, ModeCard[]>, a: string, b: string) {
   return left.some(card => continuesOvernight(card, right.find(r => r.category === card.category)));
 }
 
-export function buildRail(byDate: Map<string, ModeCard[]>, from: string, to: string, today: string, selected: string, expanded: Set<string>): RailTile[] {
+export function buildRail(byDate: Map<string, ModeCard[]>, from: string, to: string, today: string, selected: string, expanded: Set<string>, fold = true): RailTile[] {
   const tiles: RailTile[] = [];
   let run: string[] = [];
   let lastMonth = '';
@@ -119,7 +119,7 @@ export function buildRail(byDate: Map<string, ModeCard[]>, from: string, to: str
   };
   const flush = () => {
     if (!run.length) return;
-    if (run.length >= 2 && !expanded.has(run[0])) {
+    if (fold && run.length >= 2 && !expanded.has(run[0])) {
       tiles.push({ kind: 'fold', from: run[0], to: run[run.length - 1], days: run.length, monthStart: run[0].slice(0, 7) !== lastMonth });
       lastMonth = run[0].slice(0, 7);
     } else run.forEach(push);

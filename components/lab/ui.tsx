@@ -2,16 +2,36 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
-import { Airplane, Bus, Subway, TrainRegional, X, type IconWeight } from '@phosphor-icons/react';
+import { AirplaneTilt, Bus, Subway, Train, X, type IconWeight } from '@phosphor-icons/react';
 import type { Mode } from '../../lib/lab/model';
-import { C, FILLED, LINE_COLORS, SPRING_SHEET, TONAL } from './theme';
+import { C, FILLED, LINE_COLORS, MODE_COLOR, SPRING_SHEET, TONAL } from './theme';
 
 export function ModeGlyph({ mode, size = 20, weight = 'fill', color }: { mode: Mode; size?: number; weight?: IconWeight; color?: string }) {
   const props = { size, weight, color, 'aria-hidden': true } as const;
   if (mode === 'SUBWAY') return <Subway {...props} />;
   if (mode === 'BUS') return <Bus {...props} />;
-  if (mode === 'TRAIN') return <TrainRegional {...props} />;
-  return <Airplane {...props} />;
+  if (mode === 'TRAIN') return <Train {...props} />;
+  return <AirplaneTilt {...props} />;
+}
+
+// Transit-signage badges: a filled square in the mode's colour with a white
+// pictogram, the way stations mark them. Metro is the white "M" on red
+// that every Italian metro uses; the others are front-on pictograms, which
+// stay readable at 12px where side views blur.
+export function ModeBadge({ mode, size = 16, ring }: { mode: Mode; size?: number; ring?: string }) {
+  const glyph = Math.round(size * 0.68);
+  return (
+    <span aria-hidden className="inline-flex items-center justify-center shrink-0" style={{
+      width: size, height: size, borderRadius: Math.round(size * 0.26), background: MODE_COLOR[mode].deep, color: '#FFFFFF',
+      boxShadow: ring ? `0 0 0 ${Math.max(1.5, size / 10)}px ${ring}` : undefined,
+    }}>
+      {mode === 'SUBWAY'
+        ? <span style={{ fontFamily: 'var(--font-num), sans-serif', fontWeight: 600, fontSize: Math.round(size * 0.78), lineHeight: 1, marginTop: size * 0.04 }}>M</span>
+        : mode === 'BUS' ? <Bus size={glyph} weight="fill" />
+          : mode === 'TRAIN' ? <Train size={glyph} weight="fill" />
+            : <AirplaneTilt size={glyph} weight="fill" />}
+    </span>
+  );
 }
 
 export function LineBadge({ line }: { line: string }) {
@@ -25,13 +45,13 @@ export function LineBadge({ line }: { line: string }) {
 const MEDIUM = 0.6;
 const LARGE = 0.92;
 
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Sheet({ open, onClose, title, children, large = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; large?: boolean }) {
   const reduce = useReducedMotion();
   const controls = useDragControls();
   const bodyRef = useRef<HTMLDivElement>(null);
   const [natural, setNatural] = useState(0);
   const [viewport, setViewport] = useState(800);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(large);
 
   useEffect(() => {
     if (!open) return;
@@ -52,8 +72,8 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     const observer = new ResizeObserver(measure);
     if (bodyRef.current?.firstElementChild) observer.observe(bodyRef.current.firstElementChild);
     window.addEventListener('resize', measure);
-    return () => { observer.disconnect(); window.removeEventListener('resize', measure); setExpanded(false); };
-  }, [open]);
+    return () => { observer.disconnect(); window.removeEventListener('resize', measure); setExpanded(large); };
+  }, [open, large]);
 
   const resizable = natural > viewport * MEDIUM;
   const height = resizable ? viewport * (expanded ? LARGE : MEDIUM) : Math.min(natural, viewport * LARGE);

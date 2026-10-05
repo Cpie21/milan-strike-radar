@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { ArrowsClockwise, CalendarBlank, CaretDown, CaretRight, CheckCircle, DeviceMobile, MapPin, SquaresFour } from '@phosphor-icons/react';
+import { ArrowsClockwise, CalendarDots, CaretDown, CaretRight, CheckCircle, DeviceMobile, MapPin, SquaresFour } from '@phosphor-icons/react';
 import {
   buildRail, continuesOvernight, dayLabel, daysBetween, isActive, modeName, nextEventDate, sortCards, tx,
   type Lang, type Mode, type ModeCard,
@@ -15,13 +15,14 @@ import LabStrikeCard, { type CardContext } from './LabStrikeCard';
 import { AskField, AskSheet, useAsk } from './LabAsk';
 import type { Translation } from '../../lib/lab/translate';
 import { CalendarSheet, CitySheet, HomeScreenSheet, SupportSheet, WidgetSheet } from './sheets';
-import { ModeGlyph } from './ui';
+import { ModeBadge } from './ui';
+import MonthSheet from './MonthSheet';
 import { C, EASE, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { track } from './track';
 
 type City = { tag: string; zh: string; en: string; path: string };
 export type CityStatus = Record<string, { today: Mode[]; next: string | null; nextModes: Mode[] }>;
-type SheetName = 'city' | 'calendar' | 'widget' | 'home' | 'support' | null;
+type SheetName = 'city' | 'calendar' | 'widget' | 'home' | 'support' | 'month' | null;
 const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function romeMinutes() {
@@ -37,7 +38,6 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const [lang, setLang] = useState<Lang>('zh');
   const [selected, setSelected] = useState(initialDate);
   const [direction, setDirection] = useState(0);
-  const [unfolded, setUnfolded] = useState<Set<string>>(new Set());
   const [now, setNow] = useState(initialMinutes);
   const [month, setMonth] = useState(initialDate);
   const [sheet, setSheet] = useState<SheetName>(null);
@@ -49,7 +49,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     cards.forEach(c => map.set(c.date, [...(map.get(c.date) || []), c]));
     return map;
   }, [cards]);
-  const tiles = useMemo(() => buildRail(byDate, from, to, today, selected, unfolded), [byDate, from, to, today, selected, unfolded]);
+  const tiles = useMemo(() => buildRail(byDate, from, to, today, selected, new Set(), false), [byDate, from, to, today, selected]);
   const dayCards = sortCards(byDate.get(selected) || []);
   const active = dayCards.filter(isActive);
   const jumpModes = [...new Set(active.map(c => c.category))];
@@ -135,20 +135,19 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
         <div className="flex flex-col items-center px-5 mt-7 mb-4">
           <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
-          <label className={`relative mt-2.5 h-[32px] px-3 rounded-full flex items-center gap-1.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
-            <CalendarBlank size={14} weight="bold" />{tx(lang, '选择日期', 'Pick date')}
-            <input type="date" min={from} max={to} value={selected} onChange={e => e.target.value && select(e.target.value)} aria-label={tx(lang, '选择日期', 'Pick date')} className="absolute inset-0 opacity-0" />
-          </label>
+          <button onClick={() => setSheet('month')} className={`mt-2.5 h-[32px] px-3 rounded-full flex items-center gap-1.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
+            <CalendarDots size={15} weight="bold" />{tx(lang, '查看全部日期', 'All dates')}
+          </button>
         </div>
 
-        <DateRail tiles={tiles} today={today} selected={selected} lang={lang} onSelect={select} onUnfold={k => setUnfolded(p => new Set(p).add(k))} onMonth={setMonth} />
+        <DateRail tiles={tiles} today={today} selected={selected} lang={lang} onSelect={select} onMonth={setMonth} />
 
         {/* Tap-to-jump: only when there is more than one card to jump between */}
         {dayCards.length > 1 && jumpModes.length > 0 && (
           <div className="flex justify-center gap-2 px-5 pt-2 pb-1">
             {jumpModes.map(mode => (
               <motion.button key={mode} whileTap={{ scale: 0.95 }} onClick={() => jump(mode)} className={`h-9 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: MODE_COLOR[mode].soft, color: MODE_COLOR[mode].main }}>
-                <ModeGlyph mode={mode} size={15} color={MODE_COLOR[mode].main} />{modeName(mode, lang)}
+                <ModeBadge mode={mode} size={18} />{modeName(mode, lang)}
               </motion.button>
             ))}
           </div>
@@ -173,7 +172,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
                     <button onClick={() => select(next)} className="w-full flex items-center gap-2 px-5 h-[52px] text-left" style={{ borderTop: `1px solid ${C.line}` }}>
                       <span className={TYPE.label} style={{ color: C.text3 }}>{tx(lang, '下一次罢工', 'Next strike')}</span>
                       <span className="text-[15px] font-semibold">{dayLabel(next, lang)}</span>
-                      <span className="flex gap-1 ml-auto">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeGlyph key={m} mode={m} size={15} color={MODE_COLOR[m].main} />)}</span>
+                      <span className="flex gap-1 ml-auto">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeBadge key={m} mode={m} size={16} />)}</span>
                       <CaretRight size={13} weight="bold" color={C.text3} />
                     </button>
                   )}
@@ -208,6 +207,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
       {!calm && <AskField ask={ask} variant="dock" />}
       <AskSheet ask={ask} />
+      <MonthSheet open={sheet === 'month'} onClose={() => setSheet(null)} lang={lang} byDate={byDate} from={from} to={to} today={today} selected={selected} onSelect={select} />
 
       <CitySheet open={sheet === 'city'} onClose={() => setSheet(null)} lang={lang} cities={cities} current={city.tag} status={cityStatus} today={today} />
       <CalendarSheet open={sheet === 'calendar'} onClose={() => setSheet(null)} lang={lang} region={city.tag} cityName={name} />

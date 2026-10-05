@@ -7,8 +7,8 @@ import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/p
 import { dayLabel, modeName, statusLine, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
 import { Bar } from './LabStrikeCard';
-import { LineBadge, ModeGlyph, Sheet } from './ui';
-import { C, EASE, MODE_COLOR } from './theme';
+import { LineBadge, ModeBadge, ModeGlyph, Sheet } from './ui';
+import { C, EASE } from './theme';
 
 const TONE = { stop: C.stop, pending: C.pend, cancelled: C.cancel, over: C.text2 };
 const PILL = { background: C.surface2, boxShadow: `inset 0 0 0 1px ${C.lineStrong}, 0 12px 32px rgba(0,0,0,0.5)` };
@@ -303,7 +303,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
               <span className="flex-1 flex flex-col gap-0.5">
                 {day.items.map((item, i) => (
                   <span key={i} className="flex items-center gap-1.5 text-[13px] tabular-nums" style={{ color: item.status === 'CANCELLED' ? C.cancel : C.text }}>
-                    <ModeGlyph mode={item.category} size={14} color={item.status === 'CANCELLED' ? C.cancel : MODE_COLOR[item.category].main} />
+                    {item.status === 'CANCELLED' ? <ModeGlyph mode={item.category} size={14} color={C.cancel} /> : <ModeBadge mode={item.category} size={14} />}
                     <span className={item.status === 'CANCELLED' ? 'line-through' : ''}>{item.display || tx(lang, '时段待公布', 'hours pending')}</span>
                   </span>
                 ))}
@@ -315,7 +315,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
           {groups.map(([mode, items]) => (
             <div key={mode} className="rounded-[18px] overflow-hidden" style={{ background: C.surface2 }}>
               <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-[13px] font-medium" style={{ color: C.text3 }}>
-                <ModeGlyph mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
+                <ModeBadge mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
                 {linesFor(mode, result.understanding.lines).length > 0 && <span className="flex gap-1">{linesFor(mode, result.understanding.lines).map(l => <LineBadge key={l} line={l} />)}</span>}
               </div>
               {items.map(item => {

@@ -8,7 +8,7 @@ import {
   type Lang, type Mode, type ModeCard, type OfficialRecord,
 } from '../../lib/lab/model';
 import type { Translation } from '../../lib/lab/translate';
-import { LineBadge, ModeGlyph } from './ui';
+import { LineBadge, ModeBadge, ModeGlyph } from './ui';
 import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { useDoodle } from './useDoodle';
 import { track } from './track';
@@ -143,7 +143,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
       <div aria-hidden className="absolute inset-x-0 top-0 h-[180px] pointer-events-none" style={{ background: `linear-gradient(180deg, ${mode.soft}, transparent)` }} />
       <div className="relative px-5 pt-6">
         <header className="flex flex-col items-center text-center">
-          <span className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: mode.deep }}><ModeGlyph mode={card.category} size={22} color="#FFFFFF" /></span>
+          <ModeBadge mode={card.category} size={44} />
           <h3 className={`mt-3 ${TYPE.title}`}>{tx(lang, ...TITLE[card.category])}</h3>
           <p className={`mt-1 flex items-center gap-2 ${TYPE.caption}`} style={{ color: C.text3 }}>
             {card.national && <span className="px-1.5 h-[18px] rounded-[5px] flex items-center" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}

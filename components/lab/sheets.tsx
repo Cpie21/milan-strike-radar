@@ -5,8 +5,8 @@ import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/re
 import { submitFeedback } from '../../app/actions';
 import { buildWidgetScript } from '../../lib/widgetScript';
 import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
-import { Button, ModeGlyph, Sheet } from './ui';
-import { C, MODE_COLOR } from './theme';
+import { Button, ModeBadge, ModeGlyph, Sheet } from './ui';
+import { C } from './theme';
 import { track } from './track';
 
 type City = { tag: string; zh: string; en: string; path: string };
@@ -85,7 +85,7 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
 }
 
 function CityHeadline({ s, today, lang, current }: { s?: { today: Mode[]; next: string | null; nextModes: Mode[] }; today: string; lang: Lang; current: boolean }) {
-  const glyphs = (modes: Mode[], color?: string) => <span className="flex gap-0.5">{modes.map(m => <ModeGlyph key={m} mode={m} size={14} color={color ?? MODE_COLOR[m].main} />)}</span>;
+  const glyphs = (modes: Mode[], color?: string) => <span className="flex gap-1" style={{ opacity: color ? 0.55 : 1 }}>{modes.map(m => <ModeBadge key={m} mode={m} size={14} />)}</span>;
   return (
     <span className="flex items-center gap-2 shrink-0 text-[13px] font-semibold tabular-nums">
       {s?.today.length ? <>{glyphs(s.today)}<span style={{ color: C.text }}>{tx(lang, '今天', 'Today')}</span></>
