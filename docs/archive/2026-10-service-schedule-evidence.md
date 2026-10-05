@@ -40,3 +40,13 @@ No new AI calls, AI extraction or recurring job were added. Existing Jev input h
 ## Validation
 
 186 regressions passed (15 new schedule regressions), including real source failure, missing route, missing final arrival, frequency services, cancellation, partial aggregation, next-day clocks, operator/mode separation, calendar exception, source expiry, corrupt archives and all 80 city/mode coverage entries. TypeScript, focused lint and production build passed. Live official-file parsing is separate evidence from production rollout; rollout status belongs in AI_HANDOFF and the PR.
+
+## Formal production verification
+
+Backend runtime `179bef9`, deployment `dpl_9ZJvQqpd4d4JEKqE4kXm1817Bpm1`, formally aliased to `https://www.theitalystrike.com`. Protected sync `26117923-0f26-44d5-9e9d-5ada5665be24` succeeded in 96.265s: 76 rows fetched, 58 upserted, zero retired; one actual timetable feed read, two complete subway schedule facts written. Both union events retain their original symbolic official strike end and identical schedule references. Both Milan BUS events persist OUT_OF_VALIDITY with null clock references.
+
+Direct production database reads and published city API assertions passed. The aggregate metro endpoint is next day 01:30 arrival, distinct from next day 00:32 departure; the BUS aggregate has no numeric endpoint. PR #6's whitelisted MIT register facts are also verified at production. All 20 public pages/APIs/calendars and 20 pre-existing scope regressions passed; Rome realtime contract remains separate.
+
+Existing semantic QA used one changed-record call and 25 cached reviews, with no raised budget or new AI task. October's charged ledger is USD 0.006489 after this sync (hard cap unchanged USD 0.20); this is only backend semantic QA, not a claim covering unrelated hosting, translation or Claude Ask costs. There are 26 sync warnings, including expected expired BUS timetable warnings and existing blocked operator sites. Runtime logs also contain existing DeepL 403 translation failures; fallback keeps the original/provider information and sync succeeds. These failures were not represented as successful official verification.
+
+`docs/verification/2026-10-service-schedule-production-evidence.json` records stored and API facts; `docs/verification/2026-10-service-schedule-production-checks.json` records city/regression checks. Claude's lab UI is still unmodified; having the backend facts live does not mean its numeric endpoint display is integrated.
