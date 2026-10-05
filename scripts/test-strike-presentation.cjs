@@ -9,9 +9,50 @@ const {parseExternalNotices,parseExternalWindows,matchesNotice,applyTimingEviden
 const {aggregateStrikes,filterStrikesForRegion}=require('../components/utils.ts');
 const {strikeTimeline,windowsDuration,intersectGuarantees}=require('../lib/strikePresentation.ts');
 const {normalizeProviderList}=require('../lib/strikeNormalization.ts');
+const {officialStrikeRecord,withOfficialRecord}=require('../lib/officialStrikeRecord.ts');
 const row=(over={})=>({date:'2030-03-01',region:'MILANO',category:'BUS',provider:'ATM',status:'UNCERTAIN',strike_windows:[],guarantee_windows:[],affected_lines:['全部线路'],source_key:'mit-a',raw_payload:{provider:'ATM Milano',unions:'USB LAVORO PRIVATO',modalita:'24 ORE: VARIE MODALITA',sector:'Trasporto pubblico locale',sourceStatus:'Programmato'},...over});
 const article=(city,hours='dalle 9:15 alle 13:45')=>`<main><article><h1>Sciopero ${city} 1 marzo 2030</h1><p>USB Lavoro Privato ha proclamato uno sciopero.</p><p>Il servizio sara interrotto ${hours}.</p></article></main>`;
 const clock=(start,end)=>({start,end,end_kind:'clock'});
+test('media links do not downgrade the adopted official timing, while source history remains',()=>{
+ const make=(key,windows,confidence,sources=[])=>row({source_key:key,timing_evidence:{windows,confidence,sources,conflicts:[],unions:'USB'}});
+ const media={url:'https://sciopero.net/example',authority:'reported'};
+ const hours=[clock('08:45','15:00')];
+ const cards=aggregateStrikes([make('official',hours,'official',[media]),make('reported-copy',hours,'reported',[media])],'MILANO');
+ assert.equal(cards[0].timing_evidence.confidence,'official');assert.equal(cards[0].strike_events.length,2);assert.deepEqual(cards[0].timing_evidence.sources,[media]);
+ const different=aggregateStrikes([make('official',hours,'official'),make('other',[clock('18:00','20:00')],'reported',[media])],'MILANO')[0];
+ assert.equal(different.timing_evidence.confidence,'reported');assert.equal(different.strike_events.length,2);
+});
+test('official scope/guarantee quotes cannot turn reported hours into official; conflict wins',()=>{
+ const hours=[clock('08:45','15:00')],source={url:'https://www.atm.it/charter',authority:'official'};
+ const fields={timing:{value:hours,source:'REPORTED',confidence:'MEDIUM'},location:{value:'MILANO',source:'MIT',confidence:'HIGH'}};
+ const reported=row({timing_evidence:{windows:hours,confidence:'official',sources:[source],fields,conflicts:[],unions:'USB'}});
+ assert.equal(aggregateStrikes([reported],'MILANO')[0].timing_evidence.confidence,'reported');
+ const corroborated={...reported,timing_evidence:{...reported.timing_evidence,confidence:'corroborated'}};
+ assert.equal(aggregateStrikes([corroborated],'MILANO')[0].timing_evidence.confidence,'corroborated');
+ const conflict={...reported,timing_evidence:{...reported.timing_evidence,confidence:'conflict'}};
+ assert.equal(aggregateStrikes([conflict],'MILANO')[0].timing_evidence.confidence,'conflict');
+ const active={...reported,source_key:'official',timing_evidence:{windows:hours,confidence:'official',sources:[],conflicts:[],unions:'USB'}};
+ assert.equal(aggregateStrikes([active,{...conflict,status:'CANCELLED'}],'MILANO')[0].timing_evidence.confidence,'official');
+});
+test('unknown reported sibling never acquires official confirmation from a timed event',()=>{
+ const official=row({source_key:'a',timing_evidence:{windows:[clock('08:45','15:00')],confidence:'official',sources:[],conflicts:[]}});
+ const pending=row({source_key:'b',timing_evidence:{windows:[],confidence:'reported',sources:[],conflicts:[]}});
+ const card=aggregateStrikes([official,pending],'MILANO')[0];assert.equal(card.timing_evidence.confidence,'reported');assert.equal(card.has_unknown_timing,true);
+});
+test('official register is trimmed, preserves administrative Tutte and remains separate from operator hours',()=>{
+ const raw={provider:'PERSONALE ATM MILANO',sector:'Trasporto pubblico locale',unions:'USB',rawRegion:'Lombardia',province:'Tutte',rilevanza:'Regionale',modalita:'24 ORE: VARIE MODALITA',proclamationDate:'2/10/2026',sourceUrl:'https://scioperi.mit.gov.it/mit2/public/scioperi',privateField:'DO_NOT_EXPOSE'};
+ const record=withOfficialRecord({...row(),raw_payload:raw,timing_evidence:{windows:[clock('08:45','15:00')],confidence:'official',sources:[],conflicts:[]}});
+ assert.equal(record.official_record.proclaimed,'2026-10-02');assert.equal(record.official_record.area,'Lombardia · Tutte');assert.deepEqual(record.official_record.windows,[]);assert.equal(record.official_record.mode,raw.modalita);
+ assert.ok(!JSON.stringify(record).includes('DO_NOT_EXPOSE'));assert.ok(!('raw_payload' in record));
+ const card=aggregateStrikes([record],'MILANO')[0];assert.equal(card.official_record,undefined);assert.deepEqual(card.strike_events[0].official_record,record.official_record);assert.deepEqual(card.timing_evidence.windows,[clock('08:45','15:00')]);
+});
+test('official record uses category-specific original clocks and validates dates and links',()=>{
+ const raw={provider:'SCIOPERO GENERALE',sector:'Plurisettoriale',modalita:'FERROVIARIO: DALLE 09.01 ALLE 17.00 / APPALTI FERROVIARI: SECONDO MEZZO TURNO / TPL: 4 ORE VARIE MODALITA',proclamationDate:'31/02/2026',sourceUrl:'https://user:password@scioperi.mit.gov.it/mit2/public/scioperi'};
+ const train=officialStrikeRecord(raw,'TRAIN','2026-10-14');assert.deepEqual(train.windows,[clock('09:01','17:00')]);assert.equal(train.proclaimed,null);assert.equal(train.url,'https://scioperi.mit.gov.it/mit2/public/scioperi');
+ assert.deepEqual(officialStrikeRecord(raw,'BUS','2026-10-14').windows,[]);
+ assert.equal(officialStrikeRecord({...raw,proclamationDate:'29/02/2028'},'TRAIN','2028-10-14').proclaimed,'2028-02-29');
+ for(const p of [null,[],false,'bad',{}])assert.equal(officialStrikeRecord(p,'TRAIN','2026-10-14'),null);
+});
 test('every listed city has official discovery sources, including shared and homonymous operators',()=>{
  assert.equal(CITIES.length,20);assertCitySourceCoverage();
  assert.deepEqual(sourceCities('https://www.fsbusitalia.it/it/veneto/avviso.html'),['PADOVA']);
