@@ -8,15 +8,12 @@ import {
   type Lang, type Mode, type ModeCard, type OfficialRecord,
 } from '../../lib/lab/model';
 import type { Translation } from '../../lib/lab/translate';
+import { serviceEnd } from '../../lib/lab/serviceHours';
 import { LineBadge, ModeBadge, ModeGlyph } from './ui';
 import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { useDoodle } from './useDoodle';
 import { track } from './track';
-import dynamic from 'next/dynamic';
-import type { WallLink } from './wall3d/Wall3D';
-
-// three.js loads only when a card with a wall is on the page.
-const Wall3D = dynamic(() => import('./wall3d/Wall3D'), { ssr: false, loading: () => <div className="rounded-[20px]" style={{ aspectRatio: '16 / 11.6', background: C.surface2 }} /> });
+import PixelWall, { type WallLink } from './wall/PixelWall';
 
 const TITLE: Record<Mode, [string, string]> = { TRAIN: ['火车罢工', 'Train strike'], SUBWAY: ['地铁罢工', 'Metro strike'], BUS: ['公交罢工', 'Bus strike'], AIRPORT: ['机场罢工', 'Airport strike'] };
 const MIT = 'https://scioperi.mit.gov.it/mit2/public/scioperi';
@@ -28,6 +25,7 @@ export type CardContext = { today: string; nowMinutes: number; lang: Lang; regio
 const mins = (v: string) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
 const day = (iso: string, lang: Lang) => tx(lang, `${Number(iso.slice(8))}日`, `${Number(iso.slice(8))}/${Number(iso.slice(5, 7))}`);
 const monthDay = (iso: string, lang: Lang) => tx(lang, `${Number(iso.slice(5, 7))}月${Number(iso.slice(8))}日`, `${Number(iso.slice(8))}/${Number(iso.slice(5, 7))}`);
+const LINK = '#7AB0FF'; // links read as links: blue and underlined
 const hatch = (color: string) => `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`;
 
 function hoursText(card: ModeCard, lang: Lang) {
@@ -90,7 +88,7 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
       <div className="relative h-4 mt-0.5 text-[11.5px] font-medium tabular-nums" style={{ color: C.text2, fontFamily: NUM }}>
         {label ? <span style={{ color: C.text3 }}>{label}</span> : <>
           {edges.map(e => <span key={e.t + e.x} className="absolute whitespace-nowrap" style={{ left: `${e.x * 100}%`, transform: `translateX(${e.x < 0.06 ? '0' : e.x > 0.94 ? '-100%' : '-50%'})`, color: e.ok ? C.ok : C.text2 }}>{e.t}</span>)}
-          {openEnd && <span className="absolute right-0" style={{ fontFamily: SANS, color: C.text3 }}>{tx(lang, '运营结束', 'End of service')}</span>}
+          {openEnd && <span className="absolute right-0" style={{ fontFamily: SANS, color: C.text3 }}>{tx(lang, '末班车', 'Last service')}</span>}
         </>}
       </div>
     </div>
@@ -135,6 +133,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
       : card.confidence === 'reported' && !officialTiming ? tx(lang, '时段仅见报道', 'hours only reported')
         : card.status === 'UNCERTAIN' ? tx(lang, '官方状态未定', 'status not final') : null;
   const span = timeSpan(card.windows);
+  const lastRun = span && span.end === null ? serviceEnd(ctx.region, card.category) : null;
 
   const pill = live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
     : isToday && !pending ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
@@ -175,8 +174,13 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
               <p className={TYPE.display}>
                 {span.start ?? word(tx(lang, '运营开始', 'Start'))}
                 <span className="mx-2" style={{ color: C.text3 }}>–</span>
-                {span.end ?? word(tx(lang, '运营结束', 'End of service'))}
+                {span.end ?? (lastRun ? <>{sub(tx(lang, '次日', 'next day'))}<span className="ml-1">{lastRun.end}</span></> : word(tx(lang, '末班车', 'last service')))}
               </p>
+              {lastRun && (
+                <a href={lastRun.source.url} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
+                  {tx(lang, ...lastRun.note)}
+                </a>
+              )}
               {span.breaks.map(b => (
                 <p key={b.start} className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.ok, fontFamily: SANS }}>
                   <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.ok }} />
@@ -332,7 +336,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
                   <p className={TYPE.caption} style={{ color: C.text3 }}>
                     {[RELEVANCE[g.relevance] ? tx(lang, ...RELEVANCE[g.relevance]) : g.relevance, g.area && say(g.area), g.mode && say(g.mode)].filter(Boolean).join(' · ')}
                   </p>
-                  <a href={g.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 ${TYPE.caption}`} style={{ color: C.text2 }}>
+                  <a href={g.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
                     {tx(lang, `打开公示表，查找 ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`, `Open the list; look for ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`)}<ArrowUpRight size={12} weight="bold" />
                   </a>
                 </Group>
@@ -345,13 +349,13 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
                       ? <mark key={i} className="rounded-[4px] px-[3px] font-semibold" style={{ background: mode.soft, color: mode.main }}>{p.text}</mark>
                       : <span key={i}>{p.text}</span>)}
                   </p>
-                  <a href={q.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 ${TYPE.caption}`} style={{ color: C.text2 }}>{tx(lang, '打开公告', 'Open notice')}<ArrowUpRight size={12} weight="bold" /></a>
+                  <a href={q.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{tx(lang, '打开公告', 'Open notice')}<ArrowUpRight size={12} weight="bold" /></a>
                 </Group>
               ))}
 
               {(press.length > 0 || (card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE')) && (
                 <Group title={tx(lang, '其他参考', 'Also see')}>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                     {card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE' && <Link href={ENAC}>{tx(lang, 'ENAC 常规保护规则', 'ENAC protection rules')}</Link>}
                     {press.slice(0, 4).map(s => <Link key={s.url} href={s.url}>{s.name}</Link>)}
                   </div>
@@ -359,7 +363,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
               )}
 
               {!groups.length && !official.length && (
-                <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 ${TYPE.label}`} style={{ color: C.text2 }}>
+                <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
                   {tx(lang, '意大利交通部 罢工公示表', 'Ministry of Transport strike list')}<ArrowUpRight size={12} weight="bold" />
                 </a>
               )}
@@ -384,7 +388,7 @@ function Group({ title, aside, children }: { title: string; aside?: string; chil
 }
 
 function Link({ href, children }: { href: string; children: React.ReactNode }) {
-  return <a href={href} target="_blank" rel="noreferrer" className={`h-7 px-2.5 rounded-full inline-flex items-center gap-1 ${TYPE.caption}`} style={{ background: C.surface3, color: C.text2 }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
+  return <a href={href} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
 }
 
 // Two unions striking the same workforce are one register story.
@@ -444,7 +448,7 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   );
   return (
     <div className="px-5 pt-5 pb-4">
-      <Wall3D mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)}
+      <PixelWall mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)}
         onLink={l => { wall.current = l; }} onHint={() => setHint(h => h + 1)} footer={footer} />
     </div>
   );

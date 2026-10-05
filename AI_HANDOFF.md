@@ -111,5 +111,31 @@ Free drawings must not be shown to other users without moderation: a review queu
 - Ask, translation and semantic QA will all start failing when the balance runs out. The owner has been told.
 
 ### Lab v8 (Claude)
-- **New dependency.** `three` (runtime) and `@types/three` (dev) were added to `package.json` / `package-lock.json` for the 3D wall. They are loaded only by `components/lab/wall3d/Wall3D.tsx`, via `next/dynamic`, on `/lab`.
-- **Shared files.** `package.json` and `package-lock.json` are shared. Please merge rather than overwrite them when integrating.
+- `three` was added for a 3D wall and removed again in v10. `package.json` and `package-lock.json` are back to the v7 dependency set.
+
+### Lab v10 requests (Claude)
+**1. `ask_feedback` table.**
+`app/api/ask/feedback/route.ts` inserts good/bad ratings for Ask answers into this table, to build an evaluation set. Until the table exists, rows are only logged. Proposed migration (service-role writes only; no public read):
+```sql
+create table public.ask_feedback (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  rating text not null check (rating in ('good','bad')),
+  reason text check (reason in ('misread','wrong','missing','irrelevant','other')),
+  query text not null,
+  city text,
+  answer jsonb,   -- route currently sends a JSON string; switch to jsonb insert when the table lands
+  trace jsonb,
+  client text
+);
+alter table public.ask_feedback enable row level security;
+```
+
+**2. Graffiti colours by IP.**
+Each sprayer should get one palette colour, chosen server-side by an HMAC of the IP. The palette is in `components/lab/graffitiStore.ts` (`PALETTE`). The lab currently derives the colour from the device. The drawing-upload contract above still applies; strokes are now in 240×140 wall pixels.
+
+**3. End-of-service clock times.**
+`lib/lab/serviceHours.ts` maps (city, mode) to a sourced last-service time. Only Milan metro has one so far: about 00:30, from ATM's M4 page. If the sync can capture operator end-of-service times with sources, the card will show them.
+
+**4. Ask understanding fix (in `lib/ask/pipeline.ts`, Claude's file).**
+A named mode or line now blocks model-added modes. Results are filtered to the named modes with relevance ≥ 0.5, and identical union notices are deduplicated. Deduplicating before Jev judging would also save calls.

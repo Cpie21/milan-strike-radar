@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUp, CaretRight, Check, PencilSimple } from '@phosphor-icons/react';
+import { ArrowUp, CaretDown, CaretRight, Check, PencilSimple, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
 import Solari, { type Mood } from './Solari';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
@@ -272,35 +272,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
       </div>
 
       {/* While working, the steps are the answer; afterwards they fold away. */}
-      {(busy || trace) && (
-        <ol className="mt-3 flex flex-col gap-1.5">
-          {(['understand', 'retrieve', 'judge', 'evidence'] as const).map((id, i) => {
-            const stage = stages.find(s => s.id === id);
-            const pending = !stage && busy && i === stages.length;
-            if (!stage && !pending) return null;
-            return (
-              <motion.li key={id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-[12px] px-3 py-2" style={{ background: C.surface2 }}>
-                <div className="flex items-center gap-2 text-[13px] font-medium">
-                  {stage ? <Check size={13} weight="bold" color={C.ok} /> : <motion.span className="w-[7px] h-[7px] rounded-full" style={{ background: '#9FD8FF' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} />}
-                  {tx(lang, ...STAGE_LABEL[id])}
-                  {stage && <span className="ml-auto text-[11.5px] tabular-nums" style={{ color: C.text3 }}>{stage.ms} ms</span>}
-                </div>
-                {stage && stage.facts.some(f => f.value) && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {stage.facts.filter(f => f.value).map((f, k) => (
-                      <span key={k} className="flex items-center gap-1 text-[11.5px] rounded-[7px] px-1.5 py-[2px]" style={{ background: C.surface2 }}>
-                        <span style={{ color: C.text3 }}>{tx(lang, ...(FACT[f.label] || [f.label, f.label]))}</span>
-                        <span>{f.label === 'intent' ? tx(lang, ...(INTENT[f.value] || [f.value, f.value])) : f.label === 'sync' ? f.value.slice(5, 16).replace('T', ' ') : f.value}</span>
-                        <Tag by={f.by} p={f.p} lang={lang} />
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </motion.li>
-            );
-          })}
-        </ol>
-      )}
+      {busy && <Stages stages={stages} busy lang={lang} />}
 
       {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.surface2, color: C.text }}>{error === 'daily' ? tx(lang, `今天的 ${DAILY_QUESTIONS} 次提问已经用完了，明天再来。日历里的信息不受影响。`, `You've used today's ${DAILY_QUESTIONS} questions. The calendar still has everything.`) : error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
 
@@ -396,53 +368,93 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
         </div>
       )}
 
-      {!busy && result?.kind === 'result' && <Understanding stages={stages} lang={lang} />}
+      {!busy && (result?.kind === 'result' || result?.kind === 'clarify') && <Feedback key={asked} ask={a} />}
 
       {!busy && stages.length > 0 && (
-        <button onClick={() => setTrace(v => !v)} className="mt-4 w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
-          <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
-          <span>{trace ? '−' : '+'}</span>
-        </button>
+        <div className="mt-3 mb-1">
+          <button onClick={() => setTrace(v => !v)} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+            <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
+            <motion.span animate={{ rotate: trace ? 180 : 0 }} className="flex"><CaretDown size={13} weight="bold" /></motion.span>
+          </button>
+          <AnimatePresence initial={false}>
+            {trace && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
+                <Stages stages={stages} lang={lang} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
-      <p className="mt-3 mb-1 text-[11.5px] leading-relaxed" style={{ color: C.text3 }}>
-        {tx(lang, '事实来自官方记录；“规则”为程序计算，“Jev”为决策模型的判断及把握程度。', 'Facts come from official records; “Rule” is computed, “Jev” is a model decision with its confidence.')}
-      </p>
     </Sheet>
   );
 }
 
-// What stays after the answer: not the machinery, but what helps you trust
-// and correct it — how your question was read, and how many records led
-// to the answer. The step-by-step trace stays one tap away.
-function Understanding({ stages, lang }: { stages: StageEvent[]; lang: Lang }) {
-  const fact = (label: string) => stages.flatMap(s => s.facts).find(f => f.label === label)?.value;
-  const all = (label: string) => [...new Set(stages.flatMap(s => s.facts).filter(f => f.label === label && f.value).map(f => f.value))].join(' · ');
-  const read = (['date', 'time', 'city', 'mode', 'line'] as const).map(l => [l, all(l)] as const).filter(([, v]) => v);
-  const records = fact('records');
-  const matches = fact('matches');
-  const excluded = fact('excluded');
-  if (!read.length && !records) return null;
+function Stages({ stages, busy = false, lang }: { stages: StageEvent[]; busy?: boolean; lang: Lang }) {
   return (
-    <section className="mt-4 rounded-[16px] px-4 py-3.5" style={{ background: C.surface2 }}>
-      <h4 className="text-[12px] font-medium" style={{ color: C.text3 }}>{tx(lang, '我是这样理解并核对的', 'How I read and checked this')}</h4>
-      {read.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {read.map(([label, value]) => (
-            <span key={label} className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-[13px]" style={{ background: C.surface3 }}>
-              <span style={{ color: C.text3 }}>{tx(lang, ...(FACT[label] || [label, label]))}</span>{value}
-            </span>
-          ))}
+    <ol className="mt-3 flex flex-col gap-1.5">
+      {(['understand', 'retrieve', 'judge', 'evidence'] as const).map((id, i) => {
+        const stage = stages.find(s => s.id === id);
+        const pending = !stage && busy && i === stages.length;
+        if (!stage && !pending) return null;
+        return (
+          <motion.li key={id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-[12px] px-3 py-2" style={{ background: C.surface2 }}>
+            <div className="flex items-center gap-2 text-[13px] font-medium">
+              {stage ? <Check size={13} weight="bold" color={C.ok} /> : <motion.span className="w-[7px] h-[7px] rounded-full" style={{ background: '#9FD8FF' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} />}
+              {tx(lang, ...STAGE_LABEL[id])}
+              {stage && <span className="ml-auto text-[11.5px] tabular-nums" style={{ color: C.text3 }}>{stage.ms} ms</span>}
+            </div>
+            {stage && stage.facts.some(f => f.value) && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {stage.facts.filter(f => f.value).map((f, k) => (
+                  <span key={k} className="flex items-center gap-1 text-[11.5px] rounded-[7px] px-1.5 py-[2px]" style={{ background: C.surface2 }}>
+                    <span style={{ color: C.text3 }}>{tx(lang, ...(FACT[f.label] || [f.label, f.label]))}</span>
+                    <span>{f.label === 'intent' ? tx(lang, ...(INTENT[f.value] || [f.value, f.value])) : f.label === 'sync' ? f.value.slice(5, 16).replace('T', ' ') : f.value}</span>
+                    <Tag by={f.by} p={f.p} lang={lang} />
+                  </span>
+                ))}
+              </div>
+            )}
+          </motion.li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// After an answer: was it good? Each rating keeps the question, how it was
+// read and what was shown, so bad cases can be replayed and fixed.
+const BAD_REASONS: [string, string, string][] = [['misread', '理解错了', 'Misread'], ['irrelevant', '有无关结果', 'Irrelevant results'], ['wrong', '结论不对', 'Wrong answer'], ['missing', '漏了信息', 'Missing something']];
+function Feedback({ ask: a }: { ask: AskState }) {
+  const { lang, asked, result, stages } = a;
+  const [rating, setRating] = useState<'good' | 'bad' | null>(null);
+  const [reason, setReason] = useState<string | null>(null);
+  const send = (r: 'good' | 'bad', why: string | null = null) => {
+    fetch('/api/ask/feedback', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: r, reason: why, query: asked, answer: result, trace: stages.map(s => ({ id: s.id, ms: s.ms, facts: s.facts })) }),
+    }).catch(() => {});
+  };
+  return (
+    <div className="mt-4 rounded-[14px] px-4 py-3" style={{ background: C.surface2 }}>
+      {rating === null ? (
+        <div className="flex items-center gap-2">
+          <span className="flex-1 text-[13.5px]" style={{ color: C.text2 }}>{tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
+          <button onClick={() => { setRating('good'); send('good'); }} aria-label={tx(lang, '答得好', 'Good answer')} className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium" style={{ background: C.surface3, color: C.text }}><ThumbsUp size={15} weight="bold" />{tx(lang, '答得好', 'Good')}</button>
+          <button onClick={() => setRating('bad')} aria-label={tx(lang, '答得不好', 'Bad answer')} className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium" style={{ background: C.surface3, color: C.text }}><ThumbsDown size={15} weight="bold" />{tx(lang, '不好', 'Bad')}</button>
         </div>
+      ) : rating === 'bad' && reason === null ? (
+        <div>
+          <p className="text-[13.5px]" style={{ color: C.text2 }}>{tx(lang, '哪里不好？', 'What went wrong?')}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {BAD_REASONS.map(([key, zh, en]) => (
+              <button key={key} onClick={() => { setReason(key); send('bad', key); }} className="h-8 px-3 rounded-full text-[13px]" style={{ background: C.surface3, color: C.text }}>{tx(lang, zh, en)}</button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-[13.5px] flex items-center gap-1.5" style={{ color: C.text2 }}><Check size={14} weight="bold" color={C.ok} />{tx(lang, '谢谢，我们会用它改进回答', 'Thanks — this helps us improve')}</p>
       )}
-      {records && (
-        <p className="mt-2.5 text-[13px] leading-relaxed tabular-nums" style={{ color: C.text2 }}>
-          {tx(lang, `查了 ${records} 条官方记录`, `Checked ${records} official records`)}
-          {matches ? tx(lang, ` → ${matches} 条与你相关`, ` → ${matches} relevant`) : ''}
-          {excluded && excluded !== '0' ? tx(lang, `，排除 ${excluded} 条`, `, ${excluded} excluded`) : ''}
-          {tx(lang, '。说错了可以换个说法再问。', '. If I misread you, rephrase and ask again.')}
-        </p>
-      )}
-    </section>
+    </div>
   );
 }
 

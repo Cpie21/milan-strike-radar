@@ -275,9 +275,10 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   parsed.modes.forEach(mode => modeSet.set(mode, { by: 'rule', p: null }));
   for (const mode of MODES) {
     const p = noul(understood, `mode_${mode}`);
-    // Explicit keywords already name the mode; then only a strong semantic signal adds another.
-    const threshold = parsed.modes.length ? 0.85 : 0.5;
-    if (p !== null && p >= threshold && !modeSet.has(mode)) modeSet.set(mode, { by: 'jev', p });
+    // A named mode or line ("M1") is the user's choice; the model may only
+    // infer modes when none was named ("going to the airport" → train, bus).
+    const named = parsed.modes.length > 0 || parsed.lines.length > 0;
+    if (p !== null && p >= 0.5 && !named && !modeSet.has(mode)) modeSet.set(mode, { by: 'jev', p });
     else if (p !== null && modeSet.has(mode)) modeSet.set(mode, { by: 'rule', p });
   }
   const pageTag = resolveCity(pageCity)?.tag || 'MILANO';
@@ -426,8 +427,15 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
 
   // 5. Evidence assembly: relevance threshold, ordering and the overall level.
   started = Date.now();
-  const isRelevant = (j: Judged) => j.relevance === null || j.relevance >= 0.35;
-  const matches = judged.filter(isRelevant).sort((a, b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact) || (b.relevance ?? 1) - (a.relevance ?? 1));
+  // Shown: only what is about the user's transport and judged more likely
+  // relevant than not. Two unions striking the same staff at the same hours
+  // are one strike to a traveller, so identical rows collapse into one.
+  const named = parsed.modes.length > 0 || parsed.lines.length > 0;
+  const isRelevant = (j: Judged) => (j.relevance === null || j.relevance >= 0.5) && (!named || modeSet.has(j.category));
+  const sameStrike = (a: Judged, b: Judged) => a.date === b.date && a.category === b.category && a.provider === b.provider && a.display === b.display && a.status === b.status;
+  const matches = judged.filter(isRelevant)
+    .sort((a, b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact) || (b.relevance ?? 1) - (a.relevance ?? 1))
+    .filter((j, i, all) => all.findIndex(o => sameStrike(o, j)) === i);
   const excluded = judged.filter(j => !isRelevant(j));
   const level: Impact | 'clear' = matches.length ? matches[0].impact : 'clear';
   emit({
