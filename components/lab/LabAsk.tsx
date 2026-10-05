@@ -5,7 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
 import { LedBoard, LedFace, type Mood } from './Led';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
-import { dayLabel, modeName, statusLine, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
+import { dayLabel, modeName, statusLine, tx, windowsText, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
 import { Bar } from './LabStrikeCard';
 import { LineBadge, ModeBadge, ModeGlyph, Sheet } from './ui';
@@ -51,8 +51,9 @@ const linesFor = (mode: Mode, lines: string[]) => lines.filter(l => (mode === 'S
 
 const asCard = (j: Judged): ModeCard => ({
   id: j.key, date: j.date, category: j.category, scope: '', status: j.status as ModeCard['status'], provider: j.provider, national: j.national, displayTime: '',
-  windows: j.windows, guarantees: j.guarantees, guaranteeSource: j.guarantees.length ? 'OFFICIAL_STRIKE_NOTICE' : 'UNKNOWN', guaranteeKind: j.category === 'AIRPORT' ? 'PROTECTED_FLIGHTS' : 'GUARANTEED_SERVICE',
-  lines: j.lines, unknownTiming: !j.windows.length, confidence: '', sources: j.sources, events: [],
+  // The event's own guarantee source, never assumed to be the strike notice.
+  windows: j.windows, guarantees: j.guarantees, guaranteeSource: j.guaranteeSource as ModeCard['guaranteeSource'], guaranteeKind: j.category === 'AIRPORT' ? 'PROTECTED_FLIGHTS' : 'GUARANTEED_SERVICE',
+  lines: j.lines, lineLabels: j.lineLabels, scheduledEnd: null, unknownTiming: !j.windows.length, confidence: '', sources: j.sources, events: [],
   scopeType: j.scopeType, indirect: j.indirect, lineScope: j.lineScope, geography: [], records: [], quotes: [],
 });
 
@@ -86,6 +87,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   const [error, setError] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
   const [focused, setFocused] = useState(false);
+  const token = useRef<string | null>(null);
   const abort = useRef<AbortController | null>(null);
   const [used, setUsed] = useState(0);
   useEffect(() => { const t = setTimeout(() => setUsed(readQuota(today)), 0); return () => clearTimeout(t); }, [today]);
@@ -128,7 +130,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     setAsked(q); setHints(next); setOpen(true); setBusy(true); setStages([]); setResult(null); setError(null); setTrace(false);
     (document.activeElement as HTMLElement | null)?.blur();
     try {
-      const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(fresh ? {} : { 'x-ask-refine': '1' }) }, body: JSON.stringify({ query: q, city: region, hints: next }), signal: controller.signal });
+      const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q, city: region, hints: next, refineToken: fresh ? undefined : token.current }), signal: controller.signal });
       if (!res.ok || !res.body) {
         const reason = res.status === 429 ? ((await res.json().catch(() => ({}))).error === 'daily_limit' ? 'daily' : 'rate') : 'down';
         setError(reason); setBusy(false); return;
@@ -152,10 +154,11 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
           const event = JSON.parse(line);
           if (event.type === 'stage') { seen.push(event); setStages(prev => [...prev, event]); }
           else if (event.type === 'final') {
+            token.current = event.refineToken ?? null;
             setResult(event.result);
             if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result });
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
-          } else if (event.type === 'error') setError('down');
+          } else if (event.type === 'error') setError(event.error === 'budget' ? 'budget' : 'down');
         }
       }
     } catch (err) {
@@ -304,7 +307,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
       ) : (
       <motion.div key="done" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
 
-      {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.surface2, color: C.text }}>{error === 'daily' ? tx(lang, `今天的 ${DAILY_QUESTIONS} 次提问已经用完了，明天再来。日历里的信息不受影响。`, `You've used today's ${DAILY_QUESTIONS} questions. The calendar still has everything.`) : error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
+      {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.surface2, color: C.text }}>{error === 'daily' ? tx(lang, `今天的 ${DAILY_QUESTIONS} 次提问已经用完了，明天再来。日历里的信息不受影响。`, `You've used today's ${DAILY_QUESTIONS} questions. The calendar still has everything.`) : error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : error === 'budget' ? tx(lang, '这个月的问答额度用完了，日历里的信息不受影响。', 'This month\'s answers are used up; the calendar still has everything.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
 
       {result?.kind === 'clarify' && (
         <div className="mt-4">
@@ -326,8 +329,10 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 
       {result?.kind === 'out_of_scope' && (
         <div className="mt-4">
-          <p className="text-[16px] font-semibold">{tx(lang, '我只能回答意大利交通罢工的问题', 'I can only answer questions about Italian transport strikes')}</p>
-          <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>
+          <p className="text-[16px] font-semibold">{result.place
+            ? tx(lang, `暂时不覆盖「${result.place}」，目前只有 20 个城市的数据`, `“${result.place}” isn't covered yet — only 20 cities for now`)
+            : tx(lang, '我只能回答意大利交通罢工的问题', 'I can only answer questions about Italian transport strikes')}</p>
+          {!result.place && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
         </div>
       )}
 
@@ -341,6 +346,11 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
             </p>
           </div>
 
+          {result.unchecked > 0 && (
+            <p className="rounded-[12px] px-3.5 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+              {tx(lang, `还有 ${result.unchecked} 条记录没有逐条判断，结论可能不完整，请在日历里查看那天。`, `${result.unchecked} more records weren't checked one by one; see the day in the calendar.`)}
+            </p>
+          )}
           {result.view === 'period' && result.days.map(day => (
             <button key={day.date} onClick={() => go(day.date, day.path)} className="flex items-center gap-3 rounded-[16px] px-4 py-3 text-left" style={{ background: C.surface2 }}>
               <span className="text-[15px] font-semibold w-[104px] shrink-0">{dayLabel(day.date, lang)}</span>
@@ -370,7 +380,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
                     <p className="text-[15px] font-semibold leading-snug">{item.provider}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
                     {item.reason && item.status !== 'CANCELLED' && <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
                     <p className="mt-1 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
-                    {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.ok }}>{tx(lang, '保障', 'Guaranteed')} {item.guarantees.map(g => `${g.start}–${g.end}`).join(tx(lang, '、', ', '))}</p>}
+                    {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.ok }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
                     <div className="mt-2.5"><Bar card={card} /></div>
                     {item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED' && (
                       <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium">{tx(lang, ...OVERLAP[item.overlap])}<Tag by="rule" lang={lang} /></p>
@@ -486,17 +496,23 @@ function Feedback({ ask: a }: { ask: AskState }) {
   const { lang, asked, result, stages } = a;
   const [rating, setRating] = useState<'good' | 'bad' | null>(null);
   const [reason, setReason] = useState<string | null>(null);
-  const send = (r: 'good' | 'bad', why: string | null = null) => {
-    fetch('/api/ask/feedback', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rating: r, reason: why, query: asked, answer: result, trace: stages.map(s => ({ id: s.id, ms: s.ms, facts: s.facts })) }),
-    }).catch(() => {});
+  const [failed, setFailed] = useState(false);
+  // Only say thanks when it was actually stored; otherwise offer a retry.
+  const send = async (r: 'good' | 'bad', why: string | null = null) => {
+    setFailed(false);
+    try {
+      const res = await fetch('/api/ask/feedback', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: r, reason: why, query: asked, city: a.region, answer: result, trace: stages.map(s => ({ id: s.id, ms: s.ms, facts: s.facts })) }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch { setFailed(true); setRating(null); setReason(null); }
   };
   return (
     <div className="mt-4 rounded-[14px] px-4 py-3" style={{ background: C.surface2 }}>
       {rating === null ? (
         <div className="flex items-center gap-2">
-          <span className="flex-1 text-[13.5px]" style={{ color: C.text2 }}>{tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
+          <span className="flex-1 text-[13.5px]" style={{ color: failed ? C.stop : C.text2 }}>{failed ? tx(lang, '没提交成功，再点一次试试', 'Not sent — try again') : tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
           <button onClick={() => { setRating('good'); send('good'); }} aria-label={tx(lang, '答得好', 'Good answer')} className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium" style={{ background: C.surface3, color: C.text }}><ThumbsUp size={15} weight="bold" />{tx(lang, '答得好', 'Good')}</button>
           <button onClick={() => setRating('bad')} aria-label={tx(lang, '答得不好', 'Bad answer')} className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium" style={{ background: C.surface3, color: C.text }}><ThumbsDown size={15} weight="bold" />{tx(lang, '不好', 'Bad')}</button>
         </div>

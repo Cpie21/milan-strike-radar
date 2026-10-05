@@ -55,7 +55,9 @@ export function weekEnd(today: string) {
 
 export function parseScope(text: string, today = romeTodayIso()): DateScope | null {
   const t = text.toLowerCase();
-  const day = (date: string | null, match: string): DateScope | null => (date ? { kind: 'day', date, text: match } : null);
+  // A real calendar date only: 31/02 or 2026-13-40 is no date at all.
+  const real = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) === date;
+  const day = (date: string | null, match: string): DateScope | null => (date && real(date) ? { kind: 'day', date, text: match } : null);
 
   let m: RegExpMatchArray | null;
   if ((m = t.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))) return day(`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`, m[0]);
@@ -138,6 +140,14 @@ export function parseCities(text: string) {
     if (Number.isFinite(index)) hits.push({ tag: city.tag, index });
   }
   return hits.sort((a, b) => a.index - b.index).map(hit => hit.tag);
+}
+
+// Italian places people ask about that this site does not cover. Named
+// explicitly, they get "not covered" rather than the page city's answer.
+const UNSUPPORTED_PLACES = /\b(foggia|udine|pescara|parma|modena|lecce|salerno|trento|bolzano|ancona|livorno|siena|rimini|reggio(?: emilia| calabria)?|piacenza|vicenza|treviso|ravenna|ferrara|latina|sassari|taranto|brindisi|como|varese|monza|novara|alessandria|asti|cuneo|aosta|potenza|matera|campobasso|l'aquila|arezzo|lucca|prato|pistoia)\b|福贾|乌迪内|佩斯卡拉|帕尔马|摩德纳|莱切|萨勒诺|特伦托|博尔扎诺|安科纳|里窝那|锡耶纳|里米尼|蒙扎|科莫/i;
+export function unsupportedPlace(text: string): string | null {
+  const m = text.match(UNSUPPORTED_PLACES);
+  return m ? m[0] : null;
 }
 
 export function parseQuery(text: string, today = romeTodayIso()): ParsedQuery {

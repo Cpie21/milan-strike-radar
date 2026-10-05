@@ -52,12 +52,12 @@ test('only a strike running through midnight joins two days', () => {
   assert.equal(rail[0].joinPrev, false);
 });
 
-test('status reads like opening hours on the day and as a range otherwise', () => {
+test('status describes planned strike hours, never a live stoppage or a restart', () => {
   const metro = card('2026-10-09', 'SUBWAY', [clock('08:45', '15:00'), toEnd('18:00')]);
-  assert.equal(statusLine(metro, '2026-10-09', 7 * 60).text, '08:45 起停运');
-  assert.equal(statusLine(metro, '2026-10-09', 10 * 60).text, '停运中 · 15:00 恢复 · 18:00 再次停运');
-  assert.equal(statusLine(metro, '2026-10-09', 19 * 60).text, '停运中 · 停运至运营结束');
-  assert.equal(statusLine(metro, '2026-10-05', 10 * 60).text, '08:45–15:00、18:00–运营结束 停运');
+  assert.equal(statusLine(metro, '2026-10-09', 7 * 60).text, '08:45 起进入罢工时段');
+  assert.equal(statusLine(metro, '2026-10-09', 10 * 60).text, '罢工时段内 · 至 15:00');
+  assert.equal(statusLine(metro, '2026-10-09', 19 * 60).text, '罢工时段内 · 至运营结束');
+  assert.equal(statusLine(metro, '2026-10-05', 10 * 60).text, '罢工时段 08:45–15:00、18:00–运营结束');
   assert.equal(statusLine({ ...metro, windows: [] }, '2026-10-09', 600).tone, 'pending');
   assert.equal(statusLine({ ...metro, status: 'CANCELLED' }, '2026-10-09', 600).text, '已取消');
 });
@@ -120,4 +120,11 @@ test('guaranteed hours are carved out of the strike window', () => {
   assert.deepEqual(out.map(w => `${w.start}-${w.end}`), ['00:00-07:00', '10:00-18:00', '21:00-23:59']);
   const open = carveGuarantees([toEnd('18:00')], [{ start: '20:00', end: '21:00' }]);
   assert.deepEqual(open.map(w => `${w.start}-${w.end}-${w.end_kind}`), ['18:00-20:00-clock', '21:00-null-end_of_service']);
+});
+
+test('planned strike hours never read as live "stopped" and guarantees win', () => {
+  const c = card('2026-10-10', 'BUS', [clock('00:00', '23:59')], { guarantees: [{ start: '06:00', end: '09:00', end_kind: 'clock' }], lineLabels: [], scheduledEnd: null });
+  assert.match(statusLine(c, '2026-10-10', 7 * 60).text, /^保障时段内/);
+  assert.match(statusLine(c, '2026-10-10', 12 * 60).text, /^罢工时段内/);
+  assert.doesNotMatch(statusLine(c, '2026-10-10', 12 * 60).text, /停运|恢复/);
 });

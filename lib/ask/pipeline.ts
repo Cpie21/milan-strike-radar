@@ -1,12 +1,13 @@
 import { cityPath, resolveCity } from '../cities';
 import { addDaysIso } from '../romeDate';
 import { readCityStrikes, romeToday, serverDatabase } from '../strikeQuery';
+import { cardGuaranteeWindows, lineScopeLabels } from '../strikeCardEvidence';
 import { windowsDisplay } from '../strikePresentation';
 import { geographyContext, indirectRail, type ScopeType } from '../strikeScope';
 import type { EvidenceWindow } from '../strikeEvidence';
 import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
 import { choice, decide, noul, type DecisionResult } from './jev';
-import { parseQuery, weekEnd, type DateScope, type Mode, type ParsedQuery } from './parseQuery';
+import { parseQuery, unsupportedPlace, weekEnd, type DateScope, type Mode, type ParsedQuery } from './parseQuery';
 
 // Query → understanding → retrieval → parallel decisions → evidence.
 // Jev classifies and judges relevance; code owns dates, clock arithmetic,
@@ -46,9 +47,11 @@ export type Candidate = {
   national: boolean;
   windows: EvidenceWindow[];
   display: string;
-  guarantees: { start: string; end: string }[];
+  guarantees: EvidenceWindow[];
+  guaranteeSource: string;
+  lineLabels: string[];
   lines: string[];
-  lineScope: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN';
+  lineScope: string;
   scopeType: string;
   indirect: boolean; // rail staff whose passenger impact is unconfirmed
   geography: string[]; // official administrative scope beyond the supported city
@@ -69,7 +72,7 @@ export type DaySummary = { date: string; path: string; items: { category: Mode; 
 export type AskResult =
   | { kind: 'clarify'; missing: 'date' | 'mode'; understanding: Understanding }
   | { kind: 'navigate'; understanding: Understanding; path: string; date: string }
-  | { kind: 'out_of_scope'; understanding: Understanding }
+  | { kind: 'out_of_scope'; understanding: Understanding; place?: string }
   | {
       kind: 'result';
       view: 'trip' | 'day' | 'period' | 'claim';
@@ -81,6 +84,7 @@ export type AskResult =
       range: { from: string; to: string };
       lastSync: string | null;
       cost: number;
+      unchecked: number; // candidates beyond the judging limit: never read as "no impact"
     };
 
 export type Fact = { label: string; value: string; by: By | 'db'; p?: number | null };
@@ -159,11 +163,11 @@ function spans(windows: EvidenceWindow[]) {
   });
 }
 
-export function computeOverlap(time: string | null, windows: EvidenceWindow[], guarantees: { start: string; end: string }[]): Overlap | null {
+export function computeOverlap(time: string | null, windows: EvidenceWindow[], guarantees: EvidenceWindow[]): Overlap | null {
   if (!time) return null;
   if (!windows.length) return 'unknown';
   const t = minutes(time);
-  if (guarantees.some(g => t >= minutes(g.start) && t < minutes(g.end))) return 'guarantee';
+  if (guarantees.some(g => t >= (g.start === null ? 0 : minutes(g.start)) && t < (g.end_kind === 'end_of_service' || !g.end ? 1440 : minutes(g.end)))) return 'guarantee';
   return spans(windows).some(s => t >= s.start && t < s.end) ? 'strike' : 'outside';
 }
 
@@ -237,9 +241,13 @@ async function loadCandidates(cityTags: string[], from: string, to: string): Pro
           national,
           windows,
           display: windows.length ? windowsDisplay(windows) : '',
-          guarantees: event.guarantee_windows || [],
-          lines: row.affected_lines || [],
-          lineScope: row.lineScope || 'UNKNOWN',
+          // Each event from its own fields: its guarantees (with their real
+          // source) and its own line scope, never the merged card's.
+          guarantees: cardGuaranteeWindows({ guaranteeSource: event.timing_evidence?.fields?.guaranteeSource, guarantee_windows: event.guarantee_windows, guaranteeEvidenceWindows: event.timing_evidence?.fields?.guaranteeEvidenceWindows?.value }),
+          guaranteeSource: event.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN',
+          lines: event.timing_evidence?.fields?.lineScope?.value.kind === 'SPECIFIC_LINES' ? event.timing_evidence.fields.lineScope.value.affectedLineNames : [],
+          lineScope: event.timing_evidence?.fields?.lineScope?.value.kind || 'UNKNOWN',
+          lineLabels: lineScopeLabels(event.timing_evidence?.fields?.lineScope?.value),
           scopeType: row.scopeType || '',
           indirect: row.category === 'TRAIN' && !!row.scopeType && indirectRail(row.scopeType as ScopeType),
           geography: [geographyContext(event.timing_evidence?.fields || undefined, 'en')].filter(Boolean),
@@ -262,6 +270,12 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   let started = Date.now();
   const parsed = parseQuery(query, today);
   const { scopeBy } = applyHints(parsed, hints);
+  // A place this site doesn't cover is said plainly, before any paid call,
+  // instead of answering for the page's city.
+  const place = unsupportedPlace(query);
+  if (place && !parsed.cities.length) {
+    return { kind: 'out_of_scope', place, understanding: { query, intent: 'other', intentP: null, scope: parsed.scope, scopeBy: 'default', time: parsed.time, city: pageCity, cityBy: 'default', modes: [], lines: parsed.lines, fallback: true } };
+  }
   let understood: DecisionResult | null = null;
   try {
     understood = await decide({ query, today, page_city: resolveCity(pageCity)?.en }, UNDERSTAND_QUESTIONS);
@@ -336,9 +350,23 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   const cityTags = [...new Set([city, ...parsed.cities, pageTag])].slice(0, 3);
   const [all, lastSync] = await Promise.all([loadCandidates(cityTags, from, to), lastSuccessfulSync()]);
   const wanted = new Set(modeSet.keys());
-  // Trains and buses reach airports, so an airport trip also judges them.
-  if (wanted.has('AIRPORT') && view === 'trip') { wanted.add('TRAIN'); wanted.add('BUS'); }
-  const pool = wanted.size ? all.filter(c => wanted.has(c.category)) : all;
+  const named = parsed.modes.length > 0 || parsed.lines.length > 0;
+  // Trains and buses reach airports, so an airport trip also judges them,
+  // unless the user named the transport: then nothing else is paid for.
+  if (wanted.has('AIRPORT') && view === 'trip' && !named) { wanted.add('TRAIN'); wanted.add('BUS'); }
+  // Candidates naming the user's line come first; identical notices (same
+  // staff, hours, status, guarantees, scope) are judged once, keeping every
+  // source on the one row.
+  const sameNotice = (a: Candidate, b: Candidate) => a.date === b.date && a.category === b.category && a.provider === b.provider && a.display === b.display && a.status === b.status
+    && JSON.stringify(a.guarantees) === JSON.stringify(b.guarantees) && a.guaranteeSource === b.guaranteeSource && a.lineScope === b.lineScope && JSON.stringify(a.lines) === JSON.stringify(b.lines);
+  const pool = (wanted.size ? all.filter(c => wanted.has(c.category)) : all)
+    .sort((a, b) => Number(parsed.lines.some(l => b.lines.includes(l))) - Number(parsed.lines.some(l => a.lines.includes(l))))
+    .reduce<Candidate[]>((out, c) => {
+      const twin = out.find(o => sameNotice(o, c));
+      if (twin) twin.sources = [...twin.sources, ...c.sources].filter((s, i, list) => list.findIndex(o => o.url === s.url) === i);
+      else out.push({ ...c, sources: [...c.sources] });
+      return out;
+    }, []);
   emit({
     type: 'stage', id: 'retrieve', ms: Date.now() - started,
     facts: [
@@ -361,7 +389,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
     const days = [...byDay.values()];
     const active = pool.filter(c => c.status !== 'CANCELLED');
     emit({ type: 'stage', id: 'evidence', ms: 0, facts: [{ label: 'sync', value: lastSync || '', by: 'db' }] });
-    return { kind: 'result', view, understanding, level: active.length ? 'medium' : 'clear', matches: [], excluded: [], days, range: { from, to }, lastSync, cost };
+    return { kind: 'result', view, understanding, level: active.length ? 'medium' : 'clear', matches: [], excluded: [], days, range: { from, to }, lastSync, cost, unchecked: 0 };
   }
 
   // 4. Parallel decisions: one Jev call per candidate, all at once.
@@ -390,8 +418,9 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
           status: candidate.status === 'CANCELLED' ? 'cancelled / revoked' : candidate.status === 'UNCERTAIN' ? 'announced, hours not yet published' : 'confirmed',
           hours: candidate.display || 'not published',
           hours_covered_of_24: candidate.windows.length ? Math.round(spans(candidate.windows).reduce((sum, s) => sum + s.end - s.start, 0) / 60) : null,
-          guaranteed_service: candidate.guarantees.map(g => `${g.start}-${g.end}`).join(', ') || 'none published',
-          affected_lines: candidate.lineScope === 'UNKNOWN' ? 'unknown' : candidate.lines,
+          guaranteed_service: candidate.guarantees.map(g => `${g.start ?? 'start of service'}-${g.end_kind === 'end_of_service' ? 'end of service' : g.end}`).join(', ') || 'none published',
+          guarantee_source: candidate.guaranteeSource,
+          affected_lines: candidate.lineScope === 'UNKNOWN' ? 'unknown' : candidate.lineScope === 'SPECIFIC_LINES' ? candidate.lines : candidate.lineLabels.join('; ') || candidate.lineScope,
           staff_scope: candidate.scopeType || 'unknown',
           passenger_impact: candidate.indirect ? 'staff strike; passenger train impact unconfirmed' : 'direct service',
           official_geography: candidate.geography,
@@ -430,14 +459,15 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   // Shown: only what is about the user's transport and judged more likely
   // relevant than not. Two unions striking the same staff at the same hours
   // are one strike to a traveller, so identical rows collapse into one.
-  const named = parsed.modes.length > 0 || parsed.lines.length > 0;
   const isRelevant = (j: Judged) => (j.relevance === null || j.relevance >= 0.5) && (!named || modeSet.has(j.category));
   const sameStrike = (a: Judged, b: Judged) => a.date === b.date && a.category === b.category && a.provider === b.provider && a.display === b.display && a.status === b.status;
   const matches = judged.filter(isRelevant)
     .sort((a, b) => IMPACT_ORDER.indexOf(a.impact) - IMPACT_ORDER.indexOf(b.impact) || (b.relevance ?? 1) - (a.relevance ?? 1))
     .filter((j, i, all) => all.findIndex(o => sameStrike(o, j)) === i);
   const excluded = judged.filter(j => !isRelevant(j));
-  const level: Impact | 'clear' = matches.length ? matches[0].impact : 'clear';
+  // Beyond the judging limit nothing was checked: that is "unknown", not "clear".
+  const unchecked = Math.max(0, pool.length - MAX_JUDGED);
+  const level: Impact | 'clear' = matches.length ? matches[0].impact : unchecked ? 'unknown' : 'clear';
   emit({
     type: 'stage', id: 'evidence', ms: Date.now() - started,
     facts: [
@@ -446,6 +476,6 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
       { label: 'sync', value: lastSync || '', by: 'db' },
     ],
   });
-  return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, lastSync, cost };
+  return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, lastSync, cost, unchecked };
 }
 

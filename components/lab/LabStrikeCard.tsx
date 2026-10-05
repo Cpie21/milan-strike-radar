@@ -8,7 +8,6 @@ import {
   type Lang, type Mode, type ModeCard, type OfficialRecord,
 } from '../../lib/lab/model';
 import type { Translation } from '../../lib/lab/translate';
-import { serviceEnd } from '../../lib/lab/serviceHours';
 import { LineBadge, ModeBadge, ModeGlyph } from './ui';
 import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { useDoodle } from './useDoodle';
@@ -57,7 +56,7 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
   const edgeOf = (t: string | null, x: number, ok = false) => (t ? { t, x, ok } : null);
   const edges = [
     ...card.windows.flatMap(w => [edgeOf(w.start, w.start ? axisPos(mins(w.start)) : 0), w.end_kind !== 'end_of_service' ? edgeOf(w.end, w.end ? axisPos(mins(w.end)) : 1) : null]),
-    ...(cancelled ? [] : card.guarantees.flatMap(g => [edgeOf(g.start, axisPos(mins(g.start)), true), edgeOf(g.end, axisPos(mins(g.end)), true)])),
+    ...(cancelled ? [] : card.guarantees.flatMap(g => [g.start ? edgeOf(g.start, axisPos(mins(g.start)), true) : null, g.end && g.end_kind !== 'end_of_service' ? edgeOf(g.end, axisPos(mins(g.end)), true) : null])),
   ].filter((e): e is { t: string; x: number; ok: boolean } => !!e && e.x > 0.001 && e.x < 0.999).sort((a, b) => a.x - b.x)
     .filter((e, i, all) => i === 0 || e.x - all[i - 1].x > 0.12)
     .filter(e => !openEnd || e.x < 0.8);
@@ -121,19 +120,20 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
   }
 
   const status = statusLine(card, ctx.today, ctx.nowMinutes, lang);
-  const live = isToday && status.text.startsWith(tx(lang, '停运中', 'Stopped'));
+  const live = isToday && status.text.startsWith(tx(lang, '罢工时段内', 'In strike hours'));
   const overnight = prev || next;
   const pending = !card.windows.length;
   // Confirmation matters most when it is missing. (Aggregate confidence
   // reads 'reported' whenever any report exists, even beside an operator's
   // own notice, so an official quote outranks it.)
-  const officialTiming = card.quotes.some(q => q.official);
   const doubt = pending ? tx(lang, '官方未公布时段', 'no official hours yet')
     : card.confidence === 'conflict' ? tx(lang, '各来源时段不一致', 'sources disagree on hours')
-      : card.confidence === 'reported' && !officialTiming ? tx(lang, '时段仅见报道', 'hours only reported')
+      : card.confidence === 'reported' ? tx(lang, '时段仅见报道', 'hours only reported')
         : card.status === 'UNCERTAIN' ? tx(lang, '官方状态未定', 'status not final') : null;
   const span = timeSpan(card.windows);
-  const lastRun = span && span.end === null ? serviceEnd(ctx.region, card.category) : null;
+  // A gap between windows is only "guaranteed" if a guarantee covers it;
+  // otherwise it is just outside the published strike hours.
+  const inGuarantee = (b: { start: string; end: string }) => card.guarantees.some(g => (g.start === null || g.start <= b.start) && (g.end_kind === 'end_of_service' || (g.end !== null && g.end >= b.end)));
 
   const pill = live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
     : isToday && !pending ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
@@ -174,21 +174,18 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
               <p className={TYPE.display}>
                 {span.start ?? word(tx(lang, '运营开始', 'Start'))}
                 <span className="mx-2" style={{ color: C.text3 }}>–</span>
-                {span.end ?? (lastRun
-                  // "+1", as on boarding passes: it marks the next day without
-                  // taking width, so the dash stays centred between the times.
-                  ? <span className="relative">{lastRun.end}<sup className="absolute left-full top-[3px] ml-1 text-[13px] font-semibold" style={{ color: C.text3, fontFamily: SANS }}>+1</sup></span>
-                  : word(tx(lang, '末班车', 'last service')))}
+                {span.end ?? word(tx(lang, '运营结束', 'end of service'))}
               </p>
-              {lastRun && (
-                <a href={lastRun.source.url} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
-                  {tx(lang, ...lastRun.note)}
+              {/* The notice says "end of service"; a timetable time is only a reference beside it */}
+              {span.end === null && card.scheduledEnd && (
+                <a href={card.scheduledEnd.source} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
+                  {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.label}`)}
                 </a>
               )}
               {span.breaks.map(b => (
-                <p key={b.start} className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.ok, fontFamily: SANS }}>
-                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.ok }} />
-                  {tx(lang, `中间 ${b.start}–${b.end} 恢复运行`, `Runs again ${b.start}–${b.end}`)}
+                <p key={b.start} className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: inGuarantee(b) ? C.ok : C.text2, fontFamily: SANS }}>
+                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: inGuarantee(b) ? C.ok : C.text3 }} />
+                  {inGuarantee(b) ? tx(lang, `中间 ${b.start}–${b.end} 为保障时段`, `${b.start}–${b.end} guaranteed`) : tx(lang, `中间 ${b.start}–${b.end} 不在已公布罢工时段内`, `${b.start}–${b.end} outside the published strike hours`)}
                 </p>
               ))}
             </>
@@ -243,10 +240,11 @@ function Details({ card, lang, breaks, say }: { card: ModeCard; lang: Lang; brea
     ? tx(lang, '仅该航司航班', 'This airline only')
     : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
       ? <span className="inline-flex flex-wrap justify-end gap-1">{card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l}>{l}</span>)}</span>
-      : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
-  const sameAsBreaks = card.guarantees.length > 0 && card.guarantees.every(g => breaks.some(b => b.start === g.start && b.end === g.end));
+      : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
+        : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
+  const sameAsBreaks = card.guarantees.length > 0 && card.guarantees.every(g => breaks.some(b => b.start === g.start && b.end === g.end && g.end_kind === 'clock'));
   const guarantee = card.guarantees.length
-    ? <span className="tabular-nums" style={{ color: C.ok, fontFamily: NUM, fontSize: 16 }}>{card.guarantees.map(g => `${g.start}–${g.end}`).join('  ')}</span>
+    ? <span className="tabular-nums" style={{ color: C.ok, fontFamily: NUM, fontSize: 16 }}>{windowsText(card.guarantees, lang)}</span>
     : card.guaranteeSource === 'UNKNOWN' ? null : tx(lang, '无保障计划', 'None');
   const rows: [string, React.ReactNode][] = [
     [tx(lang, '罢工人员', 'Who'), say(card.provider)],

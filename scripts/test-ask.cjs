@@ -75,3 +75,10 @@ test('impact and actions follow facts the code computed', () => {
   assert.equal(computeImpact('CONFIRMED', fullDay, null), 'high');
   assert.equal(computeImpact('CONFIRMED', [{ start: '13:00', end: '17:00', end_kind: 'clock' }], null), 'medium');
 });
+
+test('impossible dates and uncovered places are not searched', () => {
+  const { parseQuery, unsupportedPlace } = require('../lib/ask/parseQuery.ts');
+  assert.equal(parseQuery('2月31日地铁罢工吗', '2026-10-05').scope, null);
+  assert.equal(unsupportedPlace('10月15日Foggia公交有罢工吗？'), 'Foggia');
+  assert.equal(unsupportedPlace('米兰地铁周五罢工吗'), null);
+});

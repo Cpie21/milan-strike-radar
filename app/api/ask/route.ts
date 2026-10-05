@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveCity } from '../../../lib/cities';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { runAsk, type Hints } from '../../../lib/ask/pipeline';
+import { reserveAiBudget, settleAiBudget } from '../../../lib/aiBudget';
+
+// A refinement (picking a date or mode after a clarify) continues the same
+// question and doesn't count against the daily allowance, but only with the
+// token the server issued for that question: a header alone proves nothing.
+const SECRET = process.env.ASK_REFINE_SECRET || process.env.FEEDBACK_RATE_LIMIT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'dev';
+const refineToken = (ip: string, query: string) => createHmac('sha256', SECRET).update(`${ip}|${query}|${new Date().toISOString().slice(0, 10)}`).digest('base64url');
+const validRefine = (token: unknown, ip: string, query: string) => {
+  if (typeof token !== 'string') return false;
+  const a = Buffer.from(token), b = Buffer.from(refineToken(ip, query));
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+// One understanding call plus up to eight judgements; a ceiling per question.
+const ASK_RESERVE_MICRO_USD = 9 * 2000;
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,11 +53,8 @@ function rateLimited(ip: string) {
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
   if (rateLimited(ip)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  // Refinements (a picked date or mode) continue the same question.
-  const refining = request.headers.get('x-ask-refine') === '1';
-  if (!refining && overDaily(ip)) return NextResponse.json({ error: 'daily_limit' }, { status: 429 });
 
-  let body: { query?: unknown; city?: unknown; hints?: Hints };
+  let body: { query?: unknown; city?: unknown; hints?: Hints; refineToken?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -50,6 +62,7 @@ export async function POST(request: NextRequest) {
   }
   const query = typeof body.query === 'string' ? body.query.trim() : '';
   if (!query || query.length > MAX_QUERY) return NextResponse.json({ error: 'invalid_query' }, { status: 400 });
+  if (!validRefine(body.refineToken, ip, query) && overDaily(ip)) return NextResponse.json({ error: 'daily_limit' }, { status: 429 });
   const city = resolveCity(typeof body.city === 'string' ? body.city : 'MILANO')?.tag;
   if (!city) return NextResponse.json({ error: 'unsupported_city' }, { status: 400 });
   const hints: Hints = {
@@ -64,8 +77,11 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
       try {
+        const budget = await reserveAiBudget('ask', `ask:${refineToken(ip, query).slice(0, 16)}:${Date.now()}`, ASK_RESERVE_MICRO_USD);
+        if (!budget.ok) { send({ type: 'error', error: 'budget' }); return; }
         const result = await runAsk(query, city, hints, send);
-        send({ type: 'final', result });
+        await settleAiBudget(budget, 'cost' in result ? (result as { cost: number }).cost : null);
+        send({ type: 'final', result, refineToken: refineToken(ip, query) });
       } catch (error) {
         console.error('[ask] failed:', error instanceof Error ? error.message : error);
         send({ type: 'error', error: 'unavailable' });

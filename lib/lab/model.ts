@@ -33,14 +33,16 @@ export type ModeCard = {
   scope: string; // airport cards are split by scope (whole airport vs one airline)
   scopeType: string; // lib/strikeScope ScopeType; rail and aviation subtypes
   indirect: boolean; // rail security/infrastructure/support: staff hours, passenger impact unconfirmed
-  lineScope: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN';
+  lineScope: string; // lib/lineScope kind: ALL_LINES, ALL_OPERATOR_LINES, ALL_EXCEPT, SPECIFIC_LINES, UNKNOWN
+  lineLabels: string[]; // backend wording for the scope (lineScopeLabels), e.g. "ATM Milano 所属线路"
   geography: { zh: string; en: string }[]; // official administrative scope beyond this city
   status: CardStatus;
   provider: string;
   national: boolean;
   displayTime: string; // kept for the existing "I'm affected" grouping key
   windows: EvidenceWindow[];
-  guarantees: { start: string; end: string }[];
+  guarantees: EvidenceWindow[]; // cardGuaranteeWindows: may start at service start or run to its end
+  scheduledEnd: { label: string; source: string } | null; // timetable reference only (PR #7); never the strike's end
   guaranteeSource: GuaranteeSource;
   guaranteeKind: 'GUARANTEED_SERVICE' | 'PROTECTED_FLIGHTS';
   lines: string[];
@@ -151,23 +153,26 @@ export function windowsText(windows: EvidenceWindow[], lang: Lang = 'zh') {
   return windows.map(w => `${clock(w, 'start', lang)}–${clock(w, 'end', lang)}`).join(tx(lang, '、', ', '));
 }
 
+// Planned strike hours, not a live service report: inside a window the
+// service *may* be affected; guaranteed hours are said as such; nothing is
+// promised about resuming (ATM-style notices say lines "may not be
+// guaranteed", not that the network stops or restarts at a given minute).
 export function statusLine(card: ModeCard, today: string, nowMinutes: number, lang: Lang = 'zh'): { text: string; tone: Tone } {
   if (card.status === 'CANCELLED') return { text: tx(lang, '已取消', 'Cancelled'), tone: 'cancelled' };
   if (!card.windows.length) return { text: tx(lang, '已宣布罢工 · 时段待公布', 'Strike announced · hours pending'), tone: 'pending' };
-  if (card.date !== today) return { text: tx(lang, `${windowsText(card.windows, lang)} 停运`, `No service ${windowsText(card.windows, lang)}`), tone: 'stop' };
-  const spans = card.windows.map(w => ({ w, start: w.start === null ? 0 : minutes(w.start), end: w.end_kind === 'end_of_service' || !w.end ? 1440 : minutes(w.end) }));
+  if (card.date !== today) return { text: tx(lang, `罢工时段 ${windowsText(card.windows, lang)}`, `Strike hours ${windowsText(card.windows, lang)}`), tone: 'stop' };
+  const span = (w: EvidenceWindow) => ({ w, start: w.start === null ? 0 : minutes(w.start), end: w.end_kind === 'end_of_service' || !w.end ? 1440 : minutes(w.end) });
+  const guard = card.guarantees.map(span).find(s => nowMinutes >= s.start && nowMinutes < s.end);
+  if (guard) return { text: tx(lang, `保障时段内 · 至 ${clock(guard.w, 'end', lang)}`, `Guaranteed hours · until ${clock(guard.w, 'end', lang)}`), tone: 'over' };
+  const spans = card.windows.map(span);
   const current = spans.find(s => nowMinutes >= s.start && nowMinutes < s.end);
   if (current) {
-    const next = spans.find(s => s.start > current.end);
-    const resume = current.w.end_kind === 'end_of_service'
-      ? tx(lang, '停运至运营结束', 'until end of service')
-      : tx(lang, `${clock(current.w, 'end', lang)} 恢复`, `resumes ${clock(current.w, 'end', lang)}`);
-    const again = next ? tx(lang, ` · ${clock(next.w, 'start', lang)} 再次停运`, ` · stops again ${clock(next.w, 'start', lang)}`) : '';
-    return { text: tx(lang, `停运中 · ${resume}${again}`, `Stopped · ${resume}${again}`), tone: 'stop' };
+    const until = current.w.end_kind === 'end_of_service' ? tx(lang, '至运营结束', 'until end of service') : tx(lang, `至 ${clock(current.w, 'end', lang)}`, `until ${clock(current.w, 'end', lang)}`);
+    return { text: tx(lang, `罢工时段内 · ${until}`, `In strike hours · ${until}`), tone: 'stop' };
   }
   const upcoming = spans.find(s => s.start > nowMinutes);
-  if (upcoming) return { text: tx(lang, `${clock(upcoming.w, 'start', lang)} 起停运`, `Stops at ${clock(upcoming.w, 'start', lang)}`), tone: 'stop' };
-  return { text: tx(lang, '今天的罢工时段已结束', 'Today’s strike hours are over'), tone: 'over' };
+  if (upcoming) return { text: tx(lang, `${clock(upcoming.w, 'start', lang)} 起进入罢工时段`, `Strike hours from ${clock(upcoming.w, 'start', lang)}`), tone: 'stop' };
+  return { text: tx(lang, '今天的罢工时段已过', 'Today’s strike hours are over'), tone: 'over' };
 }
 
 // Two or more windows read as one span with the breaks named, the way an
@@ -266,10 +271,10 @@ export function segments(windows: { start: string | null; end: string | null; en
 
 // Guaranteed hours inside a strike window are carved out of it, so the bar
 // shows them as their own segment instead of a thin line over the strike.
-export function carveGuarantees(windows: EvidenceWindow[], guarantees: { start: string; end: string }[]): EvidenceWindow[] {
+export function carveGuarantees(windows: EvidenceWindow[], guarantees: { start: string | null; end: string | null; end_kind?: string }[]): EvidenceWindow[] {
   if (!guarantees.length) return windows;
   const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-  const guards = guarantees.map(g => [minutes(g.start), minutes(g.end)] as const).sort((a, b) => a[0] - b[0]);
+  const guards = guarantees.map(g => [g.start === null ? 0 : minutes(g.start), g.end_kind === 'end_of_service' || !g.end ? 24 * 60 : minutes(g.end)] as const).sort((a, b) => a[0] - b[0]);
   return windows.flatMap(w => {
     const start = w.start === null ? 0 : minutes(w.start);
     const open = w.end_kind === 'end_of_service' || !w.end;

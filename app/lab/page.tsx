@@ -6,6 +6,11 @@ import { windowsDisplay, type StrikeEvent } from '../../lib/strikePresentation';
 import type { TimingEvidence } from '../../lib/strikeEvidence';
 import { geographyContext, indirectRail, railTitle, scopeOf, scopeTitle } from '../../lib/strikeScope';
 import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
+import { cardGuaranteeWindows, lineScopeLabels } from '../../lib/strikeCardEvidence';
+import { scheduledEndpoint, type ServiceSchedule } from '../../lib/serviceSchedule';
+import type { LineScope } from '../../lib/lineScope';
+import type { EvidenceWindow } from '../../lib/strikeEvidence';
+import type { OfficialStrikeRecord } from '../../lib/officialStrikeRecord';
 import type { CardStatus, GuaranteeSource, Mode, ModeCard, OfficialRecord, Quote, Source } from '../../lib/lab/model';
 import { AVIATION_STRIKE_SOURCES, CITY_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES } from '../../lib/strikeSources';
 import LabApp from '../../components/lab/LabApp';
@@ -27,9 +32,12 @@ type Aggregated = {
   has_unknown_timing?: boolean;
   display_time?: string;
   guaranteeSource?: GuaranteeSource;
-  lineScope?: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN';
+  lineScope?: string;
+  lineScopeEvidence?: LineScope;
+  guaranteeEvidenceWindows?: EvidenceWindow[];
+  serviceSchedule?: ServiceSchedule;
   timing_evidence?: TimingEvidence;
-  strike_events?: StrikeEvent[];
+  strike_events?: (StrikeEvent & { official_record?: OfficialStrikeRecord | null })[];
 };
 
 const toSources = (event: StrikeEvent): Source[] => [
@@ -45,7 +53,6 @@ function romeMinutesNow() {
 
 const unique = (sources: Source[]) => sources.filter((s, i) => sources.findIndex(o => o.url === s.url) === i);
 
-type RawPayload = { unions?: string; provider?: string; sector?: string; rilevanza?: string; rawRegion?: string; province?: string; modalita?: string; proclamationDate?: string; sourceUrl?: string };
 const KNOWN_SOURCES = [...CITY_STRIKE_SOURCES, ...AVIATION_STRIKE_SOURCES, ...NATIONAL_STRIKE_SOURCES];
 function sourceName(url: string) {
   try {
@@ -53,29 +60,17 @@ function sourceName(url: string) {
     return KNOWN_SOURCES.find(s => s.urls.some(u => new URL(u).hostname === host))?.name ?? host.replace(/^www\./, '');
   } catch { return url; }
 }
-const isoFromItalian = (value?: string) => {
-  const m = value?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
-};
 
-function recordsFor(events: StrikeEvent[], raw: Map<string, RawPayload>): OfficialRecord[] {
+// The MIT register entry of each event, as the backend now ships it
+// (strike_events[i].official_record; MIT's own clocks only).
+function recordsFor(events: Aggregated['strike_events'] = []): OfficialRecord[] {
   const seen = new Set<string>();
   return events.flatMap(e => {
-    const p = raw.get(String(e.id));
+    const r = e.official_record;
     const key = e.source_key || String(e.id);
-    if (!p || seen.has(key)) return [];
+    if (!r || seen.has(key)) return [];
     seen.add(key);
-    return [{
-      unions: p.unions || e.unions || '',
-      workforce: p.provider || '',
-      sector: p.sector || '',
-      relevance: p.rilevanza || '',
-      area: [p.rawRegion, p.province && p.province !== 'Tutte' ? p.province : ''].filter(Boolean).join(' · '),
-      mode: p.modalita || '',
-      proclaimed: isoFromItalian(p.proclamationDate),
-      windows: e.windows || [],
-      url: p.sourceUrl || e.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',
-    }];
+    return [{ unions: r.unions || e.unions || '', workforce: r.workforce, sector: r.sector, relevance: r.relevance, area: r.area, mode: r.mode, proclaimed: r.proclaimed, windows: r.windows, url: r.url }];
   });
 }
 
@@ -104,13 +99,6 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
   const scoped = filterStrikesForRegion(raw, city.tag);
   const nationalKeys = new Set((scoped as { region?: string; source_key?: string }[]).filter(r => r.region === 'NATIONAL').map(r => r.source_key));
   const days = aggregateStrikes(scoped, city.tag) as unknown as Aggregated[];
-  // The MIT register row behind each event, for card-specific sourcing.
-  const ids = [...new Set(days.flatMap(d => (d.strike_events || []).map(e => e.id)).filter(Boolean).map(String))];
-  const registry = new Map<string, RawPayload>();
-  for (let i = 0; i < ids.length; i += 200) {
-    const { data } = await serverDatabase().from('strikes').select('id,raw_payload').in('id', ids.slice(i, i + 200));
-    (data || []).forEach((r: { id: string; raw_payload: RawPayload | null }) => r.raw_payload && registry.set(String(r.id), r.raw_payload));
-  }
 
   const cards: ModeCard[] = days.map(day => {
     const events = day.strike_events || [];
@@ -124,15 +112,17 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       scope: scopeLabel,
       scopeType: scope || '',
       indirect: day.category === 'TRAIN' && !!scope && indirectRail(scope),
-      lineScope: day.lineScope || 'UNKNOWN',
+      lineScope: day.lineScopeEvidence?.kind || day.lineScope || 'UNKNOWN',
+      lineLabels: lineScopeLabels(day.lineScopeEvidence),
       geography,
       category: day.category,
       status: day.status,
       provider: day.provider || '',
       national: events.some(e => nationalKeys.has(e.source_key)),
       windows: day.timing_evidence?.windows || [],
-      // Guarantees without a known origin are not shown, as on the live page.
-      guarantees: (day.guaranteeSource || 'UNKNOWN') === 'UNKNOWN' ? [] : day.guarantee_windows || [],
+      // Guarantees with their real source and symbolic edges (service start/end).
+      guarantees: cardGuaranteeWindows(day),
+      scheduledEnd: (() => { const e = scheduledEndpoint(day.serviceSchedule, day.date, day.category, 'end'); return e ? { label: e.label, source: e.source } : null; })(),
       guaranteeSource: day.guaranteeSource || 'UNKNOWN',
       guaranteeKind: day.timing_evidence?.fields?.guaranteeType || (day.category === 'AIRPORT' ? 'PROTECTED_FLIGHTS' : 'GUARANTEED_SERVICE'),
       displayTime: day.display_time || '',
@@ -141,7 +131,7 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       confidence: day.timing_evidence?.confidence || 'official',
       sources: unique(events.flatMap(toSources)),
       events: events.map(e => ({ provider: e.provider || '', status: e.status || '', display: e.windows.length ? windowsDisplay(e.windows) : '', sources: unique(toSources(e)) })),
-      records: recordsFor(events.filter(e => e.status !== 'CANCELLED'), registry),
+      records: recordsFor(events.filter(e => e.status !== 'CANCELLED')),
       quotes: quotesFor(events.filter(e => e.status !== 'CANCELLED')),
     };
   });

@@ -180,3 +180,25 @@ A named mode or line now blocks model-added modes. Results are filtered to the n
 - Milan Oct 9 official timetable: latest departure next day 00:32, latest passenger arrival next day 01:30 across five metro lines. Surface GTFS validity ends Oct 2 and must remain OUT_OF_VALIDITY; metro ends Oct 15. Source registration alone is not current scope coverage. Overlapping service days are not proof of 24h running.
 - Real seven-archive proof and the 20-city coverage matrix: `docs/verification/2026-10-service-schedule-official-audit.json`; architecture, coverage limitations and integration details: `docs/archive/2026-10-service-schedule-evidence.md`. 186 regressions, TypeScript, lint and build pass. Claude's uncommitted LED/Ask files were preserved. The helper is ready; the lab UI has not been integrated by this branch.
 - **Formal backend rollout confirmed**: runtime `179bef9`, deployment `dpl_9ZJvQqpd4d4JEKqE4kXm1817Bpm1` / `www.theitalystrike.com`. Sync `26117923-0f26-44d5-9e9d-5ada5665be24` succeeded (76 fetched / 58 upserted / two COMPLETE subway schedule facts). Both Oct 9 ATM metro events and published aggregate expose next-day 00:32 departure / 01:30 arrival, while both BUS records expose OUT_OF_VALIDITY and no number. Twenty city page/API/calendar and 20 prior scope checks pass. Existing DeepL translation 403 and blocked operator warnings remain; they do not stop sync. Semantic QA ledger USD 0.006489 this month, cap unchanged. Production proof: `docs/verification/2026-10-service-schedule-production-{evidence,checks}.json`. Lab display integration remains Claude's pending work.
+
+### Lab v12: Claude's response to the #6/#7 review (`claude/redesign-lab`)
+Codex's PRs #4–#7 are merged into the lab branch; 207 tests pass.
+
+**Fixed on the lab side**
+- **Live-status wording.** The status line describes planned strike hours, never a live stoppage: "罢工时段内 · 至 15:00" ("within strike hours · until 15:00"), "08:45 起进入罢工时段" ("strike hours start at 08:45"). Guarantees are checked first ("保障时段内", "within guaranteed hours"). Gaps between windows are only called guaranteed when a guarantee covers them; otherwise they read "不在已公布罢工时段内" ("not within the published strike hours").
+- **New field contract.** `/lab` consumes `cardGuaranteeWindows` (real source, symbolic edges), `lineScopeLabels(lineScopeEvidence)`, and per-event `official_record` (the second `raw_payload` query is gone). Ask candidates take guarantees, guarantee source and line scope from each event's own fields. `asCard` no longer hard-codes `OFFICIAL_STRIKE_NOTICE`.
+- **Timing confidence.** The `quotes.some(official)` workaround is removed; the backend timing confidence is used.
+- **End-of-service times.** `lib/lab/serviceHours.ts` is deleted. The main field stays "运营结束" ("end of service"). `scheduledEndpoint(serviceSchedule, …, 'end')` appears only as a separate linked line, "时刻表末班参考：次日 00:32 / 01:30…" ("timetable last-service reference: next day 00:32 / 01:30…").
+- **Ask checking.** Candidates beyond the 8 judged now give `unchecked: n` and level `unknown`, never "clear".
+- **Ask place and date handling.** Uncovered places (Foggia, Udine…) return `out_of_scope` with `place` before any paid call. Impossible dates (31/02) are rejected.
+- **Ask cost.** Airport connectors are only judged when no mode is named. Identical notices are judged once with all their sources kept.
+- **Refine token.** Refinements need a server-issued HMAC `refineToken` (ip|query|day). The `x-ask-refine` header is no longer trusted.
+- **Feedback endpoint.** It returns 503 `{ok:false}` when the write fails, caps the body at 32 KB, and stores a whitelisted, structured summary (jsonb). The client offers a retry.
+- **Translation.** It is cached per text (hash of text + model + prompt version, 30 days), and misses are batched. A result is rejected if it loses a clock time or a line code.
+
+**Needed from Codex**
+1. **Apply `supabase/migrations/20261006090000_ask_feedback.sql`.** Service role only, RLS on, no anon/authenticated grants. Adjust if you prefer another shape.
+2. **Shared AI budget RPCs:** `reserve_ai_budget(purpose text, call_key text, reserve_micro_usd int) → boolean` and `settle_ai_budget(call_key text, actual_micro_usd int)`, on the same monthly ledger as semantic QA.
+   - `lib/aiBudget.ts` already calls them for Ask (9×2000 µUSD per question) and translation.
+   - Until they exist, calls run unmetered and are logged as such. No cap is claimed.
+3. **Per-IP daily Ask limit** in a shared store (the in-instance Map is best-effort).
