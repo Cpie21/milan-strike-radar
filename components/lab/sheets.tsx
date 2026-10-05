@@ -5,12 +5,12 @@ import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/re
 import { submitFeedback } from '../../app/actions';
 import { buildWidgetScript } from '../../lib/widgetScript';
 import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
-import { ModeGlyph, PrimaryButton, Sheet } from './ui';
+import { Button, ModeGlyph, Sheet } from './ui';
 import { C } from './theme';
 import { track } from './track';
 
 type City = { tag: string; zh: string; en: string; path: string };
-type Base = { open: boolean; onClose: () => void; tint: string; lang: Lang };
+type Base = { open: boolean; onClose: () => void; lang: Lang };
 
 const PROD_HOST = 'theitalystrike.com';
 const isLocal = (host: string) => host.includes('localhost') || /^[0-9.]+(:[0-9]+)?$/.test(host);
@@ -33,7 +33,7 @@ function ModeToggles({ value, onChange, lang }: { value: Set<Mode>; onChange: (v
         return (
           <button key={mode} aria-pressed={on} onClick={() => { const next = new Set(value); if (on) next.delete(mode); else next.add(mode); onChange(next); }}
             className="h-[68px] rounded-[14px] flex flex-col items-center justify-center gap-1.5 text-[13px] font-semibold transition-colors"
-            style={{ background: on ? '#FFFFFF' : 'rgba(255,255,255,0.1)', color: on ? '#0E1A2E' : C.text2 }}>
+            style={{ background: on ? '#FFFFFF' : '#1E2025', color: on ? '#0A0B0D' : C.text2 }}>
             <ModeGlyph mode={mode} size={20} />
             {modeName(mode, lang)}
           </button>
@@ -46,7 +46,7 @@ function ModeToggles({ value, onChange, lang }: { value: Set<Mode>; onChange: (v
 function Step({ n, title, children }: { n: number; title: string; children?: React.ReactNode }) {
   return (
     <div className="flex gap-3 py-3">
-      <span className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[13px] font-semibold tabular-nums" style={{ background: 'rgba(255,255,255,0.16)' }}>{n}</span>
+      <span className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[13px] font-semibold tabular-nums" style={{ background: '#272A30' }}>{n}</span>
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-medium leading-6">{title}</p>
         {children && <div className="mt-2.5">{children}</div>}
@@ -61,8 +61,8 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
   const [q, setQ] = useState('');
   const list = cities.filter(c => !q || c.zh.includes(q) || c.en.toLowerCase().includes(q.toLowerCase()) || c.tag.toLowerCase().includes(q.toLowerCase()));
   return (
-    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '城市', 'Cities')}>
-      <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] mb-3" style={{ background: 'rgba(255,255,255,0.12)' }}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '城市', 'Cities')}>
+      <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] mb-3" style={{ background: '#1E2025' }}>
         <MagnifyingGlass size={16} color={C.text3} />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder={tx(base.lang, '搜索城市', 'Search cities')} aria-label={tx(base.lang, '搜索城市', 'Search cities')}
           className="flex-1 bg-transparent outline-none text-[16px] placeholder:text-white/40" />
@@ -70,7 +70,7 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
       <div className="flex flex-col gap-2 pb-2">
         {list.map(city => (
           <a key={city.tag} href={`/lab?city=${city.tag}`} className="flex items-center justify-between gap-3 h-[64px] px-4 rounded-[16px] active:scale-[0.99] transition-transform"
-            style={{ background: city.tag === current ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)' }}>
+            style={{ background: city.tag === current ? '#272A30' : '#1E2025' }}>
             <span>
               <span className="text-[17px] font-semibold">{base.lang === 'en' ? city.en : city.zh}</span>
               <span className="ml-2 text-[13px]" style={{ color: C.text3 }}>{base.lang === 'en' ? city.zh : city.en}</span>
@@ -109,14 +109,14 @@ export function CalendarSheet({ region, cityName, ...base }: Base & { region: st
     window.location.assign(`webcal://${host}/api/calendar?types=${encodeURIComponent(param)}&region=${encodeURIComponent(region)}`);
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '订阅罢工日历', 'Subscribe to strikes')}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '同步到本地日历', 'Sync to calendar')}>
       <p className="text-[14.5px] leading-relaxed mb-4" style={{ color: C.text2 }}>
         {tx(base.lang, `把${cityName}的罢工加入手机日历。新公布、改期或取消的罢工会自动同步，不用再回来查。`, `Add ${cityName} strikes to your calendar. New, moved or cancelled strikes update automatically.`)}
       </p>
       <p className="text-[13px] mb-2" style={{ color: C.text3 }}>{tx(base.lang, '同步哪些交通', 'Which transport')}</p>
       <ModeToggles value={types} onChange={setTypes} lang={base.lang} />
       <div className="mt-5">
-        <PrimaryButton onClick={subscribe}>{types.size ? tx(base.lang, '添加到日历', 'Add to Calendar') : tx(base.lang, '至少选择一种交通', 'Choose at least one')}</PrimaryButton>
+        <Button className="w-full" onClick={subscribe}>{types.size ? tx(base.lang, '添加到日历', 'Add to Calendar') : tx(base.lang, '至少选择一种交通', 'Choose at least one')}</Button>
       </div>
       <p className="mt-3 text-[12.5px] text-center" style={{ color: C.text3 }}>{tx(base.lang, 'iPhone 和 Mac 会弹出订阅确认；安卓可在 Google 日历中通过网址添加。', 'iPhone and Mac ask to confirm; on Android, add the URL in Google Calendar.')}</p>
     </Sheet>
@@ -140,17 +140,17 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '桌面小组件', 'Home Screen widget')}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, `添加桌面小组件 · ${cityName}`, `Add home widget · ${cityName}`)}>
       <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>
         {tx(base.lang, `在桌面上直接看到${cityName}今天和最近的罢工。借助免费的 Scriptable 实现，只需设置一次。`, `See ${cityName} strikes on your Home Screen, via the free Scriptable app. Set it up once.`)}
       </p>
       <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={setTypes} lang={base.lang} /></Step>
       <Step n={2} title={tx(base.lang, '复制代码，并安装 Scriptable', 'Copy the code and get Scriptable')}>
         <div className="flex gap-2">
-          <button onClick={copy} disabled={!types.size} className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold disabled:opacity-40" style={{ background: '#FFFFFF', color: '#0E1A2E' }}>
+          <button onClick={copy} disabled={!types.size} className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold disabled:opacity-40" style={{ background: '#FFFFFF', color: '#0A0B0D' }}>
             {copied ? <Check size={16} weight="bold" /> : <Copy size={16} weight="bold" />}{copied ? tx(base.lang, '已复制', 'Copied') : tx(base.lang, '复制代码', 'Copy code')}
           </button>
-          <a href="https://apps.apple.com/us/app/scriptable/id1405459188" target="_blank" rel="noreferrer" className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold" style={{ background: 'rgba(255,255,255,0.14)' }}>
+          <a href="https://apps.apple.com/us/app/scriptable/id1405459188" target="_blank" rel="noreferrer" className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold" style={{ background: '#272A30' }}>
             Scriptable<ArrowSquareOut size={14} />
           </a>
         </div>
@@ -164,7 +164,7 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
 
 function Shot({ src }: { src: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" className="w-full max-w-[260px] rounded-[14px]" style={{ boxShadow: '0 0 0 0.5px rgba(255,255,255,0.2)' }} />;
+  return <img src={src} alt="" className="w-full max-w-[260px] rounded-[14px]" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }} />;
 }
 
 // ── Add to Home Screen ─────────────────────────────────────────────────
@@ -188,12 +188,12 @@ export function HomeScreenSheet(base: Base) {
   const [copied, setCopied] = useState(false);
   useSeen(base.open, 'AppToDesktop_tutorial_success');
   return (
-    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '添加到主屏幕', 'Add to Home Screen')}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '添加网站到桌面', 'Add website to Home Screen')}>
       <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>{tx(base.lang, '像 App 一样从桌面一键打开，不用每次搜索。', 'Open it from your Home Screen like an app.')}</p>
       {!safari && (
-        <div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(255,203,107,0.16)' }}>
+        <div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(245,181,68,0.13)' }}>
           <p className="text-[14px] font-medium" style={{ color: C.pend }}>{tx(base.lang, '需要在 Safari 中操作', 'This works in Safari')}</p>
-          <button onClick={async () => { await navigator.clipboard?.writeText(window.location.href.replace('/lab', '')); setCopied(true); }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: 'rgba(255,255,255,0.16)' }}>
+          <button onClick={async () => { await navigator.clipboard?.writeText(window.location.href.replace('/lab', '')); setCopied(true); }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
             {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}{copied ? tx(base.lang, '已复制，去 Safari 粘贴', 'Copied — paste in Safari') : tx(base.lang, '复制链接', 'Copy link')}
           </button>
         </div>
@@ -222,41 +222,40 @@ export function SupportSheet(base: Base) {
     else { setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} tint={base.tint} title={tx(base.lang, '支持与反馈', 'Support and feedback')}>
-      <p className="text-[14.5px] leading-relaxed" style={{ color: C.text2 }}>{tx(base.lang, '这是一个独立开发的免费工具。如果它帮到了你，可以请作者喝杯奶茶。', 'This is a free, independently built tool. If it helped, you can buy the author a drink.')}</p>
-      <div className="mt-4 rounded-[18px] p-4" style={{ background: 'rgba(255,255,255,0.08)' }}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '支持一下 / 反馈问题', 'Support / send feedback')}>
+      <p className="text-[14.5px] leading-relaxed" style={{ color: C.text2 }}>{tx(base.lang, '感谢您愿意点进这个界面！独立开发不易，如果对你有用请支持一杯奶茶。', 'Thanks for opening this panel! If the tool helps you, consider buying a bubble tea.')}</p>
+      <div className="mt-4 rounded-[18px] p-4" style={{ background: '#1E2025' }}>
         <div className="flex items-center justify-between">
           <span className="text-[15px] font-medium">{tx(base.lang, '奶茶 · 每杯 2€', 'Drinks · 2€ each')}</span>
-          <div className="flex items-center gap-1 rounded-full p-1" style={{ background: 'rgba(255,255,255,0.1)' }}>
+          <div className="flex items-center gap-1 rounded-full p-1" style={{ background: '#1E2025' }}>
             {[1, 2, 3, 5].map(n => (
-              <button key={n} aria-pressed={cups === n} onClick={() => setCups(n)} className="w-9 h-8 rounded-full text-[14px] font-semibold tabular-nums transition-colors" style={{ background: cups === n ? '#FFFFFF' : 'transparent', color: cups === n ? '#0E1A2E' : C.text2 }}>{n}</button>
+              <button key={n} aria-pressed={cups === n} onClick={() => setCups(n)} className="w-9 h-8 rounded-full text-[14px] font-semibold tabular-nums transition-colors" style={{ background: cups === n ? '#FFFFFF' : 'transparent', color: cups === n ? '#0A0B0D' : C.text2 }}>{n}</button>
             ))}
           </div>
         </div>
         <div className="mt-3">
-          <PrimaryButton href="https://revolut.me/cpie21" onClick={() => track('donate_coffee_clicked', { payment_method: 'Revolut', amount: cups * 2 })}>
-            {tx(base.lang, `用 Revolut 支持 ${cups * 2}€`, `Support ${cups * 2}€ with Revolut`)}
-          </PrimaryButton>
+          <Button className="w-full" href="https://revolut.me/cpie21" onClick={() => track('donate_coffee_clicked', { payment_method: 'Revolut', amount: cups * 2 })}>
+            {tx(base.lang, `点击支持开发者 ${cups * 2}€`, `Support the developer ${cups * 2}€`)}
+          </Button>
         </div>
         <div className="mt-4 flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/assets/wechat-qr-round.png" alt={tx(base.lang, '微信赞赏码', 'WeChat appreciation code')} className="w-[84px] h-[84px] rounded-full" />
-          <p className="text-[13.5px] leading-snug" style={{ color: C.text2 }}>{tx(base.lang, '或长按 / 扫描微信赞赏码', 'Or scan the WeChat appreciation code')}</p>
+          <p className="text-[13.5px] leading-snug" style={{ color: C.text2 }}>{tx(base.lang, '或者扫描微信赞赏码', 'Or scan the WeChat appreciation code')}</p>
         </div>
       </div>
 
-      <h3 className="mt-6 mb-2 text-[15px] font-semibold">{tx(base.lang, '反馈与建议', 'Feedback')}</h3>
-      <p className="text-[13px] mb-3" style={{ color: C.text3 }}>{tx(base.lang, '信息有误、想要的城市、或者任何建议，都可以告诉我。', 'Wrong data, a missing city, or any idea — tell me.')}</p>
-      <input value={name} onChange={e => setName(e.target.value.slice(0, 60))} placeholder={tx(base.lang, '昵称（选填）', 'Name (optional)')} aria-label={tx(base.lang, '昵称', 'Name')}
-        className="w-full h-11 px-3 rounded-[12px] bg-transparent outline-none text-[15px] placeholder:text-white/40" style={{ background: 'rgba(255,255,255,0.1)' }} />
-      <textarea value={text} onChange={e => { setText(e.target.value.slice(0, 1000)); if (state === 'error') setState('idle'); }} rows={4} placeholder={tx(base.lang, '想说点什么？', 'What’s on your mind?')} aria-label={tx(base.lang, '反馈内容', 'Feedback')}
-        className="mt-2 w-full p-3 rounded-[12px] bg-transparent outline-none text-[15px] leading-relaxed resize-none placeholder:text-white/40" style={{ background: 'rgba(255,255,255,0.1)' }} />
+      <h3 className="mt-6 mb-2 text-[15px] font-semibold">{tx(base.lang, '可以来点建议', 'Suggestions are welcome')}</h3>
+            <input value={name} onChange={e => setName(e.target.value.slice(0, 60))} placeholder={tx(base.lang, '您的昵称是', 'Your nickname')} aria-label={tx(base.lang, '昵称', 'Name')}
+        className="w-full h-11 px-3 rounded-[12px] bg-transparent outline-none text-[15px] placeholder:text-white/40" style={{ background: '#1E2025' }} />
+      <textarea value={text} onChange={e => { setText(e.target.value.slice(0, 1000)); if (state === 'error') setState('idle'); }} rows={4} placeholder={tx(base.lang, '说点什么吗', 'Anything to share?')} aria-label={tx(base.lang, '反馈内容', 'Feedback')}
+        className="mt-2 w-full p-3 rounded-[12px] bg-transparent outline-none text-[15px] leading-relaxed resize-none placeholder:text-white/40" style={{ background: '#1E2025' }} />
       {state === 'error' && <p className="mt-1 text-[13px]" style={{ color: C.stop }}>{error}</p>}
       {state === 'sent' && <p className="mt-1 text-[13px]" style={{ color: C.ok }}>{tx(base.lang, '收到了，谢谢你。', 'Got it — thank you.')}</p>}
-      <div className="mt-3"><PrimaryButton tone="glass" onClick={send}>{state === 'sending' ? tx(base.lang, '发送中…', 'Sending…') : tx(base.lang, '发送反馈', 'Send feedback')}</PrimaryButton></div>
+      <div className="mt-3"><Button className="w-full" tone="quiet" onClick={send}>{state === 'sending' ? tx(base.lang, '发送中…', 'Sending…') : tx(base.lang, '发送反馈', 'Send feedback')}</Button></div>
 
-      <a href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-5 mb-2 flex items-center justify-between h-12 px-4 rounded-[14px]" style={{ background: 'rgba(255,255,255,0.08)' }}>
-        <span className="text-[15px] font-medium">{tx(base.lang, '在小红书关注作者', 'Follow on Xiaohongshu')}</span>
+      <a href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-5 mb-2 flex items-center justify-between h-12 px-4 rounded-[14px]" style={{ background: '#1E2025' }}>
+        <span className="text-[15px] font-medium">{tx(base.lang, '或者点个关注 · 小红书', 'Or follow along · Xiaohongshu')}</span>
         <ArrowSquareOut size={15} color={C.text2} />
       </a>
     </Sheet>

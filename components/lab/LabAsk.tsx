@@ -2,13 +2,16 @@
 
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUp, CaretRight, Check, ListBullets, Sparkle } from '@phosphor-icons/react';
+import { ArrowUp, CaretRight, Check, Sparkle } from '@phosphor-icons/react';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
-import { Bar, TONE } from './DayBoard';
+import { Bar } from './LabStrikeCard';
 import { LineBadge, ModeGlyph, Sheet } from './ui';
-import { C, EASE, glass } from './theme';
+import { C, EASE } from './theme';
+
+const TONE = { stop: C.stop, pending: C.pend, cancelled: C.cancel, over: C.text2 };
+const PILL = { background: C.surface2, boxShadow: `inset 0 0 0 1px ${C.lineStrong}, 0 12px 32px rgba(0,0,0,0.5)` };
 
 // Citymapper groups an answer by what you'll ride; each group reuses the
 // day board's own row facts so the AI answer looks like the product's facts.
@@ -54,12 +57,11 @@ const asCard = (j: Judged): ModeCard => ({
 function Tag({ by, p, lang }: { by: Fact['by']; p?: number | null; lang: Lang }) {
   const label = by === 'jev' ? `Jev${p != null ? ` ${Math.round(p * 100)}%` : ''}` : by === 'db' ? tx(lang, '数据库', 'DB') : by === 'default' ? tx(lang, '默认', 'Default') : tx(lang, '规则', 'Rule');
   const color = by === 'jev' ? '#9FD8FF' : by === 'rule' ? C.ok : C.text3;
-  return <span className="text-[10.5px] font-semibold px-1.5 py-[1px] rounded-[5px]" style={{ color, background: 'rgba(255,255,255,0.1)' }}>{label}</span>;
+  return <span className="text-[10.5px] font-semibold px-1.5 py-[1px] rounded-[5px]" style={{ color, background: C.surface3 }}>{label}</span>;
 }
 
-export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCities }: {
-  region: string; tint: string; lang: Lang; today: string;
-  onOpenDate: (date: string, path: string) => void; onOpenCities: () => void;
+export default function LabAsk({ region, lang, today, onOpenDate }: {
+  region: string; lang: Lang; today: string; onOpenDate: (date: string, path: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const [asked, setAsked] = useState('');
@@ -130,7 +132,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
 
   return (
     <>
-      {/* Floating entry, Apple Weather iOS 26 style: glass pill + round button. */}
+      {/* Floating entry: one sentence in, a fact card out. */}
       <div className="fixed z-[80] inset-x-0 bottom-0 pointer-events-none" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
         <AnimatePresence>
           {focused && !query && (
@@ -142,7 +144,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
               initial={{ opacity: 0, y: 8, filter: reduce ? 'none' : 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.24, ease: EASE }}>
               {EXAMPLES.map(e => (
                 <button key={e[0]} onMouseDown={ev => ev.preventDefault()} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q); }}
-                  className="h-9 px-3.5 rounded-full text-[13.5px]" style={{ ...glass('rgba(20,28,40,0.45)'), color: C.text }}>
+                  className="h-9 px-3.5 rounded-full text-[13.5px]" style={{ ...PILL, color: C.text }}>
                   {tx(lang, e[0], e[1])}
                 </button>
               ))}
@@ -150,7 +152,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
           )}
         </AnimatePresence>
         <div className="mx-auto max-w-[520px] px-4 flex items-center gap-2 pointer-events-auto">
-          <form onSubmit={e => { e.preventDefault(); ask(query); }} className="relative flex-1 h-[52px] rounded-full flex items-center gap-2 pl-4 pr-1.5" style={{ ...glass('rgba(20,28,40,0.42)') }}>
+          <form onSubmit={e => { e.preventDefault(); ask(query); }} className="relative flex-1 h-[52px] rounded-full flex items-center gap-2 pl-4 pr-1.5" style={PILL}>
             {busy && (
               <span aria-hidden className="pointer-events-none absolute -inset-[1.5px] rounded-full overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1.5 }}>
                 <motion.span className="absolute left-1/2 top-1/2 w-[640px] h-[640px] -ml-[320px] -mt-[320px]" style={{ background: 'conic-gradient(#9FD8FF, #C4B5FD, #FFB4A8, #FFE8A3, #9FD8FF)' }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2.4, ease: 'linear' }} />
@@ -161,17 +163,14 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
               aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')} placeholder={tx(lang, '问一句：周五坐地铁受影响吗？', 'Ask: is my Friday metro affected?')}
               className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-white placeholder:text-white/45" />
             <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy} aria-label={tx(lang, '发送', 'Send')}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: '#FFFFFF', color: '#0E1A2E' }}>
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: '#FFFFFF', color: C.ink }}>
               <ArrowUp size={18} weight="bold" />
             </motion.button>
           </form>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={onOpenCities} aria-label={tx(lang, '切换城市', 'Change city')} className="w-[52px] h-[52px] rounded-full flex items-center justify-center shrink-0" style={glass('rgba(20,28,40,0.42)')}>
-            <ListBullets size={21} weight="bold" color={C.text} />
-          </motion.button>
         </div>
       </div>
 
-      <Sheet open={open} onClose={() => setOpen(false)} tint={tint} title={tx(lang, '问答', 'Ask')}>
+      <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '问答', 'Ask')}>
         <p className="text-[17px] font-semibold leading-snug">“{asked}”</p>
 
         {/* While working, the steps are the answer; afterwards they fold away. */}
@@ -182,7 +181,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
               const pending = !stage && busy && i === stages.length;
               if (!stage && !pending) return null;
               return (
-                <motion.li key={id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-[12px] px-3 py-2" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                <motion.li key={id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-[12px] px-3 py-2" style={{ background: C.surface2 }}>
                   <div className="flex items-center gap-2 text-[13px] font-medium">
                     {stage ? <Check size={13} weight="bold" color={C.ok} /> : <motion.span className="w-[7px] h-[7px] rounded-full" style={{ background: '#9FD8FF' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} />}
                     {tx(lang, ...STAGE_LABEL[id])}
@@ -191,7 +190,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
                   {stage && stage.facts.some(f => f.value) && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {stage.facts.filter(f => f.value).map((f, k) => (
-                        <span key={k} className="flex items-center gap-1 text-[11.5px] rounded-[7px] px-1.5 py-[2px]" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                        <span key={k} className="flex items-center gap-1 text-[11.5px] rounded-[7px] px-1.5 py-[2px]" style={{ background: C.surface2 }}>
                           <span style={{ color: C.text3 }}>{tx(lang, ...(FACT[f.label] || [f.label, f.label]))}</span>
                           <span>{f.label === 'intent' ? tx(lang, ...(INTENT[f.value] || [f.value, f.value])) : f.label === 'sync' ? f.value.slice(5, 16).replace('T', ' ') : f.value}</span>
                           <Tag by={f.by} p={f.p} lang={lang} />
@@ -205,7 +204,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
           </ol>
         )}
 
-        {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: 'rgba(242,86,74,0.2)', color: C.stop }}>{error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
+        {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.stopSoft, color: C.stop }}>{error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
 
         {result?.kind === 'clarify' && (
           <div className="mt-4">
@@ -243,7 +242,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
             </div>
 
             {result.view === 'period' && result.days.map(day => (
-              <button key={day.date} onClick={() => go(day.date, day.path)} className="flex items-center gap-3 rounded-[16px] px-4 py-3 text-left" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <button key={day.date} onClick={() => go(day.date, day.path)} className="flex items-center gap-3 rounded-[16px] px-4 py-3 text-left" style={{ background: C.surface2 }}>
                 <span className="text-[15px] font-semibold w-[104px] shrink-0">{dayLabel(day.date, lang)}</span>
                 <span className="flex-1 flex flex-col gap-0.5">
                   {day.items.map((item, i) => (
@@ -258,7 +257,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
             ))}
 
             {groups.map(([mode, items]) => (
-              <div key={mode} className="rounded-[18px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <div key={mode} className="rounded-[18px] overflow-hidden" style={{ background: C.surface2 }}>
                 <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-[13px] font-medium" style={{ color: C.text3 }}>
                   <ModeGlyph mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
                   {linesFor(mode, result.understanding.lines).length > 0 && <span className="flex gap-1">{linesFor(mode, result.understanding.lines).map(l => <LineBadge key={l} line={l} />)}</span>}
@@ -267,11 +266,9 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
                   const card = asCard(item);
                   const status = statusLine(card, today, -1, lang);
                   return (
-                    <div key={item.key} className="px-4 py-3" style={{ borderTop: `0.5px solid ${C.hair}` }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-[15px] font-semibold leading-snug">{item.provider}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: 'rgba(255,255,255,0.14)', color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</span>
-                        {item.reason && item.status !== 'CANCELLED' && <span className="flex items-center gap-1 shrink-0 text-[12px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></span>}
-                      </div>
+                    <div key={item.key} className="px-4 py-3" style={{ borderTop: `1px solid ${C.line}` }}>
+                      <p className="text-[15px] font-semibold leading-snug">{item.provider}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
+                      {item.reason && item.status !== 'CANCELLED' && <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
                       <p className="mt-1 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
                       {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.ok }}>{tx(lang, '保障', 'Guaranteed')} {item.guarantees.map(g => `${g.start}–${g.end}`).join(tx(lang, '、', ', '))}</p>}
                       <div className="mt-2.5"><Bar card={card} /></div>
@@ -286,7 +283,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
             ))}
 
             {result.view !== 'period' && result.understanding.modes.filter(m => !groups.some(([mode]) => mode === m.mode)).map(m => (
-              <div key={m.mode} className="flex items-center gap-2.5 rounded-[18px] px-4 py-3" style={{ background: 'rgba(255,255,255,0.08)' }}>
+              <div key={m.mode} className="flex items-center gap-2.5 rounded-[18px] px-4 py-3" style={{ background: C.surface2 }}>
                 <span className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center" style={{ background: `${C.ok}22` }}><Check size={15} weight="bold" color={C.ok} /></span>
                 <span className="flex-1 text-[15px]">{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(m.mode, lang)}{linesFor(m.mode, result.understanding.lines).map(l => <span key={l} className="ml-1.5"><LineBadge line={l} /></span>)}</span>
                 <span className="text-[13px] font-semibold" style={{ color: C.ok }}>{tx(lang, '没有相关罢工', 'No strike')}</span>
@@ -302,7 +299,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
         )}
 
         {!busy && stages.length > 0 && (
-          <button onClick={() => setTrace(v => !v)} className="mt-4 w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: 'rgba(255,255,255,0.07)', color: C.text2 }}>
+          <button onClick={() => setTrace(v => !v)} className="mt-4 w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
             <span>{tx(lang, `判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `How this was decided · ${stages.length} steps`)}</span>
             <span>{trace ? '−' : '+'}</span>
           </button>
@@ -317,7 +314,7 @@ export default function LabAsk({ region, tint, lang, today, onOpenDate, onOpenCi
 
 function Chip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <motion.button whileTap={{ scale: 0.96 }} onClick={onClick} className="h-10 px-4 rounded-full text-[14px] font-medium text-left" style={{ background: 'rgba(255,255,255,0.14)' }}>
+    <motion.button whileTap={{ scale: 0.96 }} onClick={onClick} className="h-10 px-4 rounded-full text-[14px] font-medium text-left" style={{ background: C.surface3 }}>
       {children}
     </motion.button>
   );

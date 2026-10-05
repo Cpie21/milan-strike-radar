@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import { Airplane, Bus, Subway, TrainRegional, X, type IconWeight } from '@phosphor-icons/react';
 import type { Mode } from '../../lib/lab/model';
-import { C, LINE_COLORS, SPRING_SHEET, glass } from './theme';
+import { C, LINE_COLORS, SPRING_SHEET } from './theme';
 
 export function ModeGlyph({ mode, size = 20, weight = 'fill', color }: { mode: Mode; size?: number; weight?: IconWeight; color?: string }) {
   const props = { size, weight, color, 'aria-hidden': true } as const;
@@ -14,38 +14,25 @@ export function ModeGlyph({ mode, size = 20, weight = 'fill', color }: { mode: M
   return <Airplane {...props} />;
 }
 
-// Glass module in the Apple Weather idiom: small icon + label header, a
-// hairline, then content.
-export function Card({ tint, children, className = '' }: { tint: string; children: ReactNode; className?: string }) {
-  return (
-    <section className={`rounded-[22px] ${className}`} style={glass(tint)}>
-      {children}
-    </section>
-  );
-}
-
-export function CardHeader({ icon, label, trailing }: { icon: ReactNode; label: string; trailing?: ReactNode }) {
-  return (
-    <div className="flex items-center gap-1.5 px-4 pt-3 pb-2 text-[13px] font-medium" style={{ color: C.text3 }}>
-      <span className="flex">{icon}</span>
-      <span className="tracking-[0.01em]">{label}</span>
-      {trailing && <span className="ml-auto flex items-center">{trailing}</span>}
-    </div>
-  );
-}
-
-export function Hairline({ inset = 16 }: { inset?: number }) {
-  return <div style={{ height: 0.5, background: C.hair, marginLeft: inset, marginRight: inset }} />;
-}
-
 export function LineBadge({ line }: { line: string }) {
-  const [bg, fg] = LINE_COLORS[line.toUpperCase()] || ['rgba(255,255,255,0.16)', C.text];
-  return <span className="inline-flex items-center h-[20px] px-1.5 rounded-[6px] text-[12px] font-semibold tabular-nums" style={{ background: bg, color: fg }}>{line}</span>;
+  const [bg, fg] = LINE_COLORS[line.toUpperCase()] || [C.surface3, C.text];
+  return <span className="inline-flex items-center h-[22px] px-[7px] rounded-[7px] text-[12.5px] font-semibold tabular-nums" style={{ background: bg, color: fg }}>{line}</span>;
 }
 
-// One sheet for every secondary page: grabber, title, round close button.
-export function Sheet({ open, onClose, title, tint, children }: { open: boolean; onClose: () => void; title: string; tint: string; children: ReactNode }) {
+// Sheets follow iOS: a grabber appears only when the sheet can actually
+// change size. Short content opens at its own height with no grabber; long
+// content opens at 60% and drags up to full height.
+const MEDIUM = 0.6;
+const LARGE = 0.92;
+
+export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const reduce = useReducedMotion();
+  const controls = useDragControls();
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [natural, setNatural] = useState(0);
+  const [viewport, setViewport] = useState(800);
+  const [expanded, setExpanded] = useState(false);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -55,33 +42,57 @@ export function Sheet({ open, onClose, title, tint, children }: { open: boolean;
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = overflow; };
   }, [open, onClose]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      setViewport(window.innerHeight);
+      if (bodyRef.current) setNatural(bodyRef.current.scrollHeight + 64);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (bodyRef.current?.firstElementChild) observer.observe(bodyRef.current.firstElementChild);
+    window.addEventListener('resize', measure);
+    return () => { observer.disconnect(); window.removeEventListener('resize', measure); setExpanded(false); };
+  }, [open]);
+
+  const resizable = natural > viewport * MEDIUM;
+  const height = resizable ? viewport * (expanded ? LARGE : MEDIUM) : Math.min(natural, viewport * LARGE);
+
   return (
     <AnimatePresence>
       {open && (
         <>
-          <motion.div
-            className="fixed inset-0 z-[90]"
-            style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}
-            onClick={onClose}
-          />
+          <motion.div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.55)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }} onClick={onClose} />
           <motion.div
             role="dialog" aria-modal="true" aria-label={title}
-            className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] max-h-[88dvh] flex flex-col rounded-t-[30px] overflow-hidden"
-            style={{ ...glass(tint), background: `color-mix(in srgb, ${tint} 78%, rgba(10,14,22,0.9))`, color: C.text }}
-            initial={reduce ? { opacity: 0 } : { y: '100%' }} animate={reduce ? { opacity: 1 } : { y: 0 }} exit={reduce ? { opacity: 0 } : { y: '100%' }}
+            className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] flex flex-col overflow-hidden"
+            style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)` }}
+            initial={reduce ? { opacity: 0 } : { y: '100%' }}
+            animate={reduce ? { opacity: 1, height } : { y: 0, height }}
+            exit={reduce ? { opacity: 0 } : { y: '100%' }}
             transition={SPRING_SHEET}
-            drag={reduce ? false : 'y'} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.6 }}
-            onDragEnd={(_, info) => { if (info.offset.y > 120 || info.velocity.y > 600) onClose(); }}
+            drag={reduce ? false : 'y'} dragListener={false} dragControls={controls}
+            dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: resizable && !expanded ? 0.25 : 0.04, bottom: 0.7 }}
+            onDragEnd={(_, info) => {
+              if (resizable && !expanded && info.offset.y < -40) setExpanded(true);
+              else if (info.offset.y > 90 || info.velocity.y > 700) { if (expanded) setExpanded(false); else onClose(); }
+            }}
           >
-            <div className="pt-2 pb-1 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: 'rgba(255,255,255,0.3)' }} /></div>
-            <div className="flex items-center justify-between px-5 pt-1 pb-3">
-              <h2 className="text-[19px] font-semibold tracking-tight">{title}</h2>
-              <button onClick={onClose} aria-label="关闭" className="w-8 h-8 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: 'rgba(255,255,255,0.16)' }}>
-                <X size={15} weight="bold" />
-              </button>
+            <div onPointerDown={e => controls.start(e)} className="shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
+              {resizable
+                ? <div className="pt-2 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div>
+                : <div className="h-2" />}
+              <div className="flex items-center justify-between px-5 pt-2 pb-3">
+                <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
+                <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="关闭" className="w-[30px] h-[30px] rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
+                  <X size={14} weight="bold" color={C.text2} />
+                </button>
+              </div>
             </div>
-            <div className="overflow-y-auto overscroll-contain px-5 pb-[max(24px,env(safe-area-inset-bottom))]">{children}</div>
+            <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
+              <div>{children}</div>
+            </div>
           </motion.div>
         </>
       )}
@@ -89,11 +100,9 @@ export function Sheet({ open, onClose, title, tint, children }: { open: boolean;
   );
 }
 
-export function PrimaryButton({ children, onClick, href, tone = 'light' }: { children: ReactNode; onClick?: () => void; href?: string; tone?: 'light' | 'glass' | 'stop' }) {
-  const style = tone === 'light'
-    ? { background: '#FFFFFF', color: '#0E1A2E' }
-    : tone === 'stop' ? { background: C.stopSolid, color: '#FFFFFF' } : { background: 'rgba(255,255,255,0.16)', color: C.text };
-  const cls = 'h-12 w-full rounded-[14px] flex items-center justify-center gap-2 text-[16px] font-semibold active:scale-[0.98] transition-transform';
+export function Button({ children, onClick, href, tone = 'white', className = '' }: { children: ReactNode; onClick?: () => void; href?: string; tone?: 'white' | 'quiet' | 'stop'; className?: string }) {
+  const style = tone === 'white' ? { background: '#FFFFFF', color: C.ink } : tone === 'stop' ? { background: C.stop, color: '#FFFFFF' } : { background: C.surface3, color: C.text };
+  const cls = `h-12 rounded-[14px] flex items-center justify-center gap-2 text-[15.5px] font-semibold active:scale-[0.98] transition-transform ${className}`;
   if (href) return <a href={href} target="_blank" rel="noreferrer" onClick={onClick} className={cls} style={style}>{children}</a>;
   return <button onClick={onClick} className={cls} style={style}>{children}</button>;
 }
