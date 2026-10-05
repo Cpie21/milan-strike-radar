@@ -2,7 +2,7 @@ import type { EvidenceWindow } from './strikeEvidence';
 import type { StrikeRecord } from './strikeSync';
 import { numericWindows } from './strikePresentation';
 
-export type OperatorId = 'ATM_MILANO' | 'ATAC_ROMA' | 'GTT_TORINO' | 'TRENITALIA_REGIONALE' | 'ARRIVA_BERGAMO' | 'GEST_FIRENZE' | 'AIR_CAMPANIA';
+export type OperatorId = 'ATM_MILANO' | 'ATAC_ROMA' | 'GTT_TORINO' | 'TRENITALIA_REGIONALE' | 'ARRIVA_BERGAMO' | 'GEST_FIRENZE' | 'AIR_CAMPANIA' | 'AMTAB_BARI' | 'AMT_GENOVA' | 'CTM_CAGLIARI' | 'AMTS_CATANIA';
 export type GuaranteePolicy = {
   operator: OperatorId;
   mode: StrikeRecord['category'];
@@ -38,6 +38,10 @@ export function identifyOperators(record:Pick<StrikeRecord,'region'|'category'|'
   if(record.region==='TORINO' && /\bGTT\b|Gruppo Torinese Trasporti/i.test(text)) ids.push('GTT_TORINO');
   if(record.region==='BERGAMO' && /\bArriva\b/i.test(text)) ids.push('ARRIVA_BERGAMO');
   if(record.region==='FIRENZE' && /\bGEST\b/i.test(text)) ids.push('GEST_FIRENZE');
+  if(record.region==='BARI' && /\bAMTAB\b/i.test(text)) ids.push('AMTAB_BARI');
+  if(record.region==='GENOVA' && /\bAMT\b/i.test(text)) ids.push('AMT_GENOVA');
+  if(record.region==='CAGLIARI' && /\bCTM\b/i.test(text)) ids.push('CTM_CAGLIARI');
+  if(record.region==='CATANIA' && /\bAMTS?\b/i.test(text)) ids.push('AMTS_CATANIA');
   if(record.category==='BUS' && /\bAIR\s*CAMPANIA\b/i.test(text)) ids.push('AIR_CAMPANIA');
   if(record.category==='TRAIN' && /\bTrenitalia\b/i.test(text) && /regional[ei]/i.test([text,record.raw_payload?.note,record.raw_payload?.modalita].join(' '))) ids.push('TRENITALIA_REGIONALE');
   return ids;

@@ -2,7 +2,7 @@ import { inflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import type { LineScope } from './lineScope';
 
-const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it']);
+const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it','dati.toscana.it','www.amtabservizio.it','www.amt.genova.it','www.ctmcagliari.it','www.amts.ct.it']);
 export async function transitBytes(url:string,maxBytes:number,deadline:number,headers:Record<string,string>={},method='GET') {
   const u=new URL(url);
   if(u.protocol!=='https:' || !HOSTS.has(u.hostname) || u.username || u.password || u.port) throw new Error('Unapproved transit source');
@@ -32,6 +32,11 @@ export async function transitBytes(url:string,maxBytes:number,deadline:number,he
 export const GTFS_FEEDS={
   GTFS_MILANO:{url:'https://dati.comune.milano.it/gtfs.zip',operator:'ATM_MILANO',agency:/\bATM\b|trasporti milanesi/i},
   GTFS_ROMA:{url:'https://romamobilita.it/sites/default/files/rome_static_gtfs.zip',operator:'ATAC_ROMA',agency:/\bATAC\b/i},
+  GTFS_GEST:{url:'https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs',operator:'GEST_FIRENZE',agency:/\bGEST\b/i},
+  GTFS_BARI:{url:'https://www.amtabservizio.it/gtfs/google_transit.zip',operator:'AMTAB_BARI',agency:/\bAMTAB\b/i},
+  GTFS_GENOVA:{url:'https://www.amt.genova.it/amt/GTFS/GTFS_AMT_GENOVA.zip',operator:'AMT_GENOVA',agency:/\bAMT\b/i},
+  GTFS_CAGLIARI:{url:'https://www.ctmcagliari.it/open_data/GTFS.zip',operator:'CTM_CAGLIARI',agency:/\bCTM\b/i},
+  GTFS_CATANIA:{url:'https://www.amts.ct.it/GTFS/AMTCT.zip',operator:'AMTS_CATANIA',agency:/\bAMTS?\b|Azienda Metropolitana Trasporti Catania/i},
 } as const;
 export type FeedId=keyof typeof GTFS_FEEDS;
 export type RouteCatalog={feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;routes:{id:string;name:string;type:number;operator:string}[]};
