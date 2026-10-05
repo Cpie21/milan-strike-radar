@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase, type StrikeRecord } from '../../../../lib/strikeSync';
 import { serverDatabase } from '../../../../lib/strikeQuery';
 import { enrichStrikeTiming } from '../../../../lib/strikeEnrichment';
+import { reviewStrikeSemantics } from '../../../../lib/strikeSemanticReview';
 import { CITIES, cityPath } from '../../../../lib/cities';
 
 export { fetchAndFilter, fetchRecentRows, transformRows, upsertToSupabase };
@@ -37,6 +38,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       return { records, enriched: 0, sourcesChecked: 0, conflicts: 0 };
     });
     records = enrichment.records;
+    const semantic = await reviewStrikeSemantics(records,rawRows,db,warnings).catch(()=>({records,stats:{failed:1},enabled:false}));
+    records=semantic.records;
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
     const unknownTiming = records.filter(record => record.status !== 'CANCELLED' && !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
     const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {
@@ -50,8 +53,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/api/strikes');
     revalidatePath('/api/calendar');
     revalidateTag('strikes', { expire: 0 });
-    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
+    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
+    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);

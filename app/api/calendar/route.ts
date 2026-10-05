@@ -1,4 +1,4 @@
-import { scopeTitle, scopeOf } from '../../../lib/strikeScope';
+import { scopeTitle, scopeOf, railTitle, indirectRail, geographyContext } from '../../../lib/strikeScope';
 import { resolveCity, cityPath } from '../../../lib/cities';
 import { readCityStrikes, romeToday } from '../../../lib/strikeQuery';
 import { NextRequest, NextResponse } from 'next/server';
@@ -47,11 +47,13 @@ export async function GET(request: NextRequest) {
         nextDate.setUTCDate(nextDate.getUTCDate() + 1);
         const nextDateStr = nextDate.toISOString().slice(0, 10).replace(/-/g, '');
         const labels: Record<string, string> = { TRAIN: '火车', SUBWAY: '地铁', BUS: '公交', AIRPORT: '机场' };
-        const catDisplay = strike.category==='AIRPORT'?scopeTitle(scopeOf(strike)):labels[strike.category] || categoryMap[strike.category] || strike.category;
+        const catDisplay = strike.category==='AIRPORT'?scopeTitle(scopeOf(strike)):strike.category==='TRAIN'?railTitle(scopeOf(strike)):labels[strike.category] || categoryMap[strike.category] || strike.category;
         const detailUrl = `https://theitalystrike.com${pagePath}?date=${strike.date}`;
         const description = [
             `城市: ${regionLabel}`, `罢工主体: ${strike.provider}`,
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
+            ...(strike.category==='TRAIN' && indirectRail(scopeOf(strike))?['此处为相关人员停工时段；旅客列车运行影响尚未确认，不代表所有列车停运。']:[]),
+            ...[...new Set((strike.strike_events || []).map(e=>geographyContext(e.timing_evidence?.fields)).filter(Boolean))],
             `受影响线路 / 机场: ${strike.affected_lines?.length?strike.affected_lines.join(', '):'官方暂未注明'}`,
             `保障来源: ${strike.guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?'当天官方公告':strike.guaranteeSource==='STANDARD_RULE'?'常规保护规则':'暂未公布'}`,
             ...(strike.guarantee_windows?.length?['保障仅针对规定的最低服务或受保护航班，请核对具体班次。']:[]),
@@ -70,7 +72,7 @@ export async function GET(request: NextRequest) {
             `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
         if (strike.status === 'CANCELLED') lines.push('STATUS:CANCELLED');
         lines.push(`DTSTART;VALUE=DATE:${dateStr}`, `DTEND;VALUE=DATE:${nextDateStr}`,
-            `SUMMARY:${escapeCalendarText(`${regionLabel}${catDisplay}罢工`)}`,
+            `SUMMARY:${escapeCalendarText(`${regionLabel}${catDisplay}${catDisplay.includes('罢工')?'':'罢工'}`)}`,
             `DESCRIPTION:${escapeCalendarText(description)}`, `URL:${detailUrl}`, 'END:VEVENT');
     });
     lines.push('END:VCALENDAR');

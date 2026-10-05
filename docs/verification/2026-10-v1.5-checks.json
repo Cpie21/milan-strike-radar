@@ -1,0 +1,214 @@
+{
+  "checked_at": "2026-10-04T21:09:32.821Z",
+  "origin": "https://www.theitalystrike.com",
+  "cityChecks": [
+    {
+      "city": "BARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "BERGAMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 10
+    },
+    {
+      "city": "BOLOGNA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "BRESCIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "CAGLIARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "CATANIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 10
+    },
+    {
+      "city": "FIRENZE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 14
+    },
+    {
+      "city": "GENOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "MESSINA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 10
+    },
+    {
+      "city": "MILANO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "NAPOLI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 15
+    },
+    {
+      "city": "PADOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "PALERMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "PERUGIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "PISA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "ROMA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "TORINO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "TRIESTE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "VENEZIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 10
+    },
+    {
+      "city": "VERONA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    }
+  ],
+  "regressions": {
+    "arrivaLocalAndOfficialHours": true,
+    "veniceLocalOnly": true,
+    "cargoExcluded": true,
+    "airlineNotEntireAirport": true,
+    "protectedBariNotAffectedBari": true,
+    "tuscanyRailAndUnknownTPL": true,
+    "officialBariTimingAndGuarantees": true,
+    "fieldEvidencePresent": true
+  },
+  "health": {
+    "healthy": true,
+    "stale": false,
+    "timedOut": false,
+    "latest": {
+      "started_at": "2026-10-04T21:08:30.968587+00:00",
+      "completed_at": "2026-10-04T21:09:26.875402+00:00",
+      "status": "success",
+      "fetched": 72,
+      "upserted": 52,
+      "unknown_timing": 6
+    },
+    "last_success": {
+      "started_at": "2026-10-04T21:08:30.968587+00:00",
+      "completed_at": "2026-10-04T21:09:26.875402+00:00",
+      "status": "success",
+      "fetched": 72,
+      "upserted": 52,
+      "unknown_timing": 6
+    }
+  },
+  "release": {
+    "commit": "e4ed9d7",
+    "deployment": "dpl_xuxQPWLuviwdQA3zRmjspotyGYuz",
+    "syncRun": "a27b67bb-15bb-4fdb-9e96-151e8635b605",
+    "syncResult": {
+      "fetched": 72,
+      "upserted": 52,
+      "unknownTiming": 6,
+      "enriched": 4,
+      "sourcesChecked": 98,
+      "conflicts": 1,
+      "verification": {
+        "operatorOfficial": 2,
+        "reported": 9,
+        "mitOnly": 20
+      },
+      "warningCount": 18
+    }
+  },
+  "validation": {
+    "releaseTests": 115,
+    "sharedWorkspaceTests": 121,
+    "typecheck": "passed",
+    "build": "passed",
+    "focusedLint": "passed",
+    "reactionRowsBefore": 434,
+    "reactionRowsAfter": 434,
+    "browserCases": [
+      "Bergamo 2026-10-16",
+      "Milano 2026-10-16",
+      "Venezia 2026-10-16",
+      "Bari 2026-10-12",
+      "Firenze 2026-10-14",
+      "Milano 2026-10-09"
+    ],
+    "browserErrorLogs": []
+  }
+}

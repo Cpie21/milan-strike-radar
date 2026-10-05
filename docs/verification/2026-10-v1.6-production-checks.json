@@ -1,0 +1,181 @@
+{
+  "checked_at": "2026-10-04T22:25:51.742Z",
+  "origin": "https://www.theitalystrike.com",
+  "cityChecks": [
+    {
+      "city": "BARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "BERGAMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 10
+    },
+    {
+      "city": "BOLOGNA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "BRESCIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "CAGLIARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "CATANIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "FIRENZE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 14
+    },
+    {
+      "city": "GENOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "MESSINA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "MILANO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "NAPOLI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 15
+    },
+    {
+      "city": "PADOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "PALERMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "PERUGIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "PISA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "ROMA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "TORINO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "TRIESTE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    },
+    {
+      "city": "VENEZIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 10
+    },
+    {
+      "city": "VERONA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 9
+    }
+  ],
+  "regressions": {
+    "arrivaLocalAndOfficialHours": true,
+    "veniceLocalOnly": true,
+    "cargoExcluded": true,
+    "airlineNotEntireAirport": true,
+    "protectedBariNotAffectedBari": true,
+    "tuscanyRailAndUnknownTPL": true,
+    "officialBariTimingAndGuarantees": true,
+    "fieldEvidencePresent": true,
+    "mixedAirportServices": true,
+    "railSecurityNotTrainOperation": true,
+    "rfiRegionalCoverage": true,
+    "atmOfficialIndividualEventTiming": true
+  },
+  "health": {
+    "healthy": true,
+    "stale": false,
+    "timedOut": false,
+    "latest": {
+      "started_at": "2026-10-04T22:24:22.921541+00:00",
+      "completed_at": "2026-10-04T22:25:29.292557+00:00",
+      "status": "success",
+      "fetched": 76,
+      "upserted": 56,
+      "unknown_timing": 6
+    },
+    "last_success": {
+      "started_at": "2026-10-04T22:24:22.921541+00:00",
+      "completed_at": "2026-10-04T22:25:29.292557+00:00",
+      "status": "success",
+      "fetched": 76,
+      "upserted": 56,
+      "unknown_timing": 6
+    }
+  }
+}

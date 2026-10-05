@@ -16,6 +16,7 @@ export type TimingSource = {
 };
 export type TimingEvidence = {
   fields?: ScopeEvidence;
+  semantic_review?: import('./strikeSemanticReview').SemanticReview;
   windows: EvidenceWindow[];
   confidence: 'official' | 'reported' | 'corroborated' | 'conflict';
   sources: TimingSource[];

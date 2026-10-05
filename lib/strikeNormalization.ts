@@ -39,7 +39,7 @@ const NON_TARGET_LOCATION_ALIASES = [
   'LIGURIA',
   'NAPLES',
   'NAPOLI',
-  'NOVARA', 'MONZA', 'VARESE',
+  'NOVARA', 'MONZA', 'VARESE', 'COMO',
   'PADOVA',
   'PALERMO',
   'PISA',
@@ -194,15 +194,20 @@ export function classifyRegionTags(input: RegionInput): string[] {
   const text=provider+' '+affectedScopeText(input.noteText || '');
   const named=CITIES.filter(city=>[city.tag,city.en,city.zh,...city.aliases].some(alias=>containsAlias(text,alias))).map(c=>c.tag);
   // Named airports override generic administrative national fields.
-  const airports=(/aereo/i.test(input.sectorText || '') || /aeroport|airport|\bAPT\b|\bENAV\b/i.test(provider)) ? detectAirports(provider).map(a=>a.tag) : [];
-  const concrete=unique(airports.length ? airports : named);
+  const airports=(/aereo/i.test(input.sectorText || '') || /aeroport|airport|\bAPT\b|\bENAV\b/i.test(provider)) ? (/\b(?:DOIT|DTP|ACC)\b/i.test(provider) && !/aeroport|airport|\bAPT\b|malpensa|linate|marco polo|fiumicino/i.test(provider) ? [] : detectAirports(provider).map(a=>a.tag)) : [];
+  const relevance=input.relevanceText || '';
+  const institution=/\b(?:DOIT|DTP|ACC)\b|\b(?:sede|ufficio|direzione territoriale)\b/i.test(provider);
+  if(!airports.length && institution && province==='tutte' && /regionale/i.test(relevance)) {
+    const regional=CITIES.filter(c=>c.region===region).map(c=>c.tag);
+    return regional.length ? regional : ['UNKNOWN'];
+  }
+  const concrete=unique(airports.length ? airports : institution ? CITIES.filter(c=>containsAlias(affectedScopeText(input.noteText || ''),c.slug)).map(c=>c.tag) : named);
   if (concrete.length) return concrete;
   // A named unsupported locality must not become an entire supported region.
-  if (includesAny(text, NON_TARGET_LOCATION_ALIASES.filter(a => a.toLowerCase() !== region))) return ['UNKNOWN'];
+  if (!institution && includesAny(text, NON_TARGET_LOCATION_ALIASES.filter(a => a.toLowerCase() !== region))) return ['UNKNOWN'];
   const provinces=CITIES.filter(c=>containsAlias(province,c.slug)).map(c=>c.tag);
   if(provinces.length) return provinces;
   if(province && !['tutte','italia','nazionale'].includes(province)) return ['UNKNOWN'];
-  const relevance=input.relevanceText || '';
   const broad=/sciopero (?:generale|plurisettoriale)|categorie pubbliche|settori pubblici|personale.*(?:settore|trasporto)\s+(?:aereo|ferroviario)/i.test(provider);
   const nationalEntity=/\b(?:ENAV|EASYJET|RYANAIR|WIZZ|ITA AIRWAYS|TRENITALIA|ITALO|RFI|POSTE AIR CARGO)\b/i.test(provider);
   if (['italia','nazionale'].includes(region) && (/^nazionale$/i.test(relevance) && (broad || nationalEntity) || broad && !relevance)) return ['NATIONAL'];

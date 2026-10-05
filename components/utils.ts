@@ -157,7 +157,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
   const expanded = input;
   for (const strike of expanded) {
     const region = regionTag || strike.region;
-    const scope=strike.category==='AIRPORT'?scopeOf(strike):'';
+    const scope=['AIRPORT','TRAIN'].includes(strike.category || '')?scopeOf(strike):'';
     const airline=['AIRLINE','AIRLINE_CREW'].includes(scope)?strike.provider || 'unknown':'';
     const key = `${strike.date}|${region}|${strike.category}${scope?`|${scope}|${airline}`:''}`;
     map.set(key, [...(map.get(key) || []), strike]);
@@ -188,7 +188,9 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       id: `day-${key.replaceAll('|','-')}`,
       region: regionTag || first.region,
       source_key: undefined,
-      scopeType:first.category==='AIRPORT'?scopeOf(first):undefined,
+      scopeType:['AIRPORT','TRAIN'].includes(first.category || '')?scopeOf(first):undefined,
+      officialGeography:relevant.map(e=>e.timing_evidence?.fields?.officialGeography).filter(Boolean),
+      supportedCityProjection:[...new Set(relevant.flatMap(e=>e.timing_evidence?.fields?.supportedCityProjection?.value || []))],
       guaranteeSource,
       guaranteedServiceWindow:active.some(e=>!e.windows.length)?[]:intersectGuarantees(active),
       provider: normalizeProviderForDisplay(relevant.map(e=>e.provider).join(' / '),first.category),
