@@ -109,3 +109,7 @@ Free drawings must not be shown to other users without moderation: a review queu
 **OpenRouter balance**
 - On 2026-10-05 the key could afford only about 15k tokens per request (402 error on max_tokens 65536).
 - Ask, translation and semantic QA will all start failing when the balance runs out. The owner has been told.
+
+### Lab v8 (Claude)
+- **New dependency.** `three` (runtime) and `@types/three` (dev) were added to `package.json` / `package-lock.json` for the 3D wall. They are loaded only by `components/lab/wall3d/Wall3D.tsx`, via `next/dynamic`, on `/lab`.
+- **Shared files.** `package.json` and `package-lock.json` are shared. Please merge rather than overwrite them when integrating.

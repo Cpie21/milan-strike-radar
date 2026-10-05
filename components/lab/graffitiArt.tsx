@@ -96,7 +96,7 @@ export const SPRAY = ['#FF4FA3', '#36E0FF', '#B8FF3C', '#FFE14D', '#FFFFFF', '#F
 
 // Marks anyone reads the same way, in any language: an angry face, "!!",
 // "?!", a cross, the manga anger vein, a broken heart, a stopped clock.
-const SYMBOLS = {
+export const SYMBOLS = {
   angry: { d: 'M -13 0 A 13 13 0 1 0 13 0 A 13 13 0 1 0 -13 0 M -8 -6 L -3 -3 M 8 -6 L 3 -3 M -6 7 Q 0 2 6 7', w: 3.4 },
   bang: { d: 'M -5 -13 L -5 4 M 5 -13 L 5 4 M -5 11 L -5 11.5 M 5 11 L 5 11.5', w: 4.6 },
   what: { d: 'M -12 -7 Q -12 -14 -6 -14 Q 0 -14 0 -8 Q 0 -3 -6 -1 L -6 4 M -6 11 L -6 11.5 M 8 -14 L 8 4 M 8 11 L 8 11.5', w: 4 },

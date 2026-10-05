@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUp, CaretRight, Check, Sparkle } from '@phosphor-icons/react';
+import { ArrowUp, CaretRight, Check, PencilSimple } from '@phosphor-icons/react';
+import Solari, { type Mood } from './Solari';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
 import { Bar } from './LabStrikeCard';
 import { LineBadge, ModeBadge, ModeGlyph, Sheet } from './ui';
-import { C, EASE } from './theme';
+import { C, EASE, TYPE } from './theme';
 
 const TONE = { stop: C.stop, pending: C.pend, cancelled: C.cancel, over: C.text2 };
 const PILL = { background: C.surface2, boxShadow: `inset 0 0 0 1px ${C.lineStrong}, 0 12px 32px rgba(0,0,0,0.5)` };
@@ -157,67 +158,104 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   return { lang, today, query, setQuery, asked, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left };
 }
 
-// One field, two homes. On a calm day it lives inside the "no strikes" card:
-// the page is short, the question "what about another day or line?" is the
-// natural next step, and a floating bar would sit over nothing. On a strike
-// day the cards are long, so it docks at the bottom where a thumb can always
-// reach it. Same layoutId in both places: when the day changes, the field
-// visibly travels between them, so it reads as one tool that moved, not two.
-export function AskField({ ask: a, variant }: { ask: AskState; variant: 'dock' | 'inline' }) {
+// The face of the assistant follows what it is doing and what it found.
+export function moodOf(a: Pick<AskState, 'busy' | 'error' | 'result'>): Mood {
+  if (a.busy) return 'thinking';
+  if (a.error) return 'sorry';
+  const r = a.result;
+  if (!r) return 'idle';
+  if (r.kind === 'out_of_scope') return 'sorry';
+  if (r.kind === 'clarify') return 'unsure';
+  if (r.kind !== 'result') return 'idle';
+  if (r.view === 'claim') return r.matches[0]?.claim === 'confirms' ? 'alarm' : r.matches[0]?.claim === 'exaggerates' ? 'unsure' : 'happy';
+  if (r.view === 'period') return r.days.length ? 'unsure' : 'happy';
+  return r.level === 'high' ? 'alarm' : r.level === 'medium' || r.level === 'unknown' ? 'unsure' : 'happy';
+}
+
+// The input. On strike days it is docked at the bottom, always in reach.
+// On calm days it stays out of the way until the "问问站牌" suggestions in
+// the card call it up (see AskSuggestions), then it rises already focused.
+export function AskField({ ask: a, autoFocus, onIdle }: { ask: AskState; autoFocus?: boolean; onIdle?: () => void }) {
   const reduce = useReducedMotion();
+  const input = useRef<HTMLInputElement>(null);
   const { lang, query, setQuery, busy, focused, setFocused, left } = a;
   const out = left === 0;
   const examples = focused && !query && !out;
-  const form = (
-    <motion.form layoutId="ask-field" transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-      onSubmit={e => { e.preventDefault(); a.ask(query); }} className="relative h-[52px] rounded-full flex items-center gap-2 pl-4 pr-1.5"
-      style={variant === 'dock' ? PILL : { background: C.surface2, boxShadow: `inset 0 0 0 1px ${C.lineStrong}` }}>
-      {busy && (
-        <span aria-hidden className="pointer-events-none absolute -inset-[1.5px] rounded-full overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1.5 }}>
-          <motion.span className="absolute left-1/2 top-1/2 w-[640px] h-[640px] -ml-[320px] -mt-[320px]" style={{ background: 'conic-gradient(#9FD8FF, #C4B5FD, #FFB4A8, #FFE8A3, #9FD8FF)' }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2.4, ease: 'linear' }} />
-        </span>
-      )}
-      <Sparkle size={17} weight="fill" color={C.text2} />
-      <input value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} maxLength={200} enterKeyHint="send" disabled={out}
-        aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')}
-        placeholder={out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '问一句：周五坐地铁受影响吗？', 'Ask: is my Friday metro affected?')}
-        className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-white placeholder:text-white/45 disabled:opacity-60" />
-      <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
-        className="w-10 h-10 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: '#3A3F48', color: '#FFFFFF' }}>
-        <ArrowUp size={18} weight="bold" />
-      </motion.button>
-    </motion.form>
-  );
-  const chips = (
-    <AnimatePresence>
-      {examples && (
-        <motion.div className={`flex flex-col gap-1.5 ${variant === 'dock' ? 'items-start mb-2' : 'items-center mt-2.5'}`}
-          initial={{ opacity: 0, y: 8, filter: reduce ? 'none' : 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.24, ease: EASE }}>
-          {EXAMPLES.map(e => (
-            <button key={e[0]} onMouseDown={ev => ev.preventDefault()} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); a.ask(q); }}
-              className="h-9 px-3.5 rounded-full text-[13.5px]" style={{ ...PILL, color: C.text }}>
-              {tx(lang, e[0], e[1])}
-            </button>
-          ))}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-  const quota = left <= 2 && (
-    <p className="mt-2 text-center text-[11.5px] font-medium" style={{ color: C.text3 }}>
-      {out ? tx(lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(lang, `今天还可以问 ${left} 次`, `${left} question${left === 1 ? '' : 's'} left today`)}
-    </p>
-  );
-  if (variant === 'inline') return <div>{form}{quota}{chips}</div>;
+  useEffect(() => { if (autoFocus) input.current?.focus(); }, [autoFocus]);
   return (
-    <div className="fixed z-[80] inset-x-0 bottom-0 pointer-events-none" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}>
+    <motion.div className="fixed z-[80] inset-x-0 bottom-0 pointer-events-none" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+      initial={{ y: reduce ? 0 : 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: reduce ? 0 : 90, opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
       <AnimatePresence>
         {examples && (
           <motion.div key="scrim" aria-hidden className="fixed inset-x-0 bottom-0 h-[300px] -z-10" style={{ background: 'linear-gradient(180deg, rgba(4,8,16,0) 0%, rgba(4,8,16,0.7) 55%)' }}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
         )}
       </AnimatePresence>
-      <div className="mx-auto max-w-[520px] px-4 pointer-events-auto">{chips}{form}</div>
+      <div className="mx-auto max-w-[520px] px-4 pointer-events-auto">
+        <AnimatePresence>
+          {examples && (
+            <motion.div className="flex flex-col items-start gap-1.5 mb-2"
+              initial={{ opacity: 0, y: 8, filter: reduce ? 'none' : 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.24, ease: EASE }}>
+              {EXAMPLES.map(e => (
+                <button key={e[0]} onMouseDown={ev => ev.preventDefault()} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); a.ask(q); }}
+                  className="h-9 px-3.5 rounded-full text-[13.5px]" style={{ ...PILL, color: C.text }}>
+                  {tx(lang, e[0], e[1])}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <form onSubmit={e => { e.preventDefault(); a.ask(query); }} className="relative h-[56px] rounded-full flex items-center gap-2.5 pl-2 pr-1.5" style={PILL}>
+          <Solari mood={moodOf(a)} size={15} label={tx(lang, '站牌助手', 'Solari assistant')} />
+          <input ref={input} value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); if (!query.trim()) onIdle?.(); }} maxLength={200} enterKeyHint="send" disabled={out}
+            aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')}
+            placeholder={out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '问站牌：周五坐地铁受影响吗？', 'Ask: is my Friday metro affected?')}
+            className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-white placeholder:text-white/45 disabled:opacity-60" />
+          <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: '#3A3F48', color: '#FFFFFF' }}>
+            <ArrowUp size={18} weight="bold" />
+          </motion.button>
+        </form>
+        {left <= 2 && (
+          <p className="mt-1.5 text-center text-[11.5px] font-medium" style={{ color: C.text3 }}>
+            {out ? tx(lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(lang, `今天还可以问 ${left} 次`, `${left} question${left === 1 ? '' : 's'} left today`)}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// The calm-day entry, after Google's pattern: no empty box to fill in, but
+// questions you are likely to ask next, phrased from today's data, one tap
+// each — plus a way to type your own. The face sits where Google puts its
+// sparkle: a quiet sign that this part answers back.
+export function AskSuggestions({ ask: a, suggestions, onType }: { ask: AskState; suggestions: string[]; onType: (prefill?: string) => void }) {
+  const { lang, left } = a;
+  const out = left === 0;
+  return (
+    <div className="px-4 pt-4 pb-4">
+      <div className="flex items-center gap-2.5 mb-3">
+        <Solari mood={moodOf(a)} size={17} label={tx(lang, '站牌助手', 'Solari assistant')} />
+        <p className={TYPE.label} style={{ color: C.text2 }}>{out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '还想确认什么？问问站牌', 'Anything else to check? Ask the board')}</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {suggestions.map(q => (
+          <motion.button key={q} whileTap={{ scale: 0.97 }} disabled={out} onClick={() => { a.setQuery(q); a.ask(q); }}
+            className="h-9 px-3.5 rounded-full text-[13.5px] text-left disabled:opacity-40" style={{ background: C.surface2, color: C.text, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
+            {q}
+          </motion.button>
+        ))}
+        <motion.button whileTap={{ scale: 0.97 }} disabled={out} onClick={() => onType(tx(lang, '群里说', 'I heard '))}
+          className="h-9 px-3.5 rounded-full text-[13.5px] disabled:opacity-40" style={{ background: C.surface2, color: C.text, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
+          {tx(lang, '核实一条听到的消息', 'Check a rumour')}
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.97 }} disabled={out} onClick={() => onType()}
+          className="h-9 px-3.5 rounded-full flex items-center gap-1.5 text-[13.5px] disabled:opacity-40" style={{ color: C.text2 }}>
+          <PencilSimple size={14} weight="bold" />{tx(lang, '问点别的', 'Ask something else')}
+        </motion.button>
+      </div>
     </div>
   );
 }
@@ -227,7 +265,10 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   const ask = a.ask;
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '问答', 'Ask')}>
-      <p className="text-[17px] font-semibold leading-snug">“{asked}”</p>
+      <div className="flex items-start gap-3">
+        <Solari mood={moodOf(a)} size={22} label={tx(lang, '站牌助手', 'Solari assistant')} />
+        <p className="flex-1 text-[17px] font-semibold leading-snug pt-1">“{asked}”</p>
+      </div>
 
       {/* While working, the steps are the answer; afterwards they fold away. */}
       {(busy || trace) && (

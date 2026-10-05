@@ -12,7 +12,10 @@ import { LineBadge, ModeBadge, ModeGlyph } from './ui';
 import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { useDoodle } from './useDoodle';
 import { track } from './track';
-import Graffiti from './Graffiti';
+import dynamic from 'next/dynamic';
+
+// three.js loads only when a card with a wall is on the page.
+const Wall3D = dynamic(() => import('./wall3d/Wall3D'), { ssr: false, loading: () => <div className="rounded-[20px]" style={{ aspectRatio: '16 / 11.6', background: C.surface2 }} /> });
 
 const TITLE: Record<Mode, [string, string]> = { TRAIN: ['火车罢工', 'Train strike'], SUBWAY: ['地铁罢工', 'Metro strike'], BUS: ['公交罢工', 'Bus strike'], AIRPORT: ['机场罢工', 'Airport strike'] };
 const MIT = 'https://scioperi.mit.gov.it/mit2/public/scioperi';
@@ -407,7 +410,7 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   };
   return (
     <div className="px-5 pt-5 pb-5">
-      <Graffiti mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)} />
+      <Wall3D mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)} />
       <div className="mt-3 flex gap-2.5">
         <motion.button whileTap={{ scale: 0.97 }} onClick={share} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`} style={TONAL}>
           {copied ? <Check size={17} weight="bold" /> : <Export size={17} weight="bold" />}{copied ? tx(lang, '已复制链接', 'Link copied') : tx(lang, '分享', 'Share')}

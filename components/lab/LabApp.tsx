@@ -12,7 +12,7 @@ import { addDaysIso } from '../../lib/romeDate';
 import { detectBrowserLanguage, LANGUAGE_STORAGE_KEY } from '../i18n';
 import DateRail from './DateRail';
 import LabStrikeCard, { type CardContext } from './LabStrikeCard';
-import { AskField, AskSheet, useAsk } from './LabAsk';
+import { AskField, AskSheet, AskSuggestions, useAsk } from './LabAsk';
 import type { Translation } from '../../lib/lab/translate';
 import { CalendarSheet, CitySheet, HomeScreenSheet, SupportSheet, WidgetSheet } from './sheets';
 import { ModeBadge } from './ui';
@@ -99,6 +99,14 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
   const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });
   const calm = dayCards.length === 0;
+  const [typing, setTyping] = useState(false);
+  // Calm-day suggestions, phrased from the data the reader is looking at.
+  const nextModes = next ? [...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))] : [];
+  const suggestions = [
+    ...(next && nextModes[0] ? [tx(lang, `${Number(next.slice(5, 7))}月${Number(next.slice(8))}日${modeName(nextModes[0], lang)}会停吗？`, `Is the ${modeName(nextModes[0], lang).toLowerCase()} running on ${Number(next.slice(8))}/${Number(next.slice(5, 7))}?`)] : []),
+    tx(lang, '这周还有别的罢工吗？', 'Any other strikes this week?'),
+  ];
+  const typeQuestion = (prefill?: string) => { if (prefill) ask.setQuery(prefill); setTyping(true); };
   const neighbour = (iso: string, mode: Mode) => (byDate.get(iso) || []).find(c => c.category === mode);
   const variants = {
     enter: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * 24, filter: reduce ? 'none' : 'blur(6px)' }),
@@ -176,9 +184,8 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
                       <CaretRight size={13} weight="bold" color={C.text3} />
                     </button>
                   )}
-                  <div className="px-4 pt-4 pb-4" style={{ borderTop: `1px solid ${C.line}` }}>
-                    <p className={`mb-2.5 text-center ${TYPE.label}`} style={{ color: C.text3 }}>{tx(lang, '想确认别的日子、线路或听到的消息？', 'Checking another day, line or rumour?')}</p>
-                    <AskField ask={ask} variant="inline" />
+                  <div style={{ borderTop: `1px solid ${C.line}` }}>
+                    <AskSuggestions ask={ask} suggestions={suggestions} onType={typeQuestion} />
                   </div>
                 </section>
               )}
@@ -205,7 +212,9 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         </div>
       </div>
 
-      {!calm && <AskField ask={ask} variant="dock" />}
+      <AnimatePresence>
+        {(!calm || typing) && <AskField key="dock" ask={ask} autoFocus={calm && typing} onIdle={() => calm && setTyping(false)} />}
+      </AnimatePresence>
       <AskSheet ask={ask} />
       <MonthSheet open={sheet === 'month'} onClose={() => setSheet(null)} lang={lang} byDate={byDate} from={from} to={to} today={today} selected={selected} onSelect={select} />
 
