@@ -125,6 +125,13 @@ test('cached profile documents cannot acquire a false new checked date or extend
  const profiles=await refreshGuaranteeProfiles(new Date('2026-10-10T10:00:00Z'),[],async url=>({text:url.includes('atm.it')?'In caso di sciopero alle 8.45 e dalle 15.00 alle 18.00':'unknown',fetchedAt:'2026-10-05T10:00:00Z'}));assert.equal(profiles[0].checkedAt,'2026-10-05');assert.equal(profiles[0].validTo,'2026-11-04');
  const p=operatorGuaranteeProfiles.find(p=>p.operator==='GTT_TORINO');assert.equal(ruleStillMatches(p,'servizio urbano e suburbano fasce di garanzia 06.00–09.30 e 12.00–15.30'),false);
 });
+test('actual GTT charter clock separators verify without accepting changed minutes',()=>{
+ const p=operatorGuaranteeProfiles.find(p=>p.operator==='GTT_TORINO');
+ const text='Per il servizio urbano e suburbano di Torino (di superficie e metropolitana) tali fasce di garanzia in cui il servizio è garantito anche in caso di sciopero sono 6.00-9-00, 12.00-15.00 (le corse devono completare il percorso).';
+ assert.equal(ruleStillMatches(p,text),true);
+ assert.equal(ruleStillMatches(p,text.replace('9-00','9-30')),false);
+ assert.equal(ruleStillMatches(p,text.replace('15.00','15.30')),false);
+});
 test('a general-strike projection can use the matched local official operator scope, not the national title',()=>{
  const r=record('SCIOPERO GENERALE SETTORI PUBBLICHI E PRIVATI');
  const n={date:r.date,provider:'ATM Milano sciopero nazionale USB',territory:'Milano nazionale',sector:'Trasporto pubblico locale',unions:'USB',timing:'dalle 8:45 alle 15 e dopo le 18 fino al termine del servizio',field_text:'Le nostre linee potrebbero non essere garantite',status:'',source:{url:'https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/event.aspx',authority:'official',name:'ATM',excerpt:'Le nostre linee',checked_at:'2026-10-05',content_hash:'h'}};

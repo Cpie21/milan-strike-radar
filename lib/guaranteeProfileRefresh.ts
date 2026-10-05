@@ -12,7 +12,9 @@ export async function fetchProfileDocument(url:string,deadline=Date.now()+15000)
 export function ruleStillMatches(profile:Profile,text:string) {
   const normalized=text.replace(/[\u0000-\u0008]/g,'').replace(/\s+/g,' ').replace(/[,:]/g,'.');
   const sections=[...normalized.matchAll(/(?:in caso di sciopero|nelle giornate di sciopero|fasce di garanzi[ae]|servizio urbano e suburbano)[\s\S]{0,1500}/gi)].map(m=>m[0]);
-  const clock=(s:string)=>'\\b0?'+Number(s.slice(0,2))+(s.slice(3)==='00'?'(?:\\s*[.\\-]\\s*00)?(?!\\s*[.\\-]\\s*\\d)':'\\s*[.\\-]\\s*'+s.slice(3))+'\\b';
+  // A complete clock may be followed by a range separator and the next hour.
+  // Only the bare-hour alternative must reject a different minute suffix.
+  const clock=(s:string)=>'\\b0?'+Number(s.slice(0,2))+(s.slice(3)==='00'?'(?:\\s*[.\\-]\\s*00(?!\\d)|(?!\\s*[.\\-]\\s*\\d))':'\\s*[.\\-]\\s*'+s.slice(3)+'(?!\\d)')+'\\b';
   return sections.some(section=>[...profile.weekday,...(profile.holiday||[])].every(w=>w.end!==null&&new RegExp((w.start===null?'':clock(w.start)+'[\\s\\S]{0,80}')+clock(w.end)).test(section)) &&
     (profile.operator!=='TRENITALIA_REGIONALE'||/feriali/i.test(section)&&/festivi/i.test(section)&&/numero di treno/i.test(section)));
 }
