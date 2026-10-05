@@ -6,7 +6,7 @@ import { submitFeedback } from '../../app/actions';
 import { buildWidgetScript } from '../../lib/widgetScript';
 import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
 import { Button, ModeGlyph, Sheet } from './ui';
-import { C } from './theme';
+import { C, MODE_COLOR } from './theme';
 import { track } from './track';
 
 type City = { tag: string; zh: string; en: string; path: string };
@@ -85,10 +85,10 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
 }
 
 function CityHeadline({ s, today, lang, current }: { s?: { today: Mode[]; next: string | null; nextModes: Mode[] }; today: string; lang: Lang; current: boolean }) {
-  const glyphs = (modes: Mode[], color: string) => <span className="flex gap-0.5">{modes.map(m => <ModeGlyph key={m} mode={m} size={14} color={color} />)}</span>;
+  const glyphs = (modes: Mode[], color?: string) => <span className="flex gap-0.5">{modes.map(m => <ModeGlyph key={m} mode={m} size={14} color={color ?? MODE_COLOR[m].main} />)}</span>;
   return (
     <span className="flex items-center gap-2 shrink-0 text-[13px] font-semibold tabular-nums">
-      {s?.today.length ? <>{glyphs(s.today, C.stop)}<span style={{ color: C.stop }}>{tx(lang, '今天', 'Today')}</span></>
+      {s?.today.length ? <>{glyphs(s.today)}<span style={{ color: C.text }}>{tx(lang, '今天', 'Today')}</span></>
         : s?.next ? <>{glyphs(s.nextModes, C.text2)}<span style={{ color: C.text2 }}>{relativeDay(s.next, today, lang)}</span></>
         : <span style={{ color: C.text3 }}>{tx(lang, '近期无罢工', 'All clear')}</span>}
       {current && <Check size={16} weight="bold" />}

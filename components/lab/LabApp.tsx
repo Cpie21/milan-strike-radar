@@ -15,7 +15,7 @@ import LabStrikeCard, { type CardContext } from './LabStrikeCard';
 import LabAsk from './LabAsk';
 import { CalendarSheet, CitySheet, HomeScreenSheet, SupportSheet, WidgetSheet } from './sheets';
 import { ModeGlyph } from './ui';
-import { C, EASE, R } from './theme';
+import { C, EASE, MODE_COLOR, NUM, R, SANS, TYPE } from './theme';
 import { track } from './track';
 
 type City = { tag: string; zh: string; en: string; path: string };
@@ -54,6 +54,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const jumpModes = [...new Set(active.map(c => c.category))];
   const next = nextEventDate(byDate, selected);
   const name = lang === 'en' ? city.en : city.zh;
+  // The page glow takes the colours of the modes striking that day; a calm
+  // day stays neutral, so colour itself means "something is on".
+  const glow = jumpModes.length
+    ? jumpModes.slice(0, 2).map((m, i, all) => `radial-gradient(${all.length > 1 ? '70%' : '110%'} 70% at ${all.length > 1 ? (i ? '85%' : '15%') : '50%'} -5%, ${MODE_COLOR[m].main}38, transparent 72%)`).join(', ')
+    : 'radial-gradient(110% 70% at 50% -5%, rgba(255,255,255,0.06), transparent 72%)';
 
   useEffect(() => {
     const tick = () => setNow(romeMinutes());
@@ -99,25 +104,29 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   };
 
   return (
-    <main className="min-h-[100dvh]" style={{ background: C.bg, color: C.text, fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif', WebkitFontSmoothing: 'antialiased' }}>
-      <div className="mx-auto max-w-[520px] pb-[120px]">
-        {/* Brand and entry points */}
-        <header className="flex items-center gap-2 px-5" style={{ paddingTop: 'max(18px, env(safe-area-inset-top))' }}>
-          <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-bold leading-tight">{tx(lang, '意大利罢工查询', 'Italy Strike Radar')}</p>
-            <p className="text-[9.5px] font-bold tracking-[0.12em] mt-0.5" style={{ color: C.text3 }}>DEVELOPED BY 21°C</p>
-          </div>
-          <button onClick={() => setSheet('home')} className="h-[34px] px-3 rounded-full flex items-center text-[13px] font-semibold active:scale-95 transition-transform" style={{ background: C.surface2 }}>
+    <main className="relative min-h-[100dvh]" style={{ background: C.bg, color: C.text, fontFamily: SANS, WebkitFontSmoothing: 'antialiased' }}>
+      <AnimatePresence initial={false}>
+        <motion.div key={glow} aria-hidden className="absolute inset-x-0 top-0 h-[460px] pointer-events-none" style={{ background: glow }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
+      </AnimatePresence>
+      <div className="relative mx-auto max-w-[520px] pb-[120px]">
+        {/* Brand centred between the two entry points */}
+        <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
+          <button onClick={() => setSheet('home')} className={`justify-self-start h-[34px] px-3 rounded-full flex items-center ${TYPE.label}`} style={{ background: C.surface2 }}>
             {tx(lang, '添加到桌面', 'Add to Home')}
           </button>
-          <button onClick={() => setSheet('city')} aria-label={tx(lang, `当前城市 ${name}，切换城市`, `${name}, change city`)} className="h-[34px] pl-2.5 pr-2 rounded-full flex items-center gap-1 text-[13px] font-semibold active:scale-95 transition-transform" style={{ background: C.surface2 }}>
+          <div className="text-center">
+            <p className="text-[15px] font-semibold leading-tight">{tx(lang, '意大利罢工查询', 'Italy Strike Radar')}</p>
+            <p className="text-[10px] font-semibold tracking-[0.14em] mt-0.5" style={{ color: C.text3, fontFamily: NUM }}>DEVELOPED BY 21°C</p>
+          </div>
+          <button onClick={() => setSheet('city')} aria-label={tx(lang, `当前城市 ${name}，切换城市`, `${name}, change city`)} className={`justify-self-end h-[34px] pl-2.5 pr-2 rounded-full flex items-center gap-1 ${TYPE.label}`} style={{ background: C.surface2 }}>
             <MapPin size={14} weight="fill" />{name}<CaretDown size={11} weight="bold" color={C.text3} />
           </button>
         </header>
 
-        <div className="flex items-center justify-between px-5 mt-6 mb-3">
-          <h1 className="text-[32px] font-bold tracking-tight tabular-nums">{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
-          <label className="relative h-[34px] px-3 rounded-full flex items-center gap-1.5 text-[13px] font-semibold" style={{ background: '#FFFFFF', color: C.ink }}>
+        <div className="flex flex-col items-center px-5 mt-7 mb-4">
+          <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
+          <label className={`relative mt-2.5 h-[32px] px-3 rounded-full flex items-center gap-1.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
             <CalendarBlank size={14} weight="bold" />{tx(lang, '选择日期', 'Pick date')}
             <input type="date" min={from} max={to} value={selected} onChange={e => e.target.value && select(e.target.value)} aria-label={tx(lang, '选择日期', 'Pick date')} className="absolute inset-0 opacity-0" />
           </label>
@@ -127,10 +136,10 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
         {/* Tap-to-jump: only when there is more than one card to jump between */}
         {dayCards.length > 1 && jumpModes.length > 0 && (
-          <div className="flex gap-2 px-5 pt-2 pb-1 overflow-x-auto [scrollbar-width:none]">
+          <div className="flex justify-center gap-2 px-5 pt-2 pb-1">
             {jumpModes.map(mode => (
-              <motion.button key={mode} whileTap={{ scale: 0.95 }} onClick={() => jump(mode)} className="h-9 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 text-[13.5px] font-semibold shrink-0" style={{ background: C.surface, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
-                <ModeGlyph mode={mode} size={15} color={C.stop} />{modeName(mode, lang)}
+              <motion.button key={mode} whileTap={{ scale: 0.95 }} onClick={() => jump(mode)} className={`h-9 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: MODE_COLOR[mode].soft, color: MODE_COLOR[mode].main }}>
+                <ModeGlyph mode={mode} size={15} color={MODE_COLOR[mode].main} />{modeName(mode, lang)}
               </motion.button>
             ))}
           </div>
@@ -145,17 +154,17 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
                 return <LabStrikeCard key={card.id} card={card} ctx={ctx} highlighted={highlight === card.id}
                   prev={continuesOvernight(prev, card) ? prev : undefined} next={continuesOvernight(card, nxt) ? nxt : undefined} />;
               }) : (
-                <section style={{ background: C.surface, borderRadius: R.card, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
+                <section style={{ background: C.surface, borderRadius: R.card }}>
                   <div className="flex flex-col items-center text-center px-6 pt-10 pb-8">
                     <CheckCircle size={34} weight="fill" color={C.ok} />
-                    <p className="mt-3 text-[20px] font-bold">{tx(lang, '无交通罢工', 'No transport strikes')}</p>
-                    <p className="mt-1 text-[14px]" style={{ color: C.text2 }}>{tx(lang, '安心出行', 'Travel with peace of mind')}</p>
+                    <p className={`mt-3 ${TYPE.title}`}>{tx(lang, '无交通罢工', 'No transport strikes')}</p>
+                    <p className={`mt-1 ${TYPE.body}`} style={{ color: C.text2 }}>{tx(lang, '安心出行', 'Travel with peace of mind')}</p>
                   </div>
                   {next && (
                     <button onClick={() => select(next)} className="w-full flex items-center gap-2 px-5 h-[52px] text-left" style={{ borderTop: `1px solid ${C.line}` }}>
-                      <span className="text-[13.5px]" style={{ color: C.text3 }}>{tx(lang, '下一次罢工', 'Next strike')}</span>
-                      <span className="text-[14.5px] font-semibold">{dayLabel(next, lang)}</span>
-                      <span className="flex gap-1 ml-auto">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeGlyph key={m} mode={m} size={15} color={C.stop} />)}</span>
+                      <span className={TYPE.label} style={{ color: C.text3 }}>{tx(lang, '下一次罢工', 'Next strike')}</span>
+                      <span className="text-[15px] font-semibold">{dayLabel(next, lang)}</span>
+                      <span className="flex gap-1 ml-auto">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeGlyph key={m} mode={m} size={15} color={MODE_COLOR[m].main} />)}</span>
                       <CaretRight size={13} weight="bold" color={C.text3} />
                     </button>
                   )}
@@ -170,12 +179,12 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
             <Tool icon={<ArrowsClockwise size={18} weight="bold" />} label={tx(lang, '同步日历', 'Sync calendar')} onClick={() => setSheet('calendar')} />
           </div>
 
-          <section className="mt-3 flex items-center gap-3 px-5 py-4" style={{ background: C.surface, borderRadius: R.card, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
+          <section className="mt-3 flex items-center gap-3 px-5 py-4" style={{ background: C.surface, borderRadius: R.card }}>
             <div className="flex-1 min-w-0">
-              <p className="text-[16px] font-bold">{tx(lang, '支持作者', 'Support the creator')}</p>
-              <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: C.text2 }}>{tx(lang, '独立开发不易，如果对你有用请支持一杯奶茶。', 'Built independently. If it helps you, consider buying a bubble tea.')}</p>
+              <p className="text-[16px] font-semibold">{tx(lang, '支持作者', 'Support the creator')}</p>
+              <p className={`mt-0.5 ${TYPE.label} font-normal`} style={{ color: C.text2 }}>{tx(lang, '独立开发不易，如果对你有用请支持一杯奶茶。', 'Built independently. If it helps you, consider buying a bubble tea.')}</p>
             </div>
-            <button onClick={() => setSheet('support')} className="h-[38px] px-3.5 rounded-full text-[13px] font-semibold shrink-0 active:scale-95 transition-transform" style={{ background: '#FFFFFF', color: C.ink }}>
+            <button onClick={() => setSheet('support')} className={`h-[38px] px-3.5 rounded-full shrink-0 active:scale-95 transition-transform ${TYPE.label}`} style={{ background: '#FFFFFF', color: C.ink }}>
               {tx(lang, '支持一下', 'Support')}
             </button>
           </section>
@@ -217,7 +226,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
 function Tool({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <motion.button whileTap={{ scale: 0.97 }} onClick={onClick} className="h-14 px-3.5 flex items-center gap-2.5 text-[15px] font-semibold whitespace-nowrap" style={{ background: C.surface, borderRadius: 18, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
+    <motion.button whileTap={{ scale: 0.97 }} onClick={onClick} className={`h-14 px-3.5 flex items-center justify-center gap-2.5 whitespace-nowrap ${TYPE.action}`} style={{ background: C.surface, borderRadius: 18 }}>
       <span className="w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0" style={{ background: C.surface3 }}>{icon}</span>
       {label}
     </motion.button>
