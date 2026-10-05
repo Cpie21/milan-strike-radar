@@ -1,7 +1,11 @@
-import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, type StrikeEvent } from '../lib/strikePresentation';
-import type { TimingEvidence } from '../lib/strikeEvidence';
+import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, aggregateTimingConfidence, type StrikeEvent } from '../lib/strikePresentation';
+import { mergeServiceSchedules, type ServiceSchedule } from '../lib/serviceSchedule';
+import type { OfficialStrikeRecord } from '../lib/officialStrikeRecord';
+import type { TimingEvidence, EvidenceWindow } from '../lib/strikeEvidence';
 import { scopeOf, type ScopeType, type GuaranteeSource } from '../lib/strikeScope';
 import { CITIES } from '../lib/cities';
+import { mergeLineScopes, unknownLineScope, type LineScope, type LineScopeKind } from '../lib/lineScope';
+import { intersectGuaranteeEvidence, type GuaranteePolicy } from '../lib/operatorGuaranteeProfiles';
 import {
   canonicalizeRegionValue,
   inferRegionTagFromText,
@@ -37,6 +41,12 @@ type StrikeLike = {
   has_unknown_lines?: boolean;
   scopeType?: ScopeType;
   guaranteeSource?: GuaranteeSource;
+  lineScope?: LineScopeKind;
+  lineScopeEvidence?: LineScope;
+  guaranteeEvidenceWindows?: EvidenceWindow[];
+  guaranteePolicies?: GuaranteePolicy[];
+  serviceSchedule?: ServiceSchedule;
+  official_record?: OfficialStrikeRecord | null;
 };
 
 const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag, [...city.airports, `${city.zh}相关机场`]]));
@@ -165,7 +175,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
   return [...map].map(([key, rows]) => {
     const eventMap = new Map<string, StrikeEvent>();
     for (const row of rows) {
-      const events = row.strike_events || [{ id: row.id, source_key:row.source_key, source_url:row.source_url, provider: row.provider, status:row.status, unions:row.timing_evidence?.unions, windows:eventWindows(row), guarantee_windows:row.guarantee_windows || [], timing_evidence: row.timing_evidence, affected_lines:row.affected_lines, region:row.region }];
+      const events = row.strike_events || [{ id: row.id, source_key:row.source_key, source_url:row.source_url, provider: row.provider, status:row.status, unions:row.timing_evidence?.unions, windows:eventWindows(row), guarantee_windows:row.guarantee_windows || [], timing_evidence: row.timing_evidence, affected_lines:row.affected_lines, region:row.region,official_record:row.official_record }];
       for (const event of events) {
         const identity = event.source_key || String(event.id || JSON.stringify([event.provider,event.status,event.windows]));
         eventMap.set(identity, event);
@@ -176,34 +186,43 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
     const relevant = active.length ? active : events;
     const windows = mergeEvidenceWindows(relevant.flatMap(e => e.windows));
     const sources = [...new Map(relevant.flatMap(e => e.timing_evidence?.sources || []).map(source => [source.url, source])).values()];
-    const confidence = relevant.some(e=>e.timing_evidence?.confidence === 'conflict') ? 'conflict' : sources.some(s=>s.authority === 'reported') ? 'reported' : 'official';
+    const confidence = aggregateTimingConfidence(relevant);
     const first = rows[0];
     const allLines = relevant.flatMap(e=>e.affected_lines || []);
     const fields=relevant.length===1?relevant[0].timing_evidence?.fields:undefined;
     const guaranteeSources=relevant.map(e=>e.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN');
-    const guaranteeSource:GuaranteeSource=guaranteeSources.every(s=>s==='OFFICIAL_STRIKE_NOTICE')?'OFFICIAL_STRIKE_NOTICE':guaranteeSources.every(s=>s!=='UNKNOWN')?'STANDARD_RULE':'UNKNOWN';
+    const guaranteeSource:GuaranteeSource=guaranteeSources.includes('UNKNOWN')?'UNKNOWN':guaranteeSources.every(s=>s==='OFFICIAL_STRIKE_NOTICE')?'OFFICIAL_STRIKE_NOTICE':guaranteeSources.includes('OPERATOR_RULE')?'OPERATOR_RULE':'STANDARD_RULE';
+    const lineFacts=relevant.map(e=>e.timing_evidence?.fields?.lineScope || {value:unknownLineScope(),confidence:'UNKNOWN' as const,source:'UNKNOWN' as const});
+    const lineScopeEvidence=mergeLineScopes(lineFacts);
+    const guaranteeEvidenceWindows=intersectGuaranteeEvidence(active.map(e=>e.timing_evidence?.fields?.guaranteeEvidenceWindows?.value || e.guarantee_windows.map(w=>({...w,end_kind:'clock' as const}))));
     const broad = allLines.some(line => NETWORK_WIDE_LINE_MARKERS.has(line));
     return {
       ...first,
       id: `day-${key.replaceAll('|','-')}`,
       region: regionTag || first.region,
       source_key: undefined,
+      official_record: undefined,
       scopeType:['AIRPORT','TRAIN'].includes(first.category || '')?scopeOf(first):undefined,
       officialGeography:relevant.map(e=>e.timing_evidence?.fields?.officialGeography).filter(Boolean),
       supportedCityProjection:[...new Set(relevant.flatMap(e=>e.timing_evidence?.fields?.supportedCityProjection?.value || []))],
       guaranteeSource,
-      guaranteedServiceWindow:active.some(e=>!e.windows.length)?[]:intersectGuarantees(active),
+      guaranteedServiceWindow:intersectGuarantees(active),
+      serviceSchedule:mergeServiceSchedules(active.map(e=>e.timing_evidence?.fields?.serviceSchedule),rows[0].date || '',rows[0].category || ''),
+      guaranteeEvidenceWindows,
+      guaranteePolicies:relevant.map(e=>e.timing_evidence?.fields?.guaranteePolicy).filter((p):p is GuaranteePolicy=>Boolean(p)),
       provider: normalizeProviderForDisplay(relevant.map(e=>e.provider).join(' / '),first.category),
       status: !active.length ? 'CANCELLED' : active.some(e=>e.windows.length) ? 'CONFIRMED' : 'UNCERTAIN',
       display_time: windowsDisplay(windows),
       duration_hours: windowsDuration(windows),
       strike_windows: numericWindows(windows),
-      guarantee_windows: active.some(e=>!e.windows.length) ? [] : intersectGuarantees(active),
+      guarantee_windows: intersectGuarantees(active),
       timing_evidence: { fields, windows, confidence, sources, unions:[...new Set(relevant.map(e=>e.unions).filter(Boolean))].join(' / '), conflicts:relevant.flatMap(e=>e.timing_evidence?.conflicts || []) } as TimingEvidence,
       strike_events: events,
-      has_unknown_lines:active.some(e=>!e.affected_lines?.length),
+      has_unknown_lines:lineScopeEvidence.kind==='UNKNOWN',
       has_unknown_timing: active.some(e=>!e.windows.length),
-      lineScope: broad?'ALL_LINES':allLines.length?'SPECIFIC_LINES':'UNKNOWN',
+      legacyLineScope: broad?'ALL_LINES':allLines.length?'SPECIFIC_LINES':'UNKNOWN',
+      lineScope: lineScopeEvidence.kind,
+      lineScopeEvidence,
       field_evidence:relevant.map(e=>({source_key:e.source_key,...e.timing_evidence?.fields})),
       affected_lines: first.category === 'AIRPORT' ? [...new Set(allLines)] : broad ? ['全部线路'] : sanitizeAffectedLines([...new Set(allLines)]),
     };

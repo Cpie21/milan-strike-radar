@@ -2,6 +2,10 @@
 
 import { strikeTimeline, windowsDisplay, type StrikeEvent } from '../lib/strikePresentation';
 import { evidenceTimeLabel, type TimingEvidence } from '../lib/strikeEvidence';
+import type { EvidenceWindow } from '../lib/strikeEvidence';
+import type { LineScope } from '../lib/lineScope';
+import { cardGuaranteeWindows, lineScopeLabels } from '../lib/strikeCardEvidence';
+import type { GuaranteePolicy } from '../lib/operatorGuaranteeProfiles';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
@@ -54,6 +58,9 @@ interface StrikeRecord {
     strike_windows: Array<{ start: string, end: string }>;
     guarantee_windows: Array<{ start: string, end: string }>;
     guaranteeSource?: GuaranteeSource;
+    guaranteeEvidenceWindows?: EvidenceWindow[];
+    guaranteePolicies?: GuaranteePolicy[];
+    lineScopeEvidence?: LineScope;
     affected_lines?: string[];
 }
 
@@ -308,8 +315,10 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     else if (isBus) { title = categoryTitles[language].BUS; subTitle = localizedProvider || "ATM"; icon = getTrainIcon(isDark ? '#0F172A' : 'white'); }
 
     // Strip Airport Title from tags if we used it as the main title
-    const displayLines=normalizeDisplayLines(strike.affected_lines || [],strike.category);
-    const localizedDisplayLines=isPlane && ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?[subTitle]:displayLines.length?displayLines.map(line=>line==='全部线路' || line==='全部车次'?pickText(language,'该运营商全部线路','All lines of this operator'):translateLine(line,language)):[pickText(language,isPlane?'官方暂未注明具体机场':'官方暂未注明具体线路',isPlane?'Specific airports not stated by officials':'Specific lines not stated by officials')];
+    const lineScope=strike.lineScopeEvidence || strike.timing_evidence?.fields?.lineScope?.value;
+    const displayLines=normalizeDisplayLines(strike.affected_lines || [],strike.category).filter(line=>!lineScope || lineScope.kind!=='UNKNOWN' || !['全部线路','全部车次'].includes(line));
+    const scopedLines=lineScopeLabels(lineScope,language);
+    const localizedDisplayLines=isPlane && ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?[subTitle]:!isPlane&&scopedLines.length?scopedLines:displayLines.length?displayLines.map(line=>line==='全部线路' || line==='全部车次'?pickText(language,'该运营商全部线路','All lines of this operator'):translateLine(line,language)):[pickText(language,isPlane?'官方暂未注明具体机场':'官方暂未注明具体线路',isPlane?'Specific airports not stated by officials':'Specific lines not stated by officials')];
 
     // Status Tag Logic
     const isConfirmed = strike.status === 'CONFIRMED' || strike.status === 'CONFIRMED (STRIKE)';
@@ -352,8 +361,10 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
     // A calendar-day axis works for every city and operator.
     const axisStartMin = 0;
     const axisEndMin = 1440;
-    const labelStart = semanticWindows.some(w=>w.start === null) ? pickText(language, '运营开始 →', 'Service starts →') : '00:00';
-    const labelEnd = semanticWindows.some(w=>w.end_kind === 'end_of_service') ? pickText(language, '→ 运营结束', '→ End of service') : '24:00';
+    const guaranteeSource=strike.guaranteeSource || strike.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN';
+    const guaranteeWindows=cardGuaranteeWindows(strike);
+    const labelStart = [...semanticWindows,...guaranteeWindows].some(w=>w.start === null) ? pickText(language, '运营开始 →', 'Service starts →') : '00:00';
+    const labelEnd = [...semanticWindows,...guaranteeWindows].some(w=>w.end_kind === 'end_of_service') ? pickText(language, '→ 运营结束', '→ End of service') : '24:00';
 
     const currentTimeRatio = Math.min(1, Math.max(0, (currentMinutes - axisStartMin) / (axisEndMin - axisStartMin)));
     const currentTimePct = currentTimeRatio * 100;
@@ -365,11 +376,8 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
         background: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 7px, rgba(0,0,0,0) 7px, rgba(0,0,0,0) 14px)',
     } as const;
 
-    const guaranteeSource=strike.guaranteeSource || strike.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN';
-    const guaranteeWindows=guaranteeSource==='UNKNOWN'?[]:strike.guarantee_windows || [];
-
     const segments = strikeTimeline(semanticWindows.length ? semanticWindows : timeSlots.map(w=>({...w,end_kind:'clock' as const})), guaranteeWindows, strike.status === 'CANCELLED', strike.has_unknown_timing);
-    const uniqueIntersected = guaranteeWindows.map(w => `${w.start} - ${w.end}`);
+    const uniqueIntersected = guaranteeWindows.map(w => evidenceTimeLabel(w,language));
     const formatMin = (m: number) => `${Math.floor(m/60).toString().padStart(2,'0')}:${(m%60).toString().padStart(2,'0')}`;
 
     return (
@@ -427,7 +435,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
             {/* Strict Single Track Visualization */}
             <div className="mt-8 px-6 w-full">
                 <div data-strike-timeline aria-label={pickText(language, '罢工时段时间轴', 'Strike timing timeline')} className={`relative h-[8px] w-full rounded-full overflow-hidden flex ${isDark ? 'bg-[#E2E8F0]/25' : 'bg-gray-200'}`}>
-                    {isUnknownTime && strike.status !== 'CANCELLED' ? (
+                    {isUnknownTime && !guaranteeWindows.length && strike.status !== 'CANCELLED' ? (
                         <div className="h-full w-full" style={{
                             background: isDark
                                 ? 'repeating-linear-gradient(45deg, rgba(0,0,0,0.5) 0, rgba(0,0,0,0.5) 10px, #ca8a04 10px, #ca8a04 20px)'
@@ -442,16 +450,17 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                             if (seg.colorType === 'open') bgColor = 'bg-[#EF4444]';
                             if (seg.colorType === 'unknown') bgColor = 'bg-[#facc15]';
                             if (seg.colorType === 'red') bgColor = isDark ? 'bg-[#de4141]' : 'bg-[#EF4444]';
-                            if (seg.colorType === 'green') {
+                            if (seg.colorType === 'green' || seg.colorType === 'green_open') {
                                 bgColor = isDark ? 'bg-[#5ab91b]' : 'bg-[#10B981]';
                                 if (isGuaranteePulseActive) {
                                     glowStyle = isDark ? 'drop-shadow-[0_0_12px_rgba(90,185,27,1)] brightness-[1.3]' : 'drop-shadow-[0_0_12px_rgba(16,185,129,0.8)] brightness-110';
                                     zIndex = 'z-10 relative'; // lift above overflow hidden if possible, but keeping inline glow
                                 }
                             }
-                            const isGuaranteeSegment = seg.colorType === 'green' && uniqueIntersected.length > 0;
+                            const isGuaranteeSegment = ['green','green_open'].includes(seg.colorType) && uniqueIntersected.length > 0;
                             const className = `${bgColor} h-full ${glowStyle} ${zIndex} transition-all duration-300 first:rounded-l-full last:rounded-r-full ${isGuaranteeSegment ? 'appearance-none border-0 p-0 cursor-pointer hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#87ff38]' : ''}`;
-                            const style = { width: `${seg.widthPct}%`, ...(seg.colorType === 'open' || seg.colorType === 'unknown' ? { backgroundImage: 'repeating-linear-gradient(135deg, transparent 0px, transparent 4px, rgba(255,255,255,0.6) 4px, rgba(255,255,255,0.6) 7px)' } : {}) };
+                            const style = { width: `${seg.widthPct}%`, ...(['open','unknown','green_open'].includes(seg.colorType) ? { backgroundImage: 'repeating-linear-gradient(135deg, transparent 0px, transparent 4px, rgba(255,255,255,0.6) 4px, rgba(255,255,255,0.6) 7px)' } : {}) };
+                            const segmentLabel=`${seg.colorType==='green_open' && seg.startMin===0?pickText(language,'运营开始','Service starts'):formatMin(seg.startMin)} - ${seg.colorType==='green_open' && seg.endMin===1440?pickText(language,'运营结束','End of service'):formatMin(seg.endMin)}`;
 
                             if (isGuaranteeSegment) {
                                 return (
@@ -460,8 +469,8 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                                         type="button"
                                         className={className}
                                         style={style}
-                                        aria-label={pickText(language, `展开保障时间 ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `Show protected service window ${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
-                                        title={pickText(language, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`, `${formatMin(seg.startMin)} - ${formatMin(seg.endMin)}`)}
+                                        aria-label={pickText(language, `展开保障时间 ${segmentLabel}`, `Show protected service window ${segmentLabel}`)}
+                                        title={segmentLabel}
                                         onClick={pulseGuaranteeSegments}
                                     />
                                 );
@@ -733,6 +742,7 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                     {pickText(language, '来源: 意大利交通部官网 (MIT) ➔', 'Source: Italian Ministry of Transport (MIT) →')}
                 </a>
                 {guaranteeSource==='STANDARD_RULE' && <div className="mt-2"><a className="text-[10px] underline underline-offset-2" href="https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/prestazioni-minime-garantite/" target="_blank" rel="noopener noreferrer">{pickText(language,'常规保护规则：ENAC','Standard protection rules: ENAC')} ↗</a></div>}
+                {guaranteeSource==='OPERATOR_RULE' && [...new Map((strike.guaranteePolicies || (strike.timing_evidence?.fields?.guaranteePolicy?[strike.timing_evidence.fields.guaranteePolicy]:[])).map(p=>[p.source,p])).values()].map(p=><div className="mt-2" key={p.source}><a className="text-[10px] underline underline-offset-2" href={p.source} target="_blank" rel="noopener noreferrer">{pickText(language,'运营商常规保障规则','Operator protection rules')} ↗</a></div>)}
                 {strike.timing_evidence && strike.timing_evidence.sources.length > 0 && <>
                     <p className="text-[10px] mt-2 mb-2">{strike.timing_evidence.confidence === 'conflict'
                         ? pickText(language, '采用的时段来源与其他来源有差异，请查看原公告', 'Adopted timing differs from other sources; check the notices')

@@ -1,4 +1,5 @@
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence } from './strikeEvidence';
+import type { OfficialStrikeRecord } from './officialStrikeRecord';
 
 export type StrikeEvent = {
   id?: string | number;
@@ -12,7 +13,28 @@ export type StrikeEvent = {
   timing_evidence?: TimingEvidence | null;
   affected_lines?: string[];
   region?: string;
+  official_record?: OfficialStrikeRecord | null;
 };
+
+/** Trust the evidence for the adopted hours, not every link in a source list.
+ * An independent reported interval must not inherit another event's authority. */
+export function aggregateTimingConfidence(events: StrikeEvent[]): TimingEvidence['confidence'] {
+  const confidence = (event: StrikeEvent): TimingEvidence['confidence'] => {
+    const evidence = event.timing_evidence;
+    if (evidence?.confidence === 'conflict' || evidence?.fields?.timing?.confidence === 'CONFLICT') return 'conflict';
+    if (evidence?.fields?.timing?.source === 'REPORTED') return evidence.confidence === 'corroborated' ? 'corroborated' : 'reported';
+    if (evidence?.confidence) return evidence.confidence;
+    // Legacy official register rows predate field evidence.
+    return event.source_url?.startsWith('https://scioperi.mit.gov.it/') ? 'official' : 'reported';
+  };
+  const keys = (event: StrikeEvent) => mergeEvidenceWindows(event.windows).map(w => `${w.start ?? 'service_start'}|${w.end_kind === 'end_of_service' ? 'service_end' : w.end}`).join(';');
+  const grades = events.map(confidence);
+  if (grades.includes('conflict')) return 'conflict';
+  const officialHours = new Set(events.filter((_,i)=>grades[i] === 'official').filter(e=>e.windows.length).map(keys));
+  const remaining = events.filter((event,i)=>grades[i] !== 'official' && (!event.windows.length || !officialHours.has(keys(event)))).map(confidence);
+  if (!remaining.length) return 'official';
+  return remaining.includes('reported') ? 'reported' : 'corroborated';
+}
 
 export function clockMinutes(value: string) {
   const [h, m] = value.split(':').map(Number);
@@ -84,15 +106,16 @@ export function windowsDuration(windows: EvidenceWindow[]) {
 
 // A day axis is valid for every city. Symbolic edges use a striped continuation,
 // not a made-up service closing time. All numeric windows remain exact.
-export function strikeTimeline(windows: EvidenceWindow[], guarantees: { start: string; end: string }[] = [], cancelled = false, hasUnknown = false) {
+export function strikeTimeline(windows: EvidenceWindow[], guarantees: { start: string|null; end: string|null }[] = [], cancelled = false, hasUnknown = false) {
   const bounded = windows.filter(w => w.start !== null && w.end !== null).map(w => ({ start: clockMinutes(w.start!), end: clockMinutes(w.end!) }));
   const open = windows.filter(w => w.start === null || w.end_kind === 'end_of_service').map(w => ({ start: w.start === null ? 0 : clockMinutes(w.start), end: w.end === null ? 1440 : clockMinutes(w.end) }));
-  const protectedTimes = guarantees.map(w => ({ start: clockMinutes(w.start), end: clockMinutes(w.end) }));
+  const protectedTimes = guarantees.map(w => ({ start: w.start===null?0:clockMinutes(w.start), end: w.end===null?1440:clockMinutes(w.end) }));
+  const protectedOpen = guarantees.filter(w=>w.start===null||w.end===null).map(w=>({start:w.start===null?0:clockMinutes(w.start),end:w.end===null?1440:clockMinutes(w.end)}));
   const points = [...new Set([0, 1440, ...[...bounded, ...open, ...protectedTimes].flatMap(w => [w.start, w.end])])].filter(p => Number.isFinite(p) && p >= 0 && p <= 1440).sort((a,b)=>a-b);
   return points.slice(0,-1).map((start,index) => {
     const end = points[index+1], mid = (start+end)/2;
     const includes = (list: typeof bounded) => list.some(w => mid >= w.start && mid < w.end);
-    const type = cancelled ? 'grey' : includes(protectedTimes) ? 'green' : includes(bounded) ? 'red' : includes(open) ? 'open' : windows.length && !hasUnknown ? 'grey' : 'unknown';
+    const type = cancelled ? 'grey' : includes(protectedOpen) ? 'green_open' : includes(protectedTimes) ? 'green' : includes(bounded) ? 'red' : includes(open) ? 'open' : windows.length && !hasUnknown ? 'grey' : 'unknown';
     return { colorType: type, widthPct: (end-start)/1440*100, startMin:start, endMin:end };
   });
 }

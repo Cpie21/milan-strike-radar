@@ -1,0 +1,33 @@
+{
+  "httpStatus": 200,
+  "success": true,
+  "runId": "cee25515-3d3e-4754-9d9e-47414f206cec",
+  "fetched": 76,
+  "upserted": 57,
+  "unknownTiming": 7,
+  "retired": 0,
+  "enriched": 4,
+  "sourcesChecked": 114,
+  "conflicts": 3,
+  "transit": {
+    "profilesApplied": 5,
+    "routeCatalogs": 0
+  },
+  "semantic": {
+    "called": 0,
+    "cached": 26,
+    "flagged": 0,
+    "needsReview": 0,
+    "inconclusive": 15,
+    "failed": 0,
+    "skipped": 0,
+    "budgetExhausted": false
+  },
+  "semanticEnabled": true,
+  "verification": {
+    "operatorOfficial": 6,
+    "reported": 5,
+    "mitOnly": 25
+  },
+  "warningCount": 23
+}

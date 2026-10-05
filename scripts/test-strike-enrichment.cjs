@@ -9,6 +9,20 @@ const record = (override = {}) => ({ date:'2026-10-09', region:'MILANO', categor
 const source = (url = 'https://sciopero.net/123-event/') => ({ url, name:'Report', authority:'reported', checked_at:'2026-10-04T14:00:00Z', content_hash:'hash', excerpt:'timing' });
 const notice = (override = {}) => ({ date:'2026-10-09', provider:'Atm Milano, Net', territory:'Milano, Monza', unions:'Confial Trasporti', sector:'Trasporto Pubblico Locale', timing:'Atm Milano e Net Trezzo dalle 8.45 alle 15.00 e dalle 18.00 a fine servizio, Net Monza dalle 9.00 alle 11.50 e dalle 14.50 a fine servizio', status:'CONFERMATO', source:source(), ...override });
 const expected = [{ start:'08:45', end:'15:00', end_kind:'clock' },{ start:'18:00', end:null, end_kind:'end_of_service' }];
+const gestFixture=fs.readFileSync(require('node:path').join(__dirname,'fixtures/gest-official-heading.html'),'utf8');
+const gestUrl='https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/';
+const gestRecord=()=>record({date:'2026-10-10',region:'FIRENZE',category:'BUS',affected_lines:[],raw_payload:{provider:'PERSONALE SOC. GEST SERVIZIO TRANVIA DI FIRENZE',unions:'OSP COBAS LAVORO PRIVATO',sector:'Trasporto pubblico locale',modalita:'24 ORE'}});
+test('GEST visible publication date, Divi content and heading-only guarantees preserve current lines',()=>{
+ const notices=parseExternalNotices(gestFixture,gestUrl,['2026-10-10'],'2026-10-05T12:00:00Z',true);
+ const r=applyTimingEvidence(gestRecord(),notices);assert.equal(r.timing_evidence.fields.guaranteeSource,'OFFICIAL_STRIKE_NOTICE');assert.deepEqual(r.guarantee_windows,[{start:'06:30',end:'09:30'},{start:'17:00',end:'20:00'}]);assert.deepEqual(r.affected_lines,['T1','T2']);assert.equal(r.timing_evidence.fields.lineScope.value.kind,'SPECIFIC_LINES');assert.deepEqual(r.timing_evidence.fields.lineScope.value.operatorIds,['GEST_FIRENZE']);assert.ok(r.timing_evidence.sources.some(s=>s.url===gestUrl));
+ assert.equal(parseExternalNotices(gestFixture,gestUrl,['2027-10-10'],'2027-10-05T12:00:00Z',true).length,0);
+ assert.equal(applyTimingEvidence({...gestRecord(),raw_payload:{...gestRecord().raw_payload,unions:'USB'}},notices).timing_evidence.fields.guaranteeSource,'UNKNOWN');
+});
+test('GEST discovery follows the registered news index without hard-coding the event URL',async()=>{
+ const original=global.fetch;const fetched=[];
+ global.fetch=async url=>{fetched.push(String(url));return new Response(String(url)===gestUrl?gestFixture:String(url)==='https://www.gestramvia.it/news/'?`<main><a href="${gestUrl}">10 ottobre, sciopero aziendale COBAS</a></main>`:'<main>News</main>',{headers:{'content-type':'text/html'}});};
+ try{const r=await enrichStrikeTiming([gestRecord()],[],new Date('2026-10-05T12:00:00Z'));assert.ok(fetched.includes(gestUrl));assert.deepEqual(r.records[0].affected_lines,['T1','T2']);assert.equal(r.records[0].timing_evidence.fields.guaranteeSource,'OFFICIAL_STRIKE_NOTICE');}finally{global.fetch=original;}
+});
 const detailHtml = (timing = notice().timing) => `<main><article class="detail-container"><h1>Sciopero Atm Milano, Net del 09-10-2026</h1>${Object.entries({"Data Dell'evento":'09-10-2026','Ambito Territoriale':'Milano, Monza','Sigle Sindacali':'Confial Trasporti','Settore Coinvolto':'Trasporto Pubblico Locale','Orari E Fasce':timing,'Stato Attuale':'CONFERMATO'}).map(([k,v])=>`<div class="detail-row"><div class="detail-label">${k}</div><div class="detail-value">${v}</div></div>`).join('')}</article></main>`;
 
 test('scopes ATM hours away from Monza and preserves end-of-service without inventing midnight', () => {

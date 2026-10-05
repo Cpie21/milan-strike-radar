@@ -2,6 +2,9 @@ import type { TimingEvidence, TimingSource } from './strikeEvidence';
 import { CITIES, resolveCity } from './cities';
 import { scopeTiming, timingSections } from './strikeTiming';
 import { affectedScopeText, classifyRegionTags, normalizeAirportAffectedLines } from './strikeNormalization';
+import { parseLineScope } from './lineScope';
+import { identifyOperators } from './operatorGuaranteeProfiles';
+import { eavDepartmentModes, EAV_DEPARTMENT_SOURCE } from './operatorDepartments';
 
 export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_GENERAL' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'UNKNOWN';
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
@@ -12,9 +15,13 @@ export type ScopeEvidence = {
   supportedCityProjection?: FieldEvidence<string[]>;
   locationStatus?: 'SUPPORTED_PROJECTION' | 'UNSUPPORTED_CITY' | 'UNSUPPORTED_REGION' | 'UNPROJECTED_GEOGRAPHY' | 'UNKNOWN_LOCATION';
   railSections?: FieldEvidence<{subject:'RAIL_SERVICE'|'RAIL_CONTRACTORS'|'RAIL_FREIGHT';text:string;representedByThisEvent:boolean}[]>;
+  serviceSchedule?: FieldEvidence<import('./serviceSchedule').ServiceSchedule>;
+  serviceClassification?: FieldEvidence<{operator:string;department:string;mode:string}>;
   passengerImpact?: FieldEvidence<'DIRECT_SERVICE' | 'INDIRECT_OR_UNCONFIRMED' | 'UNKNOWN'>;
   scopeType: FieldEvidence<ScopeType>;
   affectedLines: FieldEvidence<string[] | 'ALL_LINES' | 'UNKNOWN'>;
+  lineScope?: FieldEvidence<import('./lineScope').LineScope>;
+  routeCatalog?: FieldEvidence<Omit<import('./officialTransitData').RouteCatalog,'routes'>>;
   affectedAirports: FieldEvidence<string[]>;
   affectedOperators: FieldEvidence<string[]>;
   timing: FieldEvidence<unknown>;
@@ -22,6 +29,10 @@ export type ScopeEvidence = {
   guaranteeSource: GuaranteeSource;
   guaranteeType: 'GUARANTEED_SERVICE' | 'PROTECTED_FLIGHTS';
   guaranteedServiceWindow: FieldEvidence<{start:string;end:string}[]>;
+  guaranteeEvidenceWindows?: FieldEvidence<import('./strikeEvidence').EvidenceWindow[]>;
+  guaranteeDuringStrike?: FieldEvidence<import('./strikeEvidence').EvidenceWindow[]>;
+  guaranteePolicy?: import('./operatorGuaranteeProfiles').GuaranteePolicy;
+  guaranteedTrains?: FieldEvidence<{trainNumber:string;departure:string;serviceDate:string}[]>;
 };
 
 export function aviationScope(text: string, region: string): ScopeType {
@@ -45,6 +56,10 @@ export function railScope(text: string, context: {modalita?:string;note?:string}
   }
   if (/\bFS SECURITY\b|rail.*security|铁路安保/i.test(text)) return 'RAIL_SECURITY';
   if (/\bRFI\b|\bDOIT\b|infrastruttur|infrastructure|基础设施/i.test(text)) return 'RAIL_INFRASTRUCTURE';
+  if (eavDepartmentModes(text).includes('TRAIN')) {
+    if (/manutenzione|appalt|support/i.test(text)) return 'RAIL_SUPPORT';
+    return /viaggiante|macchinist|bordo/i.test(text) ? 'RAIL_CREW' : 'RAIL_OPERATOR';
+  }
   if (/personale.*(?:macchina|bordo)|macchinist|capotren|train crew|司乘/i.test(text)) return 'RAIL_CREW';
   if (/\bTRENITALIA\b|\bTRENORD\b|\bITALO\b|ferrovie dello stato|国家铁路|高铁/i.test(text)) return 'RAIL_OPERATOR';
   if (/pulizi|manutenzione|appalt[oi]|appaltatric|support|清洁|维护/i.test(text)) return 'RAIL_SUPPORT';
@@ -89,12 +104,14 @@ export function makeScopeEvidence(row: {provider:string; note:string; sector:str
   const geographyKnown=Boolean(declared.region && !/^(unknown|n\/?d)$/i.test(declared.region) || hasProvince);
   const locationStatus:ScopeEvidence['locationStatus']=region!=='UNKNOWN' ? 'SUPPORTED_PROJECTION' : hasProvince&&!resolveCity(declared.province)?'UNSUPPORTED_CITY':geographyKnown?(CITIES.some(c=>c.region===declared.region.toLowerCase()) || /^italia$/i.test(declared.region)?'UNPROJECTED_GEOGRAPHY':'UNSUPPORTED_REGION'):'UNKNOWN_LOCATION';
   const lines=extractLineScope(row.note);
+  const lineScope=parseLineScope(row.note,identifyOperators({provider:row.provider,region,category:category as import('./strikeSync').StrikeRecord['category']}));
   const airports=category==='AIRPORT' && !['AIRLINE','AIRLINE_CREW','CARGO'].includes(scope) ? normalizeAirportAffectedLines([],{contextText:affectedScopeText(row.provider)+' '+affectedScopeText(row.note)}) : [];
   return {
+    ...(eavDepartmentModes(row.provider).includes(category as 'TRAIN'|'BUS')?{serviceClassification:{value:{operator:'EAV',department:category==='TRAIN'?'DTF':'DTA',mode:category},confidence:'HIGH' as const,source:'OPERATOR_OFFICIAL' as const,method:'CODE' as const,url:EAV_DEPARTMENT_SOURCE,excerpt:'Verified department meaning; does not establish this event’s exact lines or guaranteed services.'}}:{}),
     officialGeography:{...fact(declared,geographyKnown,[declared.region,declared.province,declared.relevance].join(' | ')),method:'OFFICIAL'}, supportedCityProjection:fact(projection,geographyKnown), locationStatus,
     ...(category==='TRAIN'?{railSections:fact(timingSections(row.modalita).filter(s=>/FERROVIAR|MERCI.*ROTAIA/.test(s.label)).map(s=>({subject:/APPALTI/.test(s.label)?'RAIL_CONTRACTORS' as const:/MERCI/.test(s.label)?'RAIL_FREIGHT' as const:'RAIL_SERVICE' as const,text:s.body.trim().replace(/\s*\/\s*$/,''),representedByThisEvent:/^(?:SETTORE\s+)?FERROVIARIO$/.test(s.label)})),timingSections(row.modalita).length>0,row.modalita)}:{}),
     location:fact(region,region!=='UNKNOWN',[row.rawRegion,row.province,row.rilevanza,row.provider].filter(Boolean).join(' | ')), passengerImpact:fact(indirectRail(scope)?'INDIRECT_OR_UNCONFIRMED':scope==='RAIL_GENERAL'||scope==='RAIL_OPERATOR'||scope==='RAIL_CREW'?'DIRECT_SERVICE':'UNKNOWN',scope.startsWith('RAIL_')), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN',scope==='RAIL_GENERAL'?scopeTiming(row.modalita,'TRAIN'):row.provider),
-    affectedLines:fact(lines,lines!=='UNKNOWN',row.note), affectedAirports:fact(airports,!!airports.length),
+    affectedLines:fact(lines,lines!=='UNKNOWN',row.note), lineScope:fact(lineScope,lineScope.kind!=='UNKNOWN',row.note),affectedAirports:fact(airports,!!airports.length),
     // Do not treat a list of all staff as a list of all operators.
     affectedOperators:fact(/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)?[]:row.provider?[row.provider]:[],!!row.provider && !/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)),
     timing:fact(windows,!!windows.length,row.modalita),

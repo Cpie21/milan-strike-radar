@@ -1,0 +1,57 @@
+{
+  "checked_at": "2026-10-05T14:12:35.913Z",
+  "sourceRows": 15,
+  "rowsWithOfficialRecord": 15,
+  "rawPayloadExposed": false,
+  "atm": [
+    {
+      "category": "BUS",
+      "beforeConfidence": "reported",
+      "afterConfidence": "official",
+      "eventRecordCount": 2,
+      "mitModalita": [
+        "24 ORE: VARIE MODALITA'",
+        "24 ORE: VARIE MODALITA'"
+      ],
+      "windows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ]
+    },
+    {
+      "category": "SUBWAY",
+      "beforeConfidence": "reported",
+      "afterConfidence": "official",
+      "eventRecordCount": 2,
+      "mitModalita": [
+        "24 ORE: VARIE MODALITA'",
+        "24 ORE: VARIE MODALITA'"
+      ],
+      "windows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ]
+    }
+  ],
+  "askFeedback": {
+    "accessible": false,
+    "errorCode": "PGRST205",
+    "error": "Could not find the table 'public.ask_feedback' in the schema cache"
+  }
+}

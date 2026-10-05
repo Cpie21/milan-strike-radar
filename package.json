@@ -13,7 +13,7 @@
     "test:presentation": "node --test scripts/test-strike-presentation.cjs",
     "test:ask": "node --test scripts/test-ask.cjs",
     "test:lab": "node --test scripts/test-lab.cjs",
-    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs scripts/test-ask.cjs scripts/test-lab.cjs",
+    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs scripts/test-transit-scope.cjs scripts/test-service-schedule.cjs scripts/test-ask.cjs scripts/test-lab.cjs",
     "review:queue": "node scripts/print-semantic-review-queue.cjs"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "framer-motion": "^12.35.0",
     "gsap": "^3.14.2",
+    "gtfs-realtime-bindings": "2.2.0",
     "next": "16.3.8",
     "posthog-js": "1.435.8",
     "posthog-node": "^5.28.0",
