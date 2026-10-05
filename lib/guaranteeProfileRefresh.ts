@@ -11,7 +11,7 @@ export async function fetchProfileDocument(url:string,deadline=Date.now()+15000)
 }
 export function ruleStillMatches(profile:Profile,text:string) {
   const normalized=text.replace(/[\u0000-\u0008]/g,'').replace(/\s+/g,' ').replace(/[,:]/g,'.');
-  const sections=[...normalized.matchAll(/(?:in caso di sciopero|nelle giornate di sciopero|fasce di garanzi[ae]|servizio urbano e suburbano)[\s\S]{0,1500}/gi)].map(m=>m[0]);
+  const sections=[...normalized.matchAll(/(?:in caso di sciopero|in occasione di scioperi|nelle giornate di sciopero|fasce di garanzi[ae]|servizio urbano e suburbano)[\s\S]{0,1500}/gi)].map(m=>m[0]);
   // A complete clock may be followed by a range separator and the next hour.
   // Only the bare-hour alternative must reject a different minute suffix.
   const clock=(s:string)=>'\\b0?'+Number(s.slice(0,2))+(s.slice(3)==='00'?'(?:\\s*[.\\-]\\s*00(?!\\d)|(?!\\s*[.\\-]\\s*\\d))':'\\s*[.\\-]\\s*'+s.slice(3)+'(?!\\d)')+'\\b';

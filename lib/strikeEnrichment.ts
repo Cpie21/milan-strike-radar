@@ -8,6 +8,7 @@ import { mergeEvidenceWindows, numericWindows } from './strikePresentation';
 import { extractLineScope, sourceFact, makeScopeEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
 import { officialLineScope } from './lineScope';
+import { eavDepartmentModes } from './operatorDepartments';
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence, type TimingSource } from './strikeEvidence';
 
 // Discovery follows current indexes, never a hard-coded event/article URL.
@@ -28,6 +29,7 @@ const matchingUnion = (raw: string, other: string) => {
   const names=canon.match(/\balcobas\b|\bcobas\b|\bconfial\b|\busb\b|\bcub\b|\bcgil\b|\bcisl\b|\buil\b|\bugl\b|\bfaisa\b|\bfast\b|\borsa\b|\bsul\b/g);
   return names?.length ? names.every(n=>text.includes(` ${n} `)) : Boolean(canon) && text.includes(` ${canon} `);
 };
+const sameUnionContext = (a:string,b:string) => a===b || matchingUnion(a,b) && matchingUnion(b,a);
 const hasWord = (s: string, word: string) => new RegExp(`(?:^|[^a-z0-9])${word}(?:$|[^a-z0-9])`, 'i').test(normalize(s));
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
 const linkUrl = (href: string, base: string) => { try { const value = new URL(href, base).href; return allowedSourceUrl(value) ? value : null; } catch { return null; } };
@@ -111,6 +113,18 @@ async function fetchHtml(input: string, deadline: number): Promise<string> {
 }
 
 const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
+function visiblePublicationDate(text:string) {
+  const months=MONTHS.map(m=>m.slice(0,3)).join('|');
+  const value=normalize(text);
+  const first=new RegExp(`\\b(${months})\\w*\\s+(\\d{1,2}),?\\s+(20\\d{2})\\b`).exec(value);
+  const last=new RegExp(`\\b(\\d{1,2})\\s+(${months})\\w*,?\\s+(20\\d{2})\\b`).exec(value);
+  if(!first&&!last)return undefined;
+  const month=MONTHS.findIndex(m=>m.startsWith(first?first[1]:last![2]))+1;
+  const day=Number(first?first[2]:last![1]),year=Number(first?first[3]:last![3]);
+  const iso=`${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  const parsed=new Date(iso+'T12:00:00Z');
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10)===iso?iso:undefined;
+}
 function exactDate(text: string, date: string) {
   const [year, month, day] = date.split('-').map(Number);
   return new RegExp(`\\b0?${day}\\s*[/.-]\\s*0?${month}\\s*[/.-]\\s*${year}\\b|\\b${day}\\s+${MONTHS[month - 1]}\\s+${year}\\b`, 'i').test(text);
@@ -123,7 +137,7 @@ function sourceFor(url: string, text: string, checkedAt: string): TimingSource {
 // Structured detail pages carry date, union, transport mode and territorial scope.
 export function parseExternalNotices(html: string, url: string, dates: string[], checkedAt = new Date().toISOString(), fromCurrentOfficialIndex = false): ExternalNotice[] {
   const $ = cheerio.load(html);
-  const published = $('meta[property="article:published_time"]').attr('content') || $('time[datetime]').first().attr('datetime') || html.match(/"datePublished"\s*:\s*"([^"]+)/)?.[1];
+  const published = $('meta[property="article:published_time"]').attr('content') || $('time[datetime]').first().attr('datetime') || html.match(/"datePublished"\s*:\s*"([^"]+)/)?.[1] || visiblePublicationDate($('.published').first().text());
   $('script,style,nav,footer,header,aside').remove();
   const output: ExternalNotice[] = [];
   const detail = $('.detail-container').first();
@@ -151,7 +165,8 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
   // Article dates may be in the body, or omit the year in a title. A
   // publication date anchors yearless dates and rejects old recurring notices.
   const title = $('h1,h2').filter((_,el)=>/scioper/i.test($(el).text())).first().text() || $('h1').first().text();
-  const body = $('article').first().length ? $('article').first() : $('main').first().length ? $('main').first() : $('body');
+  const content=$('.entry-content,.et_pb_post_content').first();
+  const body = $('article').first().length ? $('article').first() : content.length ? content : $('main').first().length ? $('main').first() : $('body');
   // HTML block boundaries often contain no literal whitespace. Preserve word
   // boundaries so "2030</h1><p>USB" does not become the unknown union "2030USB".
   body.find('h1,h2,h3,p,li,div,td,br').append(' ');
@@ -188,6 +203,7 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
         cityByHeading.set(heading,sectionCities);
         if(names.test(heading)) unionContext=heading;
         const scopedDates=dates.filter(d=>exactDate(heading,d));if(scopedDates.length)dateContext=scopedDates;
+        if (/garant|fasce/i.test(heading) && /\d{1,2}[.:]\d{2}/.test(heading)) parts.push({text:heading,heading,unions:unionContext,dates:dateContext});
         return;
       }
       const t=$(el).text().replace(/\s+/g,' ').trim();
@@ -225,10 +241,10 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
       const isGuarantee=(p:typeof parts[number])=>/garant|fasce di garanzia/i.test(p.heading+' '+p.text) && !/non\s+(?:(?:saranno|essere)\s+)?garant/i.test(p.text);
       if(official && !output.length) for(const part of parts.filter(isGuarantee)) for(const date of part.dates) {
         if(!parseStrikeTiming(part.text).windows.length) continue;
-        output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:part.unions || text,sector:sourceCategory(url)||title,field_text:part.text,section_heading:part.heading,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,part.text,checkedAt)});
+        output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...knownCities.map(c=>resolveCity(c)?.slug)].join(' '),cities:knownCities,unions:part.unions || text,sector:sourceCategory(url)||title,field_text:parts.filter(p=>p.heading===part.heading && sameUnionContext(p.unions,part.unions) && p.dates.includes(date)).map(p=>p.text).join(' '),section_heading:part.heading,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,part.text,checkedAt)});
       }
       for(const notice of output) {
-        const clauses=parts.filter(p=>isGuarantee(p) && (p.heading===notice.section_heading || /garan|fasce/i.test(p.heading)) && p.dates.includes(notice.date) && (!namedUnion || p.unions===notice.unions));
+        const clauses=parts.filter(p=>isGuarantee(p) && (p.heading===notice.section_heading || /garan|fasce/i.test(p.heading)) && p.dates.includes(notice.date) && (!namedUnion || sameUnionContext(p.unions,notice.unions)));
         if(clauses.length) {
           notice.guarantee_clauses=clauses.map(p=>p.heading+' '+p.text);
           notice.guarantee_windows=clauses.flatMap(p=>parseStrikeTiming(p.text).windows);
@@ -265,7 +281,7 @@ export function matchesNotice(notice: ExternalNotice, record: StrikeRecord) {
   const companyMatch = operators.length ? operators.some(op=>hasWord(notice.provider+' '+notice.timing,op)) : identifiers.length && identifiers.every(t=>hasWord(notice.provider,t));
   if (!companyMatch && !(generic && officialCity && ['BUS','SUBWAY'].includes(record.category))) return false;
   const sector = normalize(notice.sector);
-  if (record.category === 'TRAIN' && !/ferroviar|tren|rfi|italo/.test(sector + ' ' + notice.provider.toLowerCase())) return false;
+  if (record.category === 'TRAIN' && !/ferroviar|tren|rfi|italo/.test(sector + ' ' + notice.provider.toLowerCase()) && !(recordOperators(record).includes('eav') && eavDepartmentModes(notice.provider+' '+(notice.field_text||'')).includes('TRAIN'))) return false;
   if (record.category === 'AIRPORT' && !/aereo|aeroport|enav|air|ryanair|easyjet|wizz/.test(sector + ' ' + notice.provider.toLowerCase())) return false;
   if (['BUS', 'SUBWAY'].includes(record.category) && /trasporto (?:aereo|ferroviario)/.test(sector)) return false;
   return true;
@@ -336,7 +352,7 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
     if(!n.guarantee_clauses) return n;
     const city=resolveCity(record.region);
     const clauses=n.guarantee_clauses.filter(text=>!city || !CITIES.some(c=>c.tag!==city.tag && hasWord(text,c.slug)) || hasWord(text,city.slug));
-    const symbolic=clauses.flatMap(text=>parseExternalWindows(text.replace(/garant\w*|fasce di garanzia/gi,'service').replace(/(\d{1,2}[.:]\d{2})\s*\/\s*(\d{1,2}[.:]\d{2})/g,'$1-$2'),record));
+    const symbolic=mergeEvidenceWindows(clauses.flatMap(text=>parseExternalWindows(text.replace(/garant\w*|fasce di garanzia/gi,'service').replace(/(\d{1,2}[.:]\d{2})\s*\/\s*(\d{1,2}[.:]\d{2})/g,'$1-$2'),record)));
     return {...n,guarantee_windows:numericWindows(symbolic),guarantee_evidence_windows:symbolic};
   });
   if(fields && official.length) {
@@ -358,9 +374,13 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
       const keys=new Set(lineFacts.map(f=>JSON.stringify([f.value.kind,f.value.operatorIds,f.value.networkNames,f.value.affectedLineNames,f.value.excludedLineNames])));
       const chosen=lineFacts[0];
       result.timing_evidence!.fields={...result.timing_evidence!.fields!,lineScope:keys.size===1?chosen:{...chosen,confidence:'CONFLICT'}};
+      if(keys.size===1 && chosen.value.kind==='SPECIFIC_LINES') {
+        result.affected_lines=chosen.value.affectedLineNames;
+        result.timing_evidence!.fields!.affectedLines={...chosen,value:chosen.value.affectedLineNames};
+      }
     }
     const named=official.map(n=>({notice:n,lines:extractLineScope(n.field_text || n.timing)})).filter(n=>n.lines!=='UNKNOWN');
-    if(named.length && new Set(named.map(n=>JSON.stringify(n.lines))).size===1 && record.category!=='AIRPORT') {
+    if(!lineFacts.length && named.length && new Set(named.map(n=>JSON.stringify(n.lines))).size===1 && record.category!=='AIRPORT') {
       result.affected_lines=named[0].lines==='ALL_LINES'?['全部线路']:named[0].lines as string[];
       result.timing_evidence!.fields={...result.timing_evidence!.fields!,affectedLines:sourceFact(named[0].lines,{...named[0].notice.source,excerpt:(named[0].notice.field_text || named[0].notice.timing).slice(0,800)})};
     }
@@ -439,7 +459,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   const search = [...new Set([...targets].sort((a,b)=>Number(Boolean(a.strike_windows.length))-Number(Boolean(b.strike_windows.length)) || a.date.localeCompare(b.date)).map(r=>`https://sciopero.net/settore/${SECTORS[r.category]}/?data=${r.date}`))];
   assertCitySourceCoverage();
   const operatorIndexes = [
-    ...CITY_STRIKE_SOURCES.filter(o=>targets.some(r=>(r.region === 'NATIONAL' || o.cities.includes(r.region)) && ['BUS','SUBWAY'].includes(r.category))).flatMap(o=>o.urls),
+    ...CITY_STRIKE_SOURCES.filter(o=>targets.some(r=>(r.region === 'NATIONAL' || o.cities.includes(r.region)) && (['BUS','SUBWAY'].includes(r.category) || r.category==='TRAIN' && recordOperators(r).some(op=>o.aliases.includes(op))))).flatMap(o=>o.urls),
     ...AVIATION_STRIKE_SOURCES.filter(o=>targets.some(r=>r.category==='AIRPORT' && (o.cities.includes(r.region) || recordOperators(r).some(op=>o.aliases.includes(op))))).flatMap(o=>o.urls),
     ...NATIONAL_STRIKE_SOURCES.filter(o=>targets.some(r=>recordOperators(r).some(op=>o.aliases.includes(op)) || r.region === 'NATIONAL' && (r.category === 'TRAIN' || r.category === 'AIRPORT'))).flatMap(o=>o.urls),
   ];
