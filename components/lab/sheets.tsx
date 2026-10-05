@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/react';
 import { submitFeedback } from '../../app/actions';
-import { buildWidgetScript } from '../../lib/widgetScript';
+import { buildLabWidgetScript } from '../../lib/lab/widgetScript';
+import { LedFace } from './Led';
 import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
 import { Button, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C } from './theme';
@@ -129,12 +130,9 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
   const [types, setTypes] = useState<Set<Mode>>(new Set(MODES));
   const [copied, setCopied] = useState(false);
   useSeen(base.open, 'Widgets_tutorial_success');
-  const labels = useMemo(() => JSON.stringify(base.lang === 'en'
-    ? { titleMap: { TRAIN: 'Train strike', SUBWAY: 'Metro strike', BUS: 'Bus strike', AIRPORT: 'Airport strike' }, fallbackTitle: 'Strike', todayStrike: 'Strikes', safeTravel: 'All clear', noStrikeToday: 'No strikes today', dataError: 'Data error' }
-    : { titleMap: { TRAIN: '火车罢工', SUBWAY: '地铁罢工', BUS: '公交罢工', AIRPORT: '机场罢工' }, fallbackTitle: '罢工', todayStrike: '今日罢工', safeTravel: '安心出行', noStrikeToday: '今日无罢工', dataError: '数据错误' }), [base.lang]);
   const copy = async () => {
     const origin = isLocal(window.location.host) ? `https://${PROD_HOST}` : window.location.origin;
-    const code = buildWidgetScript({ targetOrigin: origin, normalizedRegion: region, typesJson: JSON.stringify([...types]), regionLabel: cityName, widgetLabelsJson: labels, regionPagePath: cityPath });
+    const code = buildLabWidgetScript({ origin, region, types: [...types], cityName, path: cityPath, lang: base.lang });
     await navigator.clipboard?.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -144,6 +142,7 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
       <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>
         {tx(base.lang, `在桌面上直接看到${cityName}今天和最近的罢工。借助免费的 Scriptable 实现，只需设置一次。`, `See ${cityName} strikes on your Home Screen, via the free Scriptable app. Set it up once.`)}
       </p>
+      <WidgetPreview lang={base.lang} cityName={cityName} />
       <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={setTypes} lang={base.lang} /></Step>
       <Step n={2} title={tx(base.lang, '复制代码，并安装 Scriptable', 'Copy the code and get Scriptable')}>
         <div className="flex gap-2">
@@ -159,6 +158,50 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
       <Step n={4} title={tx(base.lang, '回到桌面，添加 Scriptable 小组件', 'Add a Scriptable widget to your Home Screen')}><Shot src="/assets/widget-step-2.png" /></Step>
       <Step n={5} title={tx(base.lang, '长按小组件，选择刚才的脚本', 'Long-press it and pick the script')}><Shot src="/assets/widget-step-3.png" /></Step>
     </Sheet>
+  );
+}
+
+// What the widget looks like, calm and on a strike day: the same face.
+function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
+  const [strike, setStrike] = useState(false);
+  const row = (mode: Mode, hours: string, dot: string) => (
+    <div className="flex items-center gap-2">
+      <ModeBadge mode={mode} size={22} />
+      <div className="min-w-0">
+        <p className="flex items-center gap-1.5 text-[13.5px] font-semibold leading-tight">{modeName(mode, lang)}<i className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} /></p>
+        <p className="text-[11.5px] leading-tight line-clamp-2" style={{ color: C.text2 }}>{hours}</p>
+      </div>
+    </div>
+  );
+  return (
+    <div className="mt-3 mb-1 flex flex-col items-center gap-3">
+      <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] p-4 flex gap-3 overflow-hidden" style={{ background: strike ? 'linear-gradient(180deg, rgba(255,90,78,0.22), #0E0F12 60%)' : 'linear-gradient(180deg, #16181D, #0E0F12 60%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
+        <div className="w-[112px] shrink-0 flex flex-col">
+          <LedFace mood={strike ? 'alert' : 'idle'} size={13} flat />
+          <p className="mt-2 text-[16px] font-bold leading-tight">{strike ? tx(lang, '今天 2 项罢工', '2 strikes today') : tx(lang, '今日无罢工', 'No strikes today')}</p>
+          <p className="text-[11.5px]" style={{ color: C.text3 }}>{strike ? cityName : `${cityName} · ${tx(lang, '安心出行', 'All clear')}`}</p>
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col gap-2.5 justify-start">
+          {strike ? <>
+            {row('SUBWAY', tx(lang, '08:45–15:00 · 18:00–运营结束', '08:45–15:00 · 18:00–end of service'), C.stop)}
+            {row('BUS', tx(lang, '08:45–15:00 · 18:00–运营结束', '08:45–15:00 · 18:00–end of service'), C.stop)}
+          </> : (
+            <div className="rounded-[14px] px-3 py-2.5" style={{ background: '#1A1C21' }}>
+              <p className="text-[11px]" style={{ color: C.text3 }}>{tx(lang, '下一次', 'Next')}</p>
+              <p className="text-[14.5px] font-semibold">{tx(lang, '10月9日 周五', 'Fri 9 Oct')}</p>
+              <p className="mt-1.5 flex items-center gap-1 text-[11.5px]" style={{ color: C.text2 }}><ModeBadge mode="SUBWAY" size={18} /><ModeBadge mode="BUS" size={18} /><span className="ml-1">{tx(lang, '4 天后', 'In 4 days')}</span></p>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex p-[3px] rounded-full" style={{ background: C.surface2 }}>
+        {[false, true].map(v => (
+          <button key={String(v)} onClick={() => setStrike(v)} className="h-7 px-3 rounded-full text-[12.5px] font-semibold" style={{ background: strike === v ? C.surface3 : 'transparent', color: strike === v ? C.text : C.text3 }}>
+            {v ? tx(lang, '罢工日', 'Strike day') : tx(lang, '平日', 'Calm day')}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

@@ -128,3 +128,39 @@ test('planned strike hours never read as live "stopped" and guarantees win', () 
   assert.match(statusLine(c, '2026-10-10', 12 * 60).text, /^罢工时段内/);
   assert.doesNotMatch(statusLine(c, '2026-10-10', 12 * 60).text, /停运|恢复/);
 });
+
+// ── Graffiti panels ──
+const { slotsFor, assignSlot } = require('../components/lab/wall/slots.ts');
+
+test('panels tile the body, centre-out, without overlap', () => {
+  const body = { x0: 26, y0: 56, x1: 188, y1: 98 };
+  const slots = slotsFor(body);
+  assert.ok(slots.length >= 8);
+  slots.forEach(s => { assert.ok(s.x >= body.x0 - 1 && s.x + s.w <= body.x1 + 1); assert.ok(s.y >= body.y0 - 1 && s.y + s.h <= body.y1 + 1); });
+  for (const a of slots) for (const b of slots) if (a !== b) assert.ok(a.x + a.w <= b.x + 1 || b.x + b.w <= a.x + 1 || a.y + a.h <= b.y + 1 || b.y + b.h <= a.y + 1, 'overlap');
+  const cx = (body.x0 + body.x1) / 2;
+  const d = s => Math.abs(s.x + s.w / 2 - cx);
+  assert.ok(d(slots[0]) <= d(slots[slots.length - 1]));
+});
+
+test('a person gets a free panel; many people spread out; a full wall paints over the oldest', () => {
+  const slots = slotsFor({ x0: 0, y0: 0, x1: 180, y1: 44 });
+  const taken = new Map([[0, 1], [1, 2]]);
+  const mine = assignSlot(slots, taken, 'device-a');
+  assert.ok(!taken.has(mine.i));
+  const picks = new Set(Array.from({ length: 40 }, (_, k) => assignSlot(slots, new Map(), `device-${k}`).i));
+  assert.ok(picks.size > 1, 'simultaneous arrivals should not all ask for the same panel');
+  const full = new Map(slots.map((s, k) => [s.i, 100 + k]));
+  full.set(slots[5].i, 1);
+  assert.equal(assignSlot(slots, full, 'late').i, slots[5].i);
+});
+
+test('the lab widget script never claims a line is stopped and keeps end of service', () => {
+  const { buildLabWidgetScript } = require('../lib/lab/widgetScript.ts');
+  for (const lang of ['zh', 'en']) {
+    const code = buildLabWidgetScript({ origin: 'https://x.test', region: 'MILANO', types: ['SUBWAY'], cityName: 'M', path: '/milan', lang });
+    assert.doesNotMatch(code, /停运中|is stopped|not running/i);
+    assert.match(code, lang === 'zh' ? /运营结束/ : /End of service/);
+    assert.doesNotThrow(() => new Function(`return async () => {${code}}`));
+  }
+});

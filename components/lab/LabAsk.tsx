@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, MapPin, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
 import { LedBoard, LedFace, type Mood } from './Led';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, windowsText, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
@@ -202,33 +202,85 @@ export function moodOf(a: Pick<AskState, 'busy' | 'error' | 'result'>): Mood {
 }
 
 // ── Input ─────────────────────────────────────────────────────────────
-// One input, two homes, one layoutId. On a calm day it lives in the module
-// under the "no strikes" card, big and centred; on a strike day it docks at
-// the bottom within thumb reach. Switching day moves it between the two, and
-// the board above it shrinks into the face on the bar.
+// One input, two homes, one layoutId. On a calm day it lives in the module,
+// as a roomy two-row field after mobile Gemini, kept quiet: the text on top,
+// and below it only what the answer will assume (the city) and what is left
+// (today's questions), with send at the thumb. On a strike day it docks at
+// the bottom as a pill with the face inside it, within thumb reach.
 
-function AskInput({ a, big, autoFocus }: { a: AskState; big?: boolean; autoFocus?: boolean }) {
-  const input = useRef<HTMLInputElement>(null);
+function AskInput({ a, big, place }: { a: AskState; big?: boolean; place?: string }) {
+  const field = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
+  const reduce = useReducedMotion();
   const { lang, query, setQuery, busy, setFocused, left, focused } = a;
   const out = left === 0;
-  useEffect(() => { if (autoFocus) input.current?.focus(); }, [autoFocus]);
+  const send = () => { if (query.trim() && !busy && !out) a.ask(query); };
+  // Examples take turns in the empty field, so it shows what it can do
+  // without a row of suggestions.
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!big || focused || query || reduce) return;
+    const t = setInterval(() => setN(k => k + 1), 3600);
+    return () => clearInterval(t);
+  }, [big, focused, query, reduce]);
+  const example = out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, ...EXAMPLES[n % EXAMPLES.length]);
+  // Grow with the text, up to three lines.
+  useEffect(() => {
+    const el = field.current;
+    if (!big || !el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 3 * 24)}px`;
+  }, [big, query]);
+  const sendButton = (
+    <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
+      className={`relative shrink-0 rounded-full flex items-center justify-center transition-colors disabled:opacity-40 ${big ? 'w-10 h-10' : 'w-11 h-11'}`} style={{ background: query.trim() ? '#F2A33A' : C.surface3, color: query.trim() ? '#1A1204' : '#FFFFFF' }}>
+      <ArrowUp size={18} weight="bold" />
+    </motion.button>
+  );
+  const common = {
+    value: query, maxLength: 200, enterKeyHint: 'send' as const, disabled: out,
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => setQuery(e.target.value.replace(/\n/g, ' ')),
+    onFocus: () => setFocused(true), onBlur: () => setFocused(false),
+    'aria-label': tx(lang, '用一句话问罢工', 'Ask about strikes'),
+  };
   return (
     <motion.form layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
-      onSubmit={e => { e.preventDefault(); a.ask(query); }}
-      className={`relative w-full flex items-center gap-2 ${big ? 'h-[60px] rounded-[22px] pl-5 pr-2' : 'h-[56px] rounded-full pl-[78px] pr-1.5'}`}
-      style={big ? { background: C.surface2 } : PILL}>
-      {/* A slow warm ring, the board's light reflected in the field */}
-      {big && <span aria-hidden className="pointer-events-none absolute -inset-px rounded-[23px] overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1 }}>
-        <motion.span className="absolute left-1/2 top-1/2 w-[700px] h-[700px] -ml-[350px] -mt-[350px]" style={{ background: 'conic-gradient(from 0deg, rgba(255,170,50,0.9), rgba(255,95,80,0.5), rgba(150,120,255,0.55), rgba(255,170,50,0.9))', opacity: focused || busy ? 1 : 0.45 }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: busy ? 2.2 : 9, ease: 'linear' }} />
+      onSubmit={e => { e.preventDefault(); send(); }}
+      className={`relative w-full ${big ? 'rounded-[26px] pl-4 pr-2 pt-3 pb-2' : 'h-[56px] rounded-full pl-[62px] pr-1.5 flex items-center gap-2'}`}
+      style={big ? { background: C.surface2, boxShadow: `inset 0 0 0 1px ${focused ? 'rgba(242,163,58,0.45)' : C.line}` } : PILL}>
+      {/* While it works, a slow warm light travels the edge: the board's glow. */}
+      {big && busy && <span aria-hidden className="pointer-events-none absolute -inset-px rounded-[27px] overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1.5 }}>
+        <motion.span className="absolute left-1/2 top-1/2 w-[700px] h-[700px] -ml-[350px] -mt-[350px]" style={{ background: 'conic-gradient(from 0deg, transparent 0 70%, rgba(255,170,50,0.95) 85%, transparent 100%)' }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.8, ease: 'linear' }} />
       </span>}
-      <input ref={input} value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} maxLength={200} enterKeyHint="send" disabled={out}
-        aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')}
-        placeholder={out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '比如：周五早上 9 点坐 M1 受影响吗？', 'e.g. Is the M1 running Friday at 9?')}
-        className={`relative flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 disabled:opacity-60 ${big ? 'text-[16px]' : 'text-[16px]'}`} />
-      <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
-        className="relative w-11 h-11 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: query.trim() ? '#F2A33A' : '#3A3F48', color: query.trim() ? '#1A1204' : '#FFFFFF' }}>
-        <ArrowUp size={18} weight="bold" />
-      </motion.button>
+      {big ? (
+        <>
+          <div className="relative">
+            <textarea ref={field} {...common} rows={1} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
+              className="block w-full resize-none bg-transparent outline-none text-white text-[16px] leading-6 pr-2 disabled:opacity-60" style={{ minHeight: 24 }} />
+            {!query && (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={example} aria-hidden className="absolute inset-x-0 top-0 pointer-events-none text-[16px] leading-6 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}
+                  initial={{ opacity: 0, y: reduce ? 0 : 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduce ? 0 : -6 }} transition={{ duration: 0.28, ease: EASE }}>
+                  {example}
+                </motion.span>
+              </AnimatePresence>
+            )}
+          </div>
+          <div className="mt-2.5 flex items-center gap-1.5">
+            {place && <span className={`h-7 pl-2 pr-2.5 rounded-full flex items-center gap-1 ${TYPE.caption}`} style={{ background: C.surface3, color: C.text2 }}><MapPin size={12} weight="fill" />{place}</span>}
+            <span className={`h-7 px-2.5 rounded-full flex items-center gap-1.5 ${TYPE.caption}`} style={{ background: C.surface3, color: C.text2 }} aria-label={tx(lang, `今天还可以问 ${left} 次`, `${left} left today`)}>
+              <span className="flex gap-[3px]">{Array.from({ length: DAILY_QUESTIONS }, (_, i) => <i key={i} className="w-[5px] h-[5px] rounded-full" style={{ background: i < left ? '#F2A33A' : 'rgba(255,255,255,0.18)' }} />)}</span>
+              {tx(lang, `今天 ${left} 次`, `${left} today`)}
+            </span>
+            <span className="ml-auto">{sendButton}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <input ref={field} {...common} placeholder={example}
+            className="relative flex-1 min-w-0 bg-transparent outline-none text-white text-[16px] placeholder:text-white/40 disabled:opacity-60" />
+          {sendButton}
+        </>
+      )}
     </motion.form>
   );
 }
@@ -244,9 +296,11 @@ function LastAnswer({ a, compact }: { a: AskState; compact?: boolean }) {
   );
 }
 
-// The docked bar (strike days).
+// The docked bar (strike days). The face sits inside the pill, left, with
+// the text after it; idle on a strike day, it is on alert.
 export function AskField({ ask: a }: { ask: AskState }) {
   const reduce = useReducedMotion();
+  const mood = moodOf(a);
   return (
     <motion.div className="fixed z-[80] inset-x-0 bottom-0 pointer-events-none" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
       initial={{ opacity: reduce ? 1 : 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -254,7 +308,9 @@ export function AskField({ ask: a }: { ask: AskState }) {
         <AnimatePresence><LastAnswer a={a} compact /></AnimatePresence>
         <div className="relative">
           <AskInput a={a} />
-          <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="absolute left-3 -top-[13px] z-10"><LedFace mood={moodOf(a)} size={16} /></motion.span>
+          <span className="absolute left-[8px] inset-y-0 z-10 flex items-center pointer-events-none">
+            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood === 'idle' ? 'alert' : mood} size={15} flat /></motion.span>
+          </span>
         </div>
         {a.left <= 2 && (
           <p className="mt-1.5 text-center text-[11.5px] font-medium" style={{ color: C.text3 }}>
@@ -268,20 +324,19 @@ export function AskField({ ask: a }: { ask: AskState }) {
 
 // The calm-day module. On a day with no strike there is room, and a reason,
 // to put the question front and centre: people arrive with something to
-// check. A hanging board, one question, one field, nothing else to choose
-// from. It stays mounted while you move between calm days; the board
-// announces each day as it passes.
-export function AskModule({ ask: a, lines, message }: { ask: AskState; lines: string[]; message?: string }) {
+// check. The board is set flush into the top of the module, as a screen is
+// set into a platform wall; it stays mounted while you move between calm
+// days and glances the way you went.
+export function AskModule({ ask: a, place, nudge }: { ask: AskState; place: string; nudge?: { key: string; dir: number } }) {
   return (
-    <motion.section layout transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="relative mt-3 overflow-hidden" style={{ background: C.surface, borderRadius: 24 }}>
-      <span aria-hidden className="absolute inset-x-0 top-0 h-[150px] pointer-events-none" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(255,160,40,0.14), transparent 70%)' }} />
-      <div className="relative flex flex-col items-center px-4 pb-5">
-        <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={moodOf(a)} lines={lines} message={message} /></motion.div>
+    <motion.section layout transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="relative mt-3 overflow-hidden p-3 pb-4" style={{ background: C.surface, borderRadius: 24 }}>
+      <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={moodOf(a)} nudge={nudge} /></motion.div>
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[150px] pointer-events-none" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(255,160,40,0.10), transparent 70%)' }} />
+      <div className="relative flex flex-col items-center px-1">
         <p className="mt-4 text-[18px] font-semibold">{tx(a.lang, '有什么想确认的？', 'Anything to check?')}</p>
         <p className={`mt-1 mb-4 ${TYPE.label}`} style={{ color: C.text3 }}>{tx(a.lang, '某天、某条线路，或群里听到的消息', 'A day, a line, or something you heard')}</p>
-        <AskInput a={a} big />
+        <AskInput a={a} big place={place} />
         <AnimatePresence><LastAnswer a={a} /></AnimatePresence>
-        {a.left <= 2 && <p className="mt-2 text-[11.5px] font-medium" style={{ color: C.text3 }}>{a.left === 0 ? tx(a.lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(a.lang, `今天还可以问 ${a.left} 次`, `${a.left} left today`)}</p>}
       </div>
     </motion.section>
   );

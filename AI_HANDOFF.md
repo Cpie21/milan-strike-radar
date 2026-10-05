@@ -202,3 +202,25 @@ Codex's PRs #4–#7 are merged into the lab branch; 207 tests pass.
    - `lib/aiBudget.ts` already calls them for Ask (9×2000 µUSD per question) and translation.
    - Until they exist, calls run unmetered and are logged as such. No cap is claimed.
 3. **Per-IP daily Ask limit** in a shared store (the in-instance Map is best-effort).
+
+### Lab v13: graffiti panels and the new widget (`claude/redesign-lab`)
+**Graffiti panels (proposal, request to Codex)**
+Each sprayer now paints only one panel of the vehicle, zoomed in, so a crowded wall stays readable. The client logic is in `components/lab/wall/slots.ts`:
+- **Panels.** `slotsFor(scene.body)` cuts the paintable side into panels of about 30×22 wall pixels. They are ranked centre-out; the panel index is stable for a given vehicle.
+- **Assignment.** `assignSlot(slots, taken, who)` hashes the person's id among the first three free panels, so simultaneous arrivals spread out. When every panel is taken, it paints over the oldest.
+- **Current state.** The lab simulates the others' claims and keeps your panel in localStorage (`graffiti_slot_<doodle key>`).
+
+Server contract needed:
+- **Table.** `graffiti_slots(strike_key text, slot int, holder text, claimed_at timestamptz, primary key (strike_key, slot))`. `holder` is an HMAC of IP and device; keep it separate from the counter identity, as before.
+- **Claim.** `POST /api/doodles/slot { key, deviceId }` → `{ slot, taken: [{slot, claimed_at}] }`.
+  - Run the same `assignSlot` server-side and insert with `on conflict do nothing`.
+  - On conflict, retry with the next free panel, up to 3 times.
+  - When the wall is full, delete-and-insert the oldest panel in one transaction.
+  - A holder who already has a panel for that key gets the same one back.
+- **Drawing upload.** The existing `POST /api/doodles/drawing` gains `slot`. The server rejects strokes whose points fall outside that panel's rectangle (±2 px). Strokes stay in 240×140 wall pixels, and the brush is now 1 px.
+
+**Widget**
+`lib/lab/widgetScript.ts` (`buildLabWidgetScript`) is a new Scriptable widget used only by the lab sheet. The production `lib/widgetScript.ts` and `WidgetGuideModal` are unchanged.
+- **Data and look.** It reads the same `/api/strikes` fields and draws the amber LED face. Planned windows only; "运营结束" ("end of service") stays as the end, and it never claims a line is stopped (a test enforces this).
+- **Sizes.** Small, medium and large.
+- **Adoption.** Production can adopt it whenever you like.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Drawer } from 'vaul';
 import { AirplaneTilt, Bus, Subway, Train, X, type IconWeight } from '@phosphor-icons/react';
 import type { Mode } from '../../lib/lab/model';
@@ -41,12 +41,71 @@ export function LineBadge({ line }: { line: string }) {
 
 // Sheets, after iOS. Tall sheets open at a medium detent with the rest of
 // the content running off the bottom edge, so it is visible that there is
-// more. At that detent a drag anywhere moves the whole sheet; fully up, the
-// content scrolls, and only when it is scrolled to the top does a downward
-// drag move the sheet again. `dismissFromTop` closes straight from full
-// height (used for answers: pulling down means "done with this").
-// Short sheets open at their own height, with no grabber.
+// more. `dismissFromTop` closes straight from full height (answers: pulling
+// down means "done with this"). Short sheets open at their own height.
+//
+// Gestures are split so they never fight: the grabber and header drag the
+// sheet (the drawer's own drag); the content area belongs to the content.
+// There, at the medium detent a swipe up expands and a swipe down closes;
+// fully up the content scrolls natively, and only a pull that starts with
+// the content already at the top moves the sheet, following the finger,
+// then settles one detent down (or closes) past a threshold. Sideways
+// swipes (rails, carousels, the wall) are left alone.
 const MEDIUM = 0.62;
+
+function useContentGestures(node: HTMLDivElement | null, on: boolean, full: boolean, { expand, collapse }: { expand: () => void; collapse: () => void }) {
+  const live = useRef({ full, expand, collapse });
+  useEffect(() => { live.current = { full, expand, collapse }; });
+  useEffect(() => {
+    if (!node || !on) return;
+    let x0 = 0, y0 = 0, axis: 'x' | 'y' | null = null, fromTop = false, offset = 0, tracking = false, base: number | null = null;
+    // The drawer positions itself with a transform; follow the finger on
+    // top of it, then hand back.
+    const drawer = node.closest('[data-vaul-drawer]') as HTMLElement | null;
+    const place = (y: number, animate: boolean) => {
+      if (!drawer || base === null) return;
+      drawer.style.transition = animate ? 'transform 0.5s cubic-bezier(0.32, 0.72, 0, 1)' : 'none';
+      drawer.style.transform = `translate3d(0, ${base + y}px, 0)`;
+    };
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; axis = null; offset = 0; tracking = true; base = null;
+      fromTop = node.scrollTop <= 0;
+    };
+    const move = (e: TouchEvent) => {
+      if (!tracking) return;
+      const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+      if (!axis && Math.hypot(dx, dy) > 8) axis = Math.abs(dy) > Math.abs(dx) * 1.2 ? 'y' : 'x';
+      if (axis !== 'y') return;
+      if (!live.current.full) offset = dy > 0 ? dy * 0.7 : Math.max(-24, dy * 0.2);
+      else if (fromTop && dy > 0 && node.scrollTop <= 0) offset = dy * 0.55;
+      else { offset = 0; return; }
+      if (e.cancelable) e.preventDefault();
+      if (base === null && drawer) base = new DOMMatrix(getComputedStyle(drawer).transform).m42;
+      place(offset, false);
+    };
+    const end = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      const dy = (e.changedTouches[0]?.clientY ?? y0) - y0;
+      const moved = base !== null;
+      if (axis === 'y' && !live.current.full && dy < -36) { if (moved) place(0, true); live.current.expand(); }
+      else if (axis === 'y' && offset > 70) live.current.collapse();
+      else if (moved) place(0, true);
+      offset = 0;
+    };
+    node.addEventListener('touchstart', start, { passive: true });
+    node.addEventListener('touchmove', move, { passive: false });
+    node.addEventListener('touchend', end);
+    node.addEventListener('touchcancel', end);
+    return () => {
+      node.removeEventListener('touchstart', start);
+      node.removeEventListener('touchmove', move);
+      node.removeEventListener('touchend', end);
+      node.removeEventListener('touchcancel', end);
+    };
+  }, [node, on]);
+}
 
 export function Sheet({ open, onClose, title, children, tall = false, large = false, dismissFromTop = false, header }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; dismissFromTop?: boolean; header?: ReactNode;
@@ -55,11 +114,17 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
   const [snap, setSnap] = useState<number | string | null>(large ? 1 : MEDIUM);
   useEffect(() => { if (open) { const t = setTimeout(() => setSnap(large ? 1 : MEDIUM), 0); return () => clearTimeout(t); } }, [open, large]);
   const full = !detents || snap === 1;
+  // A callback ref: the drawer mounts its content after this renders.
+  const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  useContentGestures(scroller, !!detents && open, full, {
+    expand: () => setSnap(1),
+    collapse: () => { if (snap === 1 && !dismissFromTop) setSnap(MEDIUM); else onClose(); },
+  });
   const body = (
       <Drawer.Portal>
       <Drawer.Overlay className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.55)' }} />
       <Drawer.Content aria-describedby={undefined} className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] flex flex-col outline-none"
-        style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, height: detents ? '94dvh' : undefined, maxHeight: '94dvh', boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)` }}>
+        style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, height: detents ? '94dvh' : undefined, maxHeight: '94dvh', boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)`}}>
         {detents ? <div className="pt-2 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div> : <div className="h-2" />}
         <div className="flex items-center justify-between gap-3 px-5 pt-2 pb-3 select-none">
           {header ?? <Drawer.Title className="text-[18px] font-semibold tracking-tight">{title}</Drawer.Title>}
@@ -68,7 +133,7 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
             <X size={14} weight="bold" color={C.text2} />
           </button>
         </div>
-        <div className="flex-1 min-h-0 px-5 overscroll-contain" style={{ overflowY: full ? 'auto' : 'hidden', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
+        <div ref={setScroller} data-vaul-no-drag={detents ? '' : undefined} className="flex-1 min-h-0 px-5 overscroll-contain" style={{ overflowY: full ? 'auto' : 'hidden', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
           {children}
         </div>
       </Drawer.Content>

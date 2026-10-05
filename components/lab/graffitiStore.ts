@@ -9,8 +9,8 @@ export type Stroke = { c: string; w: number; p: number[]; d?: 1 }; // p = x0,y0,
 export const LIMITS = { strokes: 80, points: 4000 };
 
 // One can per strike per person. Paint is spent by length × width; undo
-// gives it back. About three lines the length of a car.
-export const PAINT = 100;
+// gives it back. About enough to fill your panel once.
+export const PAINT = 40;
 export function strokeCost(s: Stroke) {
   let length = 0;
   for (let i = 2; i < s.p.length; i += 2) length += Math.hypot(s.p[i] - s.p[i - 2], s.p[i + 1] - s.p[i - 1]);

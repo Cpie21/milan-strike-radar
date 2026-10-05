@@ -99,12 +99,6 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
   const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });
   const calm = dayCards.length === 0;
-  // What the board says between expressions: true things, in the boards'
-  // own Italian. When the day changes it scrolls the new day through.
-  const IT = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
-  const itDate = (iso: string) => `${Number(iso.slice(8))} ${IT[Number(iso.slice(5, 7)) - 1]}`;
-  const boardLines = [selected === today ? 'OGGI NESSUNO SCIOPERO' : `${itDate(selected)} NESSUNO SCIOPERO`, next ? `PROSSIMO SCIOPERO ${itDate(next)}` : 'NESSUNO SCIOPERO IN VISTA'];
-  const boardMessage = calm ? `${itDate(selected)} · NESSUNO SCIOPERO` : undefined;
   const neighbour = (iso: string, mode: Mode) => (byDate.get(iso) || []).find(c => c.category === mode);
   const variants = {
     enter: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * 24, filter: reduce ? 'none' : 'blur(6px)' }),
@@ -189,7 +183,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           </AnimatePresence>
 
           {/* Outside the per-day transition, so it stays put across calm days */}
-          {calm && <AskModule ask={ask} lines={boardLines} message={boardMessage} />}
+          {calm && <AskModule ask={ask} place={name} nudge={{ key: selected, dir: direction }} />}
 
           {/* Tools: one line each says enough */}
           <div className="grid grid-cols-3 gap-2.5 mt-3">
