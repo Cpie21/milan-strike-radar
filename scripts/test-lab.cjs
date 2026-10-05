@@ -99,3 +99,17 @@ test('relative day labels in both languages', () => {
   assert.equal(relativeDay('2026-10-05', '2026-10-04', 'en'), 'Tomorrow');
   assert.equal(relativeDay('2026-10-02', '2026-10-04'), '2 天前');
 });
+
+test('split windows read as one span with the break named', () => {
+  const { timeSpan } = require('../lib/lab/model.ts');
+  assert.deepEqual(timeSpan([toEnd('18:00'), clock('08:45', '15:00')]), { start: '08:45', end: null, breaks: [{ start: '15:00', end: '18:00' }] });
+  assert.deepEqual(timeSpan([clock('09:00', '13:00')]), { start: '09:00', end: '13:00', breaks: [] });
+  assert.equal(timeSpan([]), null);
+});
+
+test('operator quotes mark the hours they contain', () => {
+  const { markTimes } = require('../lib/lab/model.ts');
+  const parts = markTimes('Le linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.');
+  assert.deepEqual(parts.filter(p => p.mark).map(p => p.text), ['8:45', '15', '18', 'termine del servizio']);
+  assert.equal(parts.map(p => p.text).join(''), 'Le linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.');
+});

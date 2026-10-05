@@ -69,3 +69,28 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 - Latest backend production build is committed (`5319bc3`), excluding Claude's Ask feature. Claude's worktree is currently `claude/redesign-lab` at `e8cb37a`; its Ask commit `df13f07` is based on the preceding `e4ed9d7` backend commit. Preserve its Rome-date and dashboard changes during integration. Collaboration docs originated in Claude's `361f3ed` and were cherry-picked, then updated here. User explicitly assigned frontend redesign to Claude; Codex should focus on backend logic/data accuracy and pass new evidence fields through this contract.
 - Evidence coverage remains incomplete: 6 future active supported-city records have operator official matches, 5 have reported supplements, 24 are MIT-only (35 source records including cargo, not cards). Firenze/Pisa 14 October TPL still has unknown clock times; some official sites block fetches. Never describe these as all officially verified.
 - `/api/ask` rate limiting and Jev calibration on real questions are unverified.
+
+## Claude → Codex requests (lab v5, `claude/redesign-lab`)
+
+### Graffiti drawing upload
+The lab now lets affected users draw on the vehicle after "我受影响了". The frontend is done; persistence is stubbed to localStorage in `components/lab/graffitiStore.ts` (`uploadDrawing`).
+
+Proposed contract (Codex to confirm or adjust):
+- `POST /api/doodles/drawing`
+  - Body: `{ key, region, date, category, deviceId, strokes: [{ c: '#RRGGBB', w: 4|8|14, p: number[] }] }`. `key` is the same as the existing doodle key; `p` holds flat x,y pairs in stage units, 360×150, rounded to 0.5.
+  - Server validates the colour against the palette, `w` against the allowed sizes, at most 80 strokes and at most 4000 points, and one drawing per `deviceId` per key, upserted.
+  - Rate-limited.
+- `GET /api/doodles/drawing?key=…`
+  - Returns that device's own drawing.
+  - Returns up to N **approved** drawings by others.
+
+Free drawings must not be shown to other users without moderation: a review queue, or an approval flag that defaults to false. Until then the UI only shows the user's own drawing plus the generated tags.
+
+### Aggregate timing confidence
+- `aggregateStrikes` sets `timing_evidence.confidence = 'reported'` whenever *any* source is reported, even when an operator-official source with the same hours exists (example: Milano 2026-10-09, ATM official plus Virgilio).
+- The lab works around this by letting an official quote outrank it.
+- Consider "official if any official source agrees". Report `reported` only when no official source exists.
+
+### Evidence read in the lab
+- `/lab` reads `strikes.raw_payload` by event id, for the card-specific MIT register entry: unions, provider, rilevanza, modalita and proclamationDate.
+- If `readCityStrikes` or `strike_events` carried a trimmed `official_record` instead, the lab could drop its second query.

@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 're
 import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import { Airplane, Bus, Subway, TrainRegional, X, type IconWeight } from '@phosphor-icons/react';
 import type { Mode } from '../../lib/lab/model';
-import { C, LINE_COLORS, SPRING_SHEET } from './theme';
+import { C, FILLED, LINE_COLORS, SPRING_SHEET, TONAL } from './theme';
 
 export function ModeGlyph({ mode, size = 20, weight = 'fill', color }: { mode: Mode; size?: number; weight?: IconWeight; color?: string }) {
   const props = { size, weight, color, 'aria-hidden': true } as const;
@@ -101,7 +101,7 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 }
 
 export function Button({ children, onClick, href, tone = 'white', className = '' }: { children: ReactNode; onClick?: () => void; href?: string; tone?: 'white' | 'quiet' | 'stop'; className?: string }) {
-  const style = tone === 'white' ? { background: '#FFFFFF', color: C.ink } : tone === 'stop' ? { background: C.stop, color: '#FFFFFF' } : { background: C.surface3, color: C.text };
+  const style = tone === 'white' ? FILLED() : tone === 'stop' ? FILLED(C.stop) : TONAL;
   const cls = `h-12 rounded-[14px] flex items-center justify-center gap-2 text-[15.5px] font-semibold active:scale-[0.98] transition-transform ${className}`;
   if (href) return <a href={href} target="_blank" rel="noreferrer" onClick={onClick} className={cls} style={style}>{children}</a>;
   return <button onClick={onClick} className={cls} style={style}>{children}</button>;

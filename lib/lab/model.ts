@@ -10,6 +10,21 @@ export type CardStatus = 'CONFIRMED' | 'UNCERTAIN' | 'CANCELLED';
 export type Source = { name: string; url: string; authority: string };
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
 
+// What makes a source specific to this card: the MIT register entry itself
+// (union, workforce, date proclaimed) and the operator's own sentence with
+// the hours in it. Cheaper and more honest than screenshots.
+export type OfficialRecord = {
+  unions: string;
+  workforce: string; // MIT's own wording, Italian
+  sector: string;
+  relevance: string; // Nazionale / Regionale / Provinciale ...
+  area: string; // MIT region / province as published
+  mode: string; // MIT "modalità", e.g. 24 ORE: VARIE MODALITA'
+  proclaimed: string | null; // ISO date
+  url: string;
+};
+export type Quote = { name: string; url: string; excerpt: string; checkedAt: string | null; official: boolean };
+
 export type ModeCard = {
   id: string;
   date: string;
@@ -32,6 +47,8 @@ export type ModeCard = {
   confidence: string;
   sources: Source[];
   events: { provider: string; status: string; display: string; sources: Source[] }[];
+  records: OfficialRecord[];
+  quotes: Quote[];
 };
 
 export const MODES: Mode[] = ['SUBWAY', 'BUS', 'TRAIN', 'AIRPORT'];
@@ -150,6 +167,38 @@ export function statusLine(card: ModeCard, today: string, nowMinutes: number, la
   const upcoming = spans.find(s => s.start > nowMinutes);
   if (upcoming) return { text: tx(lang, `${clock(upcoming.w, 'start', lang)} 起停运`, `Stops at ${clock(upcoming.w, 'start', lang)}`), tone: 'stop' };
   return { text: tx(lang, '今天的罢工时段已结束', 'Today’s strike hours are over'), tone: 'over' };
+}
+
+// Two or more windows read as one span with the breaks named, the way an
+// itinerary shows a journey and its layover, instead of stacking lines.
+export function timeSpan(windows: EvidenceWindow[]) {
+  if (!windows.length) return null;
+  const sorted = [...windows].sort((a, b) => (a.start === null ? -1 : b.start === null ? 1 : minutes(a.start) - minutes(b.start)));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const breaks = sorted.slice(1).flatMap((w, i) => {
+    const prev = sorted[i];
+    return prev.end && prev.end_kind !== 'end_of_service' && w.start && minutes(w.start) > minutes(prev.end) ? [{ start: prev.end, end: w.start }] : [];
+  });
+  return { start: first.start, end: last.end_kind === 'end_of_service' ? null : last.end, breaks };
+}
+
+// Marks the times inside an operator's sentence so the quote visibly
+// carries the hours the card shows. Returns alternating plain/marked parts.
+const TIME_PHRASE = /(\b(?:dalle|alle|dopo le|fino alle|dalle ore|alle ore|ore|from|until|to)\s+)(\d{1,2}(?:[:.]\d{2})?)|(\d{1,2}[:.]\d{2})|(termine del servizio|fine (?:del )?servizio|inizio del servizio|end of service)/gi;
+export function markTimes(text: string): { text: string; mark: boolean }[] {
+  const parts: { text: string; mark: boolean }[] = [];
+  let at = 0;
+  for (const m of text.matchAll(TIME_PHRASE)) {
+    const lead = m[1] ?? '';
+    const value = m[2] ?? m[3] ?? m[4];
+    const start = m.index! + lead.length;
+    if (start > at) parts.push({ text: text.slice(at, start), mark: false });
+    parts.push({ text: value, mark: true });
+    at = start + value.length;
+  }
+  if (at < text.length) parts.push({ text: text.slice(at), mark: false });
+  return parts;
 }
 
 // An overnight strike reads as one span across both days.

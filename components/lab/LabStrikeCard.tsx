@@ -2,19 +2,18 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowSquareOut, CaretDown, Check, Clock, Export, Info, SprayBottle } from '@phosphor-icons/react';
-import DoodleCanvas, { type DoodleCategory } from '../DoodleOverlay';
+import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SprayBottle } from '@phosphor-icons/react';
 import {
-  AXIS_END, AXIS_START, axisPos, modeName, nowPosition, relativeDay, segments, statusLine, tx,
-  type Lang, type Mode, type ModeCard,
+  AXIS_END, AXIS_START, axisPos, markTimes, nowPosition, relativeDay, segments, statusLine, timeSpan, tx,
+  type Lang, type Mode, type ModeCard, type OfficialRecord,
 } from '../../lib/lab/model';
 import { LineBadge, ModeGlyph } from './ui';
-import { C, EASE, MODE_COLOR, NUM, R, SANS, TYPE } from './theme';
+import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { useDoodle } from './useDoodle';
 import { track } from './track';
+import Graffiti from './Graffiti';
 
 const TITLE: Record<Mode, [string, string]> = { TRAIN: ['火车罢工', 'Train strike'], SUBWAY: ['地铁罢工', 'Metro strike'], BUS: ['公交罢工', 'Bus strike'], AIRPORT: ['机场罢工', 'Airport strike'] };
-const DOODLE: Record<Mode, DoodleCategory> = { TRAIN: 'train', SUBWAY: 'subway', BUS: 'bus', AIRPORT: 'plane' };
 const TICKS = [5, 12, 18];
 const MIT = 'https://scioperi.mit.gov.it/mit2/public/scioperi';
 const ENAC = 'https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/prestazioni-minime-garantite/';
@@ -23,6 +22,8 @@ export type CardContext = { today: string; nowMinutes: number; lang: Lang; regio
 
 const mins = (v: string) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
 const day = (iso: string, lang: Lang) => tx(lang, `${Number(iso.slice(8))}日`, `${Number(iso.slice(8))}/${Number(iso.slice(5, 7))}`);
+const monthDay = (iso: string, lang: Lang) => tx(lang, `${Number(iso.slice(5, 7))}月${Number(iso.slice(8))}日`, `${Number(iso.slice(8))}/${Number(iso.slice(5, 7))}`);
+const hatch = (color: string) => `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`;
 
 function hoursText(card: ModeCard, lang: Lang) {
   const total = card.windows.reduce((sum, w) => {
@@ -38,8 +39,6 @@ function hoursText(card: ModeCard, lang: Lang) {
 // ── Time bar: the original "当日进度条", aligned to service hours ──────
 // Strike hours take the mode's colour; staff-only rail hours and
 // unpublished hours are hatched in it, since passenger impact is open.
-
-const hatch = (color: string) => `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`;
 
 export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; now?: number | null; label?: string; lang?: Lang }) {
   const cancelled = card.status === 'CANCELLED';
@@ -72,8 +71,10 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
 }
 
 // ── Card ──────────────────────────────────────────────────────────────
-// The hero (mode, title, hours, state) is centred: a day holds one to
-// three cards, and a centred column keeps the eye on one fact at a time.
+// Reading order follows the questions people ask, one per band:
+//   what & is it sure → when → how far off → (the day at a glance)
+//   → the details that answer "does it hit me" → act → why we believe it.
+// The hero is centred; details are label/value rows that wrap cleanly.
 
 export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { card: ModeCard; prev?: ModeCard; next?: ModeCard; ctx: CardContext; highlighted: boolean }) {
   const { lang } = ctx;
@@ -99,39 +100,45 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
   const live = isToday && status.text.startsWith(tx(lang, '停运中', 'Stopped'));
   const overnight = prev || next;
   const pending = !card.windows.length;
-  const guaranteeLabel = card.guaranteeKind === 'PROTECTED_FLIGHTS' ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时间段', 'Guaranteed hours');
-  const official = card.sources.find(s => s.authority === 'official')?.url || MIT;
-  const reported = card.sources.filter(s => s.authority !== 'official').filter((s, i, all) => all.findIndex(o => o.name === s.name) === i);
+  // Confirmation matters most when it is missing: unconfirmed gets a
+  // marked chip in the hero; confirmed is a quiet tick beside the title.
+  // (Aggregate confidence reads 'reported' whenever any report exists, even
+  // beside an operator's own notice, so an official quote outranks it.)
+  const officialTiming = card.quotes.some(q => q.official);
+  const doubt = pending ? tx(lang, '官方未公布时段', 'no official hours yet')
+    : card.confidence === 'conflict' ? tx(lang, '各来源时段不一致', 'sources disagree on hours')
+      : card.confidence === 'reported' && !officialTiming ? tx(lang, '时段仅见报道', 'hours only reported')
+        : card.status === 'UNCERTAIN' ? tx(lang, '官方状态未定', 'status not final') : null;
+  const unconfirmed = doubt !== null;
+  const span = timeSpan(card.windows);
 
-  // Pill: live state on the day, otherwise length and distance.
-  const pill = pending
-    ? { text: tx(lang, '时段待公布', 'Hours pending'), color: C.text2, bg: C.surface3, dot: false }
-    : live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
-      : isToday ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
-        : { text: `${relativeDay(card.date, ctx.today, lang)} · ${overnight ? tx(lang, '跨夜', 'Overnight') : hoursText(card, lang)}`, color: C.text2, bg: C.surface3, dot: false };
+  const pill = live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
+    : isToday && !pending ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
+      : { text: `${relativeDay(card.date, ctx.today, lang)}${pending ? '' : ` · ${overnight ? tx(lang, '跨夜', 'Overnight') : hoursText(card, lang)}`}`, color: C.text2, bg: C.surface3, dot: false };
   const sub = (text: string) => <span className="text-[16px] font-semibold ml-1" style={{ color: C.text3, fontFamily: SANS }}>{text}</span>;
+  const word = (text: string) => <span className="text-[24px]" style={{ fontFamily: SANS }}>{text}</span>;
 
   return (
     <motion.article id={`card-${card.id}`} className="relative overflow-hidden"
       style={{ background: C.surface, borderRadius: R.card }}
       animate={{ boxShadow: highlighted ? [`0 0 0 0px ${mode.main}`, `0 0 0 3px ${mode.main}`, `0 0 0 0px ${mode.main}`] : '0 0 0 0px rgba(0,0,0,0)' }}
       transition={{ duration: 1.1, ease: EASE }}>
-      {/* The mode's colour washes in from the top: which card is which, at a glance */}
       <div aria-hidden className="absolute inset-x-0 top-0 h-[180px] pointer-events-none" style={{ background: `linear-gradient(180deg, ${mode.soft}, transparent)` }} />
       <div className="relative px-5 pt-6">
+        {/* What, and how sure */}
         <header className="flex flex-col items-center text-center">
-          <span className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: mode.main }}><ModeGlyph mode={card.category} size={22} color={mode.ink} /></span>
-          <h3 className={`mt-3 flex items-center gap-1.5 ${TYPE.title}`}>
-            {tx(lang, ...TITLE[card.category])}
-            {card.national && <span className="text-[11.5px] font-medium px-1.5 h-[19px] rounded-[6px] flex items-center" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}
-          </h3>
-          <p className={`mt-0.5 max-w-full truncate ${TYPE.label}`} style={{ color: C.text2 }}>{card.scope ? `${card.scope} · ` : ''}{card.provider}</p>
+          <span className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: mode.main }}><ModeGlyph mode={card.category} size={22} color={C.ink} /></span>
+          <h3 className={`mt-3 ${TYPE.title}`}>{tx(lang, ...TITLE[card.category])}</h3>
+          <p className={`mt-1 flex items-center gap-2 ${TYPE.caption}`} style={{ color: C.text3 }}>
+            {card.national && <span className="px-1.5 h-[18px] rounded-[5px] flex items-center" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}
+            {!unconfirmed && <span className="flex items-center gap-0.5"><Check size={11} weight="bold" />{tx(lang, '已确认', 'Confirmed')}</span>}
+          </p>
         </header>
 
-        {/* Strike time, large: the one thing people need to read */}
-        <div className="mt-5 flex flex-col items-center gap-0.5 text-center" style={{ fontFamily: NUM }}>
+        {/* When: one line, whatever the number of windows */}
+        <div className="mt-4 flex flex-col items-center text-center" style={{ fontFamily: NUM }}>
           {pending ? (
-            <p className={TYPE.page} style={{ color: C.text2, fontFamily: SANS }}>{tx(lang, '时段待公布', 'To be announced')}</p>
+            <p className={TYPE.page} style={{ color: C.text2, fontFamily: SANS }}>{tx(lang, '时段待公布', 'Hours to be announced')}</p>
           ) : overnight ? (
             <p className={TYPE.display}>
               {(prev ? prev : card).windows.find(w => w.end_kind === 'end_of_service' || (w.end && w.end >= '23:59'))?.start ?? '00:00'}
@@ -140,25 +147,37 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
               {(next ? next : card).windows.find(w => w.start === null || w.start <= '00:01')?.end ?? '24:00'}
               {sub(day((next ?? card).date, lang))}
             </p>
-          ) : card.windows.map((w, i) => (
-            <p key={i} className={TYPE.display}>
-              {w.start ?? <span className="text-[22px]" style={{ fontFamily: SANS }}>{tx(lang, '运营开始', 'Start of service')}</span>}
-              <span className="mx-2" style={{ color: C.text3 }}>–</span>
-              {w.end_kind === 'end_of_service' ? <span className="text-[22px]" style={{ fontFamily: SANS }}>{tx(lang, '运营结束', 'end of service')}</span> : w.end}
-            </p>
-          ))}
+          ) : span && (
+            <>
+              <p className={TYPE.display}>
+                {span.start ?? word(tx(lang, '运营开始', 'Start'))}
+                <span className="mx-2" style={{ color: C.text3 }}>–</span>
+                {span.end ?? word(tx(lang, '运营结束', 'End of service'))}
+              </p>
+              {span.breaks.map(b => (
+                <p key={b.start} className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.ok, fontFamily: SANS }}>
+                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.ok }} />
+                  {tx(lang, `中间 ${b.start}–${b.end} 恢复运行`, `Runs again ${b.start}–${b.end}`)}
+                </p>
+              ))}
+            </>
+          )}
         </div>
+
+        {/* How far off, or what's happening now */}
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <span className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full tabular-nums ${TYPE.label}`} style={{ background: pill.bg, color: pill.color }}>
             {pill.dot ? <motion.i className="w-[7px] h-[7px] rounded-full" style={{ background: mode.main }} animate={reduce ? undefined : { opacity: [1, 0.35, 1] }} transition={{ repeat: Infinity, duration: 1.6 }} /> : <Clock size={13} weight="bold" />}
             {pill.text}
           </span>
-          <span className={`inline-flex items-center gap-1 h-7 px-2.5 rounded-full ${TYPE.label}`} style={{ color: pending ? C.text3 : C.text2, boxShadow: `inset 0 0 0 1px ${C.lineStrong}` }}>
-            {pending ? tx(lang, '待确认', 'Pending') : <><Check size={12} weight="bold" />{tx(lang, '已确认', 'Confirmed')}</>}
-          </span>
+          {unconfirmed && (
+            <span className={`relative overflow-hidden inline-flex items-center h-7 px-3 rounded-full ${TYPE.label} font-semibold`} style={{ color: C.text, boxShadow: `inset 0 0 0 1.5px ${mode.main}` }}>
+              <span aria-hidden className="absolute inset-0" style={{ background: hatch(mode.soft) }} />
+              <span className="relative">{tx(lang, `待确认 · ${doubt}`, `Unconfirmed · ${doubt}`)}</span>
+            </span>
+          )}
         </div>
 
-        {/* Progress through the day; now marker on the day itself */}
         <div className="mt-6">
           {overnight ? (
             <div className="flex items-start gap-1.5">
@@ -172,40 +191,17 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           ) : <Bar card={card} lang={lang} now={isToday ? nowPosition(ctx.nowMinutes) : null} />}
         </div>
 
-        {/* Label-over-value grid */}
-        <dl className="mt-4 grid grid-cols-2 gap-px rounded-[16px] overflow-hidden text-center" style={{ background: C.line }}>
-          <div className="p-3.5" style={{ background: C.surface2 }}>
-            <dt className={`mb-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{guaranteeLabel}</dt>
-            <dd className="text-[17px] font-semibold tabular-nums leading-snug" style={{ color: card.guarantees.length ? C.ok : C.text2, fontFamily: card.guarantees.length ? NUM : SANS }}>
-              {card.guarantees.length
-                ? card.guarantees.map(g => <span key={g.start} className="block">{g.start}–{g.end}</span>)
-                : <span className="text-[14px]">{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '保障信息待核实', 'Unverified') : tx(lang, '无保障计划', 'None')}</span>}
-            </dd>
-          </div>
-          <div className="p-3.5" style={{ background: C.surface2 }}>
-            <dt className={`mb-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines')}</dt>
-            <dd className="flex flex-wrap justify-center gap-1 text-[14px] font-semibold leading-snug">
-              {card.category === 'AIRPORT' && /^AIRLINE/.test(card.scopeType)
-                ? <span>{tx(lang, '仅该航司航班', 'This airline only')}</span>
-                : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
-                  ? card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l}>{l}</span>)
-                  : card.lineScope === 'ALL_LINES'
-                    ? <span>{tx(lang, '全部线路', 'All lines')}</span>
-                    : <span style={{ color: C.text2 }}>{tx(lang, '待核实', 'Unverified')}</span>}
-            </dd>
-          </div>
-        </dl>
+        <Details card={card} lang={lang} />
 
         {card.indirect && (
-          <p className={`mt-3 flex gap-2 text-left rounded-[12px] px-3.5 py-2.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
+          <p className={`mt-3 flex gap-2 rounded-[12px] px-3.5 py-2.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
             <Info size={16} weight="fill" color={mode.main} className="shrink-0 mt-px" />
             {tx(lang, '此处为相关人员停工时段；旅客列车的实际影响尚未确认，不代表所有列车停运。', 'These are staff strike hours. Passenger train impact is unconfirmed; this does not mean all trains stop.')}
           </p>
         )}
-        {card.geography.map(g => <p key={g.zh} className={`mt-2.5 text-center ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
 
         {card.events.length > 1 && (
-          <div className="mt-2 flex flex-col items-center">
+          <div className="mt-1 flex flex-col items-center">
             <button onClick={() => setEvents(v => !v)} aria-expanded={events} className={`h-9 flex items-center gap-1 ${TYPE.label}`} style={{ color: C.text2 }}>
               {tx(lang, '查看各公告时段', 'Timing by announcement')}
               <motion.span animate={{ rotate: events ? 180 : 0 }} className="flex"><CaretDown size={12} weight="bold" /></motion.span>
@@ -223,26 +219,128 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
 
       {/* Always visible: these drive sharing, the product's main channel */}
       <Actions card={card} ctx={ctx} />
-
-      <footer className={`mx-5 py-3.5 flex flex-col items-center gap-1 ${TYPE.caption}`} style={{ borderTop: `1px solid ${C.line}`, color: C.text3 }}>
-        <a href={official} target="_blank" rel="noreferrer" className="underline underline-offset-2" style={{ textDecorationColor: C.lineStrong }}>{tx(lang, '来源: 意大利交通部官网 (MIT) ➔', 'Source: Italian Ministry of Transport (MIT) →')}</a>
-        {card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE' && (
-          <a href={ENAC} target="_blank" rel="noreferrer" className="underline underline-offset-2" style={{ textDecorationColor: C.lineStrong }}>{tx(lang, '常规保护规则：ENAC ↗', 'Standard protection rules: ENAC ↗')}</a>
-        )}
-        {reported.length > 0 && (
-          <span className="flex flex-wrap justify-center gap-x-2">
-            <span>{tx(lang, '补充公告时段 · 以运营商最新通知为准', 'Reported timing · check the operator')}</span>
-            {reported.slice(0, 3).map(s => <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 underline underline-offset-2" style={{ textDecorationColor: C.lineStrong }}>{s.name}<ArrowSquareOut size={10} /></a>)}
-          </span>
-        )}
-      </footer>
+      <Evidence card={card} lang={lang} confirmed={!unconfirmed} />
     </motion.article>
   );
 }
 
+// ── Details: label left, value right; long values wrap under themselves ──
+
+function Details({ card, lang }: { card: ModeCard; lang: Lang }) {
+  const lines = card.category === 'AIRPORT' && /^AIRLINE/.test(card.scopeType)
+    ? tx(lang, '仅该航司航班', 'This airline only')
+    : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
+      ? <span className="inline-flex flex-wrap justify-end gap-1">{card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l}>{l}</span>)}</span>
+      : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
+  const guarantee = card.guarantees.length
+    ? <span className="tabular-nums" style={{ color: C.ok, fontFamily: NUM, fontSize: 16 }}>{card.guarantees.map(g => `${g.start}–${g.end}`).join('  ')}</span>
+    : card.guaranteeSource === 'UNKNOWN' ? null : tx(lang, '无保障计划', 'None');
+  const rows: [string, React.ReactNode][] = [
+    [tx(lang, '罢工人员', 'Who'), card.provider],
+    ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), card.scope] as [string, React.ReactNode]] : []),
+    [card.guaranteeKind === 'PROTECTED_FLIGHTS' ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时间段', 'Guaranteed hours'), guarantee],
+    [card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines'), lines],
+  ];
+  return (
+    <div className="mt-5">
+      <dl className="rounded-[16px] px-3.5" style={{ background: C.surface2 }}>
+        {rows.map(([label, value], i) => (
+          <div key={label} className="flex items-baseline gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
+            <dt className={`shrink-0 ${TYPE.label}`} style={{ color: C.text3 }}>{label}</dt>
+            <dd className="flex-1 min-w-0 text-right text-[14.5px] font-medium leading-snug" style={{ color: value === null ? C.text3 : C.text }}>{value ?? tx(lang, '待核实', 'Unverified')}</dd>
+          </div>
+        ))}
+      </dl>
+      {card.geography.map(g => <p key={g.zh} className={`mt-2 px-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
+    </div>
+  );
+}
+
+// ── Evidence: the register entry and the operator's own sentence ──────
+// "Source: MIT" on every card says nothing. What makes a source specific is
+// what only this strike has: its union, the date it was proclaimed, MIT's
+// own wording, and the operator's sentence with these hours in it.
+
+function Evidence({ card, lang, confirmed }: { card: ModeCard; lang: Lang; confirmed: boolean }) {
+  const mode = MODE_COLOR[card.category];
+  const groups = groupRecords(card.records);
+  const quotes = card.quotes.slice(0, 2);
+  const others = card.sources.filter(s => s.authority !== 'official' && !card.quotes.some(q => q.url === s.url)).filter((s, i, all) => all.findIndex(o => o.name === s.name) === i);
+  return (
+    <section className="mx-5 pt-4 pb-5" style={{ borderTop: `1px solid ${C.line}` }}>
+      <div className="flex items-center justify-between mb-2.5">
+        <h4 className={TYPE.label} style={{ color: C.text2 }}>{tx(lang, '信息来源', 'Where this comes from')}</h4>
+        {confirmed && <span className={`flex items-center gap-1 ${TYPE.caption}`} style={{ color: C.text3 }}><Check size={11} weight="bold" />{tx(lang, '官方登记在案', 'On the official register')}</span>}
+      </div>
+      <div className="flex flex-col gap-2">
+        {groups.map(g => (
+          <a key={g.workforce + g.sector} href={g.url} target="_blank" rel="noreferrer" className="block rounded-[14px] p-3.5" style={{ background: C.surface2 }}>
+            <span className="flex items-center gap-2">
+              <span className="h-[20px] px-1.5 rounded-[5px] flex items-center text-[11px] font-semibold tracking-wide" style={{ ...FILLED(), fontFamily: NUM }}>MIT</span>
+              <span className={`flex-1 ${TYPE.label}`} style={{ color: C.text }}>{tx(lang, '意大利交通部 罢工登记', 'Ministry of Transport register')}</span>
+              <ArrowUpRight size={14} weight="bold" color={C.text3} />
+            </span>
+            <span className="mt-2.5 flex flex-col gap-1.5">
+              {g.unions.map(u => (
+                <span key={u.name} className={`flex items-baseline justify-between gap-3 ${TYPE.label}`}>
+                  <span className="font-semibold" style={{ color: C.text, fontFamily: NUM, fontSize: 15, letterSpacing: '0.01em' }}>{u.name}</span>
+                  {u.proclaimed && <span className={TYPE.caption} style={{ color: C.text3 }}>{tx(lang, `${monthDay(u.proclaimed, lang)}宣布`, `proclaimed ${monthDay(u.proclaimed, lang)}`)}</span>}
+                </span>
+              ))}
+            </span>
+            {g.workforce && <span className={`mt-2 block ${TYPE.caption}`} style={{ color: C.text2 }}>“{g.workforce}”</span>}
+            <span className={`mt-1 block ${TYPE.caption}`} style={{ color: C.text3 }}>{[g.relevance, g.area, g.mode].filter(Boolean).join(' · ')}</span>
+            <span className={`mt-2 block ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, `在公示表中查找 ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`, `Look for ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''} in the list`)}</span>
+          </a>
+        ))}
+        {quotes.map(q => (
+          <a key={q.url} href={q.url} target="_blank" rel="noreferrer" className="block rounded-[14px] p-3.5" style={{ background: C.surface2 }}>
+            <span className="flex items-center gap-2">
+              <span className={`flex-1 ${TYPE.label}`} style={{ color: C.text }}>{q.name}{q.official ? tx(lang, ' 官网原文', ' — official notice') : tx(lang, ' 报道原文', ' — report')}</span>
+              {q.checkedAt && <span className={TYPE.caption} style={{ color: C.text3 }}>{tx(lang, `${monthDay(q.checkedAt, lang)}核对`, `checked ${monthDay(q.checkedAt, lang)}`)}</span>}
+              <ArrowUpRight size={14} weight="bold" color={C.text3} />
+            </span>
+            <span className="mt-2 block text-[13.5px] leading-[1.5]" style={{ color: C.text2 }}>
+              “{markTimes(q.excerpt.length > 220 ? `${q.excerpt.slice(0, 220)}…` : q.excerpt).map((p, i) => p.mark
+                ? <mark key={i} className="rounded-[4px] px-[3px] font-semibold" style={{ background: mode.soft, color: mode.main }}>{p.text}</mark>
+                : <span key={i}>{p.text}</span>)}”
+            </span>
+          </a>
+        ))}
+        {!groups.length && !quotes.length && (
+          <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} target="_blank" rel="noreferrer" className={`flex items-center justify-between rounded-[14px] p-3.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text }}>
+            {tx(lang, '意大利交通部 罢工公示表', 'Ministry of Transport strike list')}<ArrowUpRight size={14} weight="bold" color={C.text3} />
+          </a>
+        )}
+      </div>
+      {(others.length > 0 || (card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE')) && (
+        <p className={`mt-2.5 flex flex-wrap gap-x-3 gap-y-1 ${TYPE.caption}`} style={{ color: C.text3 }}>
+          {card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE' && <a href={ENAC} target="_blank" rel="noreferrer" className="underline underline-offset-2">{tx(lang, '常规保护规则：ENAC', 'Standard protection rules: ENAC')}</a>}
+          {others.slice(0, 3).map(s => <a key={s.url} href={s.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">{s.name}</a>)}
+        </p>
+      )}
+    </section>
+  );
+}
+
+// Two unions striking the same workforce are one register story.
+function groupRecords(records: OfficialRecord[]) {
+  const groups = new Map<string, OfficialRecord & { unionList: { name: string; proclaimed: string | null }[] }>();
+  for (const r of records) {
+    const key = `${r.workforce}|${r.sector}`;
+    const g = groups.get(key) ?? { ...r, unionList: [] };
+    if (r.unions && !g.unionList.some(u => u.name === r.unions)) g.unionList.push({ name: r.unions, proclaimed: r.proclaimed });
+    groups.set(key, g);
+  }
+  return [...groups.values()].map(g => ({ ...g, unions: g.unionList }));
+}
+
+// ── Actions + the wall ───────────────────────────────────────────────
+
 function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   const { lang } = ctx;
   const doodle = useDoodle(card, ctx.region);
+  const mode = MODE_COLOR[card.category];
   const [copied, setCopied] = useState(false);
   const share = async () => {
     const url = `${window.location.origin}${ctx.sharePath}?date=${card.date}`;
@@ -256,30 +354,20 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
     setTimeout(() => setCopied(false), 1800);
   };
   return (
-    <div className="px-5 pt-4 pb-4">
+    <div className="px-5 pt-5 pb-5">
       <div className="flex gap-2.5">
-        <motion.button whileTap={{ scale: 0.97 }} onClick={share} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`} style={{ background: C.surface3 }}>
+        <motion.button whileTap={{ scale: 0.97 }} onClick={share} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`} style={TONAL}>
           {copied ? <Check size={17} weight="bold" /> : <Export size={17} weight="bold" />}{copied ? tx(lang, '已复制链接', 'Link copied') : tx(lang, '分享', 'Share')}
         </motion.button>
         <motion.button whileTap={doodle.marked ? undefined : { scale: 0.97 }} onClick={doodle.mark} aria-pressed={doodle.marked}
           className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`}
-          style={doodle.marked ? { background: MODE_COLOR[card.category].soft, color: MODE_COLOR[card.category].main } : { background: MODE_COLOR[card.category].main, color: MODE_COLOR[card.category].ink }}>
-          <SprayBottle size={18} weight="fill" />
+          style={doodle.marked ? TONAL : FILLED(mode.main)}>
+          <SprayBottle size={18} weight="fill" color={doodle.marked ? mode.main : undefined} />
           {!doodle.loaded && doodle.marked ? tx(lang, '获取中...', 'Loading...')
             : doodle.marked ? tx(lang, `${doodle.count} 人已表达不满`, `${doodle.count} people reacted`) : tx(lang, '我受影响了', 'I am affected')}
         </motion.button>
       </div>
-      <AnimatePresence initial={false}>
-        {doodle.marked && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} className="overflow-hidden">
-            <div className="h-[200px] mt-3"><DoodleCanvas category={DOODLE[card.category]} count={doodle.count} isAnimating={doodle.spraying} isDark seed={card.id} /></div>
-            <p className={`text-center pt-1 ${TYPE.label}`} style={{ color: C.text2 }}>
-              {tx(lang, '还有 ', 'Another ')}<strong style={{ color: C.text }}>{tx(lang, `${Math.max(doodle.count, 1)} 人`, `${Math.max(doodle.count, 1)}`)}</strong>
-              {tx(lang, ` 也被影响了，和你一起在${modeName(card.category).replace('机场', '飞机')}上猛猛涂鸦`, ` people were affected by this ${modeName(card.category, 'en').toLowerCase()} strike too`)}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Graffiti mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} />
     </div>
   );
 }

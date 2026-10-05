@@ -76,5 +76,5 @@ export function useDoodle(card: ModeCard, region: string) {
     track('graffiti_spray_triggered', { transport_type: card.category.toLowerCase(), total_rage_count: latest + offset });
   }, [marked, key, manual, card.id, card.date, card.category, displayTime, region, offset]);
 
-  return { count, loaded, marked, spraying, mark };
+  return { key, count, loaded, marked, spraying, mark };
 }

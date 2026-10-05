@@ -6,7 +6,8 @@ import { windowsDisplay, type StrikeEvent } from '../../lib/strikePresentation';
 import type { TimingEvidence } from '../../lib/strikeEvidence';
 import { geographyContext, indirectRail, railTitle, scopeOf, scopeTitle } from '../../lib/strikeScope';
 import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
-import type { CardStatus, GuaranteeSource, Mode, ModeCard, Source } from '../../lib/lab/model';
+import type { CardStatus, GuaranteeSource, Mode, ModeCard, OfficialRecord, Quote, Source } from '../../lib/lab/model';
+import { AVIATION_STRIKE_SOURCES, CITY_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES } from '../../lib/strikeSources';
 import LabApp from '../../components/lab/LabApp';
 
 // Redesign playground. Not linked from the product and not indexed.
@@ -43,6 +44,55 @@ function romeMinutesNow() {
 
 const unique = (sources: Source[]) => sources.filter((s, i) => sources.findIndex(o => o.url === s.url) === i);
 
+type RawPayload = { unions?: string; provider?: string; sector?: string; rilevanza?: string; rawRegion?: string; province?: string; modalita?: string; proclamationDate?: string; sourceUrl?: string };
+const KNOWN_SOURCES = [...CITY_STRIKE_SOURCES, ...AVIATION_STRIKE_SOURCES, ...NATIONAL_STRIKE_SOURCES];
+function sourceName(url: string) {
+  try {
+    const host = new URL(url).hostname;
+    return KNOWN_SOURCES.find(s => s.urls.some(u => new URL(u).hostname === host))?.name ?? host.replace(/^www\./, '');
+  } catch { return url; }
+}
+const isoFromItalian = (value?: string) => {
+  const m = value?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+};
+
+function recordsFor(events: StrikeEvent[], raw: Map<string, RawPayload>): OfficialRecord[] {
+  const seen = new Set<string>();
+  return events.flatMap(e => {
+    const p = raw.get(String(e.id));
+    const key = e.source_key || String(e.id);
+    if (!p || seen.has(key)) return [];
+    seen.add(key);
+    return [{
+      unions: p.unions || e.unions || '',
+      workforce: p.provider || '',
+      sector: p.sector || '',
+      relevance: p.rilevanza || '',
+      area: [p.rawRegion, p.province && p.province !== 'Tutte' ? p.province : ''].filter(Boolean).join(' · '),
+      mode: p.modalita || '',
+      proclaimed: isoFromItalian(p.proclamationDate),
+      url: p.sourceUrl || e.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',
+    }];
+  });
+}
+
+function quotesFor(events: StrikeEvent[]): Quote[] {
+  const quotes: Quote[] = [];
+  for (const e of events) {
+    const timing = e.timing_evidence?.fields?.timing;
+    if (timing?.url && timing.excerpt) quotes.push({ name: sourceName(timing.url), url: timing.url, excerpt: timing.excerpt, checkedAt: null, official: timing.source === 'OPERATOR_OFFICIAL' || timing.source === 'MIT' });
+    for (const s of e.timing_evidence?.sources || []) {
+      if (s.excerpt) quotes.push({ name: s.name || sourceName(s.url), url: s.url, excerpt: s.excerpt, checkedAt: s.checked_at?.slice(0, 10) || null, official: s.authority === 'official' });
+    }
+  }
+  // One quote per page; keep the dated copy when both exist. MIT's own
+  // wording is already in the register entry.
+  return quotes.filter((q, i) => !q.url.includes('scioperi.mit.gov.it') && quotes.findIndex(o => o.url === q.url) === i)
+    .map(q => ({ ...q, checkedAt: q.checkedAt ?? quotes.find(o => o.url === q.url && o.checkedAt)?.checkedAt ?? null }))
+    .sort((a, b) => Number(b.official) - Number(a.official));
+}
+
 export default async function LabPage({ searchParams }: { searchParams: Promise<{ city?: string; date?: string }> }) {
   const params = await searchParams;
   const city = resolveCity(params.city || 'MILANO') || CITIES[0];
@@ -52,6 +102,13 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
   const scoped = filterStrikesForRegion(raw, city.tag);
   const nationalKeys = new Set((scoped as { region?: string; source_key?: string }[]).filter(r => r.region === 'NATIONAL').map(r => r.source_key));
   const days = aggregateStrikes(scoped, city.tag) as unknown as Aggregated[];
+  // The MIT register row behind each event, for card-specific sourcing.
+  const ids = [...new Set(days.flatMap(d => (d.strike_events || []).map(e => e.id)).filter(Boolean).map(String))];
+  const registry = new Map<string, RawPayload>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await serverDatabase().from('strikes').select('id,raw_payload').in('id', ids.slice(i, i + 200));
+    (data || []).forEach((r: { id: string; raw_payload: RawPayload | null }) => r.raw_payload && registry.set(String(r.id), r.raw_payload));
+  }
 
   const cards: ModeCard[] = days.map(day => {
     const events = day.strike_events || [];
@@ -82,6 +139,8 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       confidence: day.timing_evidence?.confidence || 'official',
       sources: unique(events.flatMap(toSources)),
       events: events.map(e => ({ provider: e.provider || '', status: e.status || '', display: e.windows.length ? windowsDisplay(e.windows) : '', sources: unique(toSources(e)) })),
+      records: recordsFor(events.filter(e => e.status !== 'CANCELLED'), registry),
+      quotes: quotesFor(events.filter(e => e.status !== 'CANCELLED')),
     };
   });
 
