@@ -205,8 +205,9 @@ export function AskField({ ask: a, autoFocus, onIdle }: { ask: AskState; autoFoc
             </motion.div>
           )}
         </AnimatePresence>
-        <form onSubmit={e => { e.preventDefault(); a.ask(query); }} className="relative h-[56px] rounded-full flex items-center gap-2.5 pl-2 pr-1.5" style={PILL}>
-          <Solari mood={moodOf(a)} size={15} label={tx(lang, '站牌助手', 'Solari assistant')} />
+        <form onSubmit={e => { e.preventDefault(); a.ask(query); }} className="relative h-[56px] rounded-full flex items-center gap-2.5 pl-[74px] pr-1.5" style={PILL}>
+          {/* The face sits on the bar's edge, not inside it: a presence, not an icon */}
+          <span className="absolute left-3 -top-[14px]"><Solari mood={moodOf(a)} size={20} float label={tx(lang, '站牌助手', 'Solari assistant')} /></span>
           <input ref={input} value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)}
             onBlur={() => { setFocused(false); if (!query.trim()) onIdle?.(); }} maxLength={200} enterKeyHint="send" disabled={out}
             aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')}
@@ -236,8 +237,8 @@ export function AskSuggestions({ ask: a, suggestions, onType }: { ask: AskState;
   const out = left === 0;
   return (
     <div className="px-4 pt-4 pb-4">
-      <div className="flex items-center gap-2.5 mb-3">
-        <Solari mood={moodOf(a)} size={17} label={tx(lang, '站牌助手', 'Solari assistant')} />
+      <div className="flex items-center gap-3 mb-3.5">
+        <Solari mood={moodOf(a)} size={22} float label={tx(lang, '站牌助手', 'Solari assistant')} />
         <p className={TYPE.label} style={{ color: C.text2 }}>{out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '还想确认什么？问问站牌', 'Anything else to check? Ask the board')}</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -266,8 +267,8 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '问答', 'Ask')}>
       <div className="flex items-start gap-3">
-        <Solari mood={moodOf(a)} size={22} label={tx(lang, '站牌助手', 'Solari assistant')} />
-        <p className="flex-1 text-[17px] font-semibold leading-snug pt-1">“{asked}”</p>
+        <Solari mood={moodOf(a)} size={30} float label={tx(lang, '站牌助手', 'Solari assistant')} />
+        <p className="flex-1 text-[17px] font-semibold leading-snug pt-2">“{asked}”</p>
       </div>
 
       {/* While working, the steps are the answer; afterwards they fold away. */}

@@ -11,9 +11,9 @@ export default function SolariGallery() {
   return (
     <main className="min-h-[100dvh] flex flex-col items-center gap-10 px-6 py-12" style={{ background: '#0A0B0D', color: '#F5F6F7' }}>
       <div className="flex items-end gap-8">
-        <Solari mood={mood} size={84} />
-        <Solari mood={mood} size={40} />
-        <Solari mood={mood} size={18} />
+        <Solari mood={mood} size={84} float />
+        <Solari mood={mood} size={40} float />
+        <Solari mood={mood} size={20} float />
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         {MOODS.map(([m, label]) => (

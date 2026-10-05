@@ -264,6 +264,28 @@ export function segments(windows: { start: string | null; end: string | null; en
   });
 }
 
+// Guaranteed hours inside a strike window are carved out of it, so the bar
+// shows them as their own segment instead of a thin line over the strike.
+export function carveGuarantees(windows: EvidenceWindow[], guarantees: { start: string; end: string }[]): EvidenceWindow[] {
+  if (!guarantees.length) return windows;
+  const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  const guards = guarantees.map(g => [minutes(g.start), minutes(g.end)] as const).sort((a, b) => a[0] - b[0]);
+  return windows.flatMap(w => {
+    const start = w.start === null ? 0 : minutes(w.start);
+    const open = w.end_kind === 'end_of_service' || !w.end;
+    const end = open ? 24 * 60 : minutes(w.end!);
+    const pieces: EvidenceWindow[] = [];
+    let cursor = start;
+    for (const [gs, ge] of guards) {
+      if (ge <= cursor || gs >= end) continue;
+      if (gs > cursor) pieces.push({ start: cursor === start ? w.start : fmt(cursor), end: fmt(gs), end_kind: 'clock' });
+      cursor = Math.max(cursor, ge);
+    }
+    if (cursor < end) pieces.push({ start: cursor === start ? w.start : fmt(cursor), end: open ? w.end : w.end, end_kind: w.end_kind });
+    return pieces;
+  });
+}
+
 export function nowPosition(nowMinutes: number) {
   return nowMinutes < AXIS_START || nowMinutes > AXIS_END ? null : axisPos(nowMinutes);
 }

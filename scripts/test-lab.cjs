@@ -113,3 +113,11 @@ test('operator quotes mark the hours they contain', () => {
   assert.deepEqual(parts.filter(p => p.mark).map(p => p.text), ['8:45', '15', '18', 'termine del servizio']);
   assert.equal(parts.map(p => p.text).join(''), 'Le linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.');
 });
+
+test('guaranteed hours are carved out of the strike window', () => {
+  const { carveGuarantees } = require('../lib/lab/model.ts');
+  const out = carveGuarantees([clock('00:00', '23:59')], [{ start: '07:00', end: '10:00' }, { start: '18:00', end: '21:00' }]);
+  assert.deepEqual(out.map(w => `${w.start}-${w.end}`), ['00:00-07:00', '10:00-18:00', '21:00-23:59']);
+  const open = carveGuarantees([toEnd('18:00')], [{ start: '20:00', end: '21:00' }]);
+  assert.deepEqual(open.map(w => `${w.start}-${w.end}-${w.end_kind}`), ['18:00-20:00-clock', '21:00-null-end_of_service']);
+});

@@ -50,50 +50,67 @@ const rr = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.roundRect(x, y, w, h, r);
 };
 
-// The painted shell, without graffiti. Cached per mode by the caller.
+// The painted shell, without graffiti: a night livery. Graphite body,
+// glazing dark in the colour map (the light comes from the glow map).
 export function paintBody(ctx: CanvasRenderingContext2D, mode: Mode, accent: string) {
   const L = LIVERY[mode];
   const body = ctx.createLinearGradient(0, 30, 0, 120);
-  body.addColorStop(0, '#E6E9ED');
-  body.addColorStop(0.55, '#CDD2D8');
-  body.addColorStop(1, '#AEB4BC');
+  body.addColorStop(0, '#454A54');
+  body.addColorStop(0.5, '#2A2E35');
+  body.addColorStop(1, '#17191D');
   ctx.fillStyle = body;
   ctx.fillRect(0, 0, STAGE.w, STAGE.h);
-  // Panel seams
-  ctx.strokeStyle = 'rgba(40,46,56,0.18)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
   ctx.lineWidth = 0.6;
   for (let x = 60; x < STAGE.w; x += 60) { ctx.beginPath(); ctx.moveTo(x, 40); ctx.lineTo(x, 118); ctx.stroke(); }
-  // Livery stripe with a thin highlight
   ctx.fillStyle = accent;
   ctx.fillRect(0, L.stripe[0], STAGE.w, L.stripe[1]);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.fillRect(0, L.stripe[0], STAGE.w, 0.6);
-  // Doors
-  ctx.strokeStyle = 'rgba(30,34,42,0.45)';
-  ctx.lineWidth = 0.9;
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 0.8;
   L.doors.forEach(([x, y, w, h]) => { rr(ctx, x, y, w, h, 2.5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); ctx.stroke(); });
-  // Glazing: dark glass with a sky reflection
-  const glass = (path: Path2D) => {
-    const g = ctx.createLinearGradient(0, 44, 0, 84);
-    g.addColorStop(0, '#2C3A4C');
-    g.addColorStop(0.45, '#121820');
-    g.addColorStop(1, '#0A0D12');
-    ctx.fillStyle = g;
-    ctx.fill(path);
-  };
-  L.windows.forEach(([x, y, w, h, r]) => { const p = new Path2D(); p.roundRect(x, y, w, h, r); glass(p); });
-  L.paths.forEach(d => glass(new Path2D(d)));
-  L.circles?.forEach(([x, y, r]) => { const p = new Path2D(); p.arc(x, y, r, 0, Math.PI * 2); glass(p); });
-  // Window frames catch the light
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  glazing(ctx, mode, () => '#2B2117');
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
   ctx.lineWidth = 0.5;
   L.windows.forEach(([x, y, w, h, r]) => { rr(ctx, x + 0.3, y + 0.3, w - 0.6, h - 0.6, r); ctx.stroke(); });
-  // Lower skirt shadow
   const skirt = ctx.createLinearGradient(0, 104, 0, 120);
   skirt.addColorStop(0, 'rgba(0,0,0,0)');
-  skirt.addColorStop(1, 'rgba(0,0,0,0.28)');
+  skirt.addColorStop(1, 'rgba(0,0,0,0.4)');
   ctx.fillStyle = skirt;
   ctx.fillRect(0, 104, STAGE.w, 16);
+}
+
+function glazing(ctx: CanvasRenderingContext2D, mode: Mode, fill: () => string | CanvasGradient) {
+  const L = LIVERY[mode];
+  ctx.fillStyle = fill();
+  L.windows.forEach(([x, y, w, h, r]) => { const p = new Path2D(); p.roundRect(x, y, w, h, r); ctx.fill(p); });
+  L.paths.forEach(d => ctx.fill(new Path2D(d)));
+  L.circles?.forEach(([x, y, r]) => { const p = new Path2D(); p.arc(x, y, r, 0, Math.PI * 2); ctx.fill(p); });
+}
+
+// What glows at night: lit cabins, the livery stripe. Used as an emissive
+// map, so it blooms against the dark card instead of sitting on it.
+export function paintGlow(ctx: CanvasRenderingContext2D, mode: Mode, accent: string) {
+  const L = LIVERY[mode];
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, STAGE.w, STAGE.h);
+  glazing(ctx, mode, () => {
+    const g = ctx.createLinearGradient(0, 46, 0, 84);
+    g.addColorStop(0, '#F6CF95');
+    g.addColorStop(1, '#9C5F24');
+    return g;
+  });
+  // Seat backs and heads against the light, so the cabins read as cabins.
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  L.windows.forEach(([x, y, w, h], i) => {
+    if (w < 20) return;
+    for (let sx = x + 6 + (i % 3) * 2; sx < x + w - 6; sx += 15) { const p = new Path2D(); p.roundRect(sx, y + h * 0.55, 6, h * 0.45, 3); ctx.fill(p); }
+  });
+  ctx.globalAlpha = 0.75;
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, L.stripe[0], STAGE.w, L.stripe[1]);
+  ctx.globalAlpha = 1;
 }
 
 // Others' tags: language-neutral symbols with a dark outline and overspray.

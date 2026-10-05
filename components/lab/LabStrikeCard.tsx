@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SprayBottle } from '@phosphor-icons/react';
+import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SealCheck, SprayBottle } from '@phosphor-icons/react';
 import {
-  AXIS_END, AXIS_START, axisPos, markTimes, nowPosition, relativeDay, segments, statusLine, timeSpan, tx, windowsText,
+  AXIS_END, AXIS_START, axisPos, carveGuarantees, markTimes, nowPosition, relativeDay, segments, statusLine, timeSpan, tx, windowsText,
   type Lang, type Mode, type ModeCard, type OfficialRecord,
 } from '../../lib/lab/model';
 import type { Translation } from '../../lib/lab/translate';
@@ -13,6 +13,7 @@ import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme'
 import { useDoodle } from './useDoodle';
 import { track } from './track';
 import dynamic from 'next/dynamic';
+import type { WallLink } from './wall3d/Wall3D';
 
 // three.js loads only when a card with a wall is on the page.
 const Wall3D = dynamic(() => import('./wall3d/Wall3D'), { ssr: false, loading: () => <div className="rounded-[20px]" style={{ aspectRatio: '16 / 11.6', background: C.surface2 }} /> });
@@ -52,11 +53,14 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
   const cancelled = card.status === 'CANCELLED';
   const color = cancelled ? C.cancel : MODE_COLOR[card.category].main;
   const openEnd = card.windows.some(w => w.end_kind === 'end_of_service');
-  // Edge labels, thinned so they never collide.
-  const edges = card.windows.flatMap(w => [
-    w.start ? { t: w.start, x: axisPos(mins(w.start)) } : null,
-    w.end_kind !== 'end_of_service' && w.end ? { t: w.end, x: axisPos(mins(w.end)) } : null,
-  ]).filter((e): e is { t: string; x: number } => !!e && e.x > 0.001 && e.x < 0.999).sort((a, b) => a.x - b.x)
+  // Guaranteed hours inside the strike are cut out of it and drawn full
+  // height in green: two equal-weight colours, never a line on a line.
+  const strike = cancelled ? card.windows : carveGuarantees(card.windows, card.guarantees);
+  const edgeOf = (t: string | null, x: number, ok = false) => (t ? { t, x, ok } : null);
+  const edges = [
+    ...card.windows.flatMap(w => [edgeOf(w.start, w.start ? axisPos(mins(w.start)) : 0), w.end_kind !== 'end_of_service' ? edgeOf(w.end, w.end ? axisPos(mins(w.end)) : 1) : null]),
+    ...(cancelled ? [] : card.guarantees.flatMap(g => [edgeOf(g.start, axisPos(mins(g.start)), true), edgeOf(g.end, axisPos(mins(g.end)), true)])),
+  ].filter((e): e is { t: string; x: number; ok: boolean } => !!e && e.x > 0.001 && e.x < 0.999).sort((a, b) => a.x - b.x)
     .filter((e, i, all) => i === 0 || e.x - all[i - 1].x > 0.12)
     .filter(e => !openEnd || e.x < 0.8);
   const seg = (left: number, width: number) => ({ left: `calc(${left * 100}% + ${left > 0 ? 1 : 0}px)`, width: `calc(${width * 100}% - ${(left > 0 ? 1 : 0) + (left + width < 0.999 ? 1 : 0)}px)` });
@@ -64,14 +68,14 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
     <div className="relative flex-1 min-w-0">
       <div className="relative h-[8px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
         {!card.windows.length && !cancelled && <div className="absolute inset-0" style={{ background: hatch(color), opacity: 0.55 }} />}
-        {segments(card.windows).map((s, i) => (
+        {segments(strike).map((s, i) => (
           <div key={i} className="absolute top-0 h-full rounded-full" style={{
             ...seg(s.left, s.width),
             background: card.indirect && !cancelled ? hatch(color) : s.fade ? `linear-gradient(90deg, ${color} 72%, ${color}40)` : color,
           }} />
         ))}
         {!cancelled && segments(card.guarantees).map((g, i) => (
-          <div key={`g${i}`} className="absolute top-[2px] h-[4px] rounded-full" style={{ ...seg(g.left, g.width), background: C.ok, opacity: 0.85 }} />
+          <div key={`g${i}`} className="absolute top-0 h-full rounded-full" style={{ ...seg(g.left, g.width), background: C.ok }} />
         ))}
       </div>
       {/* Hour ticks for scale */}
@@ -85,7 +89,7 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
       )}
       <div className="relative h-4 mt-0.5 text-[11.5px] font-medium tabular-nums" style={{ color: C.text2, fontFamily: NUM }}>
         {label ? <span style={{ color: C.text3 }}>{label}</span> : <>
-          {edges.map(e => <span key={e.t + e.x} className="absolute whitespace-nowrap" style={{ left: `${e.x * 100}%`, transform: `translateX(${e.x < 0.06 ? '0' : '-50%'})` }}>{e.t}</span>)}
+          {edges.map(e => <span key={e.t + e.x} className="absolute whitespace-nowrap" style={{ left: `${e.x * 100}%`, transform: `translateX(${e.x < 0.06 ? '0' : e.x > 0.94 ? '-100%' : '-50%'})`, color: e.ok ? C.ok : C.text2 }}>{e.t}</span>)}
           {openEnd && <span className="absolute right-0" style={{ fontFamily: SANS, color: C.text3 }}>{tx(lang, '运营结束', 'End of service')}</span>}
         </>}
       </div>
@@ -276,25 +280,34 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   ].filter((s, i, all) => all.findIndex(o => o.name === s.name) === i);
   const say = (text: string) => (!original && tr[text.trim()] ? tr[text.trim()][lang] : text);
   const translated = [...groups.flatMap(g => [g.workforce, g.mode]), ...official.map(q => q.excerpt)].some(t => t && tr[t.trim()]);
-  const names = [
-    ...(groups.length ? [tx(lang, '交通部登记', 'MIT register')] : []),
-    ...official.map(q => q.name),
+  // Lead with the one thing people want from a source: who stands behind it.
+  const official1 = groups.length > 0 || official.length > 0;
+  const lead = groups.length ? tx(lang, '意大利交通部已登记', 'On the Ministry register')
+    : official.length ? tx(lang, `${official[0].name} 已发公告`, `${official[0].name} has announced it`)
+      : tx(lang, '目前仅见媒体报道', 'Only press reports so far');
+  const rest = [
+    ...(groups.length ? official.map(q => tx(lang, `${q.name} 官网`, `${q.name} site`)) : official.slice(1).map(q => q.name)),
     ...(press.length ? [tx(lang, `${press.length} 篇报道`, `${press.length} report${press.length > 1 ? 's' : ''}`)] : []),
   ];
 
   return (
-    <section className="mx-5 pb-4" style={{ borderTop: `1px solid ${C.line}` }}>
-      <button onClick={() => setOpen(v => !v)} aria-expanded={open} className="w-full flex items-center gap-2 py-3.5 text-left">
-        <span className={`shrink-0 ${TYPE.label}`} style={{ color: C.text3 }}>{tx(lang, '来源', 'Source')}</span>
-        <span className={`flex-1 min-w-0 truncate ${TYPE.label}`} style={{ color: C.text2 }}>{names.length ? names.join(' · ') : tx(lang, '意大利交通部公示', 'Ministry of Transport list')}</span>
-        <motion.span animate={{ rotate: open ? 180 : 0 }} className="flex"><CaretDown size={13} weight="bold" color={C.text3} /></motion.span>
+    <section className="mx-5 mb-5 rounded-[16px] overflow-hidden" style={{ background: C.surface2 }}>
+      <button onClick={() => setOpen(v => !v)} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+        <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: official1 ? 'rgba(61,220,132,0.14)' : C.surface3 }}>
+          {official1 ? <SealCheck size={18} weight="fill" color={C.ok} /> : <Info size={17} weight="fill" color={C.text2} />}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[14.5px] font-semibold leading-snug" style={{ color: C.text }}>{lead}</span>
+          <span className={`block truncate ${TYPE.caption}`} style={{ color: C.text3 }}>{[...rest, open ? tx(lang, '收起', 'Hide') : tx(lang, '查看原文与链接', 'Originals and links')].join(' · ')}</span>
+        </span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} className="flex"><CaretDown size={14} weight="bold" color={C.text3} /></motion.span>
       </button>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.28, ease: EASE }} className="overflow-hidden">
-            <div className="flex flex-col gap-4 pb-1">
+            <div className="flex flex-col gap-5 px-4 pt-1 pb-5" style={{ borderTop: `1px solid ${C.line}` }}>
               {translated && (
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-3">
                   <button onClick={() => setOriginal(v => !v)} className={`h-7 px-2.5 rounded-full ${TYPE.caption}`} style={{ background: C.surface3, color: C.text }}>
                     {original ? tx(lang, '看译文', 'Show translation') : tx(lang, '看意大利语原文', 'Show Italian original')}
                   </button>
@@ -360,9 +373,9 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
 
 function Group({ title, aside, children }: { title: string; aside?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2 pl-3" style={{ borderLeft: `2px solid ${C.lineStrong}` }}>
+    <div className="flex flex-col gap-2 first:pt-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h5 className={TYPE.caption} style={{ color: C.text3 }}>{title}</h5>
+        <h5 className="text-[12px] font-semibold tracking-wide" style={{ color: C.text3 }}>{title}</h5>
         {aside && <span className={TYPE.caption} style={{ color: C.text3 }}>{aside}</span>}
       </div>
       {children}
@@ -371,7 +384,7 @@ function Group({ title, aside, children }: { title: string; aside?: string; chil
 }
 
 function Link({ href, children }: { href: string; children: React.ReactNode }) {
-  return <a href={href} target="_blank" rel="noreferrer" className={`h-7 px-2.5 rounded-full inline-flex items-center gap-1 ${TYPE.caption}`} style={{ background: C.surface2, color: C.text2 }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
+  return <a href={href} target="_blank" rel="noreferrer" className={`h-7 px-2.5 rounded-full inline-flex items-center gap-1 ${TYPE.caption}`} style={{ background: C.surface3, color: C.text2 }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
 }
 
 // Two unions striking the same workforce are one register story.
@@ -396,6 +409,9 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   const mode = MODE_COLOR[card.category];
   const [copied, setCopied] = useState(false);
   const [spray, setSpray] = useState(false);
+  const [hint, setHint] = useState(0);
+  const wall = useRef<WallLink | null>(null);
+  const reduce = useReducedMotion();
   const react = () => { if (!doodle.marked) { doodle.mark(); setSpray(true); } };
   const share = async () => {
     const url = `${window.location.origin}${ctx.sharePath}?date=${card.date}`;
@@ -408,23 +424,28 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
+  const footer = (
+    <div className="flex gap-2.5">
+      <motion.button whileTap={{ scale: 0.97 }} onClick={share} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`} style={TONAL}>
+        {copied ? <Check size={17} weight="bold" /> : <Export size={17} weight="bold" />}{copied ? tx(lang, '已复制链接', 'Link copied') : tx(lang, '分享', 'Share')}
+      </motion.button>
+      <motion.button whileTap={doodle.marked ? undefined : { scale: 0.97 }} onClick={react} aria-pressed={doodle.marked}
+        onPointerDown={() => wall.current?.anticipate(true)} onPointerUp={() => wall.current?.anticipate(false)} onPointerLeave={() => wall.current?.anticipate(false)} onPointerCancel={() => wall.current?.anticipate(false)}
+        className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`}
+        style={doodle.marked ? TONAL : { ...FILLED(mode.deep), boxShadow: `0 6px 20px ${mode.soft}` }}>
+        {/* The can shakes in time with the puff of paint in the scene above */}
+        <motion.span key={hint} className="flex" animate={doodle.marked || reduce ? undefined : { rotate: [0, -16, 13, -9, 5, 0], y: [0, -2, 0, -1, 0, 0] }} transition={{ duration: 0.6 }}>
+          <SprayBottle size={18} weight="fill" color={doodle.marked ? mode.main : undefined} />
+        </motion.span>
+        {!doodle.loaded && doodle.marked ? tx(lang, '获取中...', 'Loading...')
+          : doodle.marked ? tx(lang, `${doodle.count} 人已表达不满`, `${doodle.count} people reacted`) : tx(lang, '我受影响了', 'I am affected')}
+      </motion.button>
+    </div>
+  );
   return (
-    <div className="px-5 pt-5 pb-5">
-      <Wall3D mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)} />
-      <div className="mt-3 flex gap-2.5">
-        <motion.button whileTap={{ scale: 0.97 }} onClick={share} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`} style={TONAL}>
-          {copied ? <Check size={17} weight="bold" /> : <Export size={17} weight="bold" />}{copied ? tx(lang, '已复制链接', 'Link copied') : tx(lang, '分享', 'Share')}
-        </motion.button>
-        <motion.button whileTap={doodle.marked ? undefined : { scale: 0.97 }} onClick={react} aria-pressed={doodle.marked}
-          className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`}
-          style={doodle.marked ? TONAL : FILLED(mode.deep)}>
-          {doodle.marked
-            ? <SprayBottle size={18} weight="fill" color={mode.main} />
-            : <motion.span layoutId={`can-${card.id}`} className="flex"><SprayBottle size={18} weight="fill" /></motion.span>}
-          {!doodle.loaded && doodle.marked ? tx(lang, '获取中...', 'Loading...')
-            : doodle.marked ? tx(lang, `${doodle.count} 人已表达不满`, `${doodle.count} people reacted`) : tx(lang, '我受影响了', 'I am affected')}
-        </motion.button>
-      </div>
+    <div className="px-5 pt-5 pb-4">
+      <Wall3D mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)}
+        onLink={l => { wall.current = l; }} onHint={() => setHint(h => h + 1)} footer={footer} />
     </div>
   );
 }

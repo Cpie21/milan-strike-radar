@@ -17,9 +17,9 @@ export const VEHICLES: Record<Mode, Vehicle> = {
   AIRPORT: { body: 'M24 80 C24 68 44 62 76 62 H292 C320 62 342 70 352 84 C342 96 320 102 292 102 H70 C44 102 24 94 24 80 Z M30 70 L16 26 Q15 22 20 22 H36 Q40 22 43 26 L78 64 Z', area: { x0: 70, x1: 300, y0: 70, y1: 96 }, tagScale: 0.68 },
 };
 
-const PANEL = '#2A2E35';
+const PANEL = '#2B2F37';
 const EDGE = 'rgba(255,255,255,0.10)';
-const GLASS = '#101216';
+const GLASS = '#C98A45'; // lit cabins, matching the 3D night livery
 const RUBBER = '#141619';
 
 function Bogie({ x }: { x: number }) {

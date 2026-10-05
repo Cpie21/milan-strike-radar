@@ -10,7 +10,7 @@ import { tx, type Lang, type Mode } from '../../../lib/lab/model';
 import { makeTags, mySpot, SPRAY, VEHICLES } from '../graffitiArt';
 import { LIMITS, loadDrawing, paintLeft, PAINT, strokeCost, uploadDrawing, type Stroke } from '../graffitiStore';
 import { C, EASE, MODE_COLOR, TYPE } from '../theme';
-import { paintBody, paintStroke, paintTag, STAGE } from './paint';
+import { paintBody, paintGlow, paintStroke, paintTag, STAGE } from './paint';
 import Graffiti from '../Graffiti';
 
 // The wall, in 3D. A journey with a beginning and an end:
@@ -23,6 +23,7 @@ import Graffiti from '../Graffiti';
 // same 360×150 stage units as before.
 
 type Phase = 'run' | 'brake' | 'parked' | 'depart';
+export type WallLink = { anticipate: (on: boolean) => void };
 type Doodle = { count: number; loaded: boolean; marked: boolean; spraying: boolean };
 
 const S = 0.025; // stage unit → world unit
@@ -30,8 +31,9 @@ const TEX = 4; // texture pixels per stage unit
 const SIZES = [4, 8, 14];
 const UNIT: Record<Mode, [string, string]> = { TRAIN: ['列火车', 'train'], SUBWAY: ['节地铁', 'metro car'], BUS: ['辆公交', 'bus'], AIRPORT: ['架飞机', 'plane'] };
 
-export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpen, onClose }: {
+export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpen, onClose, onLink, onHint, footer }: {
   mode: Mode; seed: string; storeKey: string; doodle: Doodle; lang: Lang; open: boolean; onOpen: () => void; onClose: () => void;
+  onLink?: (link: WallLink | null) => void; onHint?: () => void; footer?: React.ReactNode;
 }) {
   const reduce = useReducedMotion();
   const color = MODE_COLOR[mode];
@@ -55,8 +57,10 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
   const live = useRef({ strokes, brush, left, drawing, onChange: (s: Stroke[]) => setDraft(s), onEmpty: () => {} });
   const paintState = useRef({ tags, mine: doodle.marked, spot, mode, accent: color.main });
   const phaseRef = useRef<Phase>('run');
+  const hintRef = useRef({ onHint, onLink, marked: doodle.marked });
   useLayoutEffect(() => {
     phaseRef.current = phase;
+    hintRef.current = { onHint, onLink, marked: doodle.marked };
     live.current = { strokes, brush, left, drawing, onChange: s => setDraft(s), onEmpty: () => { setEmpty(true); setTimeout(() => setEmpty(false), 1600); } };
     paintState.current = { tags, mine: doodle.marked, spot, mode, accent: color.main };
   });
@@ -97,28 +101,32 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.95;
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     renderer.domElement.style.touchAction = 'pan-y';
     el.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = env;
-    pmrem.dispose();
+    // Reflections; optional (older GPUs without float targets simply skip them).
+    let env: THREE.Texture | null = null;
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environment = env;
+      pmrem.dispose();
+    } catch { /* flat lighting still works */ }
 
     const camera = new THREE.PerspectiveCamera(30, 1.6, 0.1, 100);
-    const disposables: { dispose: () => void }[] = [env];
+    const disposables: { dispose: () => void }[] = env ? [env] : [];
     const own = <T extends { dispose: () => void }>(x: T) => { disposables.push(x); return x; };
 
     // Light: soft sky, a warm key, a rim in the mode's colour.
-    scene.add(new THREE.HemisphereLight('#DCE6FF', '#121316', 0.7));
-    const key = new THREE.DirectionalLight('#FFF4E6', 1.7);
+    scene.add(new THREE.HemisphereLight('#B8C6E6', '#0B0C0E', 0.45));
+    const key = new THREE.DirectionalLight('#E8EEFF', 1.15);
     key.position.set(5, 8, 7);
     scene.add(key);
-    const rim = new THREE.DirectionalLight(new THREE.Color(MODE_COLOR[mode].main), 0.9);
+    const rim = new THREE.DirectionalLight(new THREE.Color(MODE_COLOR[mode].main), 1.6);
     rim.position.set(-7, 3, -6);
     scene.add(rim);
 
@@ -152,12 +160,24 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
     const bctx = base.getContext('2d')!;
     bctx.scale(TEX, TEX);
     paintBody(bctx, mode, MODE_COLOR[mode].main);
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = texCanvas.width;
+    glowCanvas.height = texCanvas.height;
+    const gctx = glowCanvas.getContext('2d')!;
+    const glowBase = document.createElement('canvas');
+    glowBase.width = texCanvas.width;
+    glowBase.height = texCanvas.height;
+    const gbctx = glowBase.getContext('2d')!;
+    gbctx.scale(TEX, TEX);
+    paintGlow(gbctx, mode, MODE_COLOR[mode].main);
+    const glowTexture = own(new THREE.CanvasTexture(glowCanvas));
+    glowTexture.colorSpace = THREE.SRGBColorSpace;
     const texture = own(new THREE.CanvasTexture(texCanvas));
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
-    const sideMat = own(new THREE.MeshPhysicalMaterial({ map: texture, roughness: 0.32, metalness: 0.2, clearcoat: 0.9, clearcoatRoughness: 0.18 }));
-    const shellMat = own(new THREE.MeshPhysicalMaterial({ color: '#C9CED5', roughness: 0.34, metalness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.2 }));
+    const sideMat = own(new THREE.MeshPhysicalMaterial({ map: texture, emissiveMap: glowTexture, emissive: new THREE.Color('#FFFFFF'), emissiveIntensity: 0.85, roughness: 0.3, metalness: 0.45, clearcoat: 1, clearcoatRoughness: 0.12 }));
+    const shellMat = own(new THREE.MeshPhysicalMaterial({ color: '#2B2F37', roughness: 0.32, metalness: 0.6, clearcoat: 1, clearcoatRoughness: 0.15 }));
     const darkMat = own(new THREE.MeshStandardMaterial({ color: '#16181C', roughness: 0.7, metalness: 0.4 }));
     const metalMat = own(new THREE.MeshStandardMaterial({ color: '#8C929B', roughness: 0.3, metalness: 0.9 }));
 
@@ -204,13 +224,60 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
         vehicle.add(engine);
       });
     }
+    // Platform edge with the yellow safety line, for rail
+    if (mode === 'TRAIN' || mode === 'SUBWAY') {
+      const edge = new THREE.Mesh(own(new THREE.BoxGeometry(80, 0.05, 0.06)), own(new THREE.MeshStandardMaterial({ color: '#E8C547', emissive: new THREE.Color('#5A4A10'), roughness: 0.6 })));
+      edge.position.set(0, (STAGE.h - 131) * S + 0.03, (depth / 2) * S + 1.25);
+      scene.add(edge);
+    }
+    // Cabin light spilling onto the floor beside the vehicle
+    const spillTex = (() => {
+      const c = document.createElement('canvas');
+      c.width = 256; c.height = 64;
+      const x = c.getContext('2d')!;
+      const g = x.createRadialGradient(128, 0, 4, 128, 0, 150);
+      g.addColorStop(0, 'rgba(255,200,130,0.55)');
+      g.addColorStop(1, 'rgba(255,200,130,0)');
+      x.fillStyle = g;
+      x.fillRect(0, 0, 256, 64);
+      return own(new THREE.CanvasTexture(c));
+    })();
+    if (!plane) {
+      const spill = new THREE.Mesh(own(new THREE.PlaneGeometry(10, 2.4)), own(new THREE.MeshBasicMaterial({ map: spillTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+      spill.rotation.x = -Math.PI / 2;
+      spill.position.set(0, (STAGE.h - (mode === 'BUS' ? 129 : 131)) * S + 0.02, (depth / 2) * S + 1.15);
+      scene.add(spill);
+    }
+
+    const dotTex = (() => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const x = c.getContext('2d')!;
+      const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = g;
+      x.fillRect(0, 0, 64, 64);
+      return own(new THREE.CanvasTexture(c));
+    })();
     // Headlights
     const lampMat = own(new THREE.MeshStandardMaterial({ color: '#FFFFFF', emissive: new THREE.Color('#FFF3D6'), emissiveIntensity: 2 }));
     if (!plane) [1, -1].forEach(z => {
       const lamp = new THREE.Mesh(own(new THREE.SphereGeometry(0.06, 12, 12)), lampMat);
       lamp.position.set((mode === 'TRAIN' ? 348 : 351) * S - STAGE.w / 2 * S, (STAGE.h - 104) * S, z * (halfW - 0.3));
       vehicle.add(lamp);
+      const halo = new THREE.Sprite(own(new THREE.SpriteMaterial({ map: dotTex, color: '#FFE7BF', transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending })));
+      halo.scale.setScalar(0.9);
+      halo.position.copy(lamp.position);
+      vehicle.add(halo);
     });
+
+    // A wet-floor reflection: the same vehicle, mirrored under a translucent
+    // floor. Clones share geometry and materials, so it costs one draw each.
+    const mirror = plane ? null : vehicle.clone();
+    if (mirror) { mirror.scale.y = -1; scene.add(mirror); }
+    const mirrorWheels: THREE.Object3D[] = [];
+    mirror?.traverse(o => { if (o.type === 'Group' && o !== mirror) mirrorWheels.push(o); });
 
     // ── Ground: track or road, moving under the vehicle ──
     const ground = new THREE.Group();
@@ -220,13 +287,16 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
     const fade = document.createElement('canvas');
     fade.width = 256; fade.height = 64;
     const fc = fade.getContext('2d')!;
-    const fg = fc.createRadialGradient(128, 32, 4, 128, 32, 128);
-    fg.addColorStop(0, '#FFFFFF');
-    fg.addColorStop(0.55, '#7A7A7A');
+    // Fades only left and right; towards the camera it stays solid so the
+    // reflection never shows past the floor's near edge.
+    const fg = fc.createLinearGradient(0, 0, 256, 0);
+    fg.addColorStop(0, '#000000');
+    fg.addColorStop(0.22, '#FFFFFF');
+    fg.addColorStop(0.78, '#FFFFFF');
     fg.addColorStop(1, '#000000');
     fc.fillStyle = fg;
     fc.fillRect(0, 0, 256, 64);
-    const floor = new THREE.Mesh(own(new THREE.PlaneGeometry(34, 9)), own(new THREE.MeshStandardMaterial({ color: '#0E0F12', roughness: 0.9, metalness: 0.2, transparent: true, alphaMap: own(new THREE.CanvasTexture(fade)), depthWrite: false })));
+    const floor = new THREE.Mesh(own(new THREE.PlaneGeometry(34, 40)), own(new THREE.MeshStandardMaterial({ color: '#0B0C0F', roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0.9, alphaMap: own(new THREE.CanvasTexture(fade)), depthWrite: false })));
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = groundY - 0.01;
     if (!plane) ground.add(floor);
@@ -328,6 +398,16 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
     mist.frustumCulled = false;
     scene.add(mist);
     let mistNext = 0;
+    const puff = (from: THREE.Vector3, to: THREE.Vector3, n: number, spread = 0.8) => {
+      for (let k = 0; k < n; k++) {
+        const i = mistNext = (mistNext + 1) % MIST;
+        mistPos.set([from.x, from.y, from.z], i * 3);
+        const d = to.clone().sub(from).multiplyScalar(2 + Math.random());
+        mistVel.set([d.x + (Math.random() - 0.5) * spread, d.y + (Math.random() - 0.5) * spread, d.z + (Math.random() - 0.5) * spread * 0.5], i * 3);
+        mistLife[i] = 0.45;
+      }
+    };
+    let nextHint = 2.5;
 
     // ── Simulation state ──
     // Start from wherever the journey is (a rebuilt scene picks up mid-way).
@@ -350,6 +430,17 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
       if (p.mine && !list.length) paintTag(tctx, { kind: 'angry', x: p.spot.x, y: p.spot.y, r: p.spot.r, s: p.spot.s, color: p.accent, drips: [-6, 7] });
       list.forEach((s, i) => paintStroke(tctx, s, i, TEX));
       texture.needsUpdate = true;
+      // Neon paint glows a little at night.
+      gctx.setTransform(1, 0, 0, 1, 0, 0);
+      gctx.globalAlpha = 1;
+      gctx.drawImage(glowBase, 0, 0);
+      gctx.setTransform(TEX, 0, 0, TEX, 0, 0);
+      gctx.globalAlpha = 0.4;
+      p.tags.forEach(t => paintTag(gctx, t));
+      if (p.mine && !list.length) paintTag(gctx, { kind: 'angry', x: p.spot.x, y: p.spot.y, r: p.spot.r, s: p.spot.s, color: p.accent, drips: [-6, 7] });
+      list.forEach((s, i) => paintStroke(gctx, s, i, TEX));
+      gctx.globalAlpha = 1;
+      glowTexture.needsUpdate = true;
     };
     api.current = {
       redraw,
@@ -362,6 +453,9 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
       setLevel: (l, c) => { sim.levelTarget = l; liquidMat.color.set(c); liquidMat.emissive.set(c); mistMat.color.set(c); },
     };
     redraw(live.current.strokes);
+    // Touching "我受影响了" already reaches the scene: the vehicle starts to
+    // slow under your finger, before you let go.
+    hintRef.current.onLink?.({ anticipate: on => { if (sim.phase === 'run' && !hintRef.current.marked) sim.vTarget = on ? 0.3 : reduce ? 0 : 1; } });
 
     // ── Pointer: spray onto the body ──
     const ray = new THREE.Raycaster();
@@ -497,6 +591,11 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
       vehicle.rotation.x = Math.sin(sim.t * 6.3) * 0.004 * sim.v;
       vehicle.rotation.z += ((plane ? Math.sin(sim.t * 0.9) * 0.03 : accel * 0.012) - vehicle.rotation.z) * Math.min(1, dt * 6);
       wheels.forEach(w => { w.rotation.z -= (sim.v * dt * 12) / 0.25; });
+      if (mirror) {
+        mirror.position.y = 2 * groundY - vehicle.position.y;
+        mirror.rotation.set(-vehicle.rotation.x, 0, -vehicle.rotation.z);
+        mirrorWheels.forEach((w, i) => { if (wheels[i]) w.rotation.z = wheels[i].rotation.z; });
+      }
       lampMat.emissiveIntensity = 0.6 + sim.v * 1.6;
       if (!plane) placeTies(sim.travel);
       for (let i = 0; i < BOKEH; i++) {
@@ -525,6 +624,14 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
       surface.position.y = -0.48 + lvl * 0.96 + 0.001;
       surface.rotation.set(-Math.PI / 2 + sim.slosh * 0.25, 0, sim.slosh * 0.15);
       surface.visible = liquid.visible = lvl > 0.01;
+      // An unspoken invitation: every few seconds a puff of paint comes in
+      // from where the button is and lands on the body, as the button's can
+      // gives a little shake.
+      if (sim.phase === 'run' && !hintRef.current.marked && !reduce && sim.t > nextHint) {
+        nextHint = sim.t + 7;
+        puff(new THREE.Vector3(3.8, 0.2, halfW + 2.4), new THREE.Vector3(1 + Math.random() * 1.5, 1.3, halfW), 26, 0.5);
+        hintRef.current.onHint?.();
+      }
       // Mist from the nozzle towards the body
       if (sim.spraying && sim.hit) {
         const from = new THREE.Vector3();
@@ -561,6 +668,7 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
       cv.removeEventListener('pointercancel', up);
       stopDrip(false);
       api.current = null;
+      hintRef.current.onLink?.(null);
       disposables.forEach(d => d.dispose());
       renderer.dispose();
       cv.remove();
@@ -580,14 +688,21 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
     : phase === 'brake' ? tx(lang, '正在停车…', 'Stopping…')
       : phase === 'parked' ? (empty ? tx(lang, '这罐漆用完了', 'This can is empty') : tx(lang, '在车身上拖动来喷，按住不动会流下漆痕', 'Drag on the body to spray; hold still and it drips'))
         : phase === 'depart' ? tx(lang, '你的涂鸦跟着车出发了', 'Off it goes, with your mark')
-          : !doodle.marked ? tx(lang, `已有 ${others} 人在这${unit}上留下不满 · 点下方「我受影响了」让它停下`, `${others} people marked this ${unit} · tap “I am affected” to stop it`)
+          : !doodle.marked ? null
             : tx(lang, `你和 ${others} 人的涂鸦正跟着这${unit}跑`, `Your mark and ${others} others ride along`);
 
-  if (failed) return <Graffiti mode={mode} seed={seed} storeKey={storeKey} doodle={doodle} lang={lang} open={open} onOpen={onOpen} onClose={onClose} />;
+  if (failed) return <><Graffiti mode={mode} seed={seed} storeKey={storeKey} doodle={doodle} lang={lang} open={open} onOpen={onOpen} onClose={onClose} /><div className="mt-3">{footer}</div></>;
 
   return (
     <div className="relative overflow-hidden rounded-[20px]" style={{ background: `radial-gradient(90% 80% at 50% 70%, ${color.soft}, transparent 70%), linear-gradient(180deg, #121419, ${C.surface2})` }}>
       <div ref={host} className="relative w-full" style={{ aspectRatio: '16 / 10', cursor: drawing ? 'crosshair' : 'default' }} />
+      {/* How many have marked it, in the scene's corner rather than a sentence */}
+      {doodle.loaded && phase === 'run' && (
+        <span className={`absolute left-3 top-3 h-7 pl-2 pr-2.5 rounded-full flex items-center gap-1.5 tabular-nums ${TYPE.caption}`} style={{ background: 'rgba(10,11,13,0.55)', color: C.text, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
+          <i className="w-[7px] h-[7px] rounded-full" style={{ background: color.main, boxShadow: `0 0 8px ${color.main}` }} />
+          {tx(lang, `${doodle.count} 人的不满在车上`, `${doodle.count} marks on board`)}
+        </span>
+      )}
       <AnimatePresence initial={false}>
         {drawing && (
           <motion.div key="tools" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.28, ease: EASE }} className="overflow-hidden">
@@ -616,14 +731,18 @@ export default function Wall3D({ mode, seed, storeKey, doodle, lang, open, onOpe
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="px-4 pb-3.5 pt-1 flex items-center justify-center gap-2 text-center min-h-[40px]">
-        <p className={TYPE.label} style={{ color: empty ? color.main : C.text2 }}>{caption}</p>
-        {phase === 'run' && doodle.marked && left > 0.5 && (
-          <button onClick={onOpen} className={`shrink-0 h-7 px-2.5 rounded-full ${TYPE.caption} font-semibold`} style={{ background: C.surface3, color: '#FFFFFF' }}>
-            {saved.length ? tx(lang, `继续喷 · 剩 ${pct}%`, `Spray more · ${pct}%`) : tx(lang, '拿起喷罐', 'Pick up the can')}
-          </button>
-        )}
-      </div>
+      {(caption || (phase === 'run' && doodle.marked && left > 0.5)) && (
+        <div className="px-4 pt-1 pb-1 flex items-center justify-center gap-2 text-center">
+          {caption && <p className={TYPE.label} style={{ color: empty ? color.main : C.text2 }}>{caption}</p>}
+          {phase === 'run' && doodle.marked && left > 0.5 && (
+            <button onClick={onOpen} className={`shrink-0 h-7 px-2.5 rounded-full ${TYPE.caption} font-semibold`} style={{ background: C.surface3, color: '#FFFFFF' }}>
+              {saved.length ? tx(lang, `继续喷 · 剩 ${pct}%`, `Spray more · ${pct}%`) : tx(lang, '拿起喷罐', 'Pick up the can')}
+            </button>
+          )}
+        </div>
+      )}
+      {/* The buttons live on the wall's own floor: what you press is part of the scene */}
+      {footer && <div className="p-2.5 pt-2">{footer}</div>}
     </div>
   );
 }
