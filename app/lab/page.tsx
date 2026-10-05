@@ -4,7 +4,7 @@ import { addDaysIso } from '../../lib/romeDate';
 import { readCityStrikes, romeToday, serverDatabase } from '../../lib/strikeQuery';
 import { windowsDisplay, type StrikeEvent } from '../../lib/strikePresentation';
 import type { TimingEvidence } from '../../lib/strikeEvidence';
-import { scopeOf, scopeTitle } from '../../lib/strikeScope';
+import { geographyContext, indirectRail, railTitle, scopeOf, scopeTitle } from '../../lib/strikeScope';
 import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
 import type { CardStatus, GuaranteeSource, Mode, ModeCard, Source } from '../../lib/lab/model';
 import LabApp from '../../components/lab/LabApp';
@@ -25,6 +25,7 @@ type Aggregated = {
   has_unknown_timing?: boolean;
   display_time?: string;
   guaranteeSource?: GuaranteeSource;
+  lineScope?: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN';
   timing_evidence?: TimingEvidence;
   strike_events?: StrikeEvent[];
 };
@@ -54,11 +55,18 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
 
   const cards: ModeCard[] = days.map(day => {
     const events = day.strike_events || [];
-    const scope = day.category === 'AIRPORT' ? scopeOf(day as Parameters<typeof scopeOf>[0]) : null;
+    const scope = day.category === 'AIRPORT' || day.category === 'TRAIN' ? scopeOf(day as Parameters<typeof scopeOf>[0]) : null;
+    const scopeLabel = !scope ? '' : day.category === 'TRAIN' ? railTitle(scope) : scope !== 'UNKNOWN' ? scopeTitle(scope) : '';
+    const geography = [...new Set(events.map(e => geographyContext(e.timing_evidence?.fields)).filter(Boolean))]
+      .map(zh => ({ zh, en: geographyContext(events.find(e => geographyContext(e.timing_evidence?.fields) === zh)?.timing_evidence?.fields, 'en') }));
     return {
       id: day.id,
       date: day.date,
-      scope: scope && scope !== 'UNKNOWN' ? scopeTitle(scope) : '',
+      scope: scopeLabel,
+      scopeType: scope || '',
+      indirect: day.category === 'TRAIN' && !!scope && indirectRail(scope),
+      lineScope: day.lineScope || 'UNKNOWN',
+      geography,
       category: day.category,
       status: day.status,
       provider: day.provider || '',

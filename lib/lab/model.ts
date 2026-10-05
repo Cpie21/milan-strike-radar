@@ -15,6 +15,10 @@ export type ModeCard = {
   date: string;
   category: Mode;
   scope: string; // airport cards are split by scope (whole airport vs one airline)
+  scopeType: string; // lib/strikeScope ScopeType; rail and aviation subtypes
+  indirect: boolean; // rail security/infrastructure/support: staff hours, passenger impact unconfirmed
+  lineScope: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN';
+  geography: { zh: string; en: string }[]; // official administrative scope beyond this city
   status: CardStatus;
   provider: string;
   national: boolean;

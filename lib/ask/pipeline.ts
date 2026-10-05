@@ -2,6 +2,7 @@ import { cityPath, resolveCity } from '../cities';
 import { addDaysIso } from '../romeDate';
 import { readCityStrikes, romeToday, serverDatabase } from '../strikeQuery';
 import { windowsDisplay } from '../strikePresentation';
+import { geographyContext, indirectRail, type ScopeType } from '../strikeScope';
 import type { EvidenceWindow } from '../strikeEvidence';
 import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
 import { choice, decide, noul, type DecisionResult } from './jev';
@@ -47,6 +48,10 @@ export type Candidate = {
   display: string;
   guarantees: { start: string; end: string }[];
   lines: string[];
+  lineScope: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN';
+  scopeType: string;
+  indirect: boolean; // rail staff whose passenger impact is unconfirmed
+  geography: string[]; // official administrative scope beyond the supported city
   sources: { name: string; url: string; authority: string }[];
 };
 
@@ -201,9 +206,9 @@ type EventRow = {
   region?: string;
   windows?: EvidenceWindow[];
   guarantee_windows?: { start: string; end: string }[];
-  timing_evidence?: { sources?: { name: string; url: string; authority: string }[] } | null;
+  timing_evidence?: { sources?: { name: string; url: string; authority: string }[]; fields?: Parameters<typeof geographyContext>[0] } | null;
 };
-type DayRow = EventRow & { date: string; category: Mode; affected_lines?: string[]; strike_events?: EventRow[] };
+type DayRow = EventRow & { date: string; category: Mode; affected_lines?: string[]; strike_events?: EventRow[]; scopeType?: string; lineScope?: 'ALL_LINES' | 'SPECIFIC_LINES' | 'UNKNOWN' };
 
 async function loadCandidates(cityTags: string[], from: string, to: string): Promise<Candidate[]> {
   const seen = new Set<string>();
@@ -234,6 +239,10 @@ async function loadCandidates(cityTags: string[], from: string, to: string): Pro
           display: windows.length ? windowsDisplay(windows) : '',
           guarantees: event.guarantee_windows || [],
           lines: row.affected_lines || [],
+          lineScope: row.lineScope || 'UNKNOWN',
+          scopeType: row.scopeType || '',
+          indirect: row.category === 'TRAIN' && !!row.scopeType && indirectRail(row.scopeType as ScopeType),
+          geography: [geographyContext(event.timing_evidence?.fields || undefined, 'en')].filter(Boolean),
           sources: [
             ...(event.source_url ? [{ name: '意大利交通部 MIT', url: event.source_url, authority: 'official' }] : []),
             ...(event.timing_evidence?.sources || []).map(s => ({ name: s.name, url: s.url, authority: s.authority })),
@@ -360,7 +369,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   let jevFailures = 0;
   const judged: Judged[] = await Promise.all(judgedPool.map(async candidate => {
     const overlap = computeOverlap(parsed.time, candidate.windows, candidate.guarantees);
-    const impact = computeImpact(candidate.status, candidate.windows, overlap);
+    const impact = candidate.indirect && candidate.status !== 'CANCELLED' ? 'unknown' : computeImpact(candidate.status, candidate.windows, overlap);
     let result: DecisionResult | null = null;
     try {
       result = await decide({
@@ -376,12 +385,15 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
           date: candidate.date,
           transport: MODE_EN[candidate.category],
           striking_staff: candidate.provider,
-          scope: candidate.national ? 'national, all of Italy' : `local to ${resolveCity(candidate.city)?.en}`,
+          area: candidate.national ? 'registered as a national strike' : `shown for ${resolveCity(candidate.city)?.en}`,
           status: candidate.status === 'CANCELLED' ? 'cancelled / revoked' : candidate.status === 'UNCERTAIN' ? 'announced, hours not yet published' : 'confirmed',
           hours: candidate.display || 'not published',
           hours_covered_of_24: candidate.windows.length ? Math.round(spans(candidate.windows).reduce((sum, s) => sum + s.end - s.start, 0) / 60) : null,
           guaranteed_service: candidate.guarantees.map(g => `${g.start}-${g.end}`).join(', ') || 'none published',
-          affected_lines: candidate.lines,
+          affected_lines: candidate.lineScope === 'UNKNOWN' ? 'unknown' : candidate.lines,
+          staff_scope: candidate.scopeType || 'unknown',
+          passenger_impact: candidate.indirect ? 'staff strike; passenger train impact unconfirmed' : 'direct service',
+          official_geography: candidate.geography,
         },
         computed_by_code: {
           user_time_vs_strike: overlap === 'strike' ? 'inside strike hours' : overlap === 'guarantee' ? 'inside guaranteed service hours' : overlap === 'outside' ? 'outside strike hours' : overlap === 'unknown' ? 'strike hours unknown' : 'user gave no time',

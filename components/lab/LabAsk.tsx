@@ -52,6 +52,7 @@ const asCard = (j: Judged): ModeCard => ({
   id: j.key, date: j.date, category: j.category, scope: '', status: j.status as ModeCard['status'], provider: j.provider, national: j.national, displayTime: '',
   windows: j.windows, guarantees: j.guarantees, guaranteeSource: j.guarantees.length ? 'OFFICIAL_STRIKE_NOTICE' : 'UNKNOWN', guaranteeKind: j.category === 'AIRPORT' ? 'PROTECTED_FLIGHTS' : 'GUARANTEED_SERVICE',
   lines: j.lines, unknownTiming: !j.windows.length, confidence: '', sources: j.sources, events: [],
+  scopeType: j.scopeType, indirect: j.indirect, lineScope: j.lineScope, geography: [],
 });
 
 function Tag({ by, p, lang }: { by: Fact['by']; p?: number | null; lang: Lang }) {

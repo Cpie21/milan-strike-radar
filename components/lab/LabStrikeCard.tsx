@@ -45,7 +45,7 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
         {!card.windows.length && !cancelled && <div className="absolute inset-0" style={{ background: `repeating-linear-gradient(135deg, ${C.pend} 0 2px, transparent 2px 6px)`, opacity: 0.55 }} />}
         {segments(card.windows).map((s, i) => (
           <div key={i} className="absolute top-0 h-full" style={{
-            left: `${s.left * 100}%`, width: `${s.width * 100}%`, background: cancelled ? C.cancel : C.stop,
+            left: `${s.left * 100}%`, width: `${s.width * 100}%`, background: cancelled ? C.cancel : card.indirect ? C.pend : C.stop,
             borderRadius: `${s.left === 0 ? 0 : 5}px 5px 5px ${s.left === 0 ? 0 : 5}px`,
             WebkitMaskImage: s.fade ? 'linear-gradient(90deg,#000 62%,transparent)' : undefined,
             maskImage: s.fade ? 'linear-gradient(90deg,#000 62%,transparent)' : undefined,
@@ -175,13 +175,23 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           <div className="p-3.5" style={{ background: C.surface2 }}>
             <dt className="text-[12px] mb-1" style={{ color: C.text3 }}>{card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines')}</dt>
             <dd className="flex flex-wrap gap-1">
-              {card.category === 'AIRPORT' && (!card.lines.length || card.lines.includes('全部线路'))
-                ? <span className="text-[14px] font-semibold">{tx(lang, `${ctx.cityName}全部机场`, `All ${ctx.cityName} airports`)}</span>
-                : card.lines.length ? card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l} className="text-[14px] font-semibold leading-snug">{l}</span>)
-                : <span className="text-[14px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '全部线路', 'All lines')}</span>}
+              {card.category === 'AIRPORT' && /^AIRLINE/.test(card.scopeType)
+                ? <span className="text-[14px] font-semibold">{tx(lang, '仅该航司航班', 'This airline only')}</span>
+                : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
+                  ? card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l} className="text-[14px] font-semibold leading-snug">{l}</span>)
+                  : card.lineScope === 'ALL_LINES'
+                    ? <span className="text-[14px] font-semibold">{tx(lang, '全部线路', 'All lines')}</span>
+                    : <span className="text-[14px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '待核实', 'Unverified')}</span>}
             </dd>
           </div>
         </dl>
+
+        {card.indirect && (
+          <p className="mt-3 text-[13px] leading-snug rounded-[12px] px-3.5 py-2.5" style={{ background: C.pendSoft, color: C.pend }}>
+            {tx(lang, '此处为相关人员停工时段；旅客列车的实际影响尚未确认，不代表所有列车停运。', 'These are staff strike hours. Passenger train impact is unconfirmed; this does not mean all trains stop.')}
+          </p>
+        )}
+        {card.geography.map(g => <p key={g.zh} className="mt-2.5 text-[12px] leading-snug" style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
 
         {card.events.length > 1 && (
           <div className="mt-2">
