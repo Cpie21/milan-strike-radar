@@ -15,7 +15,7 @@ import { useReducedMotion } from 'framer-motion';
 // wipe across column by column, or fade with the slight persistence of real
 // LEDs, which leaves a trail behind anything that moves.
 
-export type Mood = 'idle' | 'thinking' | 'happy' | 'alarm' | 'unsure' | 'sorry' | 'alert';
+export type Mood = 'idle' | 'thinking' | 'happy' | 'alarm' | 'unsure' | 'sorry' | 'alert' | 'off';
 
 const ROWS = 9;
 type Cols = number[]; // one bitmask per column, bit y = row y
@@ -54,7 +54,7 @@ const EYES: Record<string, string[]> = {
 type Pair = [string, string];
 const eye = (k: string) => bitmap(EYES[k], 1);
 const eyes = ([l, r]: Pair, gap = 3): Cols => [...eye(l), ...blank(gap), ...eye(r)]; // 17 wide
-const FACES: Record<Exclude<Mood, 'thinking' | 'alert'>, Pair> = {
+const FACES: Record<Exclude<Mood, 'thinking' | 'alert' | 'off'>, Pair> = {
   idle: ['open', 'open'], happy: ['happy', 'happy'], alarm: ['sadL', 'sadR'], unsure: ['open', 'squint'], sorry: ['down', 'down'],
 };
 const ANGRY: Pair = ['sadR', 'sadL']; // brows slanting down to the middle
@@ -242,6 +242,9 @@ async function moodScript(mood: Mood, show: Show, wait: Wait, at: number, width:
   if (mood === 'thinking') { for (let i = 0; ; i++) { show(eyes(THINK[i % THINK.length]), at); await wait(420); } }
   if (mood === 'alarm') { show(eyes(['wide', 'wide']), at, 'cut'); await wait(600); show(eyes(FACES.alarm), at); return; }
   if (mood === 'alert') return alert(show, wait, at, width);
+  // Off while its other self (in the answer sheet) is talking: eyes close,
+  // the panel goes dark. Only one face is ever awake on screen.
+  if (mood === 'off') { show(eyes(['blink', 'blink']), at, 'cut'); await wait(160); show([], 0, 'fade'); return; }
   if (mood === 'idle') { for (;;) await rest(show, wait, at, 8000); }
   show(eyes(FACES[mood]), at);
 }
@@ -295,7 +298,8 @@ function Bezel({ children, pitch, glow, flat }: { children: React.ReactNode; pit
   );
 }
 
-const glowOf = (mood: Mood) => (mood === 'alarm' || mood === 'alert' ? 1 : mood === 'thinking' ? 0.85 : 0.7);
+const glowOf = (mood: Mood) => (mood === 'alarm' || mood === 'alert' ? 1 : mood === 'thinking' ? 0.85 : mood === 'off' ? 0.4 : 0.7);
+const still = (mood: Mood): Cols => (mood === 'off' ? [] : eyes(mood === 'alert' ? ANGRY : mood === 'thinking' ? THINK[0] : FACES[mood]));
 
 // ── Compact face ────────────────────────────────────────────────────────
 
@@ -303,10 +307,10 @@ export function LedFace({ mood = 'idle', size = 20, flat }: { mood?: Mood; size?
   const reduce = useReducedMotion();
   const W = 19, at = 1;
   const pitch = size / 7;
-  const [frame, setFrame] = useState<Frame>({ cols: eyes(mood === 'alert' ? ANGRY : mood === 'thinking' ? THINK[0] : FACES[mood]), offset: at, mode: 'cut' });
+  const [frame, setFrame] = useState<Frame>({ cols: still(mood), offset: at, mode: 'cut' });
   const play = useProgramme(setFrame);
   useEffect(() => {
-    if (reduce) return play(async show => show(eyes(mood === 'alert' ? ANGRY : mood === 'thinking' ? THINK[0] : FACES[mood]), at, 'cut'));
+    if (reduce) return play(async show => show(still(mood), at, 'cut'));
     return play((show, wait) => moodScript(mood, show, wait, at, W));
   }, [mood, reduce]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
@@ -404,7 +408,7 @@ export function LedBoard({ mood = 'idle', pitch = 4.6, nudge }: { mood?: Mood; p
   };
 
   useEffect(() => {
-    if (reduce) return play(async show => show(eyes(mood === 'thinking' ? THINK[0] : mood === 'alert' ? ANGRY : FACES[mood]), at(), 'cut'));
+    if (reduce) return play(async show => show(still(mood), at(), 'cut'));
     if (mood === 'idle') return play(live);
     return play((show, wait) => moodScript(mood, show, wait, at(), width.current));
   }, [mood, reduce]); // eslint-disable-line react-hooks/exhaustive-deps

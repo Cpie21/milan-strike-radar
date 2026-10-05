@@ -41,15 +41,18 @@ export function LineBadge({ line }: { line: string }) {
 
 // Sheets, after iOS. Tall sheets open at a medium detent with the rest of
 // the content running off the bottom edge, so it is visible that there is
-// more. `dismissFromTop` closes straight from full height (answers: pulling
-// down means "done with this"). Short sheets open at their own height.
+// more; swiping up opens them fully. Pulling down always means "done":
+// from either height it closes, it never parks back at the medium detent
+// (the sheet is a transient view, so one gesture should end it, as Apple's
+// HIG and Material's modal bottom sheets both treat a downward swipe).
+// Short sheets open at their own height.
 //
 // Gestures are split so they never fight: the grabber and header drag the
 // sheet (the drawer's own drag); the content area belongs to the content.
 // There, at the medium detent a swipe up expands and a swipe down closes;
 // fully up the content scrolls natively, and only a pull that starts with
 // the content already at the top moves the sheet, following the finger,
-// then settles one detent down (or closes) past a threshold. Sideways
+// then closes past a threshold. Sideways
 // swipes (rails, carousels, the wall) are left alone.
 const MEDIUM = 0.62;
 
@@ -107,8 +110,8 @@ function useContentGestures(node: HTMLDivElement | null, on: boolean, full: bool
   }, [node, on]);
 }
 
-export function Sheet({ open, onClose, title, children, tall = false, large = false, dismissFromTop = false, header }: {
-  open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; dismissFromTop?: boolean; header?: ReactNode;
+export function Sheet({ open, onClose, title, children, tall = false, large = false, header }: {
+  open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; header?: ReactNode;
 }) {
   const detents = tall || large ? [MEDIUM, 1] : undefined;
   const [snap, setSnap] = useState<number | string | null>(large ? 1 : MEDIUM);
@@ -118,7 +121,7 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   useContentGestures(scroller, !!detents && open, full, {
     expand: () => setSnap(1),
-    collapse: () => { if (snap === 1 && !dismissFromTop) setSnap(MEDIUM); else onClose(); },
+    collapse: onClose,
   });
   const body = (
       <Drawer.Portal>
@@ -143,7 +146,7 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
   if (!detents) return <Drawer.Root open={open} onOpenChange={change}>{body}</Drawer.Root>;
   return (
     <Drawer.Root open={open} onOpenChange={change} snapPoints={detents} activeSnapPoint={snap} fadeFromIndex={0}
-      setActiveSnapPoint={next => { if (dismissFromTop && snap === 1 && next === MEDIUM) { onClose(); return; } setSnap(next); }}>
+      setActiveSnapPoint={next => { if (snap === 1 && next === MEDIUM) { onClose(); return; } setSnap(next); }}>
       {body}
     </Drawer.Root>
   );

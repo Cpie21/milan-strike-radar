@@ -69,6 +69,10 @@ test('impact and actions follow facts the code computed', () => {
   assert.equal(computeOverlap('12:00', [{ start: '13:00', end: '17:00', end_kind: 'clock' }], []), 'outside');
   assert.equal(computeOverlap('23:00', [{ start: '18:00', end: null, end_kind: 'end_of_service' }], []), 'strike');
   assert.equal(computeOverlap('09:00', [], []), 'unknown');
+  // A part of the day: any strike minute inside it counts.
+  const evening = { from: '18:00', to: '24:00' };
+  assert.equal(computeOverlap(null, [{ start: '21:00', end: '24:00', end_kind: 'clock' }], [], evening), 'strike');
+  assert.equal(computeOverlap(null, [{ start: '08:00', end: '12:00', end_kind: 'clock' }], [], evening), 'outside');
   assert.equal(computeImpact('CANCELLED', fullDay, 'strike'), 'cancelled');
   assert.equal(computeImpact('UNCERTAIN', [], null), 'unknown');
   assert.equal(computeImpact('CONFIRMED', fullDay, 'guarantee'), 'low');
@@ -81,4 +85,17 @@ test('impossible dates and uncovered places are not searched', () => {
   assert.equal(parseQuery('2月31日地铁罢工吗', '2026-10-05').scope, null);
   assert.equal(unsupportedPlace('10月15日Foggia公交有罢工吗？'), 'Foggia');
   assert.equal(unsupportedPlace('米兰地铁周五罢工吗'), null);
+});
+
+test('everyday travel, trips abroad and parts of the day are read, not guessed silently', () => {
+  const school = parseQuery('我下周上学会不会遇到罢工啊？', SUNDAY);
+  assert.equal(school.daily, true);
+  assert.equal(school.abroad, null);
+  const swiss = parseQuery('12月3日晚上坐火车去瑞士会有问题吗', SUNDAY);
+  assert.equal(swiss.abroad.country, 'CH');
+  assert.deepEqual([swiss.dayPart.from, swiss.dayPart.to], ['18:00', '24:00']);
+  assert.equal(parseQuery('train to Lugano tomorrow', SUNDAY).abroad.country, 'CH');
+  assert.equal(parseQuery('明早 9 点坐 M1', SUNDAY).dayPart, null, 'a clock time wins over a part of the day');
+  assert.equal(parseQuery('flight to Munich', SUNDAY).abroad.country, 'DE');
+  assert.equal(parseQuery('a nice day in Milan', SUNDAY).abroad, null);
 });

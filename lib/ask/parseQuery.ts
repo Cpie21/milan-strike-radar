@@ -18,7 +18,13 @@ export type ParsedQuery = {
   cities: string[]; // city tags in order of mention
   modes: Mode[]; // keyword hits only; the model may add semantic ones
   lines: string[];
+  dayPart: DayPart | null; // "早上", "下午"…: a rough time, said as an assumption
+  abroad: Abroad | null; // a destination outside Italy
+  daily: boolean; // school, work, commuting: everyday local travel
 };
+
+export type DayPart = { from: string; to: string; zh: string; en: string };
+export type Abroad = { country: string; zh: string; en: string };
 
 const WEEKDAYS: Record<string, number> = { 日: 0, 天: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
 const EN_WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -131,6 +137,36 @@ export function parseTime(text: string): string | null {
   return null;
 }
 
+// A part of the day, when no clock time is given. Read as a span (any
+// strike inside it counts) and always shown as an assumption.
+const DAY_PARTS: [RegExp, DayPart][] = [
+  [/凌晨|清晨|early morning/i, { from: '05:00', to: '08:00', zh: '清晨', en: 'early morning' }],
+  [/早上|早晨|上午|明早|今早|早高峰|morning|mattina/i, { from: '06:00', to: '10:00', zh: '早上', en: 'morning' }],
+  [/中午|午饭|\bnoon\b|lunchtime|pranzo/i, { from: '11:00', to: '14:00', zh: '中午', en: 'midday' }],
+  [/下午|afternoon|pomeriggio/i, { from: '13:00', to: '18:00', zh: '下午', en: 'afternoon' }],
+  [/傍晚|晚高峰|下班后/i, { from: '17:00', to: '20:00', zh: '傍晚', en: 'early evening' }],
+  [/晚上|夜里|今晚|明晚|tonight|evening|\bsera\b|stasera/i, { from: '18:00', to: '24:00', zh: '晚上', en: 'evening' }],
+];
+export function parseDayPart(text: string): DayPart | null {
+  return DAY_PARTS.find(([re]) => re.test(text))?.[1] ?? null;
+}
+
+// Destinations abroad. Italian strikes stop at the border, and the answer
+// has to say so rather than imply the whole route was checked.
+const ABROAD: [RegExp, Abroad][] = [
+  [/瑞士|苏黎世|日内瓦|卢加诺|伯尔尼|巴塞尔|洛迦诺|基亚索|圣莫里茨|switzerland|swiss|svizzera|suisse|schweiz|z[uü]rich|zurigo|geneva|ginevra|gen[eè]ve|lugano|\bbern[ae]?\b|basel|basilea|locarno|chiasso|bellinzona|st\.? ?moritz|\bsbb\b|\btilo\b/i, { country: 'CH', zh: '瑞士', en: 'Switzerland' }],
+  [/德国|慕尼黑|柏林|法兰克福|germany|germania|deutschland|munich|monaco di baviera|m[uü]nchen|berlin|frankfurt|deutsche bahn/i, { country: 'DE', zh: '德国', en: 'Germany' }],
+  [/法国|巴黎|尼斯|里昂|马赛|france|francia|\bparis\b|parigi|nizza|\blyon\b|lione|marseille|marsiglia|sncf/i, { country: 'FR', zh: '法国', en: 'France' }],
+  [/奥地利|维也纳|因斯布鲁克|萨尔茨堡|austria|[oö]sterreich|vienna|\bwien\b|innsbruck|salzburg|salisburgo|[oö]bb/i, { country: 'AT', zh: '奥地利', en: 'Austria' }],
+  [/斯洛文尼亚|卢布尔雅那|slovenia|ljubljana|lubiana/i, { country: 'SI', zh: '斯洛文尼亚', en: 'Slovenia' }],
+  [/摩纳哥|蒙特卡洛|\bmonaco\b|monte ?carlo/i, { country: 'MC', zh: '摩纳哥', en: 'Monaco' }],
+];
+export function parseAbroad(text: string): Abroad | null {
+  return ABROAD.find(([re]) => re.test(text))?.[1] ?? null;
+}
+
+const DAILY = /上学|上课|放学|学校|大学|课程|考试|上班|下班|通勤|公司|实习|买菜|看病|\bschool\b|\bclass(?:es)?\b|universit|campus|\bwork\b|office|commut|lavoro|scuola|lezion/i;
+
 export function parseCities(text: string) {
   const lower = text.toLowerCase();
   const hits: { tag: string; index: number }[] = [];
@@ -160,5 +196,8 @@ export function parseQuery(text: string, today = romeTodayIso()): ParsedQuery {
     cities: parseCities(text),
     modes: (Object.keys(MODE_KEYWORDS) as Mode[]).filter(mode => MODE_KEYWORDS[mode].test(text)),
     lines,
+    dayPart: parseTime(text) ? null : parseDayPart(text),
+    abroad: parseAbroad(text),
+    daily: DAILY.test(text),
   };
 }

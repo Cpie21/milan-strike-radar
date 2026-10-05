@@ -135,11 +135,6 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
         const reason = res.status === 429 ? ((await res.json().catch(() => ({}))).error === 'daily_limit' ? 'daily' : 'rate') : 'down';
         setError(reason); setBusy(false); return;
       }
-      if (fresh) {
-        const count = readQuota(today) + 1;
-        try { localStorage.setItem(QUOTA_KEY, JSON.stringify({ date: today, used: count })); } catch { /* ignore */ }
-        setUsed(count);
-      }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -155,6 +150,12 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
           if (event.type === 'stage') { seen.push(event); setStages(prev => [...prev, event]); }
           else if (event.type === 'final') {
             token.current = event.refineToken ?? null;
+            // A question is used up only when it is answered.
+            if (fresh) {
+              const count = readQuota(today) + 1;
+              try { localStorage.setItem(QUOTA_KEY, JSON.stringify({ date: today, used: count })); } catch { /* ignore */ }
+              setUsed(count);
+            }
             setResult(event.result);
             if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result });
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
@@ -167,7 +168,8 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
       setBusy(false);
     }
   }
-  const refine = (patch: Hints) => ask(asked, { ...hints, ...patch, modes: [...(hints.modes || []), ...(patch.modes || [])] });
+  // Picked modes replace the guessed ones (a correction, not an addition).
+  const refine = (patch: Hints) => ask(asked, { ...hints, ...patch });
 
   const verdict = result?.kind === 'result'
     ? result.view === 'claim' ? CLAIM[result.matches[0]?.claim || 'none']
@@ -187,7 +189,15 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   return { lang, today, region, query, setQuery, asked, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen };
 }
 
-// The face of the assistant follows what it is doing and what it found.
+// The face on the page is the assistant at rest: it never keeps an answer's
+// mood once the answer is closed, and it goes dark while the answer sheet
+// (which has its own face) is open, so two faces are never awake at once.
+export function pageMood(a: Pick<AskState, 'open'>, strikeDay: boolean): Mood {
+  if (a.open) return 'off';
+  return strikeDay ? 'alert' : 'idle';
+}
+
+// The face in the answer follows what it is doing and what it found.
 export function moodOf(a: Pick<AskState, 'busy' | 'error' | 'result'>): Mood {
   if (a.busy) return 'thinking';
   if (a.error) return 'sorry';
@@ -300,7 +310,7 @@ function LastAnswer({ a, compact }: { a: AskState; compact?: boolean }) {
 // the text after it; idle on a strike day, it is on alert.
 export function AskField({ ask: a }: { ask: AskState }) {
   const reduce = useReducedMotion();
-  const mood = moodOf(a);
+  const mood = pageMood(a, true);
   return (
     <motion.div className="fixed z-[80] inset-x-0 bottom-0 pointer-events-none" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
       initial={{ opacity: reduce ? 1 : 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -309,7 +319,7 @@ export function AskField({ ask: a }: { ask: AskState }) {
         <div className="relative">
           <AskInput a={a} />
           <span className="absolute left-[8px] inset-y-0 z-10 flex items-center pointer-events-none">
-            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood === 'idle' ? 'alert' : mood} size={15} flat /></motion.span>
+            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood} size={15} flat /></motion.span>
           </span>
         </div>
         {a.left <= 2 && (
@@ -330,7 +340,7 @@ export function AskField({ ask: a }: { ask: AskState }) {
 export function AskModule({ ask: a, place, nudge }: { ask: AskState; place: string; nudge?: { key: string; dir: number } }) {
   return (
     <motion.section layout transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="relative mt-3 overflow-hidden p-3 pb-4" style={{ background: C.surface, borderRadius: 24 }}>
-      <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={moodOf(a)} nudge={nudge} /></motion.div>
+      <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={pageMood(a, false)} nudge={nudge} /></motion.div>
       <span aria-hidden className="absolute inset-x-0 top-0 h-[150px] pointer-events-none" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(255,160,40,0.10), transparent 70%)' }} />
       <div className="relative flex flex-col items-center px-1">
         <p className="mt-4 text-[18px] font-semibold">{tx(a.lang, '有什么想确认的？', 'Anything to check?')}</p>
@@ -346,7 +356,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   const { lang, today, open, setOpen, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall dismissFromTop
+    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall
       header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(a)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{asked}”</p></div>}>
       <AnimatePresence mode="wait" initial={false}>
       {busy ? (
@@ -366,17 +376,16 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 
       {result?.kind === 'clarify' && (
         <div className="mt-4">
-          <p className="text-[16px] font-semibold">{result.missing === 'date' ? tx(lang, '你想查哪一天？', 'Which day?') : tx(lang, '你坐什么交通？', 'Which transport?')}</p>
+          <p className="text-[16px] font-semibold">{result.missing === 'date' ? tx(lang, '你想查哪一天？', 'Which day?') : tx(lang, '你会坐哪些交通？可以多选', 'Which transport? Pick any')}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {result.missing === 'date' ? <>
               <Chip onClick={() => refine({ date: today })}>{tx(lang, '今天', 'Today')}</Chip>
               <Chip onClick={() => refine({ date: addDaysIso(today, 1) })}>{tx(lang, '明天', 'Tomorrow')}</Chip>
               <Chip onClick={() => refine({ range: 'week' })}>{tx(lang, '本周', 'This week')}</Chip>
               <Chip onClick={() => refine({ range: 'upcoming' })}>{tx(lang, '最近两周', 'Next 2 weeks')}</Chip>
-            </> : (['SUBWAY', 'BUS', 'TRAIN', 'AIRPORT'] as Mode[]).map(m => (
-              <Chip key={m} onClick={() => refine({ modes: [m] })}><span className="flex items-center gap-1.5"><ModeGlyph mode={m} size={15} />{modeName(m, lang)}</span></Chip>
-            ))}
+            </> : null}
           </div>
+          {result.missing === 'mode' && <ModePicker lang={lang} initial={[]} onConfirm={modes => refine({ modes })} />}
         </div>
       )}
 
@@ -400,6 +409,8 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
               {result.understanding.time ? ` · ${result.understanding.time}` : ''}
             </p>
           </div>
+
+          <Assumptions ask={a} result={result} />
 
           {result.unchecked > 0 && (
             <p className="rounded-[12px] px-3.5 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
@@ -435,10 +446,10 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
                     <p className="text-[15px] font-semibold leading-snug">{item.provider}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
                     {item.reason && item.status !== 'CANCELLED' && <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
                     <p className="mt-1 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
-                    {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.ok }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
+                    {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.run }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
                     <div className="mt-2.5"><Bar card={card} /></div>
                     {item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED' && (
-                      <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium">{tx(lang, ...OVERLAP[item.overlap])}<Tag by="rule" lang={lang} /></p>
+                      <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium">{result.understanding.span && item.overlap === 'strike' ? tx(lang, '你说的时段里有一部分在罢工时段内', 'Part of the time you gave is inside the strike') : tx(lang, ...OVERLAP[item.overlap])}<Tag by="rule" lang={lang} /></p>
                     )}
                     <button onClick={() => go(item.date, item.path)} className="mt-2 text-[13px] font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, `查看 ${dayLabel(item.date, lang)} 全部 →`, `See all of ${dayLabel(item.date, lang)} →`)}</button>
                   </div>
@@ -454,6 +465,8 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
               <span className="text-[13px] font-semibold" style={{ color: C.ok }}>{tx(lang, '没有相关罢工', 'No strike')}</span>
             </div>
           ))}
+
+          {result.level === 'clear' && <Checked ask={a} result={result} />}
 
           {result.excluded.length > 0 && (
             <p className="text-[12.5px] px-1" style={{ color: C.text3 }}>
@@ -583,6 +596,87 @@ function Feedback({ ask: a }: { ask: AskState }) {
       ) : (
         <p className="text-[13.5px] flex items-center gap-1.5" style={{ color: C.text2 }}><Check size={14} weight="bold" color={C.ok} />{tx(lang, '谢谢，我们会用它改进回答', 'Thanks — this helps us improve')}</p>
       )}
+    </div>
+  );
+}
+
+// Transport, several at once, then confirm: one tap per mode would send a
+// question for each.
+function ModePicker({ lang, initial, onConfirm }: { lang: Lang; initial: Mode[]; onConfirm: (modes: Mode[]) => void }) {
+  const [picked, setPicked] = useState<Mode[]>(initial);
+  const toggle = (m: Mode) => setPicked(p => (p.includes(m) ? p.filter(x => x !== m) : [...p, m]));
+  return (
+    <div className="mt-3">
+      <div className="grid grid-cols-4 gap-2">
+        {(['SUBWAY', 'BUS', 'TRAIN', 'AIRPORT'] as Mode[]).map(m => {
+          const on = picked.includes(m);
+          return (
+            <motion.button key={m} whileTap={{ scale: 0.95 }} onClick={() => toggle(m)} aria-pressed={on}
+              className="relative h-[68px] rounded-[16px] flex flex-col items-center justify-center gap-1.5 text-[13px] font-semibold" style={{ background: on ? C.surface3 : C.surface2, boxShadow: on ? 'inset 0 0 0 1.5px rgba(255,255,255,0.7)' : 'none', color: on ? C.text : C.text2 }}>
+              {on ? <ModeBadge mode={m} size={22} /> : <ModeGlyph mode={m} size={20} />}{modeName(m, lang)}
+              {on && <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center" style={{ background: '#FFFFFF' }}><Check size={10} weight="bold" color="#000" /></span>}
+            </motion.button>
+          );
+        })}
+      </div>
+      <button disabled={!picked.length} onClick={() => onConfirm(picked)} className="mt-3 w-full h-11 rounded-[14px] text-[14.5px] font-semibold disabled:opacity-40" style={{ background: '#454A54', color: '#FFFFFF' }}>
+        {picked.length ? tx(lang, `按 ${picked.map(m => modeName(m, lang)).join('、')} 查`, `Check ${picked.map(m => modeName(m, lang)).join(', ')}`) : tx(lang, '至少选一种', 'Pick at least one')}
+      </button>
+    </div>
+  );
+}
+
+// What the answer took for granted, each correctable where it can be.
+function Assumptions({ ask: a, result }: { ask: AskState; result: Extract<AskResult, { kind: 'result' }> }) {
+  const { lang } = a;
+  const [editing, setEditing] = useState(false);
+  const list = result.understanding.assumptions || [];
+  const local = list.find(x => x.kind === 'local_modes');
+  const part = list.find(x => x.kind === 'day_part');
+  const abroad = list.find(x => x.kind === 'abroad');
+  if (!local && !part && !abroad) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {(local || part) && (
+        <div className="rounded-[14px] px-3.5 py-2.5 text-[13px] leading-relaxed" style={{ background: C.surface2, color: C.text2 }}>
+          <span style={{ color: C.text3 }}>{tx(lang, '我是这样理解的：', 'Read as: ')}</span>
+          {local && local.kind === 'local_modes' && <>{tx(lang, '日常出行，查', 'everyday travel: ')}{local.modes.map(m => modeName(m, lang)).join(tx(lang, '、', ', '))}{tx(lang, '（不含机场）', ' (no flights)')}</>}
+          {local && part && tx(lang, '；', '; ')}
+          {part && part.kind === 'day_part' && <>{tx(lang, `${part.zh}按 ${part.from}–${part.to} 算`, `${part.en} as ${part.from}–${part.to}`)}</>}
+          {local && !editing && <button onClick={() => setEditing(true)} className="ml-1.5 font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, '改交通', 'Change')}</button>}
+          {editing && local && local.kind === 'local_modes' && <ModePicker lang={lang} initial={local.modes} onConfirm={modes => { setEditing(false); a.refine({ modes }); }} />}
+        </div>
+      )}
+      {abroad && abroad.kind === 'abroad' && (
+        <div className="rounded-[14px] px-3.5 py-3 text-[13px] leading-relaxed" style={{ background: C.surface2, color: C.text2 }}>
+          <p className="text-[14px] font-semibold" style={{ color: C.text }}>{tx(lang, `去${abroad.zh}：这里只覆盖意大利境内这一段`, `To ${abroad.en}: only the Italian part is covered`)}</p>
+          <p className="mt-1">{tx(lang,
+            `到边境前的列车由 Trenord 或 Trenitalia 运营，会受意大利铁路罢工影响，上面的结论就是这一段的。过境后由${abroad.country === 'CH' ? '瑞士联邦铁路 SBB' : '当地铁路'}运营，不在意大利的罢工登记里，本站没有那一段的数据。`,
+            `Up to the border the train is run by Trenord or Trenitalia and is affected by Italian rail strikes; the answer above is about that part. Past the border it is run by ${abroad.country === 'CH' ? 'Swiss Federal Railways (SBB)' : 'the local railway'}, which is not in Italy's strike register and not covered here.`)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const romeStamp = (iso: string, lang: Lang) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Rome', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map(x => [x.type, x.value]));
+  return tx(lang, `${p.month}月${p.day}日 ${p.hour}:${p.minute}`, `${p.day}/${p.month} ${p.hour}:${p.minute}`);
+};
+
+// A "no strike" answer says what it is based on.
+function Checked({ ask: a, result }: { ask: AskState; result: Extract<AskResult, { kind: 'result' }> }) {
+  const { lang } = a;
+  const modes = result.checked?.modes.length ? result.checked.modes : (['SUBWAY', 'BUS', 'TRAIN', 'AIRPORT'] as Mode[]);
+  const range = result.range.from === result.range.to ? dayLabel(result.range.from, lang) : `${dayLabel(result.range.from, lang)} – ${dayLabel(result.range.to, lang)}`;
+  return (
+    <div className="rounded-[14px] px-3.5 py-3 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+      <p className="font-semibold" style={{ color: C.text }}>{tx(lang, '查过的范围', 'What was checked')}</p>
+      <ul className="mt-1.5 flex flex-col gap-1">
+        <li className="flex items-center gap-1.5"><Check size={12} weight="bold" color={C.ok} />{tx(lang, '意大利交通部罢工登记，以及运营方公告', 'Italy\'s official strike register and operator notices')}</li>
+        <li className="flex items-center gap-1.5"><Check size={12} weight="bold" color={C.ok} /><span className="flex items-center gap-1">{modes.map(m => <ModeBadge key={m} mode={m} size={14} />)}</span>{modes.map(m => modeName(m, lang)).join(tx(lang, '、', ', '))} · {range}</li>
+        {result.lastSync && <li className="flex items-center gap-1.5"><Check size={12} weight="bold" color={C.ok} />{tx(lang, `数据更新于 ${romeStamp(result.lastSync, lang)}`, `Data as of ${romeStamp(result.lastSync, lang)}`)}</li>}
+      </ul>
     </div>
   );
 }

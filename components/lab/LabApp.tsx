@@ -17,7 +17,7 @@ import type { Translation } from '../../lib/lab/translate';
 import { CalendarSheet, CitySheet, HomeScreenSheet, SupportSheet, WidgetSheet } from './sheets';
 import { ModeBadge } from './ui';
 import MonthSheet from './MonthSheet';
-import { C, EASE, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
+import { C, EASE, MODE_COLOR, NUM, R, SANS, SPRING, TONAL, TYPE } from './theme';
 import { track } from './track';
 
 type City = { tag: string; zh: string; en: string; path: string };
@@ -61,6 +61,18 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     ? jumpModes.slice(0, 2).map((m, i, all) => `radial-gradient(${all.length > 1 ? '70%' : '110%'} 70% at ${all.length > 1 ? (i ? '85%' : '15%') : '50%'} -5%, ${MODE_COLOR[m].main}38, transparent 72%)`).join(', ')
     : 'radial-gradient(110% 70% at 50% -5%, rgba(255,255,255,0.06), transparent 72%)';
 
+  // Safari's bars take theme-color: match the top of the page, which glows
+  // in the striking mode's colour on strike days.
+  const topTint = jumpModes.length ? MODE_COLOR[jumpModes[0]].main : null;
+  useEffect(() => {
+    const mix = (hex: string, k: number) => {
+      const n = parseInt(hex.slice(1), 16), base = [10, 11, 13];
+      return `#${[n >> 16, (n >> 8) & 255, n & 255].map((v, i) => Math.round(base[i] + (v - base[i]) * k).toString(16).padStart(2, '0')).join('')}`;
+    };
+    const color = topTint ? mix(topTint, 0.2) : '#0A0B0D';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', color));
+  }, [topTint]);
+
   useEffect(() => {
     const tick = () => setNow(romeMinutes());
     const first = setTimeout(() => {
@@ -100,10 +112,12 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });
   const calm = dayCards.length === 0;
   const neighbour = (iso: string, mode: Mode) => (byDate.get(iso) || []).find(c => c.category === mode);
+  // Days sit side by side: the old one slides out as the new one slides in,
+  // at the pace of the rail's own selection, with nothing fading first.
   const variants = {
-    enter: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * 24, filter: reduce ? 'none' : 'blur(6px)' }),
-    center: { opacity: 1, x: 0, filter: 'blur(0px)' },
-    exit: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * -16, filter: reduce ? 'none' : 'blur(4px)' }),
+    enter: (d: number) => (reduce ? { opacity: 0 } : { x: `calc(${d * 100}% + ${d * 16}px)` }),
+    center: { x: 0, opacity: 1 },
+    exit: (d: number) => (reduce ? { opacity: 0 } : { x: `calc(${d * -100}% - ${d * 16}px)` }),
   };
 
   return (
@@ -155,8 +169,9 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         )}
 
         <div className="px-4 pt-3">
-          <AnimatePresence mode="wait" initial={false} custom={direction}>
-            <motion.div key={selected} custom={direction} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.24, ease: EASE }} className="flex flex-col gap-3">
+          <div className="relative -mx-4 px-4" style={{ overflowX: 'clip' }}>
+          <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+            <motion.div key={selected} custom={direction} variants={variants} initial="enter" animate="center" exit="exit" transition={reduce ? { duration: 0.15 } : SPRING} className="flex flex-col gap-3">
               {dayCards.length ? dayCards.map(card => {
                 const prev = neighbour(addDaysIso(selected, -1), card.category);
                 const nxt = neighbour(addDaysIso(selected, 1), card.category);
@@ -181,6 +196,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
               )}
             </motion.div>
           </AnimatePresence>
+          </div>
 
           {/* Outside the per-day transition, so it stays put across calm days */}
           {calm && <AskModule ask={ask} place={name} nudge={{ key: selected, dir: direction }} />}

@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { monthLabel, weekday, type Lang, type Mode, type RailTile } from '../../lib/lab/model';
 import { ModeBadge } from './ui';
-import { C, NUM, SPRING } from './theme';
+import { C, MODE_COLOR, NUM, SPRING } from './theme';
 
 const TILE_W = 54;
 const PAST_W = 34;
@@ -63,12 +63,21 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
           </div>
         </div>
       )}
-      {future.map(tile => (
-        <div key={tile.date} data-month={tile.date} className="shrink-0 flex flex-col" style={{ width: TILE_W }}>
-          <span className="h-[18px] pl-1 text-[11.5px] font-medium whitespace-nowrap" style={{ color: C.text3 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
-          <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} />
-        </div>
-      ))}
+      {future.map((tile, i) => {
+        // The mode that runs on overnight into the next day, if any.
+        const after = future[i + 1];
+        const bridge = tile.joinNext && after ? strikeModes(tile).find(m => strikeModes(after).includes(m)) ?? null : null;
+        const before = future[i - 1];
+        const fromPrev = tile.joinPrev && before ? strikeModes(tile).find(m => strikeModes(before).includes(m)) ?? null : null;
+        // Strong where you are, weak on the day it continues into.
+        const focus = tile.date === selected || (bridge !== null && after?.date === selected) || (fromPrev !== null && before?.date === selected);
+        return (
+          <div key={tile.date} data-month={tile.date} className="shrink-0 flex flex-col" style={{ width: TILE_W }}>
+            <span className="h-[18px] pl-1 text-[11.5px] font-medium whitespace-nowrap" style={{ color: C.text3 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
+            <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} />
+          </div>
+        );
+      })}
     </motion.div>
   );
 }
@@ -78,35 +87,43 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
 export const strikeModes = (tile: { cards: { category: Mode; status: string }[] }) =>
   [...new Set(tile.cards.filter(c => c.status !== 'CANCELLED').map(c => c.category))];
 
-function Day({ tile, today, selected, lang, onSelect, past }: { tile: Extract<RailTile, { kind: 'day' }>; today: string; selected: boolean; lang: Lang; onSelect: (d: string) => void; past?: boolean }) {
+function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromPrev = null, focus = false }: {
+  tile: Extract<RailTile, { kind: 'day' }>; today: string; selected: boolean; lang: Lang; onSelect: (d: string) => void; past?: boolean;
+  bridge?: Mode | null; fromPrev?: Mode | null; focus?: boolean;
+}) {
   const modes = strikeModes(tile);
   const isToday = tile.date === today;
   const ring = selected ? '#FFFFFF' : C.surface;
+  const reduce = useReducedMotion();
+  // An overnight strike: a thick bar in the mode's colour runs from this
+  // day's badge to the next day's, under the badges, like a multi-day event
+  // in a calendar. Solid when one of the two days is selected, faint else.
+  const join = bridge ?? fromPrev;
   return (
     <motion.button data-date={tile.date} whileTap={{ scale: 0.94 }} onClick={() => onSelect(tile.date)} aria-pressed={selected}
+      animate={{ scale: selected && !past ? 1.06 : 1 }} transition={reduce ? { duration: 0 } : SPRING}
       aria-label={`${tile.date}${modes.length ? '' : lang === 'en' ? ', no strikes' : '，无罢工'}`}
       className="relative h-[76px] flex flex-col items-center pt-[9px] shrink-0"
       style={{ width: past ? PAST_W : '100%', borderRadius: past ? 16 : 22, background: past ? 'transparent' : C.surface }}>
       {selected && (
-        <motion.span layoutId="rail-selection" transition={SPRING} className="absolute inset-0 bg-white" style={{ borderRadius: past ? 16 : 22, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }}>
-          <span className="absolute left-1/2 -bottom-[5px] w-[11px] h-[11px] -translate-x-1/2 rotate-45 rounded-[2px] bg-white" />
-        </motion.span>
+        <motion.span layoutId="rail-selection" transition={SPRING} className="absolute inset-0 bg-white" style={{ borderRadius: past ? 16 : 22, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }} />
       )}
       <span className="relative h-[15px] text-[11.5px] font-medium leading-[15px] whitespace-nowrap" style={{ color: selected ? 'rgba(10,11,13,0.55)' : isToday ? C.text : C.text3 }}>
         {isToday ? (lang === 'en' ? 'Today' : '今天') : past ? weekday(tile.date, lang).replace('周', '').slice(0, lang === 'en' ? 2 : 1) : weekday(tile.date, lang)}
       </span>
       <span className="relative mt-[2px] font-semibold tabular-nums leading-[26px]" style={{ fontSize: past ? 17 : 23, color: selected ? C.ink : past ? C.text3 : C.text, fontFamily: NUM }}>{Number(tile.date.slice(8))}</span>
+      {!past && join && (
+        <span aria-hidden className="absolute bottom-[12px] h-[12px]" style={{
+          left: fromPrev ? -GAP - 1 : '50%', right: bridge ? -GAP - 1 : '50%',
+          borderRadius: `${fromPrev ? 0 : 6}px ${bridge ? 0 : 6}px ${bridge ? 0 : 6}px ${fromPrev ? 0 : 6}px`,
+          background: MODE_COLOR[join].main, opacity: focus ? 0.95 : 0.35,
+        }} />
+      )}
       <span className="relative mt-auto mb-[9px] h-[18px] flex items-center">
         {past
           ? modes.length > 0 && <i className="w-[5px] h-[5px] rounded-full" style={{ background: selected ? 'rgba(10,11,13,0.45)' : C.text3 }} />
           : modes.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
       </span>
-      {/* An overnight strike: one continuous line through both tiles. */}
-      {!past && (tile.joinPrev || tile.joinNext) && (
-        <span aria-hidden className="absolute bottom-[4px] h-[2px]" style={{
-          left: tile.joinPrev ? -GAP : '50%', right: tile.joinNext ? -GAP : '50%', background: selected ? 'rgba(10,11,13,0.25)' : 'rgba(255,255,255,0.22)',
-        }} />
-      )}
     </motion.button>
   );
 }

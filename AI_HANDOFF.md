@@ -224,3 +224,7 @@ Server contract needed:
 - **Data and look.** It reads the same `/api/strikes` fields and draws the amber LED face. Planned windows only; "运营结束" ("end of service") stays as the end, and it never claims a line is stopped (a test enforces this).
 - **Sizes.** Small, medium and large.
 - **Adoption.** Production can adopt it whenever you like.
+
+**Ask quota and budget (lab v13)**
+- **Budget errors.** `lib/aiBudget.ts` now runs a call unmetered, and logs it, on *any* RPC error. Only an explicit `false` from `reserve_ai_budget` counts as over budget. Previously a transient database error told users "this month's answers are used up". The shared ledger is still needed for a real cap.
+- **Daily limit.** The per-IP daily Ask limit counts only answered questions; refusals and errors don't use one up. It is still per instance until the shared limiter exists.

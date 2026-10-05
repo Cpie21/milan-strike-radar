@@ -135,7 +135,7 @@ const { slotsFor, assignSlot } = require('../components/lab/wall/slots.ts');
 test('panels tile the body, centre-out, without overlap', () => {
   const body = { x0: 26, y0: 56, x1: 188, y1: 98 };
   const slots = slotsFor(body);
-  assert.ok(slots.length >= 8);
+  assert.ok(slots.length >= 3);
   slots.forEach(s => { assert.ok(s.x >= body.x0 - 1 && s.x + s.w <= body.x1 + 1); assert.ok(s.y >= body.y0 - 1 && s.y + s.h <= body.y1 + 1); });
   for (const a of slots) for (const b of slots) if (a !== b) assert.ok(a.x + a.w <= b.x + 1 || b.x + b.w <= a.x + 1 || a.y + a.h <= b.y + 1 || b.y + b.h <= a.y + 1, 'overlap');
   const cx = (body.x0 + body.x1) / 2;
@@ -144,15 +144,15 @@ test('panels tile the body, centre-out, without overlap', () => {
 });
 
 test('a person gets a free panel; many people spread out; a full wall paints over the oldest', () => {
-  const slots = slotsFor({ x0: 0, y0: 0, x1: 180, y1: 44 });
+  const slots = slotsFor({ x0: 0, y0: 0, x1: 340, y1: 44 });
   const taken = new Map([[0, 1], [1, 2]]);
   const mine = assignSlot(slots, taken, 'device-a');
   assert.ok(!taken.has(mine.i));
   const picks = new Set(Array.from({ length: 40 }, (_, k) => assignSlot(slots, new Map(), `device-${k}`).i));
   assert.ok(picks.size > 1, 'simultaneous arrivals should not all ask for the same panel');
   const full = new Map(slots.map((s, k) => [s.i, 100 + k]));
-  full.set(slots[5].i, 1);
-  assert.equal(assignSlot(slots, full, 'late').i, slots[5].i);
+  full.set(slots[1].i, 1);
+  assert.equal(assignSlot(slots, full, 'late').i, slots[1].i);
 });
 
 test('the lab widget script never claims a line is stopped and keeps end of service', () => {

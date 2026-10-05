@@ -2,7 +2,9 @@ import type { Mode } from '../../lib/lab/model';
 
 // One visual system: solid dark surfaces, one radius family. Colour has two
 // jobs only: hue says which transport (so "is my mode hit?" is a glance),
-// and green says service still runs. Calm days carry no colour at all.
+// and mint says "fine". Guaranteed hours are drawn in timetable ivory: the
+// service simply runs, so they look like the normal printed timetable,
+// not like another colour competing with the mode. Calm days carry no colour.
 
 export const C = {
   bg: '#0A0B0D',
@@ -16,23 +18,29 @@ export const C = {
   text3: 'rgba(245,246,247,0.42)',
   stop: '#FF5A4E',
   stopSoft: 'rgba(255,90,78,0.14)',
-  ok: '#3DDC84',
-  okSoft: 'rgba(61,220,132,0.13)',
+  ok: '#4AD9A7',
+  okSoft: 'rgba(74,217,167,0.13)',
+  run: '#EDE6D3', // guaranteed hours: the service runs as timetabled
   pend: '#F5B544',
   pendSoft: 'rgba(245,181,68,0.13)',
   cancel: 'rgba(245,246,247,0.32)',
   ink: '#0A0B0D', // text on white
 };
 
-// Mode hues. `main` marks things on dark (glyphs, bars, text); `deep` is
-// the fill behind white text (all >= 4.6:1); `soft` tints a surface.
-// Metro takes Milan's metro red; buses ATM orange; trains a rail blue;
-// flights violet.
+// Mode hues, from what these things look like in Italy, so people match
+// the colour to what they ride:
+//   metro   – rosso: the red "M" of Milan's and Rome's metro signs
+//   bus     – arancio ministeriale: the orange Italian buses wore for decades
+//   train   – verde: the green of regional trains (Trenord, the old "treni
+//             verdi"); red is taken by the metro
+//   airport – azzurro: the national azure, as on ITA Airways' tails
+// `main` marks things on dark (glyphs, bars, text); `deep` is the fill
+// behind white text (all >= 4.5:1); `soft` tints a surface.
 export const MODE_COLOR: Record<Mode, { main: string; deep: string; soft: string }> = {
-  SUBWAY: { main: '#FF5A4E', deep: '#D63B30', soft: 'rgba(255,90,78,0.16)' },
-  BUS: { main: '#FF9F2E', deep: '#B85C00', soft: 'rgba(255,159,46,0.16)' },
-  TRAIN: { main: '#4C8DFF', deep: '#2F6BE0', soft: 'rgba(76,141,255,0.18)' },
-  AIRPORT: { main: '#A97FFF', deep: '#7A4FE0', soft: 'rgba(169,127,255,0.18)' },
+  SUBWAY: { main: '#FF5147', deep: '#D52B20', soft: 'rgba(255,81,71,0.16)' },
+  BUS: { main: '#FF8F1F', deep: '#BF5700', soft: 'rgba(255,143,31,0.16)' },
+  TRAIN: { main: '#3BBF6E', deep: '#178043', soft: 'rgba(59,191,110,0.17)' },
+  AIRPORT: { main: '#4DA3FF', deep: '#1F6FD1', soft: 'rgba(77,163,255,0.17)' },
 };
 
 // Controls, one rule: on this dark ground every button label is white.

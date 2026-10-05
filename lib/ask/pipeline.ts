@@ -7,7 +7,7 @@ import { geographyContext, indirectRail, type ScopeType } from '../strikeScope';
 import type { EvidenceWindow } from '../strikeEvidence';
 import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils';
 import { choice, decide, noul, type DecisionResult } from './jev';
-import { parseQuery, unsupportedPlace, weekEnd, type DateScope, type Mode, type ParsedQuery } from './parseQuery';
+import { parseQuery, unsupportedPlace, weekEnd, type Abroad, type DateScope, type Mode, type ParsedQuery } from './parseQuery';
 
 // Query → understanding → retrieval → parallel decisions → evidence.
 // Jev classifies and judges relevance; code owns dates, clock arithmetic,
@@ -21,6 +21,17 @@ export type ClaimVerdict = 'confirms' | 'exaggerates' | 'contradicts';
 export type By = 'rule' | 'jev' | 'default';
 
 export type Hints = { date?: string; range?: 'week' | 'upcoming'; modes?: Mode[] };
+export type Purpose = 'daily' | 'airport' | 'intercity' | 'abroad' | 'unspecified';
+
+// What the answer took for granted, said out loud so it can be corrected.
+// Most questions don't follow a template ("will I hit a strike going to
+// school next week?"); rather than ask back or answer for everything, the
+// answer reads the likely meaning and shows it.
+export type Assumption =
+  | { kind: 'local_modes'; modes: Mode[] } // everyday travel: metro, bus/tram, local trains; no flights
+  | { kind: 'day_part'; from: string; to: string; zh: string; en: string } // "早上" read as 06:00–10:00
+  | { kind: 'abroad'; country: string; zh: string; en: string } // only the Italian part is covered
+  | { kind: 'page_city'; city: string }; // no city named: the one being viewed
 
 export type Understanding = {
   query: string;
@@ -29,10 +40,14 @@ export type Understanding = {
   scope: DateScope | null;
   scopeBy: By;
   time: string | null;
+  span: { from: string; to: string } | null; // a part of the day instead of a clock time
   city: string;
   cityBy: By;
   modes: { mode: Mode; by: By; p: number | null }[];
   lines: string[];
+  purpose: Purpose;
+  abroad: Abroad | null;
+  assumptions: Assumption[];
   fallback: boolean;
 };
 
@@ -82,6 +97,7 @@ export type AskResult =
       excluded: Judged[];
       days: DaySummary[];
       range: { from: string; to: string };
+      checked: { cities: string[]; modes: Mode[] }; // what a "no strike" answer is based on
       lastSync: string | null;
       cost: number;
       unchecked: number; // candidates beyond the judging limit: never read as "no impact"
@@ -108,6 +124,17 @@ const UNDERSTAND_QUESTIONS = {
       other: 'Not a question about Italian transport strikes',
     },
   },
+  purpose: {
+    type: 'choice' as const,
+    instructions: 'What is the travel for, as far as the question says?',
+    criteria: {
+      daily: 'Everyday local travel: going to school, university, work, shopping or appointments in or around the city',
+      airport: 'Catching a flight, or going to or from an airport',
+      intercity: 'A trip to another Italian city',
+      abroad: 'A trip that crosses into another country, such as a train to Switzerland or France',
+      unspecified: 'The question does not say what the travel is for',
+    },
+  },
   ...Object.fromEntries(MODES.map(mode => [`mode_${mode}`, {
     type: 'noul' as const,
     instructions: `The user's question involves ${MODE_EN[mode]}${mode === 'AIRPORT' ? ', including catching a flight' : ''}.`,
@@ -118,7 +145,7 @@ function judgeQuestions(claim: boolean) {
   return {
     relevant: {
       type: 'noul' as const,
-      instructions: 'Would this strike plausibly disrupt the journey or answer the question the user described? Judge operator, line, transport mode and place. A strike by a different operator than the one the user relies on (for example a regional Trenord strike for a high-speed Frecciarossa trip) is not relevant; a national or general strike of the same mode is relevant.',
+      instructions: 'Would this strike plausibly disrupt the journey or answer the question the user described? Judge operator, line, transport mode and place. A strike by a different operator than the one the user relies on (for example a regional Trenord strike for a high-speed Frecciarossa trip) is not relevant; a national or general strike of the same mode is relevant. For a trip that crosses the border, an Italian strike only affects the Italian part of the route: a Trenord or national rail strike is relevant to a train from Milan to Switzerland (Trenord and Trenitalia run the Italian section), while an airport strike is not relevant to a train trip.',
       criteria: { true: 'The strike can affect what the user asked about', false: 'The strike does not concern what the user asked about' },
     },
     reason: {
@@ -163,12 +190,18 @@ function spans(windows: EvidenceWindow[]) {
   });
 }
 
-export function computeOverlap(time: string | null, windows: EvidenceWindow[], guarantees: EvidenceWindow[]): Overlap | null {
-  if (!time) return null;
-  if (!windows.length) return 'unknown';
-  const t = minutes(time);
+function at(t: number, windows: EvidenceWindow[], guarantees: EvidenceWindow[]): Overlap {
   if (guarantees.some(g => t >= (g.start === null ? 0 : minutes(g.start)) && t < (g.end_kind === 'end_of_service' || !g.end ? 1440 : minutes(g.end)))) return 'guarantee';
   return spans(windows).some(s => t >= s.start && t < s.end) ? 'strike' : 'outside';
+}
+// A clock time, or a span ("evening"): any strike minute in the span counts.
+export function computeOverlap(time: string | null, windows: EvidenceWindow[], guarantees: EvidenceWindow[], span: { from: string; to: string } | null = null): Overlap | null {
+  if (!time && !span) return null;
+  if (!windows.length) return 'unknown';
+  if (time) return at(minutes(time), windows, guarantees);
+  const seen = new Set<Overlap>();
+  for (let t = minutes(span!.from); t < minutes(span!.to); t += 5) seen.add(at(t, windows, guarantees));
+  return seen.has('strike') ? 'strike' : seen.has('guarantee') ? 'guarantee' : 'outside';
 }
 
 export function computeImpact(status: string, windows: EvidenceWindow[], overlap: Overlap | null): Impact {
@@ -192,7 +225,8 @@ function applyHints(parsed: ParsedQuery, hints: Hints): { scopeBy: By } {
   if (hints.date && /^\d{4}-\d{2}-\d{2}$/.test(hints.date)) parsed.scope = { kind: 'day', date: hints.date, text: hints.date };
   if (hints.range === 'week') parsed.scope = { kind: 'range', from: parsed.today, to: weekEnd(parsed.today), text: 'this week' };
   if (hints.range === 'upcoming') parsed.scope = { kind: 'range', from: parsed.today, to: addDaysIso(parsed.today, 14), text: 'upcoming' };
-  if (hints.modes?.length) parsed.modes = [...new Set([...parsed.modes, ...hints.modes.filter(m => MODES.includes(m))])];
+  // Modes picked in a clarify or a correction replace the guessed ones.
+  if (hints.modes?.length) parsed.modes = [...new Set(hints.modes.filter(m => MODES.includes(m)))];
   return { scopeBy: 'rule' };
 }
 
@@ -274,7 +308,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   // instead of answering for the page's city.
   const place = unsupportedPlace(query);
   if (place && !parsed.cities.length) {
-    return { kind: 'out_of_scope', place, understanding: { query, intent: 'other', intentP: null, scope: parsed.scope, scopeBy: 'default', time: parsed.time, city: pageCity, cityBy: 'default', modes: [], lines: parsed.lines, fallback: true } };
+    return { kind: 'out_of_scope', place, understanding: { query, intent: 'other', intentP: null, scope: parsed.scope, scopeBy: 'default', time: parsed.time, span: null, city: pageCity, cityBy: 'default', modes: [], lines: parsed.lines, purpose: 'unspecified', abroad: parsed.abroad, assumptions: [], fallback: true } };
   }
   let understood: DecisionResult | null = null;
   try {
@@ -287,14 +321,28 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   const intent = (intentAnswer?.value as Intent) || heuristicIntent(parsed);
   const modeSet = new Map<Mode, { by: By; p: number | null }>();
   parsed.modes.forEach(mode => modeSet.set(mode, { by: 'rule', p: null }));
+  // A named mode or line ("M1") is the user's choice; the model may only
+  // infer modes when none was named ("going to the airport" → train, bus).
+  const namedModes = parsed.modes.length > 0 || parsed.lines.length > 0;
   for (const mode of MODES) {
     const p = noul(understood, `mode_${mode}`);
-    // A named mode or line ("M1") is the user's choice; the model may only
-    // infer modes when none was named ("going to the airport" → train, bus).
-    const named = parsed.modes.length > 0 || parsed.lines.length > 0;
-    if (p !== null && p >= 0.5 && !named && !modeSet.has(mode)) modeSet.set(mode, { by: 'jev', p });
+    if (p !== null && p >= 0.5 && !namedModes && !modeSet.has(mode)) modeSet.set(mode, { by: 'jev', p });
     else if (p !== null && modeSet.has(mode)) modeSet.set(mode, { by: 'rule', p });
   }
+  // What the travel is for decides which transport is plausible when none
+  // was named. Everyday travel (school, work) is metro, bus/tram and local
+  // trains, never a flight; a trip abroad is a train unless they fly.
+  const purposeAnswer = choice(understood, 'purpose');
+  const purpose: Purpose = parsed.abroad ? 'abroad' : parsed.daily ? 'daily' : (purposeAnswer && purposeAnswer.p >= 0.5 ? purposeAnswer.value as Purpose : 'unspecified');
+  const assumptions: Assumption[] = [];
+  if (!namedModes && purpose === 'daily') {
+    modeSet.clear();
+    (['SUBWAY', 'BUS', 'TRAIN'] as Mode[]).forEach(mode => modeSet.set(mode, { by: parsed.daily ? 'rule' : 'jev', p: parsed.daily ? null : purposeAnswer?.p ?? null }));
+    assumptions.push({ kind: 'local_modes', modes: ['SUBWAY', 'BUS', 'TRAIN'] });
+  }
+  if (!namedModes && purpose === 'abroad' && !modeSet.has('AIRPORT')) { modeSet.clear(); modeSet.set('TRAIN', { by: 'rule', p: null }); }
+  if (parsed.abroad) assumptions.push({ kind: 'abroad', ...parsed.abroad });
+  if (parsed.dayPart) assumptions.push({ kind: 'day_part', ...parsed.dayPart });
   const pageTag = resolveCity(pageCity)?.tag || 'MILANO';
   // The page city is where the user is; a named city may be a destination, so both are searched.
   const city = parsed.cities.includes(pageTag) ? pageTag : parsed.cities[0] || pageTag;
@@ -305,20 +353,26 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
     scope: parsed.scope,
     scopeBy: parsed.scope ? scopeBy : 'default',
     time: parsed.time,
+    span: parsed.dayPart ? { from: parsed.dayPart.from, to: parsed.dayPart.to } : null,
     city,
     cityBy: parsed.cities.length ? 'rule' : 'default',
     modes: [...modeSet].map(([mode, v]) => ({ mode, ...v })),
     lines: parsed.lines,
+    purpose,
+    abroad: parsed.abroad,
+    assumptions,
     fallback: !understood,
   };
+  if (!parsed.cities.length) assumptions.push({ kind: 'page_city', city });
   const cityLabel = resolveCity(city)?.zh || city;
   emit({
     type: 'stage', id: 'understand', ms: Date.now() - started,
     note: understood ? undefined : 'jev_unavailable',
     facts: [
       { label: 'intent', value: intent, by: understood ? 'jev' : 'rule', p: understanding.intentP },
+      { label: 'purpose', value: purpose === 'unspecified' ? '' : purpose, by: parsed.abroad || parsed.daily ? 'rule' : 'jev', p: parsed.abroad || parsed.daily ? null : purposeAnswer?.p ?? null },
       { label: 'date', value: parsed.scope ? (parsed.scope.kind === 'day' ? parsed.scope.date : `${parsed.scope.from} → ${parsed.scope.to}`) : '', by: parsed.scope ? 'rule' : 'default' },
-      { label: 'time', value: parsed.time || '', by: 'rule' },
+      { label: 'time', value: parsed.time || (understanding.span ? `${understanding.span.from}–${understanding.span.to}` : ''), by: 'rule' },
       { label: 'city', value: cityLabel, by: understanding.cityBy },
       ...understanding.modes.map(m => ({ label: 'mode', value: MODE_ZH[m.mode], by: m.by, p: m.p })),
       ...parsed.lines.map(line => ({ label: 'line', value: line, by: 'rule' as const })),
@@ -350,7 +404,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   const cityTags = [...new Set([city, ...parsed.cities, pageTag])].slice(0, 3);
   const [all, lastSync] = await Promise.all([loadCandidates(cityTags, from, to), lastSuccessfulSync()]);
   const wanted = new Set(modeSet.keys());
-  const named = parsed.modes.length > 0 || parsed.lines.length > 0;
+  const named = namedModes;
   // Trains and buses reach airports, so an airport trip also judges them,
   // unless the user named the transport: then nothing else is paid for.
   if (wanted.has('AIRPORT') && view === 'trip' && !named) { wanted.add('TRAIN'); wanted.add('BUS'); }
@@ -389,7 +443,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
     const days = [...byDay.values()];
     const active = pool.filter(c => c.status !== 'CANCELLED');
     emit({ type: 'stage', id: 'evidence', ms: 0, facts: [{ label: 'sync', value: lastSync || '', by: 'db' }] });
-    return { kind: 'result', view, understanding, level: active.length ? 'medium' : 'clear', matches: [], excluded: [], days, range: { from, to }, lastSync, cost, unchecked: 0 };
+    return { kind: 'result', view, understanding, level: active.length ? 'medium' : 'clear', matches: [], excluded: [], days, range: { from, to }, checked: { cities: cityTags, modes: [...wanted] }, lastSync, cost, unchecked: 0 };
   }
 
   // 4. Parallel decisions: one Jev call per candidate, all at once.
@@ -397,7 +451,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   const judgedPool = pool.slice(0, MAX_JUDGED);
   let jevFailures = 0;
   const judged: Judged[] = await Promise.all(judgedPool.map(async candidate => {
-    const overlap = computeOverlap(parsed.time, candidate.windows, candidate.guarantees);
+    const overlap = computeOverlap(parsed.time, candidate.windows, candidate.guarantees, understanding.span);
     const impact = candidate.indirect && candidate.status !== 'CANCELLED' ? 'unknown' : computeImpact(candidate.status, candidate.windows, overlap);
     let result: DecisionResult | null = null;
     try {
@@ -405,10 +459,12 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
         user_question: query,
         user_trip: {
           date: parsed.scope?.kind === 'day' ? parsed.scope.date : `${from} to ${to}`,
-          time: parsed.time || 'not specified',
+          time: parsed.time || (understanding.span ? `${parsed.dayPart?.en} (${understanding.span.from}-${understanding.span.to})` : 'not specified'),
           transport: understanding.modes.map(m => MODE_EN[m.mode]),
           lines: parsed.lines,
           city: resolveCity(city)?.en,
+          purpose,
+          ...(parsed.abroad ? { crosses_border_to: parsed.abroad.en } : {}),
         },
         strike: {
           date: candidate.date,
@@ -476,6 +532,6 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
       { label: 'sync', value: lastSync || '', by: 'db' },
     ],
   });
-  return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, lastSync, cost, unchecked };
+  return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, checked: { cities: cityTags, modes: [...wanted] }, lastSync, cost, unchecked };
 }
 

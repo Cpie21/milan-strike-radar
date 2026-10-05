@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowCounterClockwise, Check } from '@phosphor-icons/react';
 import { tx, type Lang, type Mode } from '../../../lib/lab/model';
 import { colourFor, LIMITS, loadDrawing, myColour, paintLeft, PAINT, strokeCost, uploadDrawing, type Stroke } from '../graffitiStore';
-import { C, EASE, MODE_COLOR, TYPE } from '../theme';
+import { C, EASE, FILLED, MODE_COLOR, TONAL, TYPE } from '../theme';
 import { boxBlur, ledText, PH, PW, sceneFor } from './pixelScene';
 import { assignSlot, slotsFor, type Slot } from './slots';
-import { drawSprite, rng, SPRITE_KINDS, SPRITE_SIZE, type SpriteKind } from './sprites';
+import { drawSprite, rng, SPRITE_KINDS, spriteSize, type SpriteKind } from './sprites';
 
 // The wall, in pixels. The vehicle is parked (it is a strike), everyone's
 // marks are on it, and the button below hands you one can of paint in your
@@ -21,8 +21,10 @@ type Doodle = { count: number; loaded: boolean; marked: boolean; spraying: boole
 export type WallLink = { anticipate: (on: boolean) => void };
 
 const BRUSH = 1; // a one-pixel nozzle: zoomed into a panel, that is detail
+// The gauge's arc: the left third of a circle around the fingertip.
+const ARC = (() => { const r = 38, a0 = (215 * Math.PI) / 180, a1 = (145 * Math.PI) / 180; return `M ${r * Math.cos(a0)} ${r * Math.sin(a0)} A ${r} ${r} 0 0 0 ${r * Math.cos(a1)} ${r * Math.sin(a1)}`; })();
 
-type PixelTag = { kind: SpriteKind; x: number; y: number; flip: boolean; color: string };
+type PixelTag = { kind: SpriteKind; x: number; y: number; flip: boolean; color: string; seed: string; scale: number };
 
 function deviceId() {
   try { return localStorage.getItem('lab_device_id') || 'anon'; } catch { return 'anon'; }
@@ -51,9 +53,12 @@ function placeTags(slots: Slot[], mine: Slot | null, seed: string, count: number
   return Array.from({ length: Math.min(count, free.length) }, (_, k) => {
     const slot = free[k];
     const kind = SPRITE_KINDS[Math.floor(rand() * SPRITE_KINDS.length)];
-    const [w, h] = SPRITE_SIZE[kind];
+    const [w0, h0] = spriteSize(kind);
+    // As big as the panel comfortably holds
+    const scale = Math.max(1, Math.min(1.8, (slot.w * 0.72) / w0, (slot.h * 0.78) / h0));
+    const w = w0 * scale, h = h0 * scale;
     return {
-      kind, flip: rand() < 0.5, color: colourFor(`${seed}|${k}`),
+      kind, flip: rand() < 0.5, color: colourFor(`${seed}|${k}`), seed: `${seed}|${k}`, scale,
       x: slot.x + slot.w / 2 + (rand() - 0.5) * Math.max(0, slot.w - w - 2) * 0.7,
       y: slot.y + slot.h / 2 + (rand() - 0.5) * Math.max(0, slot.h - h - 2) * 0.7,
     };
@@ -148,6 +153,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
 
   // ── Layers and loop ──
   const layers = useRef<{ redraw: (s: Stroke[]) => void } | null>(null);
+  const gauge = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const view = canvas.current;
     const ctx = view?.getContext('2d');
@@ -186,31 +192,37 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       }
       lctx.putImageData(out, 0, 0);
     }
+    // The body's own highlights (the roof's shine, lamp streaks): laid back
+    // over the paint so it sits on curved, lit metal and keeps its gloss.
+    const [gloss, glctx] = make();
+    {
+      const v = vctx.getImageData(0, 0, PW, PH);
+      const out = glctx.createImageData(PW, PH);
+      for (let i = 0; i < v.data.length; i += 4) {
+        const l = (v.data[i] * 0.3 + v.data[i + 1] * 0.59 + v.data[i + 2] * 0.11) / 255;
+        if (l > 0.7) { out.data[i] = 255; out.data[i + 1] = 246; out.data[i + 2] = 228; out.data[i + 3] = Math.round(((l - 0.7) / 0.3) * 110); }
+      }
+      glctx.putImageData(out, 0, 0);
+    }
     const [graf, gctx] = make();
     const [tagLayer, tctx] = make();
+    const [strokeLayer, sctx] = make();
     const [paintAlpha, pactx] = make();
 
     const redraw = (list: Stroke[]) => {
-      // Tags: drawn smooth, then thresholded into hard pixels.
+      // Others' pieces (each has its own outline, shine and drips)
       tctx.clearRect(0, 0, PW, PH);
       const own = live.current.slot;
-      tags.forEach(t => drawSprite(tctx, t.kind, t.x, t.y, t.color, t.flip));
+      tags.forEach(t => drawSprite(tctx, t.kind, t.x, t.y, t.color, t.flip, t.seed, t.scale));
       // Marked but not yet painted: a fist in your colour holds your panel.
-      if (own && ext.current.marked && !list.length) drawSprite(tctx, 'fist', own.x + own.w / 2, own.y + own.h / 2, live.current.mine);
-      gctx.clearRect(0, 0, PW, PH);
-      // Older marks are a little weathered; yours are fresh.
-      gctx.globalAlpha = 0.88;
-      gctx.drawImage(tagLayer, 0, 0);
-      gctx.globalAlpha = 1;
-      gctx.save();
-      if (own) { gctx.beginPath(); gctx.rect(own.x, own.y, own.w, own.h); gctx.clip(); }
-      list.forEach((s, i) => paintStroke(gctx, s, i));
-      gctx.restore();
-      gctx.globalCompositeOperation = 'destination-in';
-      gctx.drawImage(mask, 0, 0);
-      gctx.globalCompositeOperation = 'source-over';
-      // A dark keyline around every painted area: scribbles read as pieces.
-      const painted = gctx.getImageData(0, 0, PW, PH);
+      if (own && ext.current.marked && !list.length) drawSprite(tctx, 'fist', own.x + own.w / 2, own.y + own.h / 2, live.current.mine, false, 'mine', Math.max(1, Math.min(1.6, (own.h * 0.7) / 24)));
+      // Your strokes, inside your panel, with a dark keyline so they read
+      sctx.clearRect(0, 0, PW, PH);
+      sctx.save();
+      if (own) { sctx.beginPath(); sctx.rect(own.x, own.y, own.w, own.h); sctx.clip(); }
+      list.forEach((s, i) => paintStroke(sctx, s, i));
+      sctx.restore();
+      const painted = sctx.getImageData(0, 0, PW, PH);
       const a = painted.data;
       const line: number[] = [];
       for (let y = 1; y < PH - 1; y++) for (let x = 1; x < PW - 1; x++) {
@@ -219,7 +231,15 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
         if (a[i + 3 - 4] > 0 || a[i + 3 + 4] > 0 || a[i + 3 - PW * 4] > 0 || a[i + 3 + PW * 4] > 0) line.push(i);
       }
       line.forEach(i => { a[i] = 18; a[i + 1] = 19; a[i + 2] = 23; a[i + 3] = 200; });
-      gctx.putImageData(painted, 0, 0);
+      sctx.putImageData(painted, 0, 0);
+      gctx.clearRect(0, 0, PW, PH);
+      gctx.globalAlpha = 0.92; // others' pieces a little weathered; yours fresh
+      gctx.drawImage(tagLayer, 0, 0);
+      gctx.globalAlpha = 1;
+      gctx.drawImage(strokeLayer, 0, 0);
+      gctx.globalCompositeOperation = 'destination-in';
+      gctx.drawImage(mask, 0, 0);
+      gctx.globalCompositeOperation = 'source-over';
       // Paint takes the body's light: multiply, then keep only painted pixels.
       pactx.clearRect(0, 0, PW, PH);
       pactx.drawImage(graf, 0, 0);
@@ -227,6 +247,8 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       gctx.drawImage(light, 0, 0);
       gctx.globalCompositeOperation = 'destination-in';
       gctx.drawImage(paintAlpha, 0, 0);
+      gctx.globalCompositeOperation = 'source-atop';
+      gctx.drawImage(gloss, 0, 0);
       gctx.globalCompositeOperation = 'source-over';
     };
     layers.current = { redraw };
@@ -268,7 +290,10 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       }, 380);
       drip = d;
     };
+    let screen = { x: 0, y: 0 };
     const toPixel = (e: PointerEvent) => {
+      const frame = view.parentElement?.getBoundingClientRect();
+      if (frame) screen = { x: e.clientX - frame.left, y: e.clientY - frame.top };
       const r = view.getBoundingClientRect();
       return [((e.clientX - r.left) / r.width) * PW, ((e.clientY - r.top) / r.height) * PH] as [number, number];
     };
@@ -371,30 +396,25 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
         for (let i = 0; i < 26; i++) puffs.push({ x: PW - 30 + Math.random() * 6, y: PH - 4, vx: (tx0 - PW + 30) * (0.9 + Math.random() * 0.3), vy: (ty0 - PH) * (0.9 + Math.random() * 0.3), life: 0.55 + Math.random() * 0.2, c });
         ext.current.onHint?.();
       }
-      // While spraying: mist from the can to the body, and the can itself
-      // The paint gauge lives by your finger, like a stamina wheel: a ring
-      // that drains as you spray, flashes when nearly empty, and fades out
-      // shortly after you lift.
+      // While spraying: mist at the nozzle.
       if (live.current.spraying && pointer) {
-        ring.x = pointer.x; ring.y = pointer.y; ring.until = t + 0.9;
+        ring.until = t + 0.9;
         if (current) for (let i = 0; i < 2; i++) puffs.push({ x: pointer.x + (Math.random() - 0.5) * 2, y: pointer.y + (Math.random() - 0.5) * 2, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 0.15, c: live.current.mine });
       }
-      if (live.current.spraying && t < ring.until) {
+      // The paint gauge: a thick arc to the left of your finger, like a
+      // stamina bar in a game, out from under the thumb. It drains as you
+      // spray, flashes when nearly empty, fades shortly after you lift.
+      const g = gauge.current;
+      if (g) {
+        const on = live.current.spraying && t < ring.until;
         const level = Math.max(0, (live.current.left - spent - (current ? strokeCost(current) : 0)) / PAINT);
-        const fadeOut = Math.min(1, (ring.until - t) / 0.3);
         const low = level < 0.2;
-        const cx = Math.round(ring.x - 6), cy = Math.round(ring.y - 6);
-        for (let k = 0; k < 20; k++) {
-          const ang = -Math.PI / 2 + (k / 20) * Math.PI * 2;
-          const px = Math.round(cx + Math.cos(ang) * 3), py = Math.round(cy + Math.sin(ang) * 3);
-          const filled = k / 20 < level;
-          ctx.globalAlpha = fadeOut * (filled ? (low && Math.floor(t * 6) % 2 ? 0.45 : 1) : 0.35);
-          ctx.fillStyle = filled ? (low ? '#FF5C5C' : live.current.mine) : '#0B0C0E';
-          ctx.fillRect(px, py, 1, 1);
-          ctx.fillStyle = filled ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)';
-          ctx.fillRect(Math.round(cx + Math.cos(ang) * 4), Math.round(cy + Math.sin(ang) * 4), 1, 1);
+        g.style.opacity = on ? String(Math.min(1, (ring.until - t) / 0.3)) : '0';
+        if (on) {
+          g.style.transform = `translate(${screen.x}px, ${screen.y}px)`;
+          const fill = g.querySelector<SVGPathElement>('[data-level]');
+          if (fill) { fill.style.strokeDasharray = `${level} 1`; fill.style.stroke = low ? (Math.floor(t * 6) % 2 ? '#FF5C5C' : '#FF9A9A') : live.current.mine; }
         }
-        ctx.globalAlpha = 1;
       }
       for (let i = puffs.length - 1; i >= 0; i--) {
         const p = puffs[i];
@@ -432,7 +452,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     return { x: `${clamp(0.5 - fx * s) * 100}%`, y: `${clamp(0.5 - fy * s) * 100}%`, scale: s };
   })();
   const caption = !doodle.loaded ? null
-    : spraying ? (empty || left <= 0.5 ? tx(lang, '这罐漆用完了', 'This can is empty') : tx(lang, '这块是你的。拖动来喷，按住不动会流下漆痕', 'This panel is yours. Drag to spray; hold still and it drips'))
+    : spraying ? (empty || left <= 0.5 ? tx(lang, '这罐漆用完了', 'This can is empty') : tx(lang, '这块车身归你：喷几笔，把火气留在车上', 'This panel is yours: spray, and leave your anger on the train'))
       : doodle.marked ? tx(lang, `你的涂鸦和 ${others} 人的一起留在车上`, `Your mark is on it, with ${others} others`) : null;
 
   return (
@@ -440,6 +460,16 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       <div className="relative overflow-hidden" style={{ aspectRatio: `${PW} / ${PH}` }}>
         <motion.canvas ref={canvas} width={PW} height={PH} className="block w-full" initial={false} animate={zoom} transition={reduce ? { duration: 0 } : { duration: 0.55, ease: EASE }}
           style={{ aspectRatio: `${PW} / ${PH}`, imageRendering: 'pixelated', cursor: spraying ? 'crosshair' : 'default', transformOrigin: '0 0' }} />
+        {/* Zoomed in, the frame fades out on every side, as the scene's own sides do */}
+        <motion.span aria-hidden className="absolute inset-0 pointer-events-none" initial={false} animate={{ opacity: spraying ? 1 : 0 }} transition={{ duration: 0.4 }}
+          style={{ background: 'linear-gradient(180deg, #0E0F12 0%, rgba(14,15,18,0) 16%, rgba(14,15,18,0) 84%, #0E0F12 100%), linear-gradient(90deg, #0E0F12 0%, rgba(14,15,18,0) 10%, rgba(14,15,18,0) 90%, #0E0F12 100%)' }} />
+        <div ref={gauge} aria-hidden className="absolute left-0 top-0 pointer-events-none" style={{ opacity: 0, transition: 'opacity 0.2s' }}>
+          <svg width="96" height="96" viewBox="-48 -48 96 96" className="absolute -left-12 -top-12 overflow-visible">
+            <path d={ARC} fill="none" stroke="rgba(10,11,13,0.55)" strokeWidth="9" strokeLinecap="round" />
+            <path d={ARC} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="6" strokeLinecap="round" pathLength={1} />
+            <path data-level d={ARC} fill="none" stroke={mine} strokeWidth="6" strokeLinecap="round" pathLength={1} style={{ strokeDasharray: '1 1' }} />
+          </svg>
+        </div>
       </div>
       {doodle.loaded && !spraying && (
         <span className={`absolute left-3 top-3 h-7 pl-2 pr-2.5 rounded-full flex items-center gap-1.5 tabular-nums ${TYPE.caption}`} style={{ background: 'rgba(10,11,13,0.6)', color: C.text, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
@@ -447,27 +477,6 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
           {tx(lang, `已有 ${doodle.count} 人在车上涂鸦`, `Sprayed by ${doodle.count} people`)}
         </span>
       )}
-      <AnimatePresence initial={false}>
-        {spraying && (
-          <motion.div key="tools" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
-            <div className="px-3 pt-2.5 pb-1 flex items-center gap-2.5">
-              {/* Your colour and what's left in the can, as pixel cells */}
-              <span className="flex items-center gap-1.5">
-                <i className="w-3 h-3" style={{ background: mine }} />
-                <span className="flex gap-[2px]" aria-label={tx(lang, `余量 ${pct}%`, `${pct}% left`)}>
-                  {Array.from({ length: 10 }, (_, i) => <i key={i} className="w-[5px] h-3" style={{ background: i < Math.ceil(pct / 10) ? mine : '#2A2C31' }} />)}
-                </span>
-              </span>
-              <button aria-label={tx(lang, '撤销', 'Undo')} onClick={() => setDraft(d => (d ?? saved).slice(0, -1))} disabled={!strokes.length} className="ml-auto w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-35" style={{ background: C.surface3, color: '#FFFFFF' }}>
-                <ArrowCounterClockwise size={16} weight="bold" />
-              </button>
-              <button onClick={() => finish()} disabled={saving} className={`h-9 px-4 rounded-full flex items-center gap-1.5 whitespace-nowrap ${TYPE.label} font-semibold disabled:opacity-60`} style={{ background: color.deep, color: '#FFFFFF' }}>
-                <Check size={14} weight="bold" />{saving ? tx(lang, '保存中…', 'Saving…') : tx(lang, '完成', 'Done')}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       {(caption || (!spraying && doodle.marked && left > 0.5)) && (
         <div className="px-4 pt-2 pb-1 flex items-center justify-center gap-2 text-center">
           {caption && <p className={TYPE.label} style={{ color: empty ? color.main : C.text2 }}>{caption}</p>}
@@ -478,7 +487,20 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
           )}
         </div>
       )}
-      {footer && <div className="p-2.5 pt-2">{footer}</div>}
+      {/* While spraying, the card's two buttons become the can's two: the
+          same size and places, so the hand doesn't have to look for them. */}
+      <div className="p-2.5 pt-2">
+        {spraying ? (
+          <div className="flex gap-2.5">
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => setDraft(d => (d ?? saved).slice(0, -1))} disabled={!strokes.length} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 disabled:opacity-40 ${TYPE.action}`} style={TONAL}>
+              <ArrowCounterClockwise size={17} weight="bold" />{tx(lang, '撤销一笔', 'Undo')}
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => finish()} disabled={saving} className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 disabled:opacity-60 ${TYPE.action}`} style={FILLED(color.deep)}>
+              <Check size={17} weight="bold" />{saving ? tx(lang, '保存中…', 'Saving…') : tx(lang, `喷好了 · 余漆 ${pct}%`, `Done · ${pct}% left`)}
+            </motion.button>
+          </div>
+        ) : footer}
+      </div>
     </div>
   );
 }

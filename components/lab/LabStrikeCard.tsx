@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SealCheck, SprayBottle } from '@phosphor-icons/react';
+import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SealCheck, SprayBottle, Translate } from '@phosphor-icons/react';
 import {
   AXIS_END, AXIS_START, axisPos, carveGuarantees, markTimes, nowPosition, relativeDay, segments, statusLine, timeSpan, tx, windowsText,
   type Lang, type Mode, type ModeCard, type OfficialRecord,
@@ -51,14 +51,18 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
   const color = cancelled ? C.cancel : MODE_COLOR[card.category].main;
   const openEnd = card.windows.some(w => w.end_kind === 'end_of_service');
   // Guaranteed hours inside the strike are cut out of it and drawn full
-  // height in green: two equal-weight colours, never a line on a line.
+  // height in timetable ivory: two equal-weight fills, never a line on a line.
   const strike = cancelled ? card.windows : carveGuarantees(card.windows, card.guarantees);
   const edgeOf = (t: string | null, x: number, ok = false) => (t ? { t, x, ok } : null);
   const edges = [
     ...card.windows.flatMap(w => [edgeOf(w.start, w.start ? axisPos(mins(w.start)) : 0), w.end_kind !== 'end_of_service' ? edgeOf(w.end, w.end ? axisPos(mins(w.end)) : 1) : null]),
     ...(cancelled ? [] : card.guarantees.flatMap(g => [g.start ? edgeOf(g.start, axisPos(mins(g.start)), true) : null, g.end && g.end_kind !== 'end_of_service' ? edgeOf(g.end, axisPos(mins(g.end)), true) : null])),
-  ].filter((e): e is { t: string; x: number; ok: boolean } => !!e && e.x > 0.001 && e.x < 0.999).sort((a, b) => a.x - b.x)
-    .filter((e, i, all) => i === 0 || e.x - all[i - 1].x > 0.12)
+  ].filter((e): e is { t: string; x: number; ok: boolean } => !!e && e.x > 0.001 && e.x < 0.999)
+    // A strike edge a minute off a guarantee edge (05:59 / 06:00) is one
+    // change: label it once, by the guarantee.
+    .filter((e, _, all) => e.ok || !all.some(o => o.ok && Math.abs(mins(o.t) - mins(e.t)) <= 2))
+    .sort((a, b) => a.x - b.x)
+    .filter((e, i, all) => i === 0 || e.x - all[i - 1].x > 0.14)
     .filter(e => !openEnd || e.x < 0.8);
   const seg = (left: number, width: number) => ({ left: `calc(${left * 100}% + ${left > 0 ? 1 : 0}px)`, width: `calc(${width * 100}% - ${(left > 0 ? 1 : 0) + (left + width < 0.999 ? 1 : 0)}px)` });
   return (
@@ -72,7 +76,7 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
           }} />
         ))}
         {!cancelled && segments(card.guarantees).map((g, i) => (
-          <div key={`g${i}`} className="absolute top-0 h-full rounded-full" style={{ ...seg(g.left, g.width), background: C.ok }} />
+          <div key={`g${i}`} className="absolute top-0 h-full rounded-full" style={{ ...seg(g.left, g.width), background: C.run }} />
         ))}
       </div>
       {/* Hour ticks for scale */}
@@ -86,7 +90,7 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
       )}
       <div className="relative h-4 mt-0.5 text-[11.5px] font-medium tabular-nums" style={{ color: C.text2, fontFamily: NUM }}>
         {label ? <span style={{ color: C.text3 }}>{label}</span> : <>
-          {edges.map(e => <span key={e.t + e.x} className="absolute whitespace-nowrap" style={{ left: `${e.x * 100}%`, transform: `translateX(${e.x < 0.06 ? '0' : e.x > 0.94 ? '-100%' : '-50%'})`, color: e.ok ? C.ok : C.text2 }}>{e.t}</span>)}
+          {edges.map(e => <span key={e.t + e.x} className="absolute whitespace-nowrap" style={{ left: `${e.x * 100}%`, transform: `translateX(${e.x < 0.06 ? '0' : e.x > 0.94 ? '-100%' : '-50%'})`, color: e.ok ? C.run : C.text2 }}>{e.t}</span>)}
           {openEnd && <span className="absolute right-0" style={{ fontFamily: SANS, color: C.text3 }}>{tx(lang, '末班车', 'Last service')}</span>}
         </>}
       </div>
@@ -128,12 +132,17 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
   // own notice, so an official quote outranks it.)
   const doubt = pending ? tx(lang, '官方未公布时段', 'no official hours yet')
     : card.confidence === 'conflict' ? tx(lang, '各来源时段不一致', 'sources disagree on hours')
-      : card.confidence === 'reported' ? tx(lang, '时段仅见报道', 'hours only reported')
+      : card.confidence === 'reported' ? tx(lang, '时段来源自报道', 'hours from press reports')
         : card.status === 'UNCERTAIN' ? tx(lang, '官方状态未定', 'status not final') : null;
   const span = timeSpan(card.windows);
   // A gap between windows is only "guaranteed" if a guarantee covers it;
   // otherwise it is just outside the published strike hours.
-  const inGuarantee = (b: { start: string; end: string }) => card.guarantees.some(g => (g.start === null || g.start <= b.start) && (g.end_kind === 'end_of_service' || (g.end !== null && g.end >= b.end)));
+  // Strike windows often stop a minute short of a guarantee (05:59 / 06:00),
+  // so a gap counts as guaranteed when a guarantee covers it within 2 min.
+  const near = (a: string, b: string) => Math.abs(mins(a) - mins(b)) <= 2;
+  const inGuarantee = (b: { start: string; end: string }) => card.guarantees.some(g => (g.start === null || g.start <= b.start || near(g.start, b.start)) && (g.end_kind === 'end_of_service' || (g.end !== null && (g.end >= b.end || near(g.end, b.end)))));
+  const guardedBreaks = (span?.breaks ?? []).filter(inGuarantee);
+  const openBreaks = (span?.breaks ?? []).filter(b => !inGuarantee(b));
 
   const pill = live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
     : isToday && !pending ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
@@ -182,12 +191,20 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
                   {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.label}`)}
                 </a>
               )}
-              {span.breaks.map(b => (
-                <p key={b.start} className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: inGuarantee(b) ? C.ok : C.text2, fontFamily: SANS }}>
-                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: inGuarantee(b) ? C.ok : C.text3 }} />
-                  {inGuarantee(b) ? tx(lang, `中间 ${b.start}–${b.end} 为保障时段`, `${b.start}–${b.end} guaranteed`) : tx(lang, `中间 ${b.start}–${b.end} 不在已公布罢工时段内`, `${b.start}–${b.end} outside the published strike hours`)}
+              {/* Gaps in one line each kind, however many: guaranteed ones by
+                  the guarantee's own times, the rest as plain gaps */}
+              {guardedBreaks.length > 0 && (
+                <p className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.run, fontFamily: SANS }}>
+                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.run }} />
+                  {tx(lang, `保障时段 ${windowsText(card.guarantees, lang)}`, `Guaranteed ${windowsText(card.guarantees, lang)}`)}
                 </p>
-              ))}
+              )}
+              {openBreaks.length > 0 && (
+                <p className={`mt-1 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.text2, fontFamily: SANS }}>
+                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.text3 }} />
+                  {tx(lang, `${openBreaks.map(b => `${b.start}–${b.end}`).join('、')} 不在已公布罢工时段内`, `${openBreaks.map(b => `${b.start}–${b.end}`).join(', ')} outside the published strike hours`)}
+                </p>
+              )}
             </>
           )}
         </div>
@@ -215,7 +232,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           ) : <Bar card={card} lang={lang} now={isToday ? nowPosition(ctx.nowMinutes) : null} />}
         </div>
 
-        <Details card={card} lang={lang} breaks={span?.breaks ?? []} say={t => (lang === 'en' && ctx.tr[t.trim()] ? ctx.tr[t.trim()].en : t)} />
+        <Details card={card} lang={lang} guaranteesAbove={guardedBreaks.length > 0} say={t => (lang === 'en' && ctx.tr[t.trim()] ? ctx.tr[t.trim()].en : t)} />
 
         {card.indirect && (
           <p className={`mt-3 flex gap-2 rounded-[12px] px-3.5 py-2.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
@@ -232,19 +249,18 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
 }
 
 // ── Details: label left, value right ─────────────────────────────────
-// Guaranteed hours that equal the breaks already named under the time are
-// not repeated here.
+// Guaranteed hours already named under the time are not repeated here.
 
-function Details({ card, lang, breaks, say }: { card: ModeCard; lang: Lang; breaks: { start: string; end: string }[]; say: (text: string) => string }) {
+function Details({ card, lang, guaranteesAbove, say }: { card: ModeCard; lang: Lang; guaranteesAbove: boolean; say: (text: string) => string }) {
   const lines = card.category === 'AIRPORT' && /^AIRLINE/.test(card.scopeType)
     ? tx(lang, '仅该航司航班', 'This airline only')
     : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
       ? <span className="inline-flex flex-wrap justify-end gap-1">{card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l}>{l}</span>)}</span>
       : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
         : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
-  const sameAsBreaks = card.guarantees.length > 0 && card.guarantees.every(g => breaks.some(b => b.start === g.start && b.end === g.end && g.end_kind === 'clock'));
+  const sameAsBreaks = guaranteesAbove;
   const guarantee = card.guarantees.length
-    ? <span className="tabular-nums" style={{ color: C.ok, fontFamily: NUM, fontSize: 16 }}>{windowsText(card.guarantees, lang)}</span>
+    ? <span className="tabular-nums" style={{ fontFamily: NUM, fontSize: 16 }}>{windowsText(card.guarantees, lang)}</span>
     : card.guaranteeSource === 'UNKNOWN' ? null : tx(lang, '无保障计划', 'None');
   const rows: [string, React.ReactNode][] = [
     [tx(lang, '罢工人员', 'Who'), say(card.provider)],
@@ -299,7 +315,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   return (
     <section className="mx-5 mb-5 rounded-[16px] overflow-hidden" style={{ background: C.surface2 }}>
       <button onClick={() => setOpen(v => !v)} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
-        <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: official1 ? 'rgba(61,220,132,0.14)' : C.surface3 }}>
+        <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: official1 ? C.okSoft : C.surface3 }}>
           {official1 ? <SealCheck size={18} weight="fill" color={C.ok} /> : <Info size={17} weight="fill" color={C.text2} />}
         </span>
         <span className="flex-1 min-w-0">
@@ -312,14 +328,6 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.28, ease: EASE }} className="overflow-hidden">
             <div className="flex flex-col gap-5 px-4 pt-1 pb-5" style={{ borderTop: `1px solid ${C.line}` }}>
-              {translated && (
-                <div className="flex justify-end pt-3">
-                  <button onClick={() => setOriginal(v => !v)} className={`h-7 px-2.5 rounded-full ${TYPE.caption}`} style={{ background: C.surface3, color: C.text }}>
-                    {original ? tx(lang, '看译文', 'Show translation') : tx(lang, '看意大利语原文', 'Show Italian original')}
-                  </button>
-                </div>
-              )}
-
               {groups.map(g => (
                 <Group key={g.workforce + g.sector} title={tx(lang, '意大利交通部 · 罢工登记', 'Ministry of Transport · strike register')}>
                   {g.unions.map(u => {
@@ -354,6 +362,15 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
                   <a href={q.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{tx(lang, '打开公告', 'Open notice')}<ArrowUpRight size={12} weight="bold" /></a>
                 </Group>
               ))}
+
+              {/* After the text it applies to, as translated posts do it */}
+              {translated && (
+                <button onClick={() => setOriginal(v => !v)} className={`-mt-2 self-start flex items-center gap-1.5 ${TYPE.caption}`} style={{ color: C.text3 }}>
+                  <Translate size={13} weight="bold" />
+                  {original ? tx(lang, '意大利语原文 · ', 'Italian original · ') : tx(lang, '译自意大利语 · ', 'Translated from Italian · ')}
+                  <span className="font-semibold underline underline-offset-2" style={{ color: C.text2, textDecorationColor: C.lineStrong }}>{original ? tx(lang, '看译文', 'Show translation') : tx(lang, '看原文', 'Show original')}</span>
+                </button>
+              )}
 
               {(press.length > 0 || (card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE')) && (
                 <Group title={tx(lang, '其他参考', 'Also see')}>

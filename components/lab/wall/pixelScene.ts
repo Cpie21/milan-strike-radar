@@ -206,46 +206,71 @@ function metro(): Scene {
   };
 }
 
-// ── Regional train: Trenord "Caravaggio" double-deck cab car ────────────
+// ── Regional train: Trenord "Caravaggio" double-deck, cab car + one more ──
 
-function train(blue: string): Scene {
-  const x0 = 14, x1 = 226, top = 34, bot = 102;
-  const WHITE = SILVER;
-  const nose = x1 - 50;
-  // The Caravaggio's long nose: the roof rolls over into a raked
-  // windscreen, then a short, rounded front with the lamps.
-  const T = (x: number) => (x > nose ? top + Math.round((bot - top) * 0.6 * ((x - nose) / (x1 - nose)) ** 1.5) : top);
-  const B = (x: number) => (x > x1 - 4 ? bot - (x - (x1 - 4)) * 2 : bot);
+function train(): Scene {
+  const top = 34, bot = 102, H = bot - top;
+  const cab0 = 36, x1 = 226, nose = x1 - 50;
+  const GREEN: Ramp = { shine: '#8FE0A9', hi: '#46B26F', base: '#2F9A5B', low: '#1F7344', edge: '#124A2B' };
+  const BLUE = '#2D6FD0';
+  // The Caravaggio's nose: the roof rolls over, slowly then steeply, into a
+  // raked windscreen; a short rounded front below carries the lamps.
+  const T = (x: number) => (x > nose ? top + Math.round(H * 0.62 * ((x - nose) / (x1 - nose)) ** 1.8) : top);
+  const B = (x: number) => (x > x1 - 6 ? bot - Math.round((x - (x1 - 6)) * 1.5) : bot);
+  const flat = () => top, floor = () => bot;
+  // One double-deck side, shared by both cars: tinted window bands on two
+  // decks, green doors, the green band with a blue line.
+  const side = (c: C, a: number, b: number, doors: number[]) => {
+    band(c, a + 6, b - 6, top + 8, 13, '#474D56', 15);
+    const lower = [a + 6, ...doors.flatMap(d => [d - 4, d + 26]), b - 6];
+    for (let i = 0; i < lower.length; i += 2) if (lower[i + 1] - lower[i] > 10) band(c, lower[i], lower[i + 1], top + 35, 12, '#474D56', 15);
+    for (let x = a + 1; x < b; x++) {
+      if (doors.some(d => x >= d - 1 && x <= d + 22) || T(x) > bot - 20) continue;
+      R(c, x, bot - 16, 1, 6, '#2F9A5B'); P(c, x, bot - 16, '#46B26F'); P(c, x, bot - 11, '#1F7344'); R(c, x, bot - 19, 1, 2, BLUE);
+    }
+    doors.forEach(d => {
+      R(c, d - 1, top + 28, 24, H - 28, '#474D56');
+      hull(c, d, d + 21, () => top + 29, floor, GREEN);
+      pane(c, d + 2, top + 33, 8, 22, '#124A2B'); pane(c, d + 12, top + 33, 8, 22, '#124A2B'); R(c, d + 10, top + 29, 2, H - 29, '#124A2B');
+    });
+  };
   return {
-    body: { x0: x0 + 4, y0: top + 2, x1: nose - 4, y1: bot - 2 },
+    body: { x0: 2, y0: top + 2, x1: nose - 4, y1: bot - 2 },
     sign: { x: 158, y: 6, w: 70 },
-    lamps: [[x1 - 4, bot - 17]],
+    lamps: [[x1 - 6, bot - 18]],
     background: c => { station(c); R(c, 0, 16, PW, 1, '#5A5E66'); R(c, 0, 12, PW, 1, '#33363C'); for (let x = 4; x < PW; x += 30) R(c, x, 12, 1, 4, '#3A3D43'); },
     neighbours: () => {},
     vehicle: c => {
-      hull(c, x0, x1, T, B, WHITE);
-      // the raked windscreen in its black mask, following the nose
-      for (let x = nose + 10; x < x1 - 5; x++) { const t = T(x) + 1; R(c, x, t, 1, 9, '#10151B'); R(c, x, t + 1, 1, 6, '#1A222C'); }
-      R(c, x1 - 7, bot - 20, 4, 3, '#FFF3D0'); P(c, x1 - 7, bot - 20, '#FFFFFF');
-      // two decks: continuous tinted window bands split by mullions
-      band(c, x0 + 6, nose + 4, top + 8, 13, '#474D56', 15);
-      [[x0 + 6, 52], [80, 128], [156, nose - 4]].forEach(([a, b]) => band(c, a, b, top + 35, 12, '#474D56', 15));
-      [56, 132].forEach(d => {
-        R(c, d - 1, top + 28, 24, bot - top - 28, '#474D56');
-        hull(c, d, d + 21, () => top + 29, () => bot, { shine: '#8FE0A9', hi: '#46B26F', base: '#2F9A5B', low: '#1F7344', edge: '#124A2B' });
-        pane(c, d + 2, top + 33, 8, 22, '#124A2B'); pane(c, d + 12, top + 33, 8, 22, '#124A2B'); R(c, d + 10, top + 29, 2, bot - top - 29, '#124A2B');
-      });
-      // green band and a blue line, into the nose
-      for (let x = x0 + 1; x < x1 - 2; x++) { if ([56, 132].some(d => x >= d - 1 && x <= d + 22)) continue; R(c, x, bot - 16, 1, 6, '#2F9A5B'); P(c, x, bot - 16, '#46B26F'); P(c, x, bot - 11, '#1F7344'); R(c, x, bot - 19, 1, 2, blue); }
-      R(c, x0 + 4, bot, x1 - x0 - 10, 3, '#1E2024');
-      bogie(c, x0 + 20, bot + 1); bogie(c, x1 - 60, bot + 1);
-      const px = x0 + 70;
+      // The next car, running on out of the frame, joined by its gangway
+      hull(c, -80, cab0 - 7, flat, floor, SILVER);
+      side(c, -80, cab0 - 7, [-6]);
+      R(c, cab0 - 6, top + 10, 5, H - 18, '#1A1C20'); for (let y = top + 11; y < bot - 8; y += 2) R(c, cab0 - 6, y, 5, 1, '#2A2D33');
+      // The cab car
+      hull(c, cab0, x1, T, B, SILVER);
+      side(c, cab0, nose - 6, [70, 128]);
+      // Cab: a side window, then the windscreen in its black mask, from the
+      // roof's curve down to half height, following the nose.
+      pane(c, nose - 4, top + 8, 12, 14, '#474D56');
+      for (let x = nose + 10; x <= x1 - 3; x++) {
+        const t = T(x) + 1, b = top + Math.round(H * 0.5) + Math.round((x - nose - 10) * 0.15);
+        if (b - t < 2) continue;
+        R(c, x, t, 1, b - t, '#0E1319');
+        P(c, x, t, '#2C3B4C');
+        if (b - t > 6) R(c, x, t + 2, 1, Math.min(3, b - t - 4), '#18212B'); // the dim cab inside
+      }
+      // the front below: green and blue wrap round the nose, lamps in black
+      for (let x = nose; x < x1 - 1; x++) { if (B(x) - 19 < T(x) + 2) continue; R(c, x, B(x) - 16, 1, 6, '#2F9A5B'); P(c, x, B(x) - 16, '#46B26F'); R(c, x, B(x) - 19, 1, 2, BLUE); }
+      R(c, x1 - 10, bot - 26, 8, 4, '#0E1319'); R(c, x1 - 8, bot - 25, 3, 2, '#FFF3D0'); P(c, x1 - 8, bot - 25, '#FFFFFF');
+      R(c, -60, bot, x1 + 50, 3, '#1E2024');
+      bogie(c, -20, bot + 1); bogie(c, cab0 + 10, bot + 1); bogie(c, x1 - 60, bot + 1);
+      // pantograph on the cab car's roof
+      const px = cab0 + 56;
       R(c, px, top - 2, 24, 2, '#2C2E33');
       for (let i = 0; i < 7; i++) { P(c, px + 6 + i, top - 3 - i * 2, '#4A4D53'); P(c, px + 18 - i, top - 3 - i * 2, '#4A4D53'); }
       R(c, px + 4, top - 18, 16, 1, '#7A7E86');
-      lampsOn(c, (x, y) => x >= x0 && x <= x1 && y >= T(x) && y < B(x), CEILING, top, bot);
+      lampsOn(c, (x, y) => ((x >= cab0 && x <= x1 && y >= T(x) && y < B(x)) || (x < cab0 - 7 && y >= top && y < bot)), CEILING, top, bot);
     },
-    mask: c => hullMask(c, x0, nose - 2, T, B),
+    mask: c => { hullMask(c, 0, cab0 - 8, flat, floor); hullMask(c, cab0, nose - 2, T, B); },
     foreground: platform,
   };
 }
@@ -254,7 +279,8 @@ function train(blue: string): Scene {
 
 function bus(): Scene {
   const x0 = 26, x1 = 214, top = 52, bot = 104;
-  const ORANGE: Ramp = { hi: '#FFB46A', base: '#F08A33', low: '#C96A1E', edge: '#8A4512' };
+  // arancio ministeriale, the orange Italian buses wore for decades
+  const ORANGE: Ramp = { shine: '#FFC58A', hi: '#FFA04A', base: '#F07F1E', low: '#C26112', edge: '#7E3B08' };
   const round = (x: number) => (x < x0 + 4 ? 4 - (x - x0) : x > x1 - 4 ? 4 - (x1 - x) : 0);
   const T = (x: number) => top + Math.max(0, round(x));
   const B = () => bot;
@@ -312,7 +338,7 @@ function plane(tail: string): Scene {
   const B = (x: number) => x > nose ? cy + Math.sqrt(Math.max(0, 1 - ((x - nose) / 26) ** 2)) * half
     : x < 74 ? cy + half - (74 - x) * 0.36 : cy + half;
   const WHITE = SILVER;
-  const TAIL: Ramp = { shine: '#C9B2FF', hi: '#9C7BF0', base: tail, low: '#5A39B0', edge: '#34206E' };
+  const TAIL: Ramp = { shine: '#A9D2FF', hi: '#6FB2FF', base: tail, low: '#1F5FB4', edge: '#123A70' };
   const GREY: Ramp = { shine: '#D7DBDF', hi: '#B6BCC3', base: '#8E959E', low: '#666D77', edge: '#3A3F47' };
   // Fin: leading edge (front, right) swept up and back; near-vertical trailing edge.
   const finTop = (x: number) => (x <= 38 ? 30 : 30 + (x - 38) * (36 / 28));
@@ -365,7 +391,7 @@ function plane(tail: string): Scene {
 }
 
 export function sceneFor(mode: Mode, accent: string): Scene {
-  return mode === 'SUBWAY' ? metro() : mode === 'TRAIN' ? train(accent) : mode === 'BUS' ? bus() : plane(accent);
+  return mode === 'SUBWAY' ? metro() : mode === 'TRAIN' ? train() : mode === 'BUS' ? bus() : plane(accent);
 }
 
 // Box blur for out-of-focus layers (canvas `filter` is not everywhere).

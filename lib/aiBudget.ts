@@ -14,19 +14,17 @@ export type Reservation = { ok: boolean; metered: boolean; key: string };
 export async function reserveAiBudget(purpose: 'ask' | 'translate', key: string, microUsd: number): Promise<Reservation> {
   try {
     const { data, error } = await serverDatabase().rpc('reserve_ai_budget', { purpose, call_key: key, reserve_micro_usd: Math.ceil(microUsd) });
+    // Only the ledger saying "no" is "over budget". A missing function or a
+    // database hiccup runs the call unmetered and says so in the logs; it
+    // must never tell people the answers are used up when they aren't.
     if (error) {
-      // Missing function (not yet migrated): run, but say so in the logs.
-      if (/function|schema cache|PGRST202/i.test(`${error.code} ${error.message}`)) {
-        console.warn(`[ai-budget] unmetered ${purpose} call ${key}: ledger RPC not available`);
-        return { ok: true, metered: false, key };
-      }
-      console.error('[ai-budget] reserve failed:', error.message);
-      return { ok: false, metered: true, key };
+      console.warn(`[ai-budget] unmetered ${purpose} call ${key}: ${error.code || ''} ${error.message}`);
+      return { ok: true, metered: false, key };
     }
-    return { ok: data === true, metered: true, key };
+    return { ok: data !== false, metered: data === true, key };
   } catch (error) {
-    console.error('[ai-budget] reserve error:', error instanceof Error ? error.message : error);
-    return { ok: false, metered: true, key };
+    console.warn(`[ai-budget] unmetered ${purpose} call ${key}:`, error instanceof Error ? error.message : error);
+    return { ok: true, metered: false, key };
   }
 }
 

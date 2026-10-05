@@ -32,13 +32,15 @@ const hits = new Map<string, number[]>();
 // real ceiling.
 const DAILY_LIMIT = 12;
 const daily = new Map<string, { day: string; count: number }>();
-function overDaily(ip: string) {
-  const day = new Date().toISOString().slice(0, 10);
+// Only answered questions count: a failure or a refusal never uses one up.
+function usedToday(ip: string) {
   const entry = daily.get(ip);
-  const next = entry && entry.day === day ? { day, count: entry.count + 1 } : { day, count: 1 };
-  daily.set(ip, next);
+  return entry && entry.day === new Date().toISOString().slice(0, 10) ? entry.count : 0;
+}
+function countAnswer(ip: string) {
+  const day = new Date().toISOString().slice(0, 10);
+  daily.set(ip, { day, count: usedToday(ip) + 1 });
   if (daily.size > 20000) daily.clear();
-  return next.count > DAILY_LIMIT;
 }
 
 function rateLimited(ip: string) {
@@ -62,7 +64,8 @@ export async function POST(request: NextRequest) {
   }
   const query = typeof body.query === 'string' ? body.query.trim() : '';
   if (!query || query.length > MAX_QUERY) return NextResponse.json({ error: 'invalid_query' }, { status: 400 });
-  if (!validRefine(body.refineToken, ip, query) && overDaily(ip)) return NextResponse.json({ error: 'daily_limit' }, { status: 429 });
+  const refining = validRefine(body.refineToken, ip, query);
+  if (!refining && usedToday(ip) >= DAILY_LIMIT) return NextResponse.json({ error: 'daily_limit' }, { status: 429 });
   const city = resolveCity(typeof body.city === 'string' ? body.city : 'MILANO')?.tag;
   if (!city) return NextResponse.json({ error: 'unsupported_city' }, { status: 400 });
   const hints: Hints = {
@@ -81,6 +84,7 @@ export async function POST(request: NextRequest) {
         if (!budget.ok) { send({ type: 'error', error: 'budget' }); return; }
         const result = await runAsk(query, city, hints, send);
         await settleAiBudget(budget, 'cost' in result ? (result as { cost: number }).cost : null);
+        if (!refining) countAnswer(ip);
         send({ type: 'final', result, refineToken: refineToken(ip, query) });
       } catch (error) {
         console.error('[ask] failed:', error instanceof Error ? error.message : error);
