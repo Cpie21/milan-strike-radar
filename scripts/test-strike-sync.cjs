@@ -15,6 +15,14 @@ const { classifyRegionTag } = require('../lib/strikeNormalization.ts');
 const headers = ['Inizio', 'Fine', 'Sindacati', 'Settore*', 'Categoria', 'Modalità', 'Rilevanza', 'Note', 'Data proclamazione', 'Regione', 'Provincia'];
 const row = ['09/10/2026', '09/10/2026', 'AL-COBAS', 'Trasporto pubblico locale', 'PERSONALE SOCC. GRUPPO ATM DI MILANO', '24 ORE: VARIE MODALITA', 'Provinciale', '', '27/07/2026', 'Lombardia', 'Tutte'];
 const table = (rows) => `<table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+test('EAV DTF overrides the TPL bus fallback without inventing its affected network',async()=>{
+ for(const [provider,modes] of [['PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI',['TRAIN']],['PERSONALE DTA SOC. EAV DI NAPOLI',['BUS']],['PERSONALE DTF/DTA SOC. EAV DI NAPOLI',['BUS','TRAIN']]]) {
+  const input=[...row];input[4]=provider;input[5]='4 ORE: DALLE 19.40 ALLE 23.40';input[9]='Campania';input[10]='Napoli';
+  const records=await transformRows(parseStrikeHtml(table([input])));assert.deepEqual(records.map(r=>r.category).sort(),modes);
+  const train=records.find(r=>r.category==='TRAIN');if(train){assert.equal(train.timing_evidence.fields.scopeType.value,/VIAGGIANTE/.test(provider)?'RAIL_CREW':'RAIL_OPERATOR');assert.equal(train.timing_evidence.fields.passengerImpact.value,'DIRECT_SERVICE');assert.deepEqual(train.affected_lines,[]);assert.deepEqual(train.guarantee_windows,[]);assert.equal(train.timing_evidence.fields.serviceClassification.value.department,'DTF');}
+ }
+ const {eavDepartmentModes}=require('../lib/operatorDepartments.ts');assert.deepEqual(eavDepartmentModes('DTF SOC. OTHER DI NAPOLI'),[]);
+});
 
 test('rejects an upstream error page instead of succeeding with no strikes', () => {
   assert.throws(() => parseStrikeHtml('<html>Temporarily unavailable</html>'), /table missing/);

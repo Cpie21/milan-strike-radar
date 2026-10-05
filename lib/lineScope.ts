@@ -18,7 +18,7 @@ export type LineScope = {
 export const unknownLineScope=():LineScope=>({kind:'UNKNOWN',operatorIds:[],networkNames:[],affectedLineNames:[],excludedLineNames:[],affectedRouteIds:[],excludedRouteIds:[],routeValidation:'NOT_REQUESTED'});
 
 function lineNames(text:string) {
-  const names=[...text.matchAll(/\bM[1-5]\b/gi)].map(m=>m[0].toUpperCase());
+  const names=[...text.matchAll(/\b(?:M[1-5]|T\d{1,2})\b/gi)].map(m=>m[0].toUpperCase());
   for(const m of text.matchAll(/\bline[ae]\s+((?:(?:\d{1,4}[A-Z]?|[ABC])(?:\b|(?=,))\s*(?:,|\/|\be\b|\band\b)?\s*)+)/gi)) {
     names.push(...(m[1].match(/\d{1,4}[A-Z]?|\b[ABC]\b/gi)||[]).map(s=>s.toUpperCase()));
   }
@@ -26,6 +26,9 @@ function lineNames(text:string) {
 }
 
 export function parseLineScope(text:string,operators:OperatorId[],officialOperator=false):LineScope {
+  // Staff grievances can mention historic route/workplace examples. They are
+  // not statements of the affected service scope of this strike.
+  text=text.split(/\b(?:motivazioni|motivi dello sciopero|reasons for (?:the )?strike)\s*:/i)[0];
   const result={...unknownLineScope(),operatorIds:operators};
   if(!text.trim()) return result;
   const exception=/\b(?:esclus[aeio]|eccetto|tranne|except|ad eccezione(?: delle)?|non (?:interessate?|coinvolte?))\b/i.exec(text);

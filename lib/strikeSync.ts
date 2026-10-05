@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { eavDepartmentModes } from './operatorDepartments';
 import { parseStrikeTiming, scopeTiming } from './strikeTiming';
 import * as cheerio from 'cheerio';
 import { createClient } from '@supabase/supabase-js';
@@ -495,6 +496,11 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
   // A named metro division is not a blanket bus announcement. Messina's ATM
   // operates buses/trams, so its acronym alone must never create a metro card.
   if (localTransit && /metropolitan|\bmetro\b/.test(providerLow) && !/autobus|\bbus\b|superficie|\btram\b/.test(providerLow)) categories.delete('BUS');
+  const departments = eavDepartmentModes(provider);
+  if (localTransit && departments.length) {
+    categories.delete('BUS'); categories.delete('SUBWAY');
+    departments.forEach(mode => categories.add(mode));
+  }
   // An excluded mode does not exclude the other transport modes of a general strike.
   const excluded = combinedLow.match(/esclus[oaie]\s+(?:il\s+)?settor[ei]\s+([^.;]+)/)?.[1] || '';
   if (/aereo/.test(excluded)) categories.delete('AIRPORT');

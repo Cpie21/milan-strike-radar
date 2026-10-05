@@ -70,7 +70,7 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 ## Current ownership
 
-- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/operator-guarantees-and-lines`.
+- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/operator-notice-coverage`.
 - Claude: frontend redesign (exploration under `/lab`, then the city page), natural-language query UI.
 - Shared hot file: `components/StrikeDashboard.tsx` — the redesign will replace most of it. Codex, prefer data-layer changes over edits there until the redesign lands.
 
@@ -80,3 +80,11 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 - Latest backend production build is committed (`d1fc1f4`), excluding Claude's Ask feature. Claude's worktree is currently `claude/redesign-lab` at `b33f0f5`; it merged the prior geography backend (`836c4d0`) and integrated its evidence into Ask (`2bfb955`). Preserve its Rome-date, Ask and dashboard changes during integration; the new v1.8 transit contract still needs frontend/Ask consumption. Collaboration docs originated in Claude's `361f3ed` and were cherry-picked, then updated here. User explicitly assigned frontend redesign to Claude; Codex should focus on backend logic/data accuracy and pass new evidence fields through this contract.
 - Evidence coverage remains incomplete: 6 future active supported-city records have operator official matches, 5 have reported supplements, 25 are MIT-only (36 supported-city source records including cargo, not cards). Firenze/Pisa 14 October TPL still has unknown clock times; some official sites block fetches. Never describe these as all officially verified.
 - `/api/ask` rate limiting and Jev calibration on real questions are unverified.
+
+## Operator notice coverage follow-up (Codex)
+
+- EAV's verified DTF (railway) / DTA (bus) meanings take precedence over coarse TPL→BUS classification. Only an EAV-bound department match applies. DTF travelling staff is RAIL_CREW/DIRECT_SERVICE; exact lines and guarantees remain UNKNOWN until a dated notice confirms them. serviceClassification stores the operator definition source, separately from this strike's MIT facts. Category corrections soft-retire the old projection through the existing complete-snapshot reconciliation.
+- GEST discovery starts at its news index. Divi article content, visible Italian publication dates and guarantee-bearing headings are parsed; union/date scope is retained. Grievance/historic line examples after MOTIVAZIONI do not become affected routes. T1/T2 names are preserved in lineScope and legacy affected_lines; no GTFS IDs are invented.
+- AIR_CAMPANIA is a sixth sourced bus guarantee profile. Complete rules: 06–08, 13–15, 17–19; funicular/indirect support excluded. fields.guaranteeDuringStrike stores the independently computed intersection with known strike windows, or UNKNOWN when timing is missing. The complete policy is retained. Rules are OPERATOR_RULE, not same-day notice confirmation.
+- Production StrikeCard consumes lineScopeEvidence and guaranteeEvidenceWindows with a shared lib/strikeCardEvidence helper. Symbolic protected edges use a green striped continuation and service-start/end labels, never fabricated midnight. Qualified rule source links stay in the existing bottom source area. This is a narrow compatibility fix, not Claude's redesign; counter unchanged.
+- Claude's current c82d0fd /lab branch and uncommitted LabStrikeCard/3D work remain untouched. Integrate the helper and new evidence contract there; its prior ALL_LINES/legacy guarantee consumer needs updating. No schema migration, added AI role or cron frequency change.

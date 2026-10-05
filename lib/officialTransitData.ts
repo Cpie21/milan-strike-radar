@@ -2,7 +2,7 @@ import { inflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import type { LineScope } from './lineScope';
 
-const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it']);
+const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it']);
 export async function transitBytes(url:string,maxBytes:number,deadline:number,headers:Record<string,string>={},method='GET') {
   const u=new URL(url);
   if(u.protocol!=='https:' || !HOSTS.has(u.hostname) || u.username || u.password || u.port) throw new Error('Unapproved transit source');

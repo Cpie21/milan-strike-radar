@@ -84,15 +84,16 @@ export function windowsDuration(windows: EvidenceWindow[]) {
 
 // A day axis is valid for every city. Symbolic edges use a striped continuation,
 // not a made-up service closing time. All numeric windows remain exact.
-export function strikeTimeline(windows: EvidenceWindow[], guarantees: { start: string; end: string }[] = [], cancelled = false, hasUnknown = false) {
+export function strikeTimeline(windows: EvidenceWindow[], guarantees: { start: string|null; end: string|null }[] = [], cancelled = false, hasUnknown = false) {
   const bounded = windows.filter(w => w.start !== null && w.end !== null).map(w => ({ start: clockMinutes(w.start!), end: clockMinutes(w.end!) }));
   const open = windows.filter(w => w.start === null || w.end_kind === 'end_of_service').map(w => ({ start: w.start === null ? 0 : clockMinutes(w.start), end: w.end === null ? 1440 : clockMinutes(w.end) }));
-  const protectedTimes = guarantees.map(w => ({ start: clockMinutes(w.start), end: clockMinutes(w.end) }));
+  const protectedTimes = guarantees.map(w => ({ start: w.start===null?0:clockMinutes(w.start), end: w.end===null?1440:clockMinutes(w.end) }));
+  const protectedOpen = guarantees.filter(w=>w.start===null||w.end===null).map(w=>({start:w.start===null?0:clockMinutes(w.start),end:w.end===null?1440:clockMinutes(w.end)}));
   const points = [...new Set([0, 1440, ...[...bounded, ...open, ...protectedTimes].flatMap(w => [w.start, w.end])])].filter(p => Number.isFinite(p) && p >= 0 && p <= 1440).sort((a,b)=>a-b);
   return points.slice(0,-1).map((start,index) => {
     const end = points[index+1], mid = (start+end)/2;
     const includes = (list: typeof bounded) => list.some(w => mid >= w.start && mid < w.end);
-    const type = cancelled ? 'grey' : includes(protectedTimes) ? 'green' : includes(bounded) ? 'red' : includes(open) ? 'open' : windows.length && !hasUnknown ? 'grey' : 'unknown';
+    const type = cancelled ? 'grey' : includes(protectedOpen) ? 'green_open' : includes(protectedTimes) ? 'green' : includes(bounded) ? 'red' : includes(open) ? 'open' : windows.length && !hasUnknown ? 'grey' : 'unknown';
     return { colorType: type, widthPct: (end-start)/1440*100, startMin:start, endMin:end };
   });
 }

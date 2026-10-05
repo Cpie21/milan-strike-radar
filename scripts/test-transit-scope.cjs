@@ -10,6 +10,8 @@ const {decodeServiceAlerts,currentServiceAlerts}=require('../lib/transitServiceA
 const {transit_realtime:gtfs}=require('gtfs-realtime-bindings');
 const {aggregateStrikes}=require('../components/utils.ts');
 const {applyTimingEvidence}=require('../lib/strikeEnrichment.ts');
+const {cardGuaranteeWindows,lineScopeLabels}=require('../lib/strikeCardEvidence.ts');
+const {strikeTimeline}=require('../lib/strikePresentation.ts');
 function record(provider='PERSONALE ATM MILANO',region='MILANO',category='BUS',date='2026-10-09',modalita='24 ORE',note='') {
  const raw_payload={provider,sector:category==='TRAIN'?'Ferroviario':'Trasporto pubblico locale',modalita,note,unions:'USB',province:region,rilevanza:'Locale',date,endDate:date,region,rawRegion:region};
  const fields=makeScopeEvidence(raw_payload,region,category,[]);
@@ -17,6 +19,17 @@ function record(provider='PERSONALE ATM MILANO',region='MILANO',category='BUS',d
 }
 const fact=value=>({value,confidence:'HIGH',source:'OPERATOR_OFFICIAL'});
 const window=(start,end)=>({start,end,end_kind:'clock'});
+test('Air Campania bus rule stores the complete policy and the actual strike intersection',()=>{
+ const r=record('PERSONALE SOC. AIR CAMPANIA DI NAPOLI','NAPOLI','BUS','2026-10-28','8 ORE: DALLE 08.00 ALLE 16.00');r.timing_evidence.windows=[window('08:00','16:00')];
+ const out=applyGuaranteeProfile(r);assert.equal(out.timing_evidence.fields.guaranteeSource,'OPERATOR_RULE');assert.equal(out.guarantee_windows.length,3);assert.deepEqual(out.timing_evidence.fields.guaranteeDuringStrike.value,[window('13:00','15:00')]);
+ for(const p of ['AIR CAMPANIA FUNICOLARE','AIR CAMPANIA PERSONALE AMMINISTRATIVO','AIR CAMPANIA MANUTENZIONE'])assert.equal(selectGuaranteePolicy(record(p,'NAPOLI')),undefined);
+ const profile=operatorGuaranteeProfiles.find(p=>p.operator==='AIR_CAMPANIA');assert.ok(ruleStillMatches(profile,'In occasione di scioperi il servizio è garantito dalle 6.00 alle 8.00, dalle 13.00 alle 15.00 e dalle 17.00 alle 19.00.'));assert.equal(ruleStillMatches(profile,'In occasione di scioperi dalle 6.00 alle 8.00 e dalle 13.00 alle 15.00'),false);
+});
+test('card evidence uses operator networks and symbolic protection instead of empty legacy fields',()=>{
+ const r=aggregateStrikes([applyGuaranteeProfile(record())])[0];assert.equal(cardGuaranteeWindows(r)[0].start,null);const segments=strikeTimeline([],cardGuaranteeWindows(r),false,true);assert.ok(segments.some(s=>s.colorType==='green_open'&&s.endMin===525));assert.ok(segments.some(s=>s.colorType==='unknown'));assert.ok(strikeTimeline([],cardGuaranteeWindows(r),true).every(s=>s.colorType==='grey'));
+ assert.deepEqual(lineScopeLabels(parseLineScope('Le nostre linee',['ATM_MILANO'],true)),['ATM Milano 所属线路']);assert.ok(lineScopeLabels(parseLineScope('intera rete eccetto linee 021, 043',['ATAC_ROMA'],true))[0].includes('021、043'));assert.deepEqual(cardGuaranteeWindows({...r,guaranteeSource:'UNKNOWN'}),[]);
+ assert.deepEqual(parseLineScope('Linee T1 e T2 potrebbero subire ritardi. Le MOTIVAZIONI: percorrenza tratto linea 1',['GEST_FIRENZE'],true).affectedLineNames,['T1','T2']);
+});
 test('ATM operator profile keeps service start symbolic without assuming midnight',()=>{
  const r=applyGuaranteeProfile(record());assert.equal(r.timing_evidence.fields.guaranteeSource,'OPERATOR_RULE');assert.deepEqual(r.timing_evidence.fields.guaranteeEvidenceWindows.value,[window(null,'08:45'),window('15:00','18:00')]);assert.deepEqual(r.guarantee_windows,[{start:'15:00',end:'18:00'}]);assert.equal(r.strike_windows.length,0);
  const a=aggregateStrikes([r])[0];assert.equal(a.guaranteeSource,'OPERATOR_RULE');assert.deepEqual(a.guaranteeEvidenceWindows,r.timing_evidence.fields.guaranteeEvidenceWindows.value);
