@@ -11,7 +11,8 @@
     "test:database": "node --test scripts/test-strike-database.cjs",
     "test:enrichment": "node --test scripts/test-strike-enrichment.cjs",
     "test:presentation": "node --test scripts/test-strike-presentation.cjs",
-    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs"
+    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs",
+    "review:queue": "node scripts/print-semantic-review-queue.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
