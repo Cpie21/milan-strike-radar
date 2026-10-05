@@ -50,8 +50,18 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 - `RAIL_GENERAL` uses the same explicit FERROVIARIO section as time parsing; separate APPALTI FERROVIARI / freight clauses remain in `fields.railSections` and cannot downgrade that event to support-only.
 - `fields.officialGeography` preserves MIT raw region/province/relevance; `supportedCityProjection` is a subset for this site's 20-city routes, not an exclusivity claim. `locationStatus` distinguishes unsupported official cities from unknown locations. These are additive existing-JSON/API fields; no schema migration.
-- `/api/ask` integration must carry officialGeography/projection through responses and may not say only Bologna from a supported-city projection. Foggia/Udine remain outside the UI registry; declared province remains known. Checked Claude's current `lib/ask/pipeline.ts`: candidate loading still omits scopeType, passengerImpact and geography/projection. Ask code stays on Claude's branch; this release does not claim that Ask has been fixed.
+- `/api/ask` integration must carry officialGeography/projection through responses and may not say only Bologna from a supported-city projection. Foggia/Udine remain outside the UI registry; declared province remains known. Claude's `2bfb955` now carries scopeType, passengerImpact and geography into Ask candidates; that work remains on Claude's branch and is not part of this production backend.
 - Semantic review >=0.80 concerns enter NEEDS_REVIEW (or FLAGGED for high-confidence conflicts), independently of low subtype confidence. >=0.97 corrections still require explicit official evidence; model uncertainty alone cannot alter facts. `npm run review:queue` reads the service-only persisted queue without paid calls, uses the latest result per source and current review version.
+
+## Operator rules / line scope / live advisories (Codex)
+
+- Pipeline adds transit enrichment after matched official timing, before Jev. No schema migration: all facts remain in timing_evidence.fields. No additional paid AI pipeline or cron frequency increase.
+- Five independently sourced profiles: ATM Milano, daytime ATAC, GTT urban/suburban, explicitly regional Trenitalia, named Bergamo Trasporti consortia for Arriva. Event-specific guarantees win; unknown operators, conflicts and rail security/infrastructure/support do not acquire defaults. Validity dates are our REVIEW_WINDOW, not invented legal effective dates. Reverify documents weekly; unavailable profiles fall back only until their recorded review expiry.
+- New fields: guaranteePolicy (operator/mode/service/source/validFrom/validTo/checkedAt/qualification), guaranteeEvidenceWindows (symbolic service start), guaranteedTrains (currently UNKNOWN unless an actual dated list is verified). Existing numeric guarantee_windows cannot represent service start; consumers must use symbolic evidence for the full bands and retain the rule qualifier.
+- lineScope: ALL_OPERATOR_LINES / SPECIFIC_LINES / ALL_EXCEPT / UNKNOWN. lineScopeEvidence contains operatorIds, networkNames, affectedLineNames, excludedLineNames, affectedRouteIds, excludedRouteIds, gtfsFeedId, routeValidation. legacyLineScope retains the previous summary. Event facts/provenance remain in strike_events/field_evidence. Claude must extend the old ALL_LINES enum and show named operator scope, not all city transport. IDs are namespaced by feedId.
+- GTFS validates identities only: agency, mode, validity and exact matching; no promised operation from schedules. Milan metro uses matching M1..M5 IDs plus numeric short names and metro mode. Parsed catalog cache is 24 hours; only fetch for named lines/exceptions. Range fetch selects small CSV members; non-Range publishers use one bounded archive.
+- GET /api/service-alerts?region=ROMA is a separate live official advisories endpoint, cached 60 seconds; no minute-by-minute background job. Keep timestamps, causes, active periods and stop/trip/route/agency selectors. Only fresh active STRIKE-caused disruption confirms strike impact. Missing/old feeds return 503; no alert never means normal operation. It does not rewrite planned strikes.
+- Frontend remains Claude's responsibility. Keep source links in the existing source area; counter unchanged. Regional rail guarantee bands mean minimum service, not every train; no fabricated train-number list.
 
 ## Schema changes
 
@@ -59,7 +69,7 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 ## Current ownership
 
-- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/strike-geography-review`.
+- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/operator-guarantees-and-lines`.
 - Claude: frontend redesign (exploration under `/lab`, then the city page), natural-language query UI.
 - Shared hot file: `components/StrikeDashboard.tsx` — the redesign will replace most of it. Codex, prefer data-layer changes over edits there until the redesign lands.
 

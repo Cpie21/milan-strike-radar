@@ -1,7 +1,9 @@
 import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, type StrikeEvent } from '../lib/strikePresentation';
-import type { TimingEvidence } from '../lib/strikeEvidence';
+import type { TimingEvidence, EvidenceWindow } from '../lib/strikeEvidence';
 import { scopeOf, type ScopeType, type GuaranteeSource } from '../lib/strikeScope';
 import { CITIES } from '../lib/cities';
+import { mergeLineScopes, unknownLineScope, type LineScope, type LineScopeKind } from '../lib/lineScope';
+import { intersectGuaranteeEvidence, type GuaranteePolicy } from '../lib/operatorGuaranteeProfiles';
 import {
   canonicalizeRegionValue,
   inferRegionTagFromText,
@@ -37,6 +39,10 @@ type StrikeLike = {
   has_unknown_lines?: boolean;
   scopeType?: ScopeType;
   guaranteeSource?: GuaranteeSource;
+  lineScope?: LineScopeKind;
+  lineScopeEvidence?: LineScope;
+  guaranteeEvidenceWindows?: EvidenceWindow[];
+  guaranteePolicies?: GuaranteePolicy[];
 };
 
 const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag, [...city.airports, `${city.zh}相关机场`]]));
@@ -181,7 +187,10 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
     const allLines = relevant.flatMap(e=>e.affected_lines || []);
     const fields=relevant.length===1?relevant[0].timing_evidence?.fields:undefined;
     const guaranteeSources=relevant.map(e=>e.timing_evidence?.fields?.guaranteeSource || 'UNKNOWN');
-    const guaranteeSource:GuaranteeSource=guaranteeSources.every(s=>s==='OFFICIAL_STRIKE_NOTICE')?'OFFICIAL_STRIKE_NOTICE':guaranteeSources.every(s=>s!=='UNKNOWN')?'STANDARD_RULE':'UNKNOWN';
+    const guaranteeSource:GuaranteeSource=guaranteeSources.includes('UNKNOWN')?'UNKNOWN':guaranteeSources.every(s=>s==='OFFICIAL_STRIKE_NOTICE')?'OFFICIAL_STRIKE_NOTICE':guaranteeSources.includes('OPERATOR_RULE')?'OPERATOR_RULE':'STANDARD_RULE';
+    const lineFacts=relevant.map(e=>e.timing_evidence?.fields?.lineScope || {value:unknownLineScope(),confidence:'UNKNOWN' as const,source:'UNKNOWN' as const});
+    const lineScopeEvidence=mergeLineScopes(lineFacts);
+    const guaranteeEvidenceWindows=intersectGuaranteeEvidence(active.map(e=>e.timing_evidence?.fields?.guaranteeEvidenceWindows?.value || e.guarantee_windows.map(w=>({...w,end_kind:'clock' as const}))));
     const broad = allLines.some(line => NETWORK_WIDE_LINE_MARKERS.has(line));
     return {
       ...first,
@@ -192,18 +201,22 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       officialGeography:relevant.map(e=>e.timing_evidence?.fields?.officialGeography).filter(Boolean),
       supportedCityProjection:[...new Set(relevant.flatMap(e=>e.timing_evidence?.fields?.supportedCityProjection?.value || []))],
       guaranteeSource,
-      guaranteedServiceWindow:active.some(e=>!e.windows.length)?[]:intersectGuarantees(active),
+      guaranteedServiceWindow:intersectGuarantees(active),
+      guaranteeEvidenceWindows,
+      guaranteePolicies:relevant.map(e=>e.timing_evidence?.fields?.guaranteePolicy).filter((p):p is GuaranteePolicy=>Boolean(p)),
       provider: normalizeProviderForDisplay(relevant.map(e=>e.provider).join(' / '),first.category),
       status: !active.length ? 'CANCELLED' : active.some(e=>e.windows.length) ? 'CONFIRMED' : 'UNCERTAIN',
       display_time: windowsDisplay(windows),
       duration_hours: windowsDuration(windows),
       strike_windows: numericWindows(windows),
-      guarantee_windows: active.some(e=>!e.windows.length) ? [] : intersectGuarantees(active),
+      guarantee_windows: intersectGuarantees(active),
       timing_evidence: { fields, windows, confidence, sources, unions:[...new Set(relevant.map(e=>e.unions).filter(Boolean))].join(' / '), conflicts:relevant.flatMap(e=>e.timing_evidence?.conflicts || []) } as TimingEvidence,
       strike_events: events,
-      has_unknown_lines:active.some(e=>!e.affected_lines?.length),
+      has_unknown_lines:lineScopeEvidence.kind==='UNKNOWN',
       has_unknown_timing: active.some(e=>!e.windows.length),
-      lineScope: broad?'ALL_LINES':allLines.length?'SPECIFIC_LINES':'UNKNOWN',
+      legacyLineScope: broad?'ALL_LINES':allLines.length?'SPECIFIC_LINES':'UNKNOWN',
+      lineScope: lineScopeEvidence.kind,
+      lineScopeEvidence,
       field_evidence:relevant.map(e=>({source_key:e.source_key,...e.timing_evidence?.fields})),
       affected_lines: first.category === 'AIRPORT' ? [...new Set(allLines)] : broad ? ['全部线路'] : sanitizeAffectedLines([...new Set(allLines)]),
     };

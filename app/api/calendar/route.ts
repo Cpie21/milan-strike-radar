@@ -4,6 +4,7 @@ import { readCityStrikes, romeToday } from '../../../lib/strikeQuery';
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateStrikes, categoryMap, filterStrikesForRegion } from '../../../components/utils';
 import { escapeCalendarText, serializeCalendar } from '../../../lib/ical';
+import { evidenceTimeLabel } from '../../../lib/strikeEvidence';
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -54,8 +55,13 @@ export async function GET(request: NextRequest) {
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
             ...(strike.category==='TRAIN' && indirectRail(scopeOf(strike))?['此处为相关人员停工时段；旅客列车运行影响尚未确认，不代表所有列车停运。']:[]),
             ...[...new Set((strike.strike_events || []).map(e=>geographyContext(e.timing_evidence?.fields)).filter(Boolean))],
-            `受影响线路 / 机场: ${strike.affected_lines?.length?strike.affected_lines.join(', '):'官方暂未注明'}`,
-            `保障来源: ${strike.guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?'当天官方公告':strike.guaranteeSource==='STANDARD_RULE'?'常规保护规则':'暂未公布'}`,
+            strike.category==='AIRPORT'
+              ? `受影响机场: ${strike.affected_lines?.length?strike.affected_lines.join(', '):'官方暂未注明'}`
+              : `线路范围: ${strike.lineScope==='ALL_OPERATOR_LINES'?'公告所指运营商网络，可能受影响':strike.lineScope==='ALL_EXCEPT'?`公告所指运营商网络，排除线路 ${strike.lineScopeEvidence?.excludedLineNames.join(', ')}`:strike.lineScope==='SPECIFIC_LINES'?strike.lineScopeEvidence?.affectedLineNames.join(', '):'官方暂未注明'}`,
+            ...(strike.lineScopeEvidence?.operatorIds.length?[`线路运营商: ${strike.lineScopeEvidence?.operatorIds.join(', ')}`]:[]),
+            `保障来源: ${strike.guaranteeSource==='OFFICIAL_STRIKE_NOTICE'?'当天官方公告':strike.guaranteeSource==='OPERATOR_RULE'?'运营商常规规则（非当天确认）':strike.guaranteeSource==='STANDARD_RULE'?'常规保护规则':'暂未公布'}`,
+            ...(strike.guaranteeEvidenceWindows?.length?[`保障时段: ${strike.guaranteeEvidenceWindows.map(w=>evidenceTimeLabel(w)).join(', ')}`]:[]),
+            ...(strike.guaranteePolicies || []).map(p=>`保障规则来源: ${p!.source}；${p!.qualification}`),
             ...(strike.guarantee_windows?.length?['保障仅针对规定的最低服务或受保护航班，请核对具体班次。']:[]),
             ...(strike.strike_events || []).flatMap(event=>event.timing_evidence?.fields?.exclusions?.value || []).map(text=>`原公告排除项: ${text}`),
             ...(strike.has_unknown_timing ? ['另有公告的具体时段待核实'] : []),

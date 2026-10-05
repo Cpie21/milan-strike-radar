@@ -7,6 +7,7 @@ import { CITY_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES, 
 import { mergeEvidenceWindows, numericWindows } from './strikePresentation';
 import { extractLineScope, sourceFact, makeScopeEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
+import { officialLineScope } from './lineScope';
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence, type TimingSource } from './strikeEvidence';
 
 // Discovery follows current indexes, never a hard-coded event/article URL.
@@ -44,6 +45,7 @@ export interface ExternalNotice {
   official_url?: string;
   operator_day?: boolean;
   guarantee_windows?: { start: string; end: string }[];
+  guarantee_evidence_windows?: EvidenceWindow[];
   cities?: string[];
   field_text?: string;
   guarantee_clauses?: string[];
@@ -334,21 +336,28 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
     if(!n.guarantee_clauses) return n;
     const city=resolveCity(record.region);
     const clauses=n.guarantee_clauses.filter(text=>!city || !CITIES.some(c=>c.tag!==city.tag && hasWord(text,c.slug)) || hasWord(text,city.slug));
-    const windows=clauses.flatMap(text=>numericWindows(parseExternalWindows(text.replace(/garant\w*|fasce di garanzia/gi,'service').replace(/(\d{1,2}[.:]\d{2})\s*\/\s*(\d{1,2}[.:]\d{2})/g,'$1-$2'),record)));
-    return {...n,guarantee_windows:windows};
+    const symbolic=clauses.flatMap(text=>parseExternalWindows(text.replace(/garant\w*|fasce di garanzia/gi,'service').replace(/(\d{1,2}[.:]\d{2})\s*\/\s*(\d{1,2}[.:]\d{2})/g,'$1-$2'),record));
+    return {...n,guarantee_windows:numericWindows(symbolic),guarantee_evidence_windows:symbolic};
   });
   if(fields && official.length) {
     const locationNotice=official.find(n=>n.cities?.includes(record.region) || sourceCities(n.source.url).includes(record.region));
     if(locationNotice) result.timing_evidence!.fields={...fields,location:sourceFact(record.region,{...locationNotice.source,excerpt:locationNotice.territory+' '+(locationNotice.field_text || locationNotice.provider).slice(0,500)})};
     const baseFields=result.timing_evidence!.fields!;
-    const guarantees=official.filter(n=>n.guarantee_windows?.length);
-    const guaranteeKeys=new Set(guarantees.map(n=>JSON.stringify(n.guarantee_windows)));
+    const guarantees=official.filter(n=>n.guarantee_windows?.length || n.guarantee_evidence_windows?.length);
+    const guaranteeKeys=new Set(guarantees.map(n=>JSON.stringify(n.guarantee_evidence_windows || n.guarantee_windows?.map(w=>({...w,end_kind:'clock'})))));
     if(guaranteeKeys.size===1) {
-      result.guarantee_windows=guarantees[0].guarantee_windows!;
-      result.timing_evidence!.fields={...baseFields,guaranteeSource:'OFFICIAL_STRIKE_NOTICE',guaranteedServiceWindow:sourceFact(result.guarantee_windows,{...guarantees[0].source,excerpt:guarantees[0].guarantee_clauses?.join(' ').slice(0,800) || JSON.stringify(result.guarantee_windows)})};
+      result.guarantee_windows=guarantees[0].guarantee_windows || [];
+      const guaranteeSource={...guarantees[0].source,excerpt:guarantees[0].guarantee_clauses?.join(' ').slice(0,800) || JSON.stringify(result.guarantee_windows)};
+      result.timing_evidence!.fields={...baseFields,guaranteeSource:'OFFICIAL_STRIKE_NOTICE',guaranteedServiceWindow:sourceFact(result.guarantee_windows,guaranteeSource),guaranteeEvidenceWindows:sourceFact(guarantees[0].guarantee_evidence_windows || result.guarantee_windows.map(w=>({...w,end_kind:'clock' as const})),guaranteeSource)};
     } else if(guaranteeKeys.size>1) {
       result.guarantee_windows=[];
       result.timing_evidence!.fields={...baseFields,guaranteeSource:'UNKNOWN',guaranteedServiceWindow:{value:[],confidence:'CONFLICT',source:'UNKNOWN'}};
+    }
+    const lineFacts=official.map(n=>officialLineScope(record,n.field_text || n.timing,n.source)).filter(f=>f.value.kind!=='UNKNOWN');
+    if(record.category!=='AIRPORT' && lineFacts.length) {
+      const keys=new Set(lineFacts.map(f=>JSON.stringify([f.value.kind,f.value.operatorIds,f.value.networkNames,f.value.affectedLineNames,f.value.excludedLineNames])));
+      const chosen=lineFacts[0];
+      result.timing_evidence!.fields={...result.timing_evidence!.fields!,lineScope:keys.size===1?chosen:{...chosen,confidence:'CONFLICT'}};
     }
     const named=official.map(n=>({notice:n,lines:extractLineScope(n.field_text || n.timing)})).filter(n=>n.lines!=='UNKNOWN');
     if(named.length && new Set(named.map(n=>JSON.stringify(n.lines))).size===1 && record.category!=='AIRPORT') {

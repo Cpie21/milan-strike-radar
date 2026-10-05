@@ -4,6 +4,7 @@ import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertT
 import { serverDatabase } from '../../../../lib/strikeQuery';
 import { enrichStrikeTiming } from '../../../../lib/strikeEnrichment';
 import { reviewStrikeSemantics } from '../../../../lib/strikeSemanticReview';
+import { enrichTransitScope } from '../../../../lib/transitEnrichment';
 import { CITIES, cityPath } from '../../../../lib/cities';
 
 export { fetchAndFilter, fetchRecentRows, transformRows, upsertToSupabase };
@@ -38,6 +39,11 @@ export async function GET(request: Request): Promise<NextResponse> {
       return { records, enriched: 0, sourcesChecked: 0, conflicts: 0 };
     });
     records = enrichment.records;
+    const transit = await enrichTransitScope(records,warnings).catch(()=>{
+      warnings.push('Operator guarantee / route enrichment unavailable');
+      return {records,profilesApplied:0,routeCatalogs:0};
+    });
+    records = transit.records;
     const semantic = await reviewStrikeSemantics(records,rawRows,db,warnings).catch(()=>({records,stats:{failed:1},enabled:false}));
     records=semantic.records;
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
@@ -54,7 +60,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/api/calendar');
     revalidateTag('strikes', { expire: 0 });
     console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
+    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, transit:{profilesApplied:transit.profilesApplied,routeCatalogs:transit.routeCatalogs},semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);
