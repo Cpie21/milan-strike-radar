@@ -1,4 +1,5 @@
 import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, aggregateTimingConfidence, type StrikeEvent } from '../lib/strikePresentation';
+import { mergeServiceSchedules, type ServiceSchedule } from '../lib/serviceSchedule';
 import type { OfficialStrikeRecord } from '../lib/officialStrikeRecord';
 import type { TimingEvidence, EvidenceWindow } from '../lib/strikeEvidence';
 import { scopeOf, type ScopeType, type GuaranteeSource } from '../lib/strikeScope';
@@ -44,6 +45,7 @@ type StrikeLike = {
   lineScopeEvidence?: LineScope;
   guaranteeEvidenceWindows?: EvidenceWindow[];
   guaranteePolicies?: GuaranteePolicy[];
+  serviceSchedule?: ServiceSchedule;
   official_record?: OfficialStrikeRecord | null;
 };
 
@@ -205,6 +207,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       supportedCityProjection:[...new Set(relevant.flatMap(e=>e.timing_evidence?.fields?.supportedCityProjection?.value || []))],
       guaranteeSource,
       guaranteedServiceWindow:intersectGuarantees(active),
+      serviceSchedule:mergeServiceSchedules(active.map(e=>e.timing_evidence?.fields?.serviceSchedule),rows[0].date || '',rows[0].category || ''),
       guaranteeEvidenceWindows,
       guaranteePolicies:relevant.map(e=>e.timing_evidence?.fields?.guaranteePolicy).filter((p):p is GuaranteePolicy=>Boolean(p)),
       provider: normalizeProviderForDisplay(relevant.map(e=>e.provider).join(' / '),first.category),

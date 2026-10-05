@@ -15,6 +15,7 @@ export type ScopeEvidence = {
   supportedCityProjection?: FieldEvidence<string[]>;
   locationStatus?: 'SUPPORTED_PROJECTION' | 'UNSUPPORTED_CITY' | 'UNSUPPORTED_REGION' | 'UNPROJECTED_GEOGRAPHY' | 'UNKNOWN_LOCATION';
   railSections?: FieldEvidence<{subject:'RAIL_SERVICE'|'RAIL_CONTRACTORS'|'RAIL_FREIGHT';text:string;representedByThisEvent:boolean}[]>;
+  serviceSchedule?: FieldEvidence<import('./serviceSchedule').ServiceSchedule>;
   serviceClassification?: FieldEvidence<{operator:string;department:string;mode:string}>;
   passengerImpact?: FieldEvidence<'DIRECT_SERVICE' | 'INDIRECT_OR_UNCONFIRMED' | 'UNKNOWN'>;
   scopeType: FieldEvidence<ScopeType>;
