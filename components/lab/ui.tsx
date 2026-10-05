@@ -101,7 +101,8 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 }
 
 export function Button({ children, onClick, href, tone = 'white', className = '' }: { children: ReactNode; onClick?: () => void; href?: string; tone?: 'white' | 'quiet' | 'stop'; className?: string }) {
-  const style = tone === 'white' ? FILLED() : tone === 'stop' ? FILLED(C.stop) : TONAL;
+  // Neutral primary is a lighter grey; every label stays white (theme.ts).
+  const style = tone === 'white' ? { background: '#454A54', color: '#FFFFFF' } : tone === 'stop' ? FILLED('#D63B30') : TONAL;
   const cls = `h-12 rounded-[14px] flex items-center justify-center gap-2 text-[15.5px] font-semibold active:scale-[0.98] transition-transform ${className}`;
   if (href) return <a href={href} target="_blank" rel="noreferrer" onClick={onClick} className={cls} style={style}>{children}</a>;
   return <button onClick={onClick} className={cls} style={style}>{children}</button>;

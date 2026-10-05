@@ -24,21 +24,24 @@ export const C = {
   ink: '#0A0B0D', // text on white
 };
 
-// Mode hues, tuned for dark surfaces. Metro takes Milan's metro red; buses
-// the orange of ATM trams and buses; trains a rail blue; flights violet.
-export const MODE_COLOR: Record<Mode, { main: string; soft: string }> = {
-  SUBWAY: { main: '#FF5A4E', soft: 'rgba(255,90,78,0.16)' },
-  BUS: { main: '#FF9F2E', soft: 'rgba(255,159,46,0.16)' },
-  TRAIN: { main: '#4C8DFF', soft: 'rgba(76,141,255,0.18)' },
-  AIRPORT: { main: '#A97FFF', soft: 'rgba(169,127,255,0.18)' },
+// Mode hues. `main` marks things on dark (glyphs, bars, text); `deep` is
+// the fill behind white text (all >= 4.6:1); `soft` tints a surface.
+// Metro takes Milan's metro red; buses ATM orange; trains a rail blue;
+// flights violet.
+export const MODE_COLOR: Record<Mode, { main: string; deep: string; soft: string }> = {
+  SUBWAY: { main: '#FF5A4E', deep: '#D63B30', soft: 'rgba(255,90,78,0.16)' },
+  BUS: { main: '#FF9F2E', deep: '#B85C00', soft: 'rgba(255,159,46,0.16)' },
+  TRAIN: { main: '#4C8DFF', deep: '#2F6BE0', soft: 'rgba(76,141,255,0.18)' },
+  AIRPORT: { main: '#A97FFF', deep: '#7A4FE0', soft: 'rgba(169,127,255,0.18)' },
 };
 
-// Controls, one rule. Filled (white or a mode hue) always takes ink text —
-// every hue above clears 6:1 against ink, while white on orange would not.
-// Tonal (surface3) takes the normal text colour. Tinted (a hue's soft fill
-// with its main colour) is for state, never for something you press.
-export const FILLED = (bg = '#FFFFFF') => ({ background: bg, color: '#0A0B0D' });
-export const TONAL = { background: '#272A30', color: '#F5F6F7' };
+// Controls, one rule: on this dark ground every button label is white.
+// Primary = a mode's deep fill (contextual: the card's own colour).
+// Secondary = tonal grey. Tinted (soft fill + main text) is state only,
+// never something you press. White surfaces are reserved for selection
+// (the chosen date), not for buttons.
+export const FILLED = (deep: string) => ({ background: deep, color: '#FFFFFF' });
+export const TONAL = { background: '#2C3036', color: '#F5F6F7' };
 
 // Type: digits are what people read (times, dates), so they get a face of
 // their own — Barlow Semi Condensed, drawn from highway signage: open

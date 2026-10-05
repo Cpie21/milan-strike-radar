@@ -2,160 +2,217 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowCounterClockwise, PencilSimple, SprayBottle, Trash } from '@phosphor-icons/react';
-import { modeName, tx, type Lang, type Mode } from '../../lib/lab/model';
+import { ArrowCounterClockwise, Check } from '@phosphor-icons/react';
+import { tx, type Lang, type Mode } from '../../lib/lab/model';
 import { H, makeTags, mySpot, rng, SPRAY, SprayFilter, TagMark, VEHICLES, VehicleBase, VehicleFront, W } from './graffitiArt';
-import { LIMITS, loadDrawing, uploadDrawing, type Stroke } from './graffitiStore';
-import { C, EASE, FILLED, MODE_COLOR, TONAL, TYPE } from './theme';
+import { LIMITS, loadDrawing, paintLeft, PAINT, strokeCost, uploadDrawing, type Stroke } from './graffitiStore';
+import { C, EASE, MODE_COLOR, TYPE } from './theme';
 
 const UNIT: Record<Mode, [string, string]> = { TRAIN: ['列火车', 'train'], SUBWAY: ['节地铁', 'metro car'], BUS: ['辆公交', 'bus'], AIRPORT: ['架飞机', 'plane'] };
 const SIZES = [4, 8, 14];
 
+// Motion is transform-only and stops when the wall is off screen.
+const CSS = `
+.gf-run .gf-spin{animation:gf-spin .5s linear infinite;transform-box:fill-box;transform-origin:center}
+.gf-run .gf-ground{animation:gf-ground .32s linear infinite}
+.gf-run .gf-sweep{animation:gf-sweep 3.2s ease-in-out infinite}
+.gf-run .gf-bob{animation:gf-bob .7s ease-in-out infinite alternate}
+.gf-run .gf-streak{animation:gf-streak var(--d,1.1s) linear infinite}
+.gf-paused *{animation-play-state:paused!important}
+@keyframes gf-spin{to{transform:rotate(360deg)}}
+@keyframes gf-ground{to{transform:translateX(20px)}}
+@keyframes gf-sweep{0%{transform:translateX(0) skewX(-20deg)}60%,100%{transform:translateX(520px) skewX(-20deg)}}
+@keyframes gf-bob{to{transform:translateY(-1.2px)}}
+@keyframes gf-streak{from{transform:translateX(120%)}to{transform:translateX(-120%)}}
+`;
+
 type Doodle = { count: number; loaded: boolean; marked: boolean; spraying: boolean };
 
-// The wall: the vehicle everyone affected paints on. Open from the start —
-// others' tags and an empty spot for yours — and tied to "我受影响了" above
-// by a notch under that button. After marking, you can draw your own.
-export default function Graffiti({ mode, seed, storeKey, doodle, lang }: { mode: Mode; seed: string; storeKey: string; doodle: Doodle; lang: Lang }) {
+// The wall. Before you react, the vehicle is running — seen at an angle,
+// wheels turning, light sliding over the glass — with everyone else's marks
+// on it. "我受影响了" (below) stops it: it brakes, swings square to you and
+// hands you one can of paint. Marks are symbols, not words, so they read in
+// any language; the can is finite, so each mark is a choice.
+export default function Graffiti({ mode, seed, storeKey, doodle, lang, open, onOpen, onClose }: { mode: Mode; seed: string; storeKey: string; doodle: Doodle; lang: Lang; open: boolean; onOpen: () => void; onClose: () => void }) {
   const reduce = useReducedMotion();
   const uid = useId().replace(/:/g, '');
   const color = MODE_COLOR[mode];
   const others = Math.max(doodle.count - (doodle.marked ? 1 : 0), 0);
   const tags = useMemo(() => makeTags(mode, seed, others), [mode, seed, others]);
   const spot = useMemo(() => mySpot(mode, seed), [mode, seed]);
-  const [mine, setMine] = useState<Stroke[] | null>(null);
-  const [drawing, setDrawing] = useState(false);
-  const [draft, setDraft] = useState<Stroke[]>([]);
-  const [brush, setBrush] = useState({ c: SPRAY[0], w: SIZES[1] });
+  const wrap = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(true);
+  const [saved, setSaved] = useState<Stroke[]>([]);
+  const [draft, setDraft] = useState<Stroke[] | null>(null);
+  const [brush, setBrush] = useState({ c: color.main, w: SIZES[1] });
+  const [parked, setParked] = useState(false);
+  const [empty, setEmpty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const drawing = open && doodle.marked;
+  const strokes = drawing ? draft ?? saved : saved;
+  const left = paintLeft(strokes);
 
-  useEffect(() => { const t = setTimeout(() => setMine(loadDrawing(storeKey)), 0); return () => clearTimeout(t); }, [storeKey]);
+  useEffect(() => { const t = setTimeout(() => setSaved(loadDrawing(storeKey) ?? []), 0); return () => clearTimeout(t); }, [storeKey]);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { rootMargin: '80px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
-  const start = () => { setDraft(mine ?? []); setDrawing(true); };
-  const save = async () => {
-    setSaving(true);
-    await uploadDrawing(storeKey, draft);
-    setMine(draft.length ? draft : null);
-    setSaving(false);
-    setDrawing(false);
+  const stopped = doodle.marked;
+  const running = !stopped && !reduce;
+  const finish = async () => {
+    if (draft) {
+      setSaving(true);
+      await uploadDrawing(storeKey, draft);
+      setSaved(draft);
+      setDraft(null);
+      setSaving(false);
+    }
+    onClose();
   };
 
   const unit = tx(lang, UNIT[mode][0], UNIT[mode][1]);
-  const caption = !doodle.loaded ? '' : !doodle.marked
-    ? tx(lang, `已有 ${others} 人在这${unit}上涂鸦 · 点上方「我受影响了」加入`, `${others} people have tagged this ${unit} · tap “I am affected” to join`)
-    : mine ? tx(lang, '你的涂鸦已经喷上去了', 'Your drawing is on the wall')
-      : null;
+  const caption = !doodle.loaded ? ' '
+    : !doodle.marked ? tx(lang, `已有 ${others} 人在这${unit}上留下不满 · 点下方「我受影响了」让它停下`, `${others} people have marked this ${unit} · tap “I am affected” to stop it`)
+      : drawing ? (empty ? tx(lang, '这罐漆用完了', 'This can is empty') : tx(lang, '在车身上拖动来喷；按住不动会流下漆痕', 'Drag on the body to spray; hold still and it drips'))
+        : saved.length ? tx(lang, `你的涂鸦已经留在车上了 · 和 ${others} 人一起`, `Your mark is on it · with ${others} others`)
+          : tx(lang, `你和 ${others} 人一起让它停了下来`, `You and ${others} others stopped it`);
 
   return (
-    <div className="relative mt-3">
-      {/* Notch under "我受影响了" (the right button, flex 1.35 of 2.35) */}
-      <span aria-hidden className="absolute -top-[5px] w-[12px] h-[12px] rotate-45 rounded-[2px]" style={{ background: C.surface2, right: 'calc((100% - 10px) * 1.35 / 2.35 / 2 - 6px)' }} />
-      <div className="relative overflow-hidden rounded-[18px]" style={{ background: `radial-gradient(90% 80% at 50% 45%, ${color.soft}, transparent 70%), ${C.surface2}` }}>
-        <div className="relative" style={{ aspectRatio: `${W} / ${H}` }}>
-          <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-full h-full" aria-hidden>
-            <defs>
-              <clipPath id={`body-${uid}`}><path d={VEHICLES[mode].body} /></clipPath>
-              <linearGradient id="lab-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FFFFFF" stopOpacity={0.07} /><stop offset="1" stopColor="#FFFFFF" stopOpacity={0} /></linearGradient>
-              <SprayFilter id={`spray-${uid}`} />
-            </defs>
-            <VehicleBase mode={mode} accent={color.main} clipId={`body-${uid}`} />
-            <g clipPath={`url(#body-${uid})`}>
-              <g filter={`url(#spray-${uid})`} opacity={doodle.marked ? 1 : 0.85}>
-                {tags.map((t, i) => <TagMark key={i} tag={t} />)}
+    <div ref={wrap} className={`relative overflow-hidden rounded-[20px] ${running && visible ? 'gf-run' : ''} ${visible ? '' : 'gf-paused'}`}
+      style={{ background: `radial-gradient(80% 70% at 50% 62%, ${color.soft}, transparent 72%), linear-gradient(180deg, #121419, ${C.surface2})` }}>
+      <style>{CSS}</style>
+      {/* Speed streaks: only while it runs */}
+      <AnimatePresence>
+        {running && (
+          <motion.div aria-hidden className="absolute inset-0 pointer-events-none" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.8 } }}>
+            {[18, 34, 71, 86].map((top, i) => (
+              <span key={top} className="gf-streak absolute h-px w-[38%]" style={{ top: `${top}%`, left: 0, ['--d' as string]: `${0.9 + i * 0.35}s`, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent)' }} />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative" style={{ aspectRatio: `${W} / ${H + 14}`, perspective: 900 }}>
+        <motion.div className="absolute inset-x-0 top-[6px]" style={{ aspectRatio: `${W} / ${H}`, transformStyle: 'preserve-3d' }}
+          initial={false}
+          animate={reduce ? {} : stopped ? { rotateY: 0, rotateX: 0, scale: 1, x: 0 } : { rotateY: -26, rotateX: 7, scale: 0.88, x: -4 }}
+          transition={{ type: 'spring', stiffness: 60, damping: 16, mass: 1.2 }}
+          onAnimationComplete={() => setParked(stopped)}>
+          <div className="gf-bob absolute inset-0">
+            <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-full h-full" aria-hidden>
+              <defs>
+                <clipPath id={`body-${uid}`}><path d={VEHICLES[mode].body} /></clipPath>
+                <linearGradient id="lab-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FFFFFF" stopOpacity={0.08} /><stop offset="1" stopColor="#FFFFFF" stopOpacity={0} /></linearGradient>
+                <SprayFilter id={`spray-${uid}`} />
+              </defs>
+              <ellipse cx={W / 2} cy={H - 6} rx={W * 0.46} ry={6} fill="rgba(0,0,0,0.45)" />
+              <VehicleBase mode={mode} accent={color.main} clipId={`body-${uid}`} />
+              <g clipPath={`url(#body-${uid})`}>
+                <g filter={`url(#spray-${uid})`}>{tags.map((t, i) => <TagMark key={i} tag={t} />)}</g>
+                {doodle.marked && (
+                  <motion.g filter={`url(#spray-${uid})`} initial={doodle.spraying && !reduce ? { opacity: 0, scale: 0.4 } : false} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.45, ease: EASE, delay: 0.5 }} style={{ transformOrigin: `${spot.x}px ${spot.y}px` }}>
+                    <TagMark tag={{ kind: 'angry', x: spot.x, y: spot.y, r: spot.r, s: spot.s, color: color.main, drips: [-6, 7] }} />
+                  </motion.g>
+                )}
               </g>
-              {doodle.marked && !mine && (
-                <motion.g filter={`url(#spray-${uid})`} initial={doodle.spraying && !reduce ? { opacity: 0, scale: 0.6 } : false} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, ease: EASE }} style={{ transformOrigin: `${spot.x}px ${spot.y}px` }}>
-                  <TagMark tag={{ kind: 'word', x: spot.x, y: spot.y, r: spot.r, s: spot.s, color: color.main, word: 'BASTA!', drips: [-12, 10] }} />
+              <VehicleFront mode={mode} />
+              {doodle.loaded && !doodle.marked && !reduce && (
+                <motion.g animate={{ opacity: [0.3, 0.85, 0.3] }} transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}>
+                  <circle cx={spot.x} cy={spot.y} r={16 * spot.s} fill="none" stroke="#FFFFFF" strokeWidth={1.2} strokeDasharray="3 4" />
                 </motion.g>
               )}
-            </g>
-            <VehicleFront mode={mode} />
-            {/* Your empty spot, waiting */}
-            {doodle.loaded && !doodle.marked && !reduce && (
-              <motion.g animate={{ opacity: [0.35, 0.9, 0.35] }} transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}>
-                <ellipse cx={spot.x} cy={spot.y} rx={34 * spot.s} ry={14 * spot.s} fill="none" stroke="#FFFFFF" strokeWidth={1.2} strokeDasharray="4 4" />
-                <path d={`M ${spot.x - 5} ${spot.y} H ${spot.x + 5} M ${spot.x} ${spot.y - 5} V ${spot.y + 5}`} stroke="#FFFFFF" strokeWidth={1.6} strokeLinecap="round" />
-              </motion.g>
-            )}
-            {/* Mist burst when you spray */}
-            <AnimatePresence>
-              {doodle.spraying && !reduce && Array.from({ length: 9 }, (_, i) => {
-                const a = (i / 9) * Math.PI * 2;
-                return <motion.circle key={i} cx={spot.x} cy={spot.y} r={3} fill={color.main}
-                  initial={{ opacity: 0.8, cx: spot.x, cy: spot.y }} animate={{ opacity: 0, cx: spot.x + Math.cos(a) * 40, cy: spot.y + Math.sin(a) * 22, r: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.9, ease: 'easeOut' }} />;
-              })}
-            </AnimatePresence>
-          </svg>
-          {(drawing || mine) && <Pad mode={mode} strokes={drawing ? draft : mine!} brush={brush} live={drawing} onChange={setDraft} />}
-          {doodle.loaded && !doodle.marked && !reduce && (
-            <motion.span aria-hidden className="absolute flex" style={{ left: `${(spot.x / W) * 100 + 9}%`, top: `${(spot.y / H) * 100 - 30}%` }}
-              animate={{ y: [0, -4, 0], rotate: [-8, 4, -8] }} transition={{ repeat: Infinity, duration: 2.4, ease: 'easeInOut' }}>
-              <SprayBottle size={20} weight="fill" color="#FFFFFF" />
-            </motion.span>
-          )}
-        </div>
+              <AnimatePresence>
+                {doodle.spraying && !reduce && Array.from({ length: 10 }, (_, i) => {
+                  const a = (i / 10) * Math.PI * 2;
+                  return <motion.circle key={i} cx={spot.x} cy={spot.y} r={3} fill={color.main}
+                    initial={{ opacity: 0.85, cx: spot.x, cy: spot.y }} animate={{ opacity: 0, cx: spot.x + Math.cos(a) * 44, cy: spot.y + Math.sin(a) * 24, r: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.9, ease: 'easeOut', delay: 0.5 }} />;
+                })}
+              </AnimatePresence>
+            </svg>
+            {strokes.length > 0 || drawing ? (
+              <Pad mode={mode} strokes={strokes} brush={brush} live={drawing && (parked || !!reduce) && left > 0}
+                onChange={setDraft} onEmpty={() => { setEmpty(true); setTimeout(() => setEmpty(false), 1600); }} budget={left} />
+            ) : null}
+          </div>
+        </motion.div>
 
-        <AnimatePresence initial={false} mode="wait">
-          {drawing ? (
-            <motion.div key="tools" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
-              <div className="px-3 pt-2 pb-3 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex gap-1.5" role="radiogroup" aria-label={tx(lang, '颜色', 'Colour')}>
-                    {[color.main, ...SPRAY].map(c => (
-                      <button key={c} role="radio" aria-checked={brush.c === c} aria-label={c} onClick={() => setBrush(b => ({ ...b, c }))}
-                        className="w-7 h-7 rounded-full transition-transform" style={{ background: c, transform: brush.c === c ? 'scale(1.12)' : 'none', boxShadow: brush.c === c ? `0 0 0 2px ${C.surface2}, 0 0 0 4px #FFFFFF` : 'none' }} />
-                    ))}
-                  </div>
-                  <button onClick={() => setDrawing(false)} className={`h-8 px-2 whitespace-nowrap ${TYPE.label}`} style={{ color: C.text2 }}>{tx(lang, '取消', 'Cancel')}</button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 h-9 px-1.5 rounded-full" style={{ background: C.surface3 }} role="radiogroup" aria-label={tx(lang, '粗细', 'Size')}>
-                    {SIZES.map(w => (
-                      <button key={w} role="radio" aria-checked={brush.w === w} aria-label={`${w}`} onClick={() => setBrush(b => ({ ...b, w }))} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: brush.w === w ? C.surface : 'transparent' }}>
-                        <i className="rounded-full" style={{ width: 4 + w / 1.6, height: 4 + w / 1.6, background: brush.c }} />
-                      </button>
-                    ))}
-                  </div>
-                  <IconButton label={tx(lang, '撤销', 'Undo')} onClick={() => setDraft(d => d.slice(0, -1))} disabled={!draft.length}><ArrowCounterClockwise size={16} weight="bold" /></IconButton>
-                  <IconButton label={tx(lang, '清空', 'Clear')} onClick={() => setDraft([])} disabled={!draft.length}><Trash size={16} weight="bold" /></IconButton>
-                  <button onClick={save} disabled={saving} className={`ml-auto h-9 px-4 rounded-full whitespace-nowrap ${TYPE.label} font-semibold disabled:opacity-60`} style={FILLED()}>
-                    {saving ? tx(lang, '上传中…', 'Uploading…') : tx(lang, '上传', 'Upload')}
-                  </button>
-                </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {drawing && (
+          <motion.div key="tools" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.28, ease: EASE }} className="overflow-hidden">
+            <div className="px-3 pt-1 pb-1 flex items-center gap-2">
+              <div className="flex gap-1.5" role="radiogroup" aria-label={tx(lang, '颜色', 'Colour')}>
+                {[color.main, ...SPRAY].map(c => (
+                  <button key={c} role="radio" aria-checked={brush.c === c} aria-label={c} onClick={() => setBrush(b => ({ ...b, c }))}
+                    className="w-[26px] h-[26px] rounded-full transition-transform" style={{ background: c, transform: brush.c === c ? 'scale(1.12)' : 'none', boxShadow: brush.c === c ? `0 0 0 2px #15171B, 0 0 0 3.5px #FFFFFF` : 'none' }} />
+                ))}
               </div>
-            </motion.div>
-          ) : (
-            <motion.div key="caption" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pb-3.5 -mt-1 flex flex-col items-center gap-2 text-center">
-              {doodle.marked && !mine
-                ? <p className={TYPE.label} style={{ color: C.text2 }}>
-                    {tx(lang, '还有 ', 'Another ')}<strong style={{ color: C.text }}>{tx(lang, `${Math.max(doodle.count, 1)} 人`, `${Math.max(doodle.count, 1)}`)}</strong>
-                    {tx(lang, ` 也被影响了，和你一起在${modeName(mode).replace('机场', '飞机')}上猛猛涂鸦`, ` people were affected by this ${modeName(mode, 'en').toLowerCase()} strike too`)}
-                  </p>
-                : caption && <p className={TYPE.label} style={{ color: C.text2 }}>{caption}</p>}
-              {doodle.marked && (
-                <button onClick={start} className={`h-9 px-3.5 rounded-full flex items-center gap-1.5 ${TYPE.label} font-semibold`} style={TONAL}>
-                  <PencilSimple size={15} weight="bold" />{mine ? tx(lang, '重新画', 'Redraw') : tx(lang, '自己画一笔', 'Draw your own')}
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+            <div className="px-3 pt-2 pb-3 flex items-center gap-2">
+              <div className="flex items-center gap-0.5 h-9 px-1 rounded-full" style={{ background: C.surface3 }} role="radiogroup" aria-label={tx(lang, '粗细', 'Size')}>
+                {SIZES.map(w => (
+                  <button key={w} role="radio" aria-checked={brush.w === w} aria-label={`${w}`} onClick={() => setBrush(b => ({ ...b, w }))} className="w-8 h-7 rounded-full flex items-center justify-center" style={{ background: brush.w === w ? '#3A3F48' : 'transparent' }}>
+                    <i className="rounded-full" style={{ width: 3 + w / 1.5, height: 3 + w / 1.5, background: '#FFFFFF' }} />
+                  </button>
+                ))}
+              </div>
+              <button aria-label={tx(lang, '撤销', 'Undo')} onClick={() => setDraft(d => (d ?? saved).slice(0, -1))} disabled={!strokes.length} className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-35" style={{ background: C.surface3, color: '#FFFFFF' }}>
+                <ArrowCounterClockwise size={16} weight="bold" />
+              </button>
+              {/* The can from the button lands here; its level is what's left */}
+              <motion.div layoutId={`can-${seed}`} className="ml-auto flex items-center gap-1.5" transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
+                <Can level={left / PAINT} color={brush.c} shaking={empty} />
+                <span className="w-8 text-[11.5px] font-semibold tabular-nums" style={{ color: left < PAINT * 0.15 ? color.main : C.text3, fontFamily: 'var(--font-num)' }}>{Math.round((left / PAINT) * 100)}%</span>
+              </motion.div>
+              <button onClick={finish} disabled={saving} className={`h-9 px-4 rounded-full flex items-center gap-1.5 whitespace-nowrap ${TYPE.label} font-semibold disabled:opacity-60`} style={{ background: color.deep, color: '#FFFFFF' }}>
+                <Check size={14} weight="bold" />{saving ? tx(lang, '上传中…', 'Uploading…') : tx(lang, '完成', 'Done')}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="px-4 pb-3.5 pt-0.5 flex items-center justify-center gap-2 text-center">
+        <p className={TYPE.label} style={{ color: empty ? color.main : C.text2 }}>{caption}</p>
+        {doodle.marked && !drawing && left > 0.5 && (
+          <button onClick={onOpen} className={`shrink-0 h-7 px-2.5 rounded-full ${TYPE.caption} font-semibold`} style={{ background: C.surface3, color: '#FFFFFF' }}>
+            {saved.length ? tx(lang, `继续喷 · 剩 ${Math.round((left / PAINT) * 100)}%`, `Spray more · ${Math.round((left / PAINT) * 100)}% left`) : tx(lang, '拿起喷罐', 'Pick up the can')}
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function IconButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
-  return <button aria-label={label} onClick={onClick} disabled={disabled} className="w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-35" style={{ background: C.surface3, color: C.text }}>{children}</button>;
+// A small can whose paint level drops as you spray.
+function Can({ level, color, shaking }: { level: number; color: string; shaking: boolean }) {
+  return (
+    <motion.svg width={22} height={34} viewBox="0 0 22 34" animate={shaking ? { rotate: [0, -12, 10, -8, 6, 0] } : { rotate: 0 }} transition={{ duration: 0.5 }} aria-hidden>
+      <rect x={8} y={0} width={6} height={4} rx={1} fill="#C9CDD4" />
+      <rect x={6} y={4} width={10} height={4} rx={1.5} fill="#8A9099" />
+      <rect x={2} y={8} width={18} height={25} rx={4} fill="#2C3036" stroke="rgba(255,255,255,0.18)" />
+      <clipPath id="can-body"><rect x={2} y={8} width={18} height={25} rx={4} /></clipPath>
+      <rect x={2} y={8 + 25 * (1 - level)} width={18} height={25 * level} fill={color} clipPath="url(#can-body)" style={{ transition: 'y .2s, height .2s' }} />
+      <rect x={5} y={11} width={2} height={18} rx={1} fill="rgba(255,255,255,0.25)" />
+    </motion.svg>
+  );
 }
 
 // ── Drawing pad ────────────────────────────────────────────────────────
-// A canvas over the stage; strokes are clipped to the vehicle body and
-// drawn as spray: a soft halo, a solid core, speckle and the odd drip.
+// Strokes are clipped to the body and drawn as spray: halo, solid core,
+// speckle. Holding still lets paint run: a drip grows under the nozzle.
 
-function Pad({ mode, strokes, brush, live, onChange }: { mode: Mode; strokes: Stroke[]; brush: { c: string; w: number }; live: boolean; onChange: (s: Stroke[]) => void }) {
+function Pad({ mode, strokes, brush, live, budget, onChange, onEmpty }: { mode: Mode; strokes: Stroke[]; brush: { c: string; w: number }; live: boolean; budget: number; onChange: (s: Stroke[]) => void; onEmpty: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const current = useRef<Stroke | null>(null);
+  const drip = useRef<{ stroke: Stroke; timer: ReturnType<typeof setTimeout> | null; grow: ReturnType<typeof setInterval> | null } | null>(null);
+  const spent = useRef(0);
+  const runs = useRef<Stroke[]>([]); // drips finished during the current stroke
   const [scale, setScale] = useState(1);
   const body = useMemo(() => (typeof Path2D === 'undefined' ? null : new Path2D(VEHICLES[mode].body)), [mode]);
 
@@ -189,6 +246,30 @@ function Pad({ mode, strokes, brush, live, onChange }: { mode: Mode; strokes: St
     const rect = ref.current!.getBoundingClientRect();
     return [((e.clientX - rect.left) / rect.width) * W, ((e.clientY - rect.top) / rect.height) * H];
   };
+  const live2 = () => [...strokes, ...runs.current, ...(current.current ? [current.current] : []), ...(drip.current ? [drip.current.stroke] : [])];
+  const stopDrip = () => {
+    const d = drip.current;
+    if (!d) return;
+    if (d.timer) clearTimeout(d.timer);
+    if (d.grow) clearInterval(d.grow);
+    if (d.stroke.p.length > 2) { spent.current += strokeCost(d.stroke); runs.current.push(d.stroke); }
+    drip.current = null;
+  };
+  // Paint runs if the nozzle stays put.
+  const armDrip = (x: number, y: number) => {
+    stopDrip();
+    const stroke: Stroke = { c: brush.c, w: Math.max(1.6, brush.w * 0.32), p: [x, y], d: 1 };
+    const d = { stroke, timer: null as ReturnType<typeof setTimeout> | null, grow: null as ReturnType<typeof setInterval> | null };
+    d.timer = setTimeout(() => {
+      d.grow = setInterval(() => {
+        const len = stroke.p.length > 2 ? stroke.p[3] - y : 0;
+        if (len > 26 || spent.current + strokeCost(stroke) >= budget) { if (d.grow) clearInterval(d.grow); return; }
+        stroke.p = [x, y, x, y + len + 1.6];
+        paint(live2());
+      }, 60);
+    }, 380);
+    drip.current = d;
+  };
   const total = strokes.reduce((n, s) => n + s.p.length / 2, 0);
 
   return (
@@ -196,9 +277,14 @@ function Pad({ mode, strokes, brush, live, onChange }: { mode: Mode; strokes: St
       aria-label={live ? '涂鸦画布' : undefined}
       onPointerDown={e => {
         if (!live || strokes.length >= LIMITS.strokes) return;
+        if (budget <= 0.5) { onEmpty(); return; }
         e.currentTarget.setPointerCapture(e.pointerId);
-        current.current = { c: brush.c, w: brush.w, p: point(e) };
-        paint([...strokes, current.current]);
+        spent.current = 0;
+        runs.current = [];
+        const [x, y] = point(e);
+        current.current = { c: brush.c, w: brush.w, p: [x, y] };
+        armDrip(x, y);
+        paint(live2());
       }}
       onPointerMove={e => {
         const s = current.current;
@@ -206,14 +292,22 @@ function Pad({ mode, strokes, brush, live, onChange }: { mode: Mode; strokes: St
         const [x, y] = point(e);
         const [lx, ly] = s.p.slice(-2);
         if (Math.hypot(x - lx, y - ly) < 1.5) return;
+        if (spent.current + strokeCost({ ...s, p: [...s.p, x, y] }) >= budget) { onEmpty(); return; }
+        stopDrip();
         s.p.push(x, y);
-        paint([...strokes, s]);
+        armDrip(x, y);
+        paint(live2());
       }}
       onPointerUp={() => {
-        if (current.current) onChange([...strokes, current.current]);
+        const d = drip.current;
+        if (d) { if (d.timer) clearTimeout(d.timer); if (d.grow) clearInterval(d.grow); }
+        const add = [...runs.current, ...(current.current ? [current.current] : []), ...(d && d.stroke.p.length > 2 ? [d.stroke] : [])];
+        drip.current = null;
         current.current = null;
+        runs.current = [];
+        if (add.length) onChange([...strokes, ...add]);
       }}
-      onPointerCancel={() => { current.current = null; paint(strokes); }}
+      onPointerCancel={() => { stopDrip(); current.current = null; runs.current = []; paint(strokes); }}
     />
   );
 }
@@ -227,11 +321,22 @@ function trace(ctx: CanvasRenderingContext2D, p: number[]) {
 }
 
 function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke, index: number, px: number) {
-  const rand = rng(`${index}|${s.p.length}|${s.p[0]}`);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = s.c;
   ctx.fillStyle = s.c;
+  if (s.d) {
+    // A run of paint: thin line, round bead at the end.
+    ctx.globalAlpha = 0.92;
+    ctx.lineWidth = s.w;
+    trace(ctx, s.p);
+    ctx.stroke();
+    const [x, y] = s.p.slice(-2);
+    ctx.beginPath(); ctx.arc(x, y, s.w * 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const rand = rng(`${index}|${s.p.length}|${s.p[0]}`);
   // Halo (shadowBlur is in device pixels, so scale it by hand)
   ctx.globalAlpha = 0.3;
   ctx.shadowColor = s.c;
@@ -255,16 +360,6 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke, index: number, px:
       ctx.arc(s.p[i] + Math.cos(a) * d, s.p[i + 1] + Math.sin(a) * d, 0.35 + rand() * 0.6, 0, Math.PI * 2);
       ctx.fill();
     }
-  }
-  // A drip where a heavy stroke ends
-  if (s.w >= 8 && s.p.length >= 8) {
-    const x = s.p[s.p.length - 2];
-    const y = s.p[s.p.length - 1];
-    const len = 6 + rand() * 12;
-    ctx.globalAlpha = 0.9;
-    ctx.lineWidth = Math.max(1.2, s.w * 0.3);
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + len); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y + len, ctx.lineWidth * 0.8, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
 }

@@ -9,6 +9,7 @@ import { aggregateStrikes, filterStrikesForRegion } from '../../components/utils
 import type { CardStatus, GuaranteeSource, Mode, ModeCard, OfficialRecord, Quote, Source } from '../../lib/lab/model';
 import { AVIATION_STRIKE_SOURCES, CITY_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES } from '../../lib/strikeSources';
 import LabApp from '../../components/lab/LabApp';
+import { translateAll } from '../../lib/lab/translate';
 
 // Redesign playground. Not linked from the product and not indexed.
 export const metadata: Metadata = { title: 'Lab · 意大利罢工查询', robots: { index: false, follow: false } };
@@ -72,6 +73,7 @@ function recordsFor(events: StrikeEvent[], raw: Map<string, RawPayload>): Offici
       area: [p.rawRegion, p.province && p.province !== 'Tutte' ? p.province : ''].filter(Boolean).join(' · '),
       mode: p.modalita || '',
       proclaimed: isoFromItalian(p.proclamationDate),
+      windows: e.windows || [],
       url: p.sourceUrl || e.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',
     }];
   });
@@ -144,6 +146,13 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
     };
   });
 
+  // Italian originals the reader may not read: MIT wording and official notices.
+  const translations = await translateAll(cards.flatMap(c => [
+    c.provider, c.scope,
+    ...c.records.flatMap(r => [r.workforce, r.mode, r.area]),
+    ...c.quotes.filter(q => q.official).map(q => q.excerpt),
+  ]));
+
   // One query for every city's headline, like Apple Weather's city list.
   const { data: upcoming } = await serverDatabase().from('strikes')
     .select('id,date,category,provider,region,status,display_time,duration_hours,strike_windows,guarantee_windows,affected_lines,data_source,source_url,source_key,timing_evidence')
@@ -175,6 +184,7 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       lastSync={sync?.completed_at ?? null}
       initialMinutes={romeMinutesNow()}
       cityStatus={cityStatus}
+      translations={translations}
     />
   );
 }

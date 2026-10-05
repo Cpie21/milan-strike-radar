@@ -21,6 +21,7 @@ export type OfficialRecord = {
   area: string; // MIT region / province as published
   mode: string; // MIT "modalità", e.g. 24 ORE: VARIE MODALITA'
   proclaimed: string | null; // ISO date
+  windows: EvidenceWindow[]; // this announcement's own hours
   url: string;
 };
 export type Quote = { name: string; url: string; excerpt: string; checkedAt: string | null; official: boolean };
@@ -185,7 +186,7 @@ export function timeSpan(windows: EvidenceWindow[]) {
 
 // Marks the times inside an operator's sentence so the quote visibly
 // carries the hours the card shows. Returns alternating plain/marked parts.
-const TIME_PHRASE = /(\b(?:dalle|alle|dopo le|fino alle|dalle ore|alle ore|ore|from|until|to)\s+)(\d{1,2}(?:[:.]\d{2})?)|(\d{1,2}[:.]\d{2})|(termine del servizio|fine (?:del )?servizio|inizio del servizio|end of service)/gi;
+const TIME_PHRASE = /(\b(?:dalle|alle|dopo le|fino alle|dalle ore|alle ore|ore|from|until|to)\s+)(\d{1,2}(?:[:.]\d{2})?)|(\d{1,2}[:.]\d{2})|(termine del servizio|fine (?:del )?servizio|inizio del servizio|end of service|运营结束|服务结束)/gi;
 export function markTimes(text: string): { text: string; mark: boolean }[] {
   const parts: { text: string; mark: boolean }[] = [];
   let at = 0;

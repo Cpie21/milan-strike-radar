@@ -23,7 +23,7 @@ const GLASS = '#101216';
 const RUBBER = '#141619';
 
 function Bogie({ x }: { x: number }) {
-  return <g><circle cx={x} cy={122} r={8} fill={RUBBER} stroke={EDGE} strokeWidth={1.5} /><circle cx={x} cy={122} r={2.5} fill={EDGE} /></g>;
+  return <g className="gf-spin"><circle cx={x} cy={122} r={8} fill={RUBBER} stroke={EDGE} strokeWidth={1.5} /><path d={`M ${x - 5} 122 H ${x + 5} M ${x} 117 V 127`} stroke={EDGE} strokeWidth={1.2} /></g>;
 }
 
 // Drawn under the paint: shell, glazing, livery stripe.
@@ -33,11 +33,13 @@ export function VehicleBase({ mode, accent, clipId }: { mode: Mode; accent: stri
     <g>
       {mode !== 'AIRPORT' && <>
         <line x1={0} x2={W} y1={131} y2={131} stroke="rgba(255,255,255,0.08)" strokeWidth={2} />
-        {mode !== 'BUS' && Array.from({ length: 19 }, (_, i) => <rect key={i} x={i * 20 + 4} y={133} width={12} height={3} rx={1} fill="rgba(255,255,255,0.05)" />)}
+        <g className="gf-ground">{Array.from({ length: 22 }, (_, i) => <rect key={i} x={i * 20 - 20} y={133} width={mode === 'BUS' ? 10 : 12} height={mode === 'BUS' ? 2 : 3} rx={1} fill="rgba(255,255,255,0.06)" />)}</g>
       </>}
       <path d={v.body} fill={PANEL} />
       <g clipPath={`url(#${clipId})`}>
         <rect x={0} y={0} width={W} height={60} fill="url(#lab-sheen)" />
+        {/* A reflection sliding along the glass while it moves */}
+        <rect className="gf-sweep" x={-80} y={30} width={46} height={90} fill="rgba(255,255,255,0.07)" transform="skewX(-20)" />
         {mode === 'TRAIN' && <>
           {[28, 62, 96, 190, 224, 258].map(x => <rect key={x} x={x} y={54} width={26} height={20} rx={5} fill={GLASS} />)}
           <rect x={136} y={50} width={26} height={60} rx={4} fill="none" stroke={EDGE} strokeWidth={1.5} />
@@ -69,7 +71,7 @@ export function VehicleBase({ mode, accent, clipId }: { mode: Mode; accent: stri
         <rect x={24} y={116} width={312} height={4} fill={RUBBER} />
         {(mode === 'TRAIN' ? [46, 76, 262, 292] : [50, 80, 280, 310]).map(x => <Bogie key={x} x={x} />)}
       </>}
-      {mode === 'BUS' && [76, 290].map(x => <g key={x}><circle cx={x} cy={114} r={17} fill={C.surface2} /><circle cx={x} cy={114} r={14} fill={RUBBER} stroke={EDGE} strokeWidth={3} /><circle cx={x} cy={114} r={5} fill={EDGE} /></g>)}
+      {mode === 'BUS' && [76, 290].map(x => <g key={x}><circle cx={x} cy={114} r={17} fill={C.surface2} /><g className="gf-spin"><circle cx={x} cy={114} r={14} fill={RUBBER} stroke={EDGE} strokeWidth={3} /><path d={`M ${x - 6} 114 H ${x + 6} M ${x} 108 V 120`} stroke={EDGE} strokeWidth={2} /></g></g>)}
     </g>
   );
 }
@@ -91,13 +93,22 @@ export function VehicleFront({ mode }: { mode: Mode }) {
 // wall, and it fills up as the count grows.
 
 export const SPRAY = ['#FF4FA3', '#36E0FF', '#B8FF3C', '#FFE14D', '#FFFFFF', '#FF7A1A'];
-const WORDS = ['BASTA!', 'ANCORA?!', 'SCIOPERO', 'UFFA', 'MAI PIÙ', 'NO!', 'ARGH', 'DAI!', 'PERCHÉ?', 'ODIO'];
-const SHAPES = {
-  swirl: 'M -20 0 C -10 -18 12 -18 14 -2 C 16 12 -6 14 -8 2 C -9 -6 4 -8 6 0',
-  cross: 'M -10 -10 L 10 10 M 10 -10 L -10 10',
-  crown: 'M -16 8 L -14 -8 L -6 2 L 0 -12 L 6 2 L 14 -8 L 16 8 Z',
-  zig: 'M -22 4 L -12 -8 L -2 6 L 8 -8 L 18 6',
+
+// Marks anyone reads the same way, in any language: an angry face, "!!",
+// "?!", a cross, the manga anger vein, a broken heart, a stopped clock.
+const SYMBOLS = {
+  angry: { d: 'M -13 0 A 13 13 0 1 0 13 0 A 13 13 0 1 0 -13 0 M -8 -6 L -3 -3 M 8 -6 L 3 -3 M -6 7 Q 0 2 6 7', w: 3.4 },
+  bang: { d: 'M -5 -13 L -5 4 M 5 -13 L 5 4 M -5 11 L -5 11.5 M 5 11 L 5 11.5', w: 4.6 },
+  what: { d: 'M -12 -7 Q -12 -14 -6 -14 Q 0 -14 0 -8 Q 0 -3 -6 -1 L -6 4 M -6 11 L -6 11.5 M 8 -14 L 8 4 M 8 11 L 8 11.5', w: 4 },
+  cross: { d: 'M -11 -11 L 11 11 M 11 -11 L -11 11', w: 5 },
+  vein: { d: 'M -12 -4 Q -5 -5 -4 -12 M 4 -12 Q 5 -5 12 -4 M 12 4 Q 5 5 4 12 M -4 12 Q -5 5 -12 4', w: 3.4 },
+  heart: { d: 'M 0 12 L -12 0 Q -16 -10 -7 -12 Q -2 -12 0 -7 Q 2 -12 7 -12 Q 16 -10 12 0 Z M 0 -7 L -3 -1 L 2 2 L -1 8', w: 3 },
+  clock: { d: 'M -12 0 A 12 12 0 1 0 12 0 A 12 12 0 1 0 -12 0 M 0 0 L 0 -8 M 0 0 L 6 3 M -16 -16 L 16 16', w: 3 },
+  swirl: { d: 'M -20 0 C -10 -18 12 -18 14 -2 C 16 12 -6 14 -8 2 C -9 -6 4 -8 6 0', w: 4.5 },
+  zig: { d: 'M -22 4 L -12 -8 L -2 6 L 8 -8 L 18 6', w: 4 },
 };
+export type SymbolKind = keyof typeof SYMBOLS;
+const KINDS = Object.keys(SYMBOLS) as SymbolKind[];
 
 export function rng(seed: string) {
   let h = 0x811c9dc5;
@@ -110,53 +121,48 @@ export function rng(seed: string) {
   };
 }
 
-export type Tag = { kind: 'word' | keyof typeof SHAPES; x: number; y: number; r: number; s: number; color: string; word: string; drips: number[]; back?: boolean };
+export type Tag = { kind: SymbolKind; x: number; y: number; r: number; s: number; color: string; drips: number[]; back?: boolean };
 
-// Tags sit on a jittered grid so words stay legible; the cell holding your
-// spot stays empty. Past ten, extra tags go in small and faded underneath,
-// so a busy wall reads as dense, not as noise.
+// Tags sit on a jittered grid so each mark stays readable; the cell holding
+// your spot stays empty. Past the grid, extra tags go in small and faded
+// underneath, so a busy wall reads as dense, not as noise.
 export function makeTags(mode: Mode, seed: string, count: number): Tag[] {
   const { area, tagScale } = VEHICLES[mode];
   const rand = rng(seed);
   const spot = mySpot(mode, seed);
-  const cols = mode === 'AIRPORT' ? 6 : 4;
+  const cols = mode === 'AIRPORT' ? 6 : 5;
   const rows = mode === 'AIRPORT' ? 1 : 2;
   const cw = (area.x1 - area.x0) / cols;
   const ch = (area.y1 - area.y0) / rows;
   const cells = Array.from({ length: cols * rows }, (_, i) => ({ x: area.x0 + (i % cols + 0.5) * cw, y: area.y0 + (Math.floor(i / cols) + 0.5) * ch }))
-    .filter(c => Math.abs(c.x - spot.x) > cw * 0.6 || Math.abs(c.y - spot.y) > ch * 0.6)
+    .filter(c => Math.abs(c.x - spot.x) > cw * 0.7 || Math.abs(c.y - spot.y) > ch * 0.7)
     .map(c => ({ c, k: rand() }))
     .sort((a, b) => a.k - b.k)
     .map(({ c }) => c);
-  const kinds: Tag['kind'][] = ['word', 'word', 'swirl', 'cross', 'crown', 'zig', 'word'];
   const tag = (x: number, y: number, s: number): Tag => ({
-    kind: kinds[Math.floor(rand() * kinds.length)],
-    x, y,
-    r: rand() * 22 - 11,
-    s,
+    kind: KINDS[Math.floor(rand() * KINDS.length)], x, y, r: rand() * 24 - 12, s,
     color: SPRAY[Math.floor(rand() * SPRAY.length)],
-    word: WORDS[Math.floor(rand() * WORDS.length)],
-    drips: rand() > 0.5 ? [rand() * 30 - 15, rand() * 30 - 15].slice(0, 1 + Math.floor(rand() * 2)) : [],
+    drips: rand() > 0.55 ? [rand() * 16 - 8] : [],
   });
-  const front = cells.slice(0, Math.min(count, cells.length)).map(c => tag(c.x + (rand() - 0.5) * cw * 0.35, c.y + (rand() - 0.5) * ch * 0.3, (0.8 + rand() * 0.3) * tagScale));
+  const front = cells.slice(0, Math.min(count, cells.length)).map(c => tag(c.x + (rand() - 0.5) * cw * 0.3, c.y + (rand() - 0.5) * ch * 0.25, (0.85 + rand() * 0.3) * tagScale));
   const back = Array.from({ length: Math.min(Math.max(count - front.length, 0), 14) }, () => ({ ...tag(area.x0 + rand() * (area.x1 - area.x0), area.y0 + rand() * (area.y1 - area.y0), 0.6 * tagScale), back: true }));
   return [...back, ...front];
 }
 
-// "Mine": a fixed spot per card, so the ghost hint and the real tag line up.
+// "Mine": a fixed spot per card, so the waiting hint and your stamp line up.
 export function mySpot(mode: Mode, seed: string) {
   const { area, tagScale } = VEHICLES[mode];
   const rand = rng(`${seed}|mine`);
-  return { x: area.x0 + (area.x1 - area.x0) * (0.35 + rand() * 0.3), y: (area.y0 + area.y1) / 2, s: 1.15 * tagScale, r: rand() * 10 - 5 };
+  return { x: area.x0 + (area.x1 - area.x0) * (0.35 + rand() * 0.3), y: (area.y0 + area.y1) / 2, s: 1.25 * tagScale, r: rand() * 10 - 5 };
 }
 
 export function TagMark({ tag }: { tag: Tag }) {
+  const sym = SYMBOLS[tag.kind];
   return (
     <g transform={`translate(${tag.x} ${tag.y}) rotate(${tag.r}) scale(${tag.s})`} opacity={tag.back ? 0.4 : 1}>
-      {tag.kind === 'word'
-        ? <text textAnchor="middle" dominantBaseline="central" fontSize={19} fill={tag.color} stroke={C.ink} strokeWidth={3.5} paintOrder="stroke" strokeLinejoin="round" style={{ fontFamily: 'var(--font-tag), "Marker Felt", cursive' }}>{tag.word}</text>
-        : <path d={SHAPES[tag.kind]} fill="none" stroke={tag.color} strokeWidth={tag.kind === 'crown' ? 3 : 4.5} strokeLinecap="round" strokeLinejoin="round" />}
-      {tag.drips.map((dx, i) => <path key={i} d={`M ${dx} 8 v ${6 + Math.abs(dx) % 9}`} stroke={tag.color} strokeWidth={1.6} strokeLinecap="round" />)}
+      <path d={sym.d} fill="none" stroke={C.ink} strokeWidth={sym.w + 3} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} />
+      <path d={sym.d} fill="none" stroke={tag.color} strokeWidth={sym.w} strokeLinecap="round" strokeLinejoin="round" />
+      {tag.drips.map((dx, i) => <path key={i} d={`M ${dx} 13 v ${7 + Math.abs(dx) % 8}`} stroke={tag.color} strokeWidth={1.8} strokeLinecap="round" />)}
     </g>
   );
 }

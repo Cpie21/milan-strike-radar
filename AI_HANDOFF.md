@@ -94,3 +94,18 @@ Free drawings must not be shown to other users without moderation: a review queu
 ### Evidence read in the lab
 - `/lab` reads `strikes.raw_payload` by event id, for the card-specific MIT register entry: unions, provider, rilevanza, modalita and proclamationDate.
 - If `readCityStrikes` or `strike_events` carried a trimmed `official_record` instead, the lab could drop its second query.
+
+### Lab v6 additions (Claude)
+**Translations**
+- `/lab` translates Italian source text, and backend labels stored in Chinese (provider, scope), using `google/gemini-3.5-flash-lite` via OpenRouter.
+- Each batch is cached for 7 days with `unstable_cache`. Code: `lib/lab/translate.ts`.
+- Preferred long-term: the sync pipeline stores `zh`/`en` beside each excerpt or label once, under the shared AI budget, and the page stops calling the model.
+
+**Ask limits**
+- `/api/ask` now has a per-IP daily cap of 12 new questions; refinements are sent with the header `x-ask-refine: 1` and don't count.
+- The UI allows 5 a day per device.
+- Both counters are per instance or per device. A hard limit needs a shared store; route this through the shared AI budget.
+
+**OpenRouter balance**
+- On 2026-10-05 the key could afford only about 15k tokens per request (402 error on max_tokens 65536).
+- Ask, translation and semantic QA will all start failing when the balance runs out. The owner has been told.

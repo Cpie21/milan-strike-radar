@@ -12,6 +12,20 @@ const LIMIT = 8;
 // Best effort per instance; a shared store is needed for a hard global limit.
 const hits = new Map<string, number[]>();
 
+// Daily cap per IP, matching the UI's allowance with slack for shared
+// networks. Also per instance; the shared AI budget (AI_HANDOFF) is the
+// real ceiling.
+const DAILY_LIMIT = 12;
+const daily = new Map<string, { day: string; count: number }>();
+function overDaily(ip: string) {
+  const day = new Date().toISOString().slice(0, 10);
+  const entry = daily.get(ip);
+  const next = entry && entry.day === day ? { day, count: entry.count + 1 } : { day, count: 1 };
+  daily.set(ip, next);
+  if (daily.size > 20000) daily.clear();
+  return next.count > DAILY_LIMIT;
+}
+
 function rateLimited(ip: string) {
   const now = Date.now();
   const recent = (hits.get(ip) || []).filter(t => now - t < WINDOW_MS);
@@ -24,6 +38,9 @@ function rateLimited(ip: string) {
 export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
   if (rateLimited(ip)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  // Refinements (a picked date or mode) continue the same question.
+  const refining = request.headers.get('x-ask-refine') === '1';
+  if (!refining && overDaily(ip)) return NextResponse.json({ error: 'daily_limit' }, { status: 429 });
 
   let body: { query?: unknown; city?: unknown; hints?: Hints };
   try {
