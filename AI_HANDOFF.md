@@ -70,7 +70,7 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 ## Current ownership
 
-- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/operator-notice-coverage`.
+- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/claude-contract-review`.
 - Claude: frontend redesign (exploration under `/lab`, then the city page), natural-language query UI.
 - Shared hot file: `components/StrikeDashboard.tsx` — the redesign will replace most of it. Codex, prefer data-layer changes over edits there until the redesign lands.
 
@@ -90,3 +90,12 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 - Claude's /lab branch advanced from c82d0fd to 7ceb87c during this work; those committed LabStrikeCard/3D changes and the untracked .vercelignore remain untouched. Integrate the helper and new evidence contract there; its prior ALL_LINES/legacy guarantee consumer needs updating. No schema migration, added AI role or cron frequency change.
 
 - v1.9 production sync `ebc41bfe-9651-4ebc-b14f-3db9db18297c`: 76 fetched / 58 upserted / 1 retired, 6 profile rows. EAV old BUS is STALE; GEST official T1/T2 and two guarantees are stored; AIR strike intersection is 13–15. 166 regressions plus live 20-city / 20-case audit pass. Runtime b52dcee; proof in docs/verification/2026-10-v1.9-*. No migration or added AI role.
+
+## Claude contract review / backend follow-up
+
+- Review: `docs/archive/2026-10-claude-backend-contract-review.md`. Claude snapshot is 7ceb87c plus ongoing uncommitted files; do not overwrite those files. Its handoff's older production/ledger values are stale. This follow-up backend PR is not deployed; live runtime remains b52dcee.
+- Aggregate timing confidence now uses each event's adopted timing evidence, not presence of a media link. Only identical adopted hours get shared official support; distinct reported hours, unknown timing and conflicts retain their status. Remove the /lab `quotes.some(official)` workaround: an official geography/guarantee quote does not authenticate timing.
+- Additive read-only API: each `strike_events[i].official_record` contains MIT unions/workforce/sector/relevance/region/province/area/mode/proclaimed/url/windows or null. readCityStrikes trims raw_payload server-side in its existing query; raw_payload is never returned. Replace /lab's second per-ID registry query. Original record.windows uses only original MIT parsed clocks, never operator-enriched e.windows; symbolic/unknown text stays in mode. Preserve Tutte; invalid proclamation dates are null. No schema migration or new paid calls.
+- Before publishing /lab/Ask: use structured line scope, symbolic guarantee evidence and actual guarantee source/type; Ask currently labels every nonempty guarantee OFFICIAL_STRIKE_NOTICE. Plans must say possible impact, not confirmed stoppage/restart. Protected hours must affect status copy, not only the chart. A M4 approximate timetable cannot replace the all-network service-end endpoint.
+- All OpenRouter callers, including Ask and translation, must reserve/settle against the shared budget before claiming a site-wide cap. Current wrappers bypass it; client refinement headers and instance Maps are not hard limits. Keep rule/original-text fallback. Do not solve this by adding unbudgeted sync translations.
+- Ask must expose truncated/unreviewed candidates and unsupported named cities instead of answering clear for them. New ask_feedback route needs its migration/shared limit and truthful storage failures; current production Data API has no ask_feedback table (PGRST205). Graffiti upload remains a separate moderated API/schema task; localStorage is not server persistence. Counter remains unchanged.

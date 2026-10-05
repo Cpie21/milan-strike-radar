@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-10-05T14:14:37.014Z",
+  "origin": "http://127.0.0.1:4313",
+  "http": 200,
+  "atmOfficial": true,
+  "individualMITRecords": 4,
+  "registerOperationalWindowsSeparate": true,
+  "rawPayloadExposed": false
+}

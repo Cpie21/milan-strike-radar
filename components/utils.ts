@@ -1,4 +1,5 @@
-import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, type StrikeEvent } from '../lib/strikePresentation';
+import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, aggregateTimingConfidence, type StrikeEvent } from '../lib/strikePresentation';
+import type { OfficialStrikeRecord } from '../lib/officialStrikeRecord';
 import type { TimingEvidence, EvidenceWindow } from '../lib/strikeEvidence';
 import { scopeOf, type ScopeType, type GuaranteeSource } from '../lib/strikeScope';
 import { CITIES } from '../lib/cities';
@@ -43,6 +44,7 @@ type StrikeLike = {
   lineScopeEvidence?: LineScope;
   guaranteeEvidenceWindows?: EvidenceWindow[];
   guaranteePolicies?: GuaranteePolicy[];
+  official_record?: OfficialStrikeRecord | null;
 };
 
 const REGION_AIRPORT_KEYWORDS: Record<string, string[]> = Object.fromEntries(CITIES.map(city => [city.tag, [...city.airports, `${city.zh}相关机场`]]));
@@ -171,7 +173,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
   return [...map].map(([key, rows]) => {
     const eventMap = new Map<string, StrikeEvent>();
     for (const row of rows) {
-      const events = row.strike_events || [{ id: row.id, source_key:row.source_key, source_url:row.source_url, provider: row.provider, status:row.status, unions:row.timing_evidence?.unions, windows:eventWindows(row), guarantee_windows:row.guarantee_windows || [], timing_evidence: row.timing_evidence, affected_lines:row.affected_lines, region:row.region }];
+      const events = row.strike_events || [{ id: row.id, source_key:row.source_key, source_url:row.source_url, provider: row.provider, status:row.status, unions:row.timing_evidence?.unions, windows:eventWindows(row), guarantee_windows:row.guarantee_windows || [], timing_evidence: row.timing_evidence, affected_lines:row.affected_lines, region:row.region,official_record:row.official_record }];
       for (const event of events) {
         const identity = event.source_key || String(event.id || JSON.stringify([event.provider,event.status,event.windows]));
         eventMap.set(identity, event);
@@ -182,7 +184,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
     const relevant = active.length ? active : events;
     const windows = mergeEvidenceWindows(relevant.flatMap(e => e.windows));
     const sources = [...new Map(relevant.flatMap(e => e.timing_evidence?.sources || []).map(source => [source.url, source])).values()];
-    const confidence = relevant.some(e=>e.timing_evidence?.confidence === 'conflict') ? 'conflict' : sources.some(s=>s.authority === 'reported') ? 'reported' : 'official';
+    const confidence = aggregateTimingConfidence(relevant);
     const first = rows[0];
     const allLines = relevant.flatMap(e=>e.affected_lines || []);
     const fields=relevant.length===1?relevant[0].timing_evidence?.fields:undefined;
@@ -197,6 +199,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       id: `day-${key.replaceAll('|','-')}`,
       region: regionTag || first.region,
       source_key: undefined,
+      official_record: undefined,
       scopeType:['AIRPORT','TRAIN'].includes(first.category || '')?scopeOf(first):undefined,
       officialGeography:relevant.map(e=>e.timing_evidence?.fields?.officialGeography).filter(Boolean),
       supportedCityProjection:[...new Set(relevant.flatMap(e=>e.timing_evidence?.fields?.supportedCityProjection?.value || []))],

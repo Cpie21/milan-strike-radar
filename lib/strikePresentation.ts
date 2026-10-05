@@ -1,4 +1,5 @@
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence } from './strikeEvidence';
+import type { OfficialStrikeRecord } from './officialStrikeRecord';
 
 export type StrikeEvent = {
   id?: string | number;
@@ -12,7 +13,28 @@ export type StrikeEvent = {
   timing_evidence?: TimingEvidence | null;
   affected_lines?: string[];
   region?: string;
+  official_record?: OfficialStrikeRecord | null;
 };
+
+/** Trust the evidence for the adopted hours, not every link in a source list.
+ * An independent reported interval must not inherit another event's authority. */
+export function aggregateTimingConfidence(events: StrikeEvent[]): TimingEvidence['confidence'] {
+  const confidence = (event: StrikeEvent): TimingEvidence['confidence'] => {
+    const evidence = event.timing_evidence;
+    if (evidence?.confidence === 'conflict' || evidence?.fields?.timing?.confidence === 'CONFLICT') return 'conflict';
+    if (evidence?.fields?.timing?.source === 'REPORTED') return evidence.confidence === 'corroborated' ? 'corroborated' : 'reported';
+    if (evidence?.confidence) return evidence.confidence;
+    // Legacy official register rows predate field evidence.
+    return event.source_url?.startsWith('https://scioperi.mit.gov.it/') ? 'official' : 'reported';
+  };
+  const keys = (event: StrikeEvent) => mergeEvidenceWindows(event.windows).map(w => `${w.start ?? 'service_start'}|${w.end_kind === 'end_of_service' ? 'service_end' : w.end}`).join(';');
+  const grades = events.map(confidence);
+  if (grades.includes('conflict')) return 'conflict';
+  const officialHours = new Set(events.filter((_,i)=>grades[i] === 'official').filter(e=>e.windows.length).map(keys));
+  const remaining = events.filter((event,i)=>grades[i] !== 'official' && (!event.windows.length || !officialHours.has(keys(event)))).map(confidence);
+  if (!remaining.length) return 'official';
+  return remaining.includes('reported') ? 'reported' : 'corroborated';
+}
 
 export function clockMinutes(value: string) {
   const [h, m] = value.split(':').map(Number);
