@@ -224,3 +224,9 @@ Server contract needed:
 - **Data and look.** It reads the same `/api/strikes` fields and draws the amber LED face. Planned windows only; "运营结束" ("end of service") stays as the end, and it never claims a line is stopped (a test enforces this).
 - **Sizes.** Small, medium and large.
 - **Adoption.** Production can adopt it whenever you like.
+
+## User model restriction (Codex)
+
+- The owner explicitly forbids Gemini (2026-10-05), including the lab's previous `google/gemini-3.5-flash-lite` translation. `lib/lab/translate.ts` now returns an empty translation map, preserving the existing original-text fallback with no fetch, budget reservation or model-cache access. The owner additionally requires translation to be free: use only a verified free service or local deterministic method, with original-text fallback on failure. Never use Jev or another paid model for translation. No substitute paid model was added; Jev semantic QA/Ask are unchanged.
+- This focused fix branches from Claude's committed `d9c6270` on `codex/disable-gemini-translation`. Claude's checkout is untouched. Merge this fix before rendering/deploying the lab again: already-running older previews are not disabled by committing this change. No API/schema change.
+- Message for Claude: remove the previous Gemini translation path by integrating this PR. Keep the original official wording until a free translation method is connected; do not silently enable a paid replacement. The user explicitly requested this handoff.

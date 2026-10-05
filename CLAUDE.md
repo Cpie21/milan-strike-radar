@@ -24,3 +24,7 @@ Product thinking, brainstorming, UX, UI and frontend implementation; full-stack 
 
 - `npm test` runs all regression suites; `npx tsc --noEmit` must pass.
 - Secrets live in `.env.local` (gitignored) and Vercel; never commit them.
+
+## Owner translation constraint
+
+Translation must be free. Gemini models are prohibited, including Flash / Flash Lite. Integrate `codex/disable-gemini-translation` before running/deploying `/lab`; it removes the previous paid translation call and preserves original text. Do not substitute Jev or another paid model. See `AI_HANDOFF.md` for the focused patch and verification.
