@@ -61,7 +61,7 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
   const [q, setQ] = useState('');
   const list = cities.filter(c => !q || c.zh.includes(q) || c.en.toLowerCase().includes(q.toLowerCase()) || c.tag.toLowerCase().includes(q.toLowerCase()));
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '城市', 'Cities')}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '城市', 'Cities')} tall>
       <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] mb-3" style={{ background: '#1E2025' }}>
         <MagnifyingGlass size={16} color={C.text3} />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder={tx(base.lang, '搜索城市', 'Search cities')} aria-label={tx(base.lang, '搜索城市', 'Search cities')}
@@ -222,7 +222,7 @@ export function SupportSheet(base: Base) {
     else { setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '支持一下 / 反馈问题', 'Support / send feedback')}>
+    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '支持与反馈', 'Support & feedback')} tall>
       <p className="text-[14.5px] leading-relaxed" style={{ color: C.text2 }}>{tx(base.lang, '感谢您愿意点进这个界面！独立开发不易，如果对你有用请支持一杯奶茶。', 'Thanks for opening this panel! If the tool helps you, consider buying a bubble tea.')}</p>
       <div className="mt-4 rounded-[18px] p-4" style={{ background: '#1E2025' }}>
         <div className="flex items-center justify-between">

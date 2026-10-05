@@ -18,7 +18,7 @@ type Phase = 'idle' | 'spray';
 type Doodle = { count: number; loaded: boolean; marked: boolean; spraying: boolean };
 export type WallLink = { anticipate: (on: boolean) => void };
 
-const BRUSH = 2.2;
+const BRUSH = 1.4; // thin enough that many people's lines still read as lines
 const KINDS = Object.keys(SYMBOLS) as SymbolKind[];
 
 type PixelTag = { kind: SymbolKind; x: number; y: number; s: number; r: number; color: string };
@@ -141,16 +141,28 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     const onBody = (x: number, y: number) => x >= 0 && y >= 0 && x < PW && y < PH && maskData[(Math.floor(y) * PW + Math.floor(x)) * 4 + 3] > 0;
     const [fg, fctx] = make();
     scene.foreground(fctx);
-    // Something close to the camera, out of focus
-    const [near, nearCtx] = make();
-    if (mode !== 'AIRPORT') {
-      nearCtx.fillStyle = '#08090B';
-      nearCtx.fillRect(0, 0, 12, PH);
-      nearCtx.fillRect(12, 0, 3, PH);
-      boxBlur(nearCtx, 3);
+    // Both edges fade into the card, so the scene has no hard sides.
+    const [edges, ectx] = make();
+    const fade = ectx.createLinearGradient(0, 0, PW, 0);
+    fade.addColorStop(0, 'rgba(14,15,18,1)'); fade.addColorStop(0.07, 'rgba(14,15,18,0)'); fade.addColorStop(0.93, 'rgba(14,15,18,0)'); fade.addColorStop(1, 'rgba(14,15,18,1)');
+    ectx.fillStyle = fade; ectx.fillRect(0, 0, PW, PH);
+    // How lit the body is at each pixel, so paint can sit *on* it: seams,
+    // window frames and door edges darken the paint over them, glass makes
+    // it duskier. Mid silver maps to ~white, so bright paint stays bright.
+    const [light, lctx] = make();
+    {
+      const v = vctx.getImageData(0, 0, PW, PH);
+      const out = lctx.createImageData(PW, PH);
+      for (let i = 0; i < v.data.length; i += 4) {
+        const l = (v.data[i] * 0.3 + v.data[i + 1] * 0.59 + v.data[i + 2] * 0.11) / 255;
+        const k = Math.min(255, Math.round(255 * Math.min(1, 0.35 + l * 1.25)));
+        out.data[i] = out.data[i + 1] = out.data[i + 2] = k; out.data[i + 3] = 255;
+      }
+      lctx.putImageData(out, 0, 0);
     }
     const [graf, gctx] = make();
     const [tagLayer, tctx] = make();
+    const [paintAlpha, pactx] = make();
 
     const redraw = (list: Stroke[]) => {
       // Tags: drawn smooth, then thresholded into hard pixels.
@@ -170,10 +182,32 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       for (let i = 3; i < img.data.length; i += 4) img.data[i] = img.data[i] > 110 ? 255 : 0;
       tctx.putImageData(img, 0, 0);
       gctx.clearRect(0, 0, PW, PH);
+      // Older marks are a little weathered; yours are fresh.
+      gctx.globalAlpha = 0.85;
       gctx.drawImage(tagLayer, 0, 0);
+      gctx.globalAlpha = 1;
       list.forEach((s, i) => paintStroke(gctx, s, i));
       gctx.globalCompositeOperation = 'destination-in';
       gctx.drawImage(mask, 0, 0);
+      gctx.globalCompositeOperation = 'source-over';
+      // A dark keyline around every painted area: scribbles read as pieces.
+      const painted = gctx.getImageData(0, 0, PW, PH);
+      const a = painted.data;
+      const line: number[] = [];
+      for (let y = 1; y < PH - 1; y++) for (let x = 1; x < PW - 1; x++) {
+        const i = (y * PW + x) * 4;
+        if (a[i + 3] > 0 || !onBody(x, y)) continue;
+        if (a[i + 3 - 4] > 0 || a[i + 3 + 4] > 0 || a[i + 3 - PW * 4] > 0 || a[i + 3 + PW * 4] > 0) line.push(i);
+      }
+      line.forEach(i => { a[i] = 18; a[i + 1] = 19; a[i + 2] = 23; a[i + 3] = 200; });
+      gctx.putImageData(painted, 0, 0);
+      // Paint takes the body's light: multiply, then keep only painted pixels.
+      pactx.clearRect(0, 0, PW, PH);
+      pactx.drawImage(graf, 0, 0);
+      gctx.globalCompositeOperation = 'multiply';
+      gctx.drawImage(light, 0, 0);
+      gctx.globalCompositeOperation = 'destination-in';
+      gctx.drawImage(paintAlpha, 0, 0);
       gctx.globalCompositeOperation = 'source-over';
     };
     layers.current = { redraw };
@@ -186,6 +220,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     let t = 0;
     let nextHint = 2.5;
     let pointer: { x: number; y: number } | null = null;
+    const ring = { x: 0, y: 0, until: 0 };
 
     // Spraying
     let current: Stroke | null = null;
@@ -299,15 +334,29 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
         ext.current.onHint?.();
       }
       // While spraying: mist from the can to the body, and the can itself
+      // The paint gauge lives by your finger, like a stamina wheel: a ring
+      // that drains as you spray, flashes when nearly empty, and fades out
+      // shortly after you lift.
       if (live.current.spraying && pointer) {
-        if (current) for (let i = 0; i < 4; i++) puffs.push({ x: pointer.x + 7, y: pointer.y - 9, vx: (-7 + (Math.random() - 0.5) * 4) * 4, vy: (9 + (Math.random() - 0.5) * 4) * 4, life: 0.22, c: live.current.mine });
-        const cx = Math.round(pointer.x + 6), cy = Math.round(pointer.y - 20);
-        ctx.fillStyle = '#C9CDD3'; ctx.fillRect(cx + 1, cy, 3, 2);
-        ctx.fillStyle = '#8A8F97'; ctx.fillRect(cx, cy + 2, 5, 2);
-        ctx.fillStyle = '#2A2C31'; ctx.fillRect(cx - 1, cy + 4, 7, 12);
-        const lvl = Math.round(11 * (live.current.left - spent) / PAINT);
-        ctx.fillStyle = live.current.mine; ctx.fillRect(cx, cy + 15 - Math.max(0, lvl), 5, Math.max(0, lvl));
-        ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(cx, cy + 5, 1, 9);
+        ring.x = pointer.x; ring.y = pointer.y; ring.until = t + 0.9;
+        if (current) for (let i = 0; i < 3; i++) puffs.push({ x: pointer.x + (Math.random() - 0.5) * 3, y: pointer.y + (Math.random() - 0.5) * 3, vx: (Math.random() - 0.5) * 16, vy: (Math.random() - 0.5) * 16, life: 0.18, c: live.current.mine });
+      }
+      if (live.current.spraying && t < ring.until) {
+        const level = Math.max(0, (live.current.left - spent - (current ? strokeCost(current) : 0)) / PAINT);
+        const fadeOut = Math.min(1, (ring.until - t) / 0.3);
+        const low = level < 0.2;
+        const cx = Math.round(ring.x - 13), cy = Math.round(ring.y - 13);
+        for (let k = 0; k < 40; k++) {
+          const ang = -Math.PI / 2 + (k / 40) * Math.PI * 2;
+          const px = Math.round(cx + Math.cos(ang) * 6), py = Math.round(cy + Math.sin(ang) * 6);
+          const filled = k / 40 < level;
+          ctx.globalAlpha = fadeOut * (filled ? (low && Math.floor(t * 6) % 2 ? 0.45 : 1) : 0.35);
+          ctx.fillStyle = filled ? (low ? '#FF5C5C' : live.current.mine) : '#0B0C0E';
+          ctx.fillRect(px, py, 1, 1);
+          ctx.fillStyle = filled ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)';
+          ctx.fillRect(Math.round(cx + Math.cos(ang) * 7), Math.round(cy + Math.sin(ang) * 7), 1, 1);
+        }
+        ctx.globalAlpha = 1;
       }
       for (let i = puffs.length - 1; i >= 0; i--) {
         const p = puffs[i];
@@ -315,7 +364,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
         if (p.life <= 0) { puffs.splice(i, 1); continue; }
         ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, p.life * 3); ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); ctx.globalAlpha = 1;
       }
-      ctx.drawImage(near, 0, 0);
+      ctx.drawImage(edges, 0, 0);
     };
     raf = requestAnimationFrame(draw);
 
@@ -345,8 +394,8 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       <canvas ref={canvas} width={PW} height={PH} className="block w-full" style={{ aspectRatio: `${PW} / ${PH}`, imageRendering: 'pixelated', cursor: spraying ? 'crosshair' : 'default' }} />
       {doodle.loaded && !spraying && (
         <span className={`absolute left-3 top-3 h-7 pl-2 pr-2.5 rounded-full flex items-center gap-1.5 tabular-nums ${TYPE.caption}`} style={{ background: 'rgba(10,11,13,0.6)', color: C.text, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-          <i className="w-[7px] h-[7px]" style={{ background: color.main }} />
-          {tx(lang, `${doodle.count} 人的不满在车上`, `${doodle.count} marks on board`)}
+          <span className="flex">{['#FF4FA3', '#38D9F5', '#FFD93D'].map(c => <i key={c} className="w-[6px] h-[6px] -mr-[1px]" style={{ background: c }} />)}</span>
+          {tx(lang, `已有 ${doodle.count} 人在车上涂鸦`, `Sprayed by ${doodle.count} people`)}
         </span>
       )}
       <AnimatePresence initial={false}>

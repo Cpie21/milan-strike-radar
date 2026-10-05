@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUp, CaretDown, CaretRight, Check, PencilSimple, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
-import Solari, { type Mood } from './Solari';
+import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
+import { LedBoard, LedFace, type Mood } from './Led';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
@@ -67,6 +67,7 @@ export type AskState = ReturnType<typeof useAsk>;
 // Daily allowance per device; the API holds a per-IP daily cap as well.
 export const DAILY_QUESTIONS = 5;
 const QUOTA_KEY = 'lab_ask_quota';
+const CACHE_KEY = 'lab_ask_cache';
 function readQuota(today: string) {
   try {
     const q = JSON.parse(localStorage.getItem(QUOTA_KEY) || '{}');
@@ -92,9 +93,32 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
 
   const go = (date: string, path: string) => { setOpen(false); onOpenDate(date, path); };
 
+  // Answers are kept for the session: asking the same thing again, or
+  // reopening the last answer, never spends another question.
+  const keyOf = (q: string, h: Hints) => `${region}|${q.toLowerCase().replace(/\s+/g, ' ')}|${JSON.stringify(h)}`;
+  const remember = (key: string, value: { stages: StageEvent[]; result: AskResult }) => {
+    try {
+      const all = JSON.parse(sessionStorage.getItem(CACHE_KEY) || '{}');
+      all[key] = value;
+      const keys = Object.keys(all);
+      if (keys.length > 12) delete all[keys[0]];
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(all));
+    } catch { /* storage blocked */ }
+  };
+  const recall = (key: string): { stages: StageEvent[]; result: AskResult } | null => {
+    try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '{}')[key] ?? null; } catch { return null; }
+  };
+  const reopen = () => { if (result || error) setOpen(true); };
+
   async function ask(text: string, next: Hints = {}) {
     const q = text.trim().slice(0, 200);
     if (!q) return;
+    const cached = recall(keyOf(q, next));
+    if (cached) {
+      setAsked(q); setHints(next); setStages(cached.stages); setResult(cached.result); setError(null); setTrace(false); setBusy(false); setOpen(true);
+      (document.activeElement as HTMLElement | null)?.blur();
+      return;
+    }
     // Refining an answer (picking a date or mode) is part of the same question.
     const fresh = q !== asked || !Object.keys(next).length;
     if (fresh && readQuota(today) >= DAILY_QUESTIONS) { setAsked(q); setOpen(true); setResult(null); setStages([]); setError('daily'); return; }
@@ -117,6 +141,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      const seen: StageEvent[] = [];
       for (;;) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -125,9 +150,10 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
         buffer = lines.pop() || '';
         for (const line of lines.filter(Boolean)) {
           const event = JSON.parse(line);
-          if (event.type === 'stage') setStages(prev => [...prev, event]);
+          if (event.type === 'stage') { seen.push(event); setStages(prev => [...prev, event]); }
           else if (event.type === 'final') {
             setResult(event.result);
+            if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result });
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
           } else if (event.type === 'error') setError('down');
         }
@@ -155,7 +181,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     return [...map].sort((a, b) => (order.indexOf(a[0]) + 99) % 99 - (order.indexOf(b[0]) + 99) % 99);
   })() : [];
 
-  return { lang, today, query, setQuery, asked, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left };
+  return { lang, today, region, query, setQuery, asked, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen };
 }
 
 // The face of the assistant follows what it is doing and what it found.
@@ -172,55 +198,64 @@ export function moodOf(a: Pick<AskState, 'busy' | 'error' | 'result'>): Mood {
   return r.level === 'high' ? 'alarm' : r.level === 'medium' || r.level === 'unknown' ? 'unsure' : 'happy';
 }
 
-// The input. On strike days it is docked at the bottom, always in reach.
-// On calm days it stays out of the way until the "问问站牌" suggestions in
-// the card call it up (see AskSuggestions), then it rises already focused.
-export function AskField({ ask: a, autoFocus, onIdle }: { ask: AskState; autoFocus?: boolean; onIdle?: () => void }) {
-  const reduce = useReducedMotion();
+// ── Input ─────────────────────────────────────────────────────────────
+// One input, two homes, one layoutId. On a calm day it lives in the module
+// under the "no strikes" card, big and centred; on a strike day it docks at
+// the bottom within thumb reach. Switching day moves it between the two, and
+// the board above it shrinks into the face on the bar.
+
+function AskInput({ a, big, autoFocus }: { a: AskState; big?: boolean; autoFocus?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
-  const { lang, query, setQuery, busy, focused, setFocused, left } = a;
+  const { lang, query, setQuery, busy, setFocused, left, focused } = a;
   const out = left === 0;
-  const examples = focused && !query && !out;
   useEffect(() => { if (autoFocus) input.current?.focus(); }, [autoFocus]);
   return (
+    <motion.form layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
+      onSubmit={e => { e.preventDefault(); a.ask(query); }}
+      className={`relative w-full flex items-center gap-2 ${big ? 'h-[60px] rounded-[22px] pl-5 pr-2' : 'h-[56px] rounded-full pl-[78px] pr-1.5'}`}
+      style={big ? { background: C.surface2 } : PILL}>
+      {/* A slow warm ring, the board's light reflected in the field */}
+      {big && <span aria-hidden className="pointer-events-none absolute -inset-px rounded-[23px] overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1 }}>
+        <motion.span className="absolute left-1/2 top-1/2 w-[700px] h-[700px] -ml-[350px] -mt-[350px]" style={{ background: 'conic-gradient(from 0deg, rgba(255,170,50,0.9), rgba(255,95,80,0.5), rgba(150,120,255,0.55), rgba(255,170,50,0.9))', opacity: focused || busy ? 1 : 0.45 }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: busy ? 2.2 : 9, ease: 'linear' }} />
+      </span>}
+      <input ref={input} value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} maxLength={200} enterKeyHint="send" disabled={out}
+        aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')}
+        placeholder={out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '比如：周五早上 9 点坐 M1 受影响吗？', 'e.g. Is the M1 running Friday at 9?')}
+        className={`relative flex-1 min-w-0 bg-transparent outline-none text-white placeholder:text-white/40 disabled:opacity-60 ${big ? 'text-[16px]' : 'text-[16px]'}`} />
+      <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
+        className="relative w-11 h-11 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: query.trim() ? '#F2A33A' : '#3A3F48', color: query.trim() ? '#1A1204' : '#FFFFFF' }}>
+        <ArrowUp size={18} weight="bold" />
+      </motion.button>
+    </motion.form>
+  );
+}
+
+function LastAnswer({ a, compact }: { a: AskState; compact?: boolean }) {
+  if (!(a.result || a.error) || a.open || a.busy) return null;
+  return (
+    <motion.button initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} onClick={a.reopen}
+      className={`max-w-full flex items-center gap-1.5 rounded-full ${compact ? 'h-8 px-3 mb-2 self-start' : 'h-8 px-3 mt-3'} text-[12.5px]`} style={{ ...PILL, color: C.text2 }}>
+      <ArrowCounterClockwise size={13} weight="bold" />
+      <span className="truncate max-w-[240px]">{tx(a.lang, `回到上一个回答：${a.asked}`, `Back to: ${a.asked}`)}</span>
+    </motion.button>
+  );
+}
+
+// The docked bar (strike days).
+export function AskField({ ask: a }: { ask: AskState }) {
+  const reduce = useReducedMotion();
+  return (
     <motion.div className="fixed z-[80] inset-x-0 bottom-0 pointer-events-none" style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
-      initial={{ y: reduce ? 0 : 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: reduce ? 0 : 90, opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
-      <AnimatePresence>
-        {examples && (
-          <motion.div key="scrim" aria-hidden className="fixed inset-x-0 bottom-0 h-[300px] -z-10" style={{ background: 'linear-gradient(180deg, rgba(4,8,16,0) 0%, rgba(4,8,16,0.7) 55%)' }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} />
-        )}
-      </AnimatePresence>
-      <div className="mx-auto max-w-[520px] px-4 pointer-events-auto">
-        <AnimatePresence>
-          {examples && (
-            <motion.div className="flex flex-col items-start gap-1.5 mb-2"
-              initial={{ opacity: 0, y: 8, filter: reduce ? 'none' : 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: 6 }} transition={{ duration: 0.24, ease: EASE }}>
-              {EXAMPLES.map(e => (
-                <button key={e[0]} onMouseDown={ev => ev.preventDefault()} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); a.ask(q); }}
-                  className="h-9 px-3.5 rounded-full text-[13.5px]" style={{ ...PILL, color: C.text }}>
-                  {tx(lang, e[0], e[1])}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <form onSubmit={e => { e.preventDefault(); a.ask(query); }} className="relative h-[56px] rounded-full flex items-center gap-2.5 pl-[74px] pr-1.5" style={PILL}>
-          {/* The face sits on the bar's edge, not inside it: a presence, not an icon */}
-          <span className="absolute left-3 -top-[14px]"><Solari mood={moodOf(a)} size={20} float label={tx(lang, '站牌助手', 'Solari assistant')} /></span>
-          <input ref={input} value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)}
-            onBlur={() => { setFocused(false); if (!query.trim()) onIdle?.(); }} maxLength={200} enterKeyHint="send" disabled={out}
-            aria-label={tx(lang, '用一句话问罢工', 'Ask about strikes')}
-            placeholder={out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '问站牌：周五坐地铁受影响吗？', 'Ask: is my Friday metro affected?')}
-            className="flex-1 min-w-0 bg-transparent outline-none text-[16px] text-white placeholder:text-white/45 disabled:opacity-60" />
-          <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-opacity disabled:opacity-35" style={{ background: '#3A3F48', color: '#FFFFFF' }}>
-            <ArrowUp size={18} weight="bold" />
-          </motion.button>
-        </form>
-        {left <= 2 && (
+      initial={{ opacity: reduce ? 1 : 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="mx-auto max-w-[520px] px-4 pointer-events-auto flex flex-col">
+        <AnimatePresence><LastAnswer a={a} compact /></AnimatePresence>
+        <div className="relative">
+          <AskInput a={a} />
+          <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="absolute left-3 -top-[13px] z-10"><LedFace mood={moodOf(a)} size={16} /></motion.span>
+        </div>
+        {a.left <= 2 && (
           <p className="mt-1.5 text-center text-[11.5px] font-medium" style={{ color: C.text3 }}>
-            {out ? tx(lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(lang, `今天还可以问 ${left} 次`, `${left} question${left === 1 ? '' : 's'} left today`)}
+            {a.left === 0 ? tx(a.lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(a.lang, `今天还可以问 ${a.left} 次`, `${a.left} question${a.left === 1 ? '' : 's'} left today`)}
           </p>
         )}
       </div>
@@ -228,36 +263,24 @@ export function AskField({ ask: a, autoFocus, onIdle }: { ask: AskState; autoFoc
   );
 }
 
-// The calm-day entry, after Google's pattern: no empty box to fill in, but
-// questions you are likely to ask next, phrased from today's data, one tap
-// each — plus a way to type your own. The face sits where Google puts its
-// sparkle: a quiet sign that this part answers back.
-export function AskSuggestions({ ask: a, suggestions, onType }: { ask: AskState; suggestions: string[]; onType: (prefill?: string) => void }) {
-  const { lang, left } = a;
-  const out = left === 0;
+// The calm-day module. On a day with no strike there is room, and a reason,
+// to put the question front and centre: people arrive with something to
+// check. A hanging board, one question, one field, nothing else to choose
+// from. It stays mounted while you move between calm days; the board
+// announces each day as it passes.
+export function AskModule({ ask: a, lines, message }: { ask: AskState; lines: string[]; message?: string }) {
   return (
-    <div className="px-4 pt-4 pb-4">
-      <div className="flex items-center gap-3 mb-3.5">
-        <Solari mood={moodOf(a)} size={22} float label={tx(lang, '站牌助手', 'Solari assistant')} />
-        <p className={TYPE.label} style={{ color: C.text2 }}>{out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, '还想确认什么？问问站牌', 'Anything else to check? Ask the board')}</p>
+    <motion.section layout transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="relative mt-3 overflow-hidden" style={{ background: C.surface, borderRadius: 24 }}>
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[150px] pointer-events-none" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(255,160,40,0.14), transparent 70%)' }} />
+      <div className="relative flex flex-col items-center px-4 pb-5">
+        <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={moodOf(a)} lines={lines} message={message} /></motion.div>
+        <p className="mt-4 text-[18px] font-semibold">{tx(a.lang, '有什么想确认的？', 'Anything to check?')}</p>
+        <p className={`mt-1 mb-4 ${TYPE.label}`} style={{ color: C.text3 }}>{tx(a.lang, '某天、某条线路，或群里听到的消息', 'A day, a line, or something you heard')}</p>
+        <AskInput a={a} big />
+        <AnimatePresence><LastAnswer a={a} /></AnimatePresence>
+        {a.left <= 2 && <p className="mt-2 text-[11.5px] font-medium" style={{ color: C.text3 }}>{a.left === 0 ? tx(a.lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(a.lang, `今天还可以问 ${a.left} 次`, `${a.left} left today`)}</p>}
       </div>
-      <div className="flex flex-wrap gap-2">
-        {suggestions.map(q => (
-          <motion.button key={q} whileTap={{ scale: 0.97 }} disabled={out} onClick={() => { a.setQuery(q); a.ask(q); }}
-            className="h-9 px-3.5 rounded-full text-[13.5px] text-left disabled:opacity-40" style={{ background: C.surface2, color: C.text, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
-            {q}
-          </motion.button>
-        ))}
-        <motion.button whileTap={{ scale: 0.97 }} disabled={out} onClick={() => onType(tx(lang, '群里说', 'I heard '))}
-          className="h-9 px-3.5 rounded-full text-[13.5px] disabled:opacity-40" style={{ background: C.surface2, color: C.text, boxShadow: `inset 0 0 0 1px ${C.line}` }}>
-          {tx(lang, '核实一条听到的消息', 'Check a rumour')}
-        </motion.button>
-        <motion.button whileTap={{ scale: 0.97 }} disabled={out} onClick={() => onType()}
-          className="h-9 px-3.5 rounded-full flex items-center gap-1.5 text-[13.5px] disabled:opacity-40" style={{ color: C.text2 }}>
-          <PencilSimple size={14} weight="bold" />{tx(lang, '问点别的', 'Ask something else')}
-        </motion.button>
-      </div>
-    </div>
+    </motion.section>
   );
 }
 
@@ -265,14 +288,21 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   const { lang, today, open, setOpen, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '问答', 'Ask')}>
-      <div className="flex items-start gap-3">
-        <Solari mood={moodOf(a)} size={30} float label={tx(lang, '站牌助手', 'Solari assistant')} />
-        <p className="flex-1 text-[17px] font-semibold leading-snug pt-2">“{asked}”</p>
-      </div>
-
-      {/* While working, the steps are the answer; afterwards they fold away. */}
-      {busy && <Stages stages={stages} busy lang={lang} />}
+    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall dismissFromTop
+      header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(a)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{asked}”</p></div>}>
+      <AnimatePresence mode="wait" initial={false}>
+      {busy ? (
+        // Thinking is quick, so it says one thing at a time.
+        <motion.div key="thinking" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, y: -6, transition: { duration: 0.18 } }} className="pt-6 pb-10 flex flex-col items-center gap-3">
+          <AnimatePresence mode="wait">
+            <motion.p key={stages.length} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }} className="text-[15px]" style={{ color: C.text2 }}>
+              {tx(lang, ...THINKING[Math.min(stages.length, THINKING.length - 1)])}
+            </motion.p>
+          </AnimatePresence>
+          <span className="flex gap-1.5">{[0, 1, 2, 3].map(i => <motion.i key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: i < stages.length ? '#F2A33A' : C.surface3 }} animate={i === stages.length ? { opacity: [0.3, 1, 0.3] } : { opacity: 1 }} transition={{ repeat: Infinity, duration: 0.9 }} />)}</span>
+        </motion.div>
+      ) : (
+      <motion.div key="done" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
 
       {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.surface2, color: C.text }}>{error === 'daily' ? tx(lang, `今天的 ${DAILY_QUESTIONS} 次提问已经用完了，明天再来。日历里的信息不受影响。`, `You've used today's ${DAILY_QUESTIONS} questions. The calendar still has everything.`) : error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
 
@@ -368,9 +398,10 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
         </div>
       )}
 
-      {!busy && (result?.kind === 'result' || result?.kind === 'clarify') && <Feedback key={asked} ask={a} />}
+      {result?.kind === 'result' && <ShareAnswer ask={a} />}
+      {(result?.kind === 'result' || result?.kind === 'clarify') && <Feedback key={asked} ask={a} />}
 
-      {!busy && stages.length > 0 && (
+      {stages.length > 0 && (
         <div className="mt-3 mb-1">
           <button onClick={() => setTrace(v => !v)} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
             <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
@@ -385,6 +416,9 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
           </AnimatePresence>
         </div>
       )}
+      </motion.div>
+      )}
+      </AnimatePresence>
     </Sheet>
   );
 }
@@ -418,6 +452,30 @@ function Stages({ stages, busy = false, lang }: { stages: StageEvent[]; busy?: b
         );
       })}
     </ol>
+  );
+}
+
+const THINKING: [string, string][] = [['正在理解你的问题…', 'Reading your question…'], ['正在查官方记录…', 'Checking official records…'], ['正在逐条判断…', 'Weighing each strike…'], ['正在核对证据…', 'Checking the evidence…'], ['马上好…', 'Almost there…']];
+
+// Share an answer: the question, the verdict and a link to the day.
+function ShareAnswer({ ask: a }: { ask: AskState }) {
+  const { lang, asked, result, verdict } = a;
+  const [copied, setCopied] = useState(false);
+  if (result?.kind !== 'result') return null;
+  const share = async () => {
+    const day = result.range.from;
+    const url = `${window.location.origin}${window.location.pathname}?city=${a.region}&date=${day}`;
+    const head = verdict ? (verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]) : '';
+    const text = tx(lang, `我问：${asked}\n答：${head}（${dayLabel(day, lang)}）`, `Q: ${asked}\nA: ${head} (${dayLabel(day, lang)})`);
+    if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ text, url }); } catch { /* dismissed */ } return; }
+    await navigator.clipboard?.writeText(`${text}\n${url}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <button onClick={share} className="mt-4 w-full h-11 rounded-[14px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold" style={{ background: C.surface3, color: '#FFFFFF' }}>
+      {copied ? <Check size={16} weight="bold" /> : <Export size={16} weight="bold" />}{copied ? tx(lang, '已复制，可以发给朋友', 'Copied') : tx(lang, '分享这个回答', 'Share this answer')}
+    </button>
   );
 }
 

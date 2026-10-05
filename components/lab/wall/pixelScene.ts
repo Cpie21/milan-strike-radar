@@ -1,12 +1,18 @@
 import type { Mode } from '../../../lib/lab/model';
 
 // Pixel scenes for the graffiti wall: a parked vehicle at night in a place
-// you could deface, drawn on a 240×140 grid and scaled up with hard edges.
-// Each vehicle carries the details people remember it by:
-//   metro  – silver car, red band, sliding doors, gangways to the next cars
-//   train  – Trenord-style double decker, two rows of windows, pantograph
-//   bus    – ATM orange, white roof band, LED route sign, big wheel arches
-//   plane  – fuselage at a gate, jet bridge, tail fin, wing and engine
+// you could deface, on a 240×140 grid scaled up with hard edges.
+//
+// Drawn the way side-view vehicle pixel artists work (Etherfield, Alessio
+// Conti, PXLCRS): one fixed side view, honest proportions, every material
+// on a 3–4 step ramp, a 1px dark outline, light from above (bright roofline,
+// shadowed skirt), glass as one dark band with a reflection, and details at
+// the scale they read: door frames, handles, bogies, roof gear.
+// Each vehicle keeps the things people remember it by:
+//   metro – silver car, red doors and band, window band, gangways
+//   train – white double decker, two glass bands, green band, pantograph
+//   bus   – ATM orange, white roof, LED route sign, raked screen, mirror
+//   plane – white fuselage at a jet bridge, coloured tail, wing, engine
 // Nothing moves: it is a strike.
 
 export const PW = 240;
@@ -14,36 +20,67 @@ export const PH = 140;
 
 type C = CanvasRenderingContext2D;
 const R = (c: C, x: number, y: number, w: number, h: number, col: string) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+const P = (c: C, x: number, y: number, col: string) => R(c, x, y, 1, 1, col);
 const disc = (c: C, cx: number, cy: number, r: number, col: string) => {
   c.fillStyle = col;
   for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.6) c.fillRect(cx + x, cy + y, 1, 1);
 };
 
-// Cabin light, in three warm bands so it reads as pixel art, not a gradient.
-const lit = (c: C, x: number, y: number, w: number, h: number) => {
-  R(c, x, y, w, h, '#C98945');
-  R(c, x, y, w, Math.ceil(h * 0.6), '#E7B068');
-  R(c, x, y, w, Math.ceil(h * 0.25), '#F6D49A');
-  // heads and seat backs against the light
-  for (let sx = x + 2; sx < x + w - 2; sx += 6) R(c, sx, y + h - Math.ceil(h * 0.35), 3, Math.ceil(h * 0.35), 'rgba(40,24,10,0.55)');
-};
+const INK = '#141519';
+const STEEL = ['#E2E5E9', '#BEC3CA', '#9AA0A8', '#767C85', '#555A62'];
+const WHITE = ['#F2F2EF', '#DCDDDA', '#C2C4C3', '#A0A3A5', '#7C8084'];
+const GLASS = ['#2E3A48', '#18202A', '#0E1218'];
 
-// 5×7 LED font for the signs
+// A body panel lit from above: highlight line, base, shadowed lower edge.
+function panel(c: C, x: number, y: number, w: number, h: number, ramp: string[]) {
+  R(c, x, y, w, h, ramp[2]);
+  R(c, x, y, w, 2, ramp[1]);
+  R(c, x, y, w, 1, ramp[0]);
+  R(c, x, y + h - 3, w, 3, ramp[3]);
+  R(c, x, y + h - 1, w, 1, ramp[4]);
+}
+
+// A continuous glass band with a diagonal reflection and pillars.
+function glassBand(c: C, x: number, y: number, w: number, h: number, lit = true) {
+  R(c, x, y, w, h, GLASS[1]);
+  R(c, x, y, w, 1, GLASS[0]);
+  R(c, x, y + h - 1, w, 1, GLASS[2]);
+  if (lit) {
+    // warm cabins behind the glass, darker at the bottom where seats are
+    for (let yy = y + 1; yy < y + h - 1; yy++) {
+      const t = (yy - y) / h;
+      c.fillStyle = t < 0.3 ? 'rgba(246,206,140,0.55)' : t < 0.7 ? 'rgba(220,160,90,0.45)' : 'rgba(120,80,40,0.45)';
+      c.fillRect(x + 1, yy, w - 2, 1);
+    }
+    for (let sx = x + 3; sx < x + w - 2; sx += 5) R(c, sx, y + Math.round(h * 0.55), 2, Math.ceil(h * 0.45) - 1, 'rgba(30,18,8,0.55)'); // heads / seat backs
+  }
+  for (let i = 0; i < h; i++) if (x + 6 + i < x + w) P(c, x + 6 + i, y + h - 1 - i, 'rgba(255,255,255,0.10)'); // reflection
+}
+
+function pillars(c: C, xs: number[], y: number, h: number, col: string) { xs.forEach(px => R(c, px, y, 2, h, col)); }
+
+function bogie(c: C, x: number, y: number) {
+  R(c, x, y, 30, 4, '#22242A');
+  R(c, x + 2, y + 1, 26, 1, '#34373E');
+  R(c, x + 12, y - 2, 6, 3, '#2B2E34'); // bolster
+  [x + 7, x + 23].forEach(cx => { disc(c, cx, y + 5, 4, '#101114'); disc(c, cx, y + 5, 1, '#5A5E66'); P(c, cx - 2, y + 2, '#3A3D44'); });
+  R(c, x + 10, y + 4, 10, 2, '#3A3D44'); // spring
+}
+
+function underframe(c: C, x: number, w: number, y: number) {
+  R(c, x + 2, y, w - 4, 3, '#1B1D21');
+  [0.32, 0.5].forEach(t => { R(c, x + w * t, y + 1, 14, 5, '#2A2D33'); R(c, x + w * t + 1, y + 2, 12, 1, '#363A41'); });
+}
+
+// 5×7 LED font for signs
 const FONT: Record<string, string[]> = {
-  S: ['.###.', '#...#', '#....', '.###.', '....#', '#...#', '.###.'],
-  C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
-  I: ['.###.', '..#..', '..#..', '..#..', '..#..', '..#..', '.###.'],
-  O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
-  P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
-  E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
-  R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
-  M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'],
-  '1': ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
-  '9': ['.###.', '#...#', '#...#', '.####', '....#', '#...#', '.###.'],
-  '0': ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'],
-  '!': ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'],
-  ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'],
-  '·': ['.....', '.....', '.....', '..#..', '.....', '.....', '.....'],
+  S: ['.###.', '#...#', '#....', '.###.', '....#', '#...#', '.###.'], C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'],
+  I: ['.###.', '..#..', '..#..', '..#..', '..#..', '..#..', '.###.'], O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'], E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
+  R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'], M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'],
+  '1': ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'], '9': ['.###.', '#...#', '#...#', '.####', '....#', '#...#', '.###.'],
+  '0': ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'], '!': ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'],
+  ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'], '·': ['.....', '.....', '.....', '..#..', '.....', '.....', '.....'],
 };
 export function ledText(c: C, text: string, x: number, y: number, on: string, off?: string, clip?: { x: number; w: number }) {
   [...text].forEach((ch, i) => {
@@ -51,269 +88,296 @@ export function ledText(c: C, text: string, x: number, y: number, on: string, of
     g.forEach((row, ry) => [...row].forEach((p, rx) => {
       const px = x + i * 6 + rx;
       if (clip && (px < clip.x || px >= clip.x + clip.w)) return;
-      if (p === '#') R(c, px, y + ry, 1, 1, on);
-      else if (off) R(c, px, y + ry, 1, 1, off);
+      if (p === '#') P(c, px, y + ry, on);
+      else if (off) P(c, px, y + ry, off);
     }));
   });
 }
+// A tiny 3×5 font for the route number on the bus
+const SMALL: Record<string, string[]> = { '9': ['###', '#.#', '###', '..#', '###'], '0': ['###', '#.#', '#.#', '#.#', '###'] };
+function smallText(c: C, text: string, x: number, y: number, col: string) {
+  [...text].forEach((ch, i) => (SMALL[ch] || []).forEach((row, ry) => [...row].forEach((p, rx) => { if (p === '#') P(c, x + i * 4 + rx, y + ry, col); })));
+}
 
 export type Scene = {
-  body: { x0: number; y0: number; x1: number; y1: number }; // where tags go
+  body: { x0: number; y0: number; x1: number; y1: number };
   sign: { x: number; y: number; w: number };
-  lamps: [number, number][]; // headlights, flashed on touch
-  spot: { x: number; y: number }; // where your first mark lands
+  lamps: [number, number][];
+  spot: { x: number; y: number };
   background: (c: C) => void;
-  neighbours: (c: C) => void; // drawn blurred: the cars beyond focus
+  neighbours: (c: C) => void;
   vehicle: (c: C) => void;
-  mask: (c: C) => void; // paintable surface, in white
+  mask: (c: C) => void;
   foreground: (c: C) => void;
 };
 
-// ── Shared backdrops ──────────────────────────────────────────────────
+// ── Backdrops ──────────────────────────────────────────────────────────
 
-function stationWall(c: C, accent: string) {
-  R(c, 0, 0, PW, PH, '#121317');
-  for (let y = 0; y < 108; y += 8) R(c, 0, y, PW, 1, '#17191D');
-  for (let y = 0; y < 108; y += 8) for (let x = (y / 8) % 2 ? 0 : 6; x < PW; x += 12) R(c, x, y, 1, 8, '#17191D');
-  // old posters and a station name plate
-  R(c, 12, 30, 22, 30, '#22252B'); R(c, 14, 32, 18, 12, '#2E2420'); R(c, 14, 46, 18, 2, '#3A3226');
-  R(c, 206, 28, 24, 32, '#22252B'); R(c, 208, 30, 20, 14, '#1F2A33'); R(c, 208, 48, 14, 2, '#2E3A44');
-  R(c, 96, 30, 48, 9, '#1D3A6B'); R(c, 97, 31, 46, 7, '#24468A');
-  for (let x = 100; x < 140; x += 3) R(c, x, 34, 2, 1, '#C9D4EA');
-  // ceiling lights with dithered pools
+function stationWall(c: C) {
+  R(c, 0, 0, PW, PH, '#111216');
+  // tiled wall, two tones, grout lines
+  for (let y = 0; y < 106; y += 6) for (let x = (y / 6) % 2 ? -4 : 0; x < PW; x += 8) { R(c, x, y, 7, 5, (x * 3 + y) % 7 ? '#17191E' : '#191B20'); }
+  R(c, 0, 58, PW, 2, '#1D2D52'); R(c, 0, 60, PW, 1, '#14203B'); // station colour line
+  // posters (faded) and a name plate
+  [[8, 18], [196, 22]].forEach(([px, py]) => { R(c, px, py, 30, 34, '#0E0F12'); R(c, px + 1, py + 1, 28, 32, '#2A2420'); R(c, px + 3, py + 3, 24, 14, '#3A2E26'); R(c, px + 3, py + 20, 18, 2, '#4A3B2C'); R(c, px + 3, py + 24, 12, 2, '#3D3127'); });
+  R(c, 92, 26, 56, 11, '#0E0F12'); R(c, 93, 27, 54, 9, '#1E3B78');
+  for (let x = 97; x < 143; x += 4) R(c, x, 30, 3, 3, '#C9D4EA');
+  // ceiling: a strip light every 80px with a dithered pool
   [40, 120, 200].forEach(x => {
-    R(c, x - 8, 2, 16, 2, '#FFE3B5');
-    for (let y = 4; y < 30; y++) for (let dx = -14; dx <= 14; dx++) if ((dx + y) % 2 === 0 && Math.abs(dx) < 14 - y * 0.4 && Math.random() < 0.18) R(c, x + dx, y, 1, 1, 'rgba(255,214,150,0.18)');
+    R(c, x - 10, 2, 20, 2, '#FFE6BE'); R(c, x - 11, 4, 22, 1, '#3A3326');
+    for (let y = 5; y < 40; y++) for (let dx = -18; dx <= 18; dx++) if ((dx + y) % 3 === 0 && Math.abs(dx) < 18 - y * 0.35 && ((dx * 7 + y * 13) % 5 === 0)) P(c, x + dx, y, 'rgba(255,214,150,0.10)');
   });
-  R(c, 0, 106, PW, 2, accent === '' ? '#2A2C31' : '#2A2C31');
+  R(c, 0, 104, PW, 2, '#1A1B1F');
 }
 
 function platform(c: C) {
-  R(c, 0, 110, PW, 2, '#3B3E44'); // rail head
-  R(c, 0, 112, PW, 28, '#1E2024');
-  for (let x = 0; x < PW; x += 16) R(c, x, 116, 1, 24, '#24272B');
-  R(c, 0, 113, PW, 3, '#D9B640');
-  for (let x = 0; x < PW; x += 4) R(c, x + 1, 114, 1, 1, '#A88A2C'); // tactile studs
-}
-
-function bogie(c: C, x: number) {
-  R(c, x, 104, 26, 4, '#1A1B1E');
-  disc(c, x + 6, 108, 3, '#0F1012'); disc(c, x + 20, 108, 3, '#0F1012');
-  R(c, x + 5, 108, 2, 1, '#4A4D52'); R(c, x + 19, 108, 2, 1, '#4A4D52');
+  R(c, 0, 108, PW, 3, '#3A3D43'); R(c, 0, 108, PW, 1, '#5A5E66'); // rail head
+  R(c, 0, 111, PW, 29, '#1C1E22');
+  for (let x = 0; x < PW; x += 20) R(c, x, 117, 1, 23, '#22252A');
+  R(c, 0, 125, PW, 1, '#22252A');
+  R(c, 0, 112, PW, 4, '#D8B23C'); R(c, 0, 112, PW, 1, '#EBCB5B');
+  for (let x = 1; x < PW; x += 3) P(c, x, 114, '#A3862B');
+  R(c, 0, 116, PW, 1, '#0E0F11');
 }
 
 // ── Metro ─────────────────────────────────────────────────────────────
 
-function metroCar(c: C, x: number, accent: string) {
-  const w = 148;
-  R(c, x + 2, 48, w - 4, 3, '#4E525A');
-  R(c, x, 51, w, 4, '#666B73');
-  R(c, x, 55, w, 45, '#8C9199');
-  R(c, x, 55, w, 1, '#A9AEB6');
-  R(c, x, 96, w, 6, '#6A6F77');
-  R(c, x, 86, w, 4, accent);
-  R(c, x, 86, w, 1, 'rgba(255,255,255,0.35)');
-  [18, 66, 114].forEach(dx => {
-    R(c, x + dx, 58, 16, 44, '#7D828A');
-    R(c, x + dx + 8, 58, 1, 44, '#5C6067');
-    lit(c, x + dx + 2, 61, 5, 17);
-    lit(c, x + dx + 10, 61, 5, 17);
+const MW = 150;
+function metroCar(c: C, x: number, red: string) {
+  const top = 50;
+  // roof with equipment
+  R(c, x + 4, top - 3, MW - 8, 3, STEEL[3]); R(c, x + 4, top - 3, MW - 8, 1, STEEL[2]);
+  [[30, 22], [96, 22]].forEach(([dx, w]) => { R(c, x + dx, top - 6, w, 3, '#5D626A'); for (let i = 0; i < w; i += 3) P(c, x + dx + i, top - 5, '#3C4047'); });
+  panel(c, x, top, MW, 52, STEEL);
+  // window band and doors
+  glassBand(c, x + 4, top + 7, MW - 8, 19);
+  [20, 68, 116].forEach(dx => {
+    // red doors, as on Milan's red line
+    panel(c, x + dx, top + 5, 16, 47, ['#FF8C82', '#E8483C', '#D93A2F', '#A82A21', '#7E1F18']);
+    R(c, x + dx - 1, top + 5, 1, 47, INK); R(c, x + dx + 16, top + 5, 1, 47, INK);
+    glassBand(c, x + dx + 2, top + 8, 5, 21); glassBand(c, x + dx + 9, top + 8, 5, 21);
+    R(c, x + dx + 7, top + 6, 2, 46, '#7E1F18');
+    P(c, x + dx + 6, top + 33, INK); P(c, x + dx + 9, top + 33, INK); // handles
   });
-  [[4, 12], [38, 26], [86, 26], [134, 10]].forEach(([dx, ww]) => lit(c, x + dx, 61, ww, 15));
-  bogie(c, x + 10);
-  bogie(c, x + w - 36);
+  pillars(c, [x + 36, x + 52, x + 84, x + 100], top + 7, 19, STEEL[3]);
+  // the red band below the windows, and a destination display
+  R(c, x, top + 33, MW, 4, red); R(c, x, top + 33, MW, 1, '#FF8C82'); R(c, x, top + 36, MW, 1, '#8E2A23');
+  R(c, x + 40, top + 39, 12, 4, '#0B0B0C'); R(c, x + 41, top + 40, 10, 2, '#E99A2A');
+  // outline
+  R(c, x - 1, top, 1, 52, INK); R(c, x + MW, top, 1, 52, INK); R(c, x, top - 1, MW, 1, INK); R(c, x, top + 52, MW, 1, INK);
+  underframe(c, x, MW, top + 52);
+  bogie(c, x + 12, top + 54); bogie(c, x + MW - 42, top + 54);
 }
 
-function metro(accent: string): Scene {
-  const x = 46;
+function metro(red: string): Scene {
+  const x = 45;
   return {
-    body: { x0: x + 2, y0: 56, x1: x + 146, y1: 100 },
-    sign: { x: 152, y: 12, w: 76 },
+    body: { x0: x + 3, y0: 52, x1: x + MW - 3, y1: 100 },
+    sign: { x: 154, y: 9, w: 76 },
     lamps: [],
-    spot: { x: x + 74, y: 72 },
-    background: c => {
-      stationWall(c, accent);
-      // overhead line hangers
-      for (let px = 10; px < PW; px += 50) R(c, px, 0, 1, 44, '#24262B');
-      R(c, 0, 44, PW, 1, '#33363C');
-    },
-    neighbours: c => { metroCar(c, x - 156, accent); metroCar(c, x + 156, accent); },
+    spot: { x: x + MW / 2, y: 74 },
+    background: c => { stationWall(c); for (let px = 20; px < PW; px += 60) R(c, px, 0, 1, 44, '#24262B'); R(c, 0, 43, PW, 1, '#3A3D43'); },
+    neighbours: c => { metroCar(c, x - MW - 10, red); metroCar(c, x + MW + 10, red); },
     vehicle: c => {
-      // gangways to the next cars
-      R(c, x - 8, 58, 8, 40, '#2A2C31'); for (let y = 60; y < 96; y += 3) R(c, x - 8, y, 8, 1, '#3A3D43');
-      R(c, x + 148, 58, 8, 40, '#2A2C31'); for (let y = 60; y < 96; y += 3) R(c, x + 148, y, 8, 1, '#3A3D43');
-      metroCar(c, x, accent);
+      [x - 10, x + MW].forEach(gx => { R(c, gx, 58, 10, 40, '#202227'); for (let y = 59; y < 97; y += 2) R(c, gx, y, 10, 1, '#2C2F35'); });
+      metroCar(c, x, red);
     },
-    mask: c => { R(c, x, 51, 148, 51, '#FFFFFF'); },
+    mask: c => { R(c, x, 50, MW, 52, '#FFFFFF'); },
     foreground: platform,
   };
 }
 
-// ── Regional train (double decker) ─────────────────────────────────────
+// ── Regional train: double decker ───────────────────────────────────────
 
-function trainCar(c: C, x: number, accent: string) {
-  const w = 160;
-  R(c, x + 3, 34, w - 6, 3, '#6E737B');
-  R(c, x, 37, w, 63, '#A6ABB2');
-  R(c, x, 37, w, 1, '#C3C7CD');
-  R(c, x, 94, w, 8, '#6E737B');
-  R(c, x, 66, w, 4, accent);
-  R(c, x, 70, w, 2, '#3FAE6A');
-  for (let dx = 8; dx < w - 12; dx += 19) lit(c, x + dx, 44, 13, 12); // upper deck
-  [[6, 22], [56, 46], [132, 22]].forEach(([dx, ww]) => { for (let d = 0; d + 11 <= ww; d += 15) lit(c, x + dx + d, 76, 11, 11); });
-  [34, 110].forEach(dx => { R(c, x + dx, 72, 18, 30, '#8E939A'); R(c, x + dx + 9, 72, 1, 30, '#6A6F77'); lit(c, x + dx + 2, 75, 6, 13); lit(c, x + dx + 11, 75, 6, 13); });
-  bogie(c, x + 10);
-  bogie(c, x + w - 36);
+const TW = 164;
+function trainCar(c: C, x: number, blue: string) {
+  const top = 34;
+  R(c, x + 6, top - 2, TW - 12, 2, WHITE[3]);
+  panel(c, x, top, TW, 68, WHITE);
+  glassBand(c, x + 4, top + 7, TW - 8, 13); // upper deck
+  glassBand(c, x + 4, top + 34, TW - 8, 12); // lower deck
+  pillars(c, [x + 26, x + 50, x + 74, x + 98, x + 122, x + 146], top + 7, 13, WHITE[3]);
+  pillars(c, [x + 26, x + 74, x + 98, x + 146], top + 34, 12, WHITE[3]);
+  // doors at the low floor
+  [44, 116].forEach(dx => {
+    R(c, x + dx, top + 30, 20, 38, WHITE[2]); R(c, x + dx, top + 30, 20, 1, WHITE[0]);
+    R(c, x + dx - 1, top + 30, 1, 38, WHITE[4]); R(c, x + dx + 20, top + 30, 1, 38, WHITE[4]);
+    glassBand(c, x + dx + 2, top + 33, 7, 18); glassBand(c, x + dx + 11, top + 33, 7, 18);
+    R(c, x + dx + 9, top + 30, 2, 38, WHITE[3]);
+  });
+  // livery: green band, blue line
+  R(c, x, top + 54, TW, 6, '#2F9A5B'); R(c, x, top + 54, TW, 1, '#5BC184'); R(c, x, top + 59, TW, 1, '#1E6C3E');
+  R(c, x, top + 25, TW, 2, blue);
+  R(c, x - 1, top, 1, 68, INK); R(c, x + TW, top, 1, 68, INK); R(c, x, top - 1, TW, 1, INK); R(c, x, top + 68, TW, 1, INK);
+  bogie(c, x + 12, top + 70); bogie(c, x + TW - 42, top + 70);
 }
 
-function train(accent: string): Scene {
-  const x = 40;
+function train(blue: string): Scene {
+  const x = 38;
   return {
-    body: { x0: x + 2, y0: 40, x1: x + 158, y1: 98 },
-    sign: { x: 160, y: 8, w: 70 },
+    body: { x0: x + 3, y0: 36, x1: x + TW - 3, y1: 100 },
+    sign: { x: 160, y: 6, w: 70 },
     lamps: [],
-    spot: { x: x + 80, y: 60 },
+    spot: { x: x + TW / 2, y: 64 },
     background: c => {
-      stationWall(c, accent);
-      R(c, 0, 18, PW, 1, '#4C4F55'); // catenary
-      R(c, 0, 14, PW, 1, '#2E3035');
-      [16, 224].forEach(px => R(c, px, 6, 3, 102, '#24262B'));
+      stationWall(c);
+      R(c, 0, 16, PW, 1, '#5A5E66'); R(c, 0, 12, PW, 1, '#33363C'); // catenary
+      for (let px = 4; px < PW; px += 30) R(c, px, 12, 1, 4, '#3A3D43'); // droppers
+      [14, 226].forEach(px => { R(c, px, 4, 4, 100, '#22252A'); R(c, px, 4, 1, 100, '#2E3137'); });
     },
-    neighbours: c => { trainCar(c, x - 168, accent); trainCar(c, x + 168, accent); },
+    neighbours: c => { trainCar(c, x - TW - 10, blue); trainCar(c, x + TW + 10, blue); },
     vehicle: c => {
-      R(c, x - 8, 44, 8, 54, '#2A2C31'); for (let y = 46; y < 96; y += 3) R(c, x - 8, y, 8, 1, '#3A3D43');
-      R(c, x + 160, 44, 8, 54, '#2A2C31'); for (let y = 46; y < 96; y += 3) R(c, x + 160, y, 8, 1, '#3A3D43');
-      trainCar(c, x, accent);
+      [x - 10, x + TW].forEach(gx => { R(c, gx, 42, 10, 56, '#202227'); for (let y = 43; y < 97; y += 2) R(c, gx, y, 10, 1, '#2C2F35'); });
+      trainCar(c, x, blue);
       // pantograph up to the wire
-      const px = x + 70;
-      R(c, px, 32, 20, 2, '#2C2E33');
-      for (let i = 0; i < 7; i++) { R(c, px + 4 + i, 31 - i * 2, 1, 2, '#3C3F45'); R(c, px + 15 - i, 31 - i * 2, 1, 2, '#3C3F45'); }
-      R(c, px + 4, 18, 12, 1, '#55585E');
+      const px = x + 66;
+      R(c, px, 30, 26, 2, '#2C2E33'); R(c, px + 4, 29, 4, 1, '#4A4D53'); R(c, px + 18, 29, 4, 1, '#4A4D53');
+      for (let i = 0; i < 7; i++) { P(c, px + 6 + i, 28 - i * 2, '#4A4D53'); P(c, px + 6 + i, 27 - i * 2, '#3A3D43'); P(c, px + 19 - i, 28 - i * 2, '#4A4D53'); P(c, px + 19 - i, 27 - i * 2, '#3A3D43'); }
+      R(c, px + 5, 16, 16, 1, '#7A7E86');
     },
-    mask: c => { R(c, x, 37, 160, 65, '#FFFFFF'); },
+    mask: c => { R(c, x, 34, TW, 68, '#FFFFFF'); },
     foreground: platform,
   };
 }
 
 // ── Bus ───────────────────────────────────────────────────────────────
 
-function bus(accent: string): Scene {
-  const x = 44;
-  const w = 152;
+function bus(): Scene {
+  const x = 40;
+  const w = 158;
+  const top = 50;
+  const ORANGE = ['#FFC07A', '#F59A45', '#E07C2A', '#B65E1A', '#8A4512'];
+  const wheel = (cx: number) => {
+    disc(c0!, cx, 104, 11, '#0B0C0E');
+    disc(c0!, cx, 105, 9, '#141518'); disc(c0!, cx, 105, 5, '#3A3D43'); disc(c0!, cx, 105, 3, '#8A8F97'); disc(c0!, cx, 105, 1, '#3A3D43');
+  };
+  let c0: C | null = null;
   return {
-    body: { x0: x + 2, y0: 56, x1: x + 128, y1: 98 },
-    sign: { x: 18, y: 10, w: 64 },
-    lamps: [[x + w - 3, 90]],
-    spot: { x: x + 60, y: 84 },
+    body: { x0: x + 3, y0: top + 2, x1: x + 128, y1: 98 },
+    sign: { x: 162, y: 7, w: 70 },
+    lamps: [[x + w - 3, 92]],
+    spot: { x: x + 64, y: 86 },
     background: c => {
-      R(c, 0, 0, PW, PH, '#111215');
-      // depot shutters
-      [[8, 70], [86, 70], [164, 70]].forEach(([sx, sw]) => {
-        R(c, sx, 22, sw, 86, '#1C1E22');
-        for (let y = 24; y < 108; y += 3) R(c, sx, y, sw, 1, '#22252A');
-        R(c, sx, 20, sw, 2, '#2C2F35');
+      R(c, 0, 0, PW, PH, '#101114');
+      [[6, 72], [84, 72], [162, 72]].forEach(([sx, sw]) => {
+        R(c, sx, 20, sw, 88, '#1B1D21');
+        for (let y = 22; y < 108; y += 3) { R(c, sx, y, sw, 1, '#22252A'); R(c, sx, y + 1, sw, 1, '#191B1F'); }
+        R(c, sx - 2, 16, sw + 4, 4, '#2C2F35'); R(c, sx - 2, 16, sw + 4, 1, '#3D4148');
+        R(c, sx + sw / 2 - 6, 98, 12, 3, '#2C2F35'); // handle
       });
-      [46, 124, 202].forEach(lx => { R(c, lx - 5, 8, 10, 2, '#FFD9A0'); for (let y = 10; y < 24; y++) if (y % 2) R(c, lx - (y - 8), y, (y - 8) * 2, 1, 'rgba(255,214,150,0.06)'); });
+      [45, 123, 201].forEach(lx => { R(c, lx - 6, 6, 12, 2, '#FFDDA6'); for (let y = 8; y < 30; y++) for (let dx = -(y - 6); dx <= y - 6; dx++) if ((dx + y) % 4 === 0) P(c, lx + dx, y, 'rgba(255,214,150,0.05)'); });
     },
     neighbours: () => {},
     vehicle: c => {
-      R(c, x + 36, 46, 40, 5, '#B9BDC3'); // roof AC
-      R(c, x + 4, 51, w - 12, 3, '#E9E3DA');
-      R(c, x, 54, w, 48, '#E3832F');
-      R(c, x, 54, w, 7, '#ECE6DC');
-      R(c, x, 94, w, 8, '#3A3D43');
-      R(c, x, 90, w, 2, accent);
-      [[6, 28], [38, 28], [70, 28]].forEach(([dx, ww]) => lit(c, x + dx, 62, ww, 18));
-      // folding door
-      R(c, x + 102, 60, 20, 42, '#2A2E34'); lit(c, x + 104, 62, 7, 36); lit(c, x + 113, 62, 7, 36);
-      // windscreen, raked
-      for (let i = 0; i < 26; i++) R(c, x + 126 + Math.floor(i / 4), 60 + i, w - 126 - Math.floor(i / 4) - 1, 1, i < 3 ? '#4A5866' : '#2A3440');
-      R(c, x + 130, 64, 6, 1, 'rgba(255,255,255,0.25)');
+      c0 = c;
+      R(c, x + 34, top - 6, 44, 6, '#B9BDC3'); R(c, x + 34, top - 6, 44, 1, '#DADDE1'); for (let i = 2; i < 44; i += 3) P(c, x + 34 + i, top - 3, '#8E939A'); // roof AC
+      panel(c, x, top, w, 50, ORANGE);
+      R(c, x, top, w, 8, WHITE[1]); R(c, x, top, w, 1, WHITE[0]); R(c, x, top + 7, w, 1, WHITE[3]);
+      glassBand(c, x + 4, top + 10, 100, 20);
+      pillars(c, [x + 36, x + 70], top + 10, 20, ORANGE[3]);
+      // folding door with glass
+      R(c, x + 106, top + 9, 22, 41, '#22262C');
+      glassBand(c, x + 108, top + 11, 8, 36); glassBand(c, x + 118, top + 11, 8, 36);
+      // raked windscreen
+      for (let i = 0; i < 30; i++) R(c, x + 130 + Math.floor(i / 4), top + 9 + i, w - 130 - Math.floor(i / 4) - 1, 1, i < 2 ? GLASS[0] : GLASS[1]);
+      for (let i = 0; i < 10; i++) P(c, x + 136 + i, top + 26 - i, 'rgba(255,255,255,0.18)');
       // LED route sign
-      R(c, x + 124, 54, 26, 7, '#0A0A0B');
-      ledText(c, '90', x + 131, 54, '#FFB12E');
-      // mirror, headlight
-      R(c, x + w, 60, 4, 1, '#2A2C31'); R(c, x + w + 3, 60, 1, 9, '#2A2C31');
-      R(c, x + w - 5, 89, 4, 3, '#FFF1C9');
+      R(c, x + 128, top + 1, 28, 6, '#08080A'); smallText(c, '90', x + 136, top + 1, '#FFB12E');
+      // skirt, mirror, lights, outline
+      R(c, x, top + 42, w, 8, '#2E3136'); R(c, x, top + 42, w, 1, '#44484F');
+      R(c, x + w, top + 9, 4, 1, INK); R(c, x + w + 3, top + 9, 2, 10, INK);
+      R(c, x + w - 6, top + 38, 5, 3, '#FFF1C9'); R(c, x + 1, top + 38, 3, 3, '#C9372C');
+      R(c, x - 1, top, 1, 50, INK); R(c, x, top - 1, w, 1, INK);
       // wheel arches and wheels
-      [30, 118].forEach(dx => {
-        disc(c, x + dx, 103, 10, '#141518');
-        disc(c, x + dx, 104, 8, '#0E0F11');
-        disc(c, x + dx, 104, 3, '#7A7E85');
-      });
+      [32, 122].forEach(dx => { disc(c, x + dx, top + 52, 13, '#0E0F11'); wheel(x + dx); });
+      // shadow on the road
+      for (let i = 0; i < w; i++) if (i % 2) P(c, x + i, 116, 'rgba(0,0,0,0.5)');
     },
     mask: c => {
-      R(c, x, 54, w, 48, '#FFFFFF');
+      R(c, x, top, w, 50, '#FFFFFF');
       c.globalCompositeOperation = 'destination-out';
-      [30, 118].forEach(dx => disc(c, x + dx, 103, 10, '#000'));
+      [32, 122].forEach(dx => disc(c, x + dx, top + 52, 13, '#000'));
       c.globalCompositeOperation = 'source-over';
     },
     foreground: c => {
-      R(c, 0, 110, PW, 2, '#3A3C41');
-      R(c, 0, 112, PW, 28, '#1B1D20');
-      for (let lx = 6; lx < PW; lx += 24) R(c, lx, 125, 12, 2, '#55575C');
+      R(c, 0, 114, PW, 2, '#3A3C41'); R(c, 0, 114, PW, 1, '#4C4F55');
+      R(c, 0, 116, PW, 24, '#1A1C1F');
+      for (let lx = 4; lx < PW; lx += 26) R(c, lx, 128, 14, 2, '#5A5C61');
     },
   };
 }
 
 // ── Plane at the gate ─────────────────────────────────────────────────
 
-function plane(accent: string): Scene {
-  const fuse = (c: C, col: string) => {
-    for (let y = 62; y <= 86; y++) {
-      const t = (y - 74) / 12;
-      const nose = Math.round(Math.sqrt(Math.max(0, 1 - t * t)) * 12);
-      const tail = Math.round(Math.max(0, (y - 62) * 0.9));
-      c.fillStyle = col;
-      c.fillRect(34 + Math.max(0, 22 - tail), y, 168 + nose - Math.max(0, 22 - tail), 1);
+function plane(tail: string): Scene {
+  const fuse = (c: C, ramp: string[] | null) => {
+    for (let y = 60; y <= 88; y++) {
+      const t = (y - 74) / 14;
+      const nose = Math.round(Math.sqrt(Math.max(0, 1 - t * t)) * 16);
+      const tailCut = Math.max(0, 24 - Math.round((y - 60) * 1.1));
+      const x0 = 30 + tailCut;
+      const x1 = 200 + nose;
+      const col = ramp ? (y < 62 ? ramp[0] : y < 66 ? ramp[1] : y < 80 ? ramp[2] : y < 85 ? ramp[3] : ramp[4]) : '#FFFFFF';
+      R(c, x0, y, x1 - x0, 1, col);
+      if (ramp) { P(c, x0 - 1, y, INK); P(c, x1, y, INK); }
     }
   };
-  const fin = (c: C, col: string) => { for (let y = 30; y < 64; y++) { const x0 = 36 + Math.round((y - 30) * 0.35); R(c, x0, y, 22 - Math.round((y - 30) * 0.1), 1, col); } };
+  const fin = (c: C, col: string | null) => {
+    for (let y = 26; y < 62; y++) {
+      const x0 = 32 + Math.round((y - 26) * 0.45);
+      const w = 20 - Math.round((y - 26) * 0.12);
+      R(c, x0, y, w, 1, col ?? '#FFFFFF');
+      if (col) { P(c, x0 - 1, y, INK); R(c, x0, y, 2, 1, 'rgba(255,255,255,0.25)'); }
+    }
+  };
   return {
-    body: { x0: 60, y0: 64, x1: 200, y1: 84 },
-    sign: { x: 150, y: 8, w: 76 },
-    lamps: [[212, 80]],
-    spot: { x: 130, y: 76 },
+    body: { x0: 56, y0: 62, x1: 206, y1: 86 },
+    sign: { x: 104, y: 8, w: 76 },
+    lamps: [[214, 82]],
+    spot: { x: 132, y: 74 },
     background: c => {
-      R(c, 0, 0, PW, PH, '#0D0F14');
-      R(c, 0, 36, PW, 64, '#14171D');
-      for (let gx = 0; gx < PW; gx += 12) for (let gy = 40; gy < 96; gy += 10) R(c, gx + 1, gy, 10, 8, (gx * 7 + gy) % 5 ? '#1B222C' : '#3A3424');
-      R(c, 0, 36, PW, 2, '#262A31');
+      R(c, 0, 0, PW, PH, '#0C0E13');
+      for (let i = 0; i < 40; i++) P(c, (i * 53) % PW, (i * 29) % 30, i % 3 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.5)');
+      R(c, 0, 34, PW, 66, '#121519'); R(c, 0, 34, PW, 2, '#22262D');
+      for (let gx = 0; gx < PW; gx += 14) for (let gy = 38; gy < 96; gy += 11) R(c, gx + 1, gy, 12, 9, (gx * 7 + gy * 3) % 5 ? '#18202A' : '#3A3222');
+      for (let gx = 0; gx < PW; gx += 14) R(c, gx, 36, 1, 64, '#0A0C0F');
     },
     neighbours: () => {},
     vehicle: c => {
-      fin(c, accent);
-      fuse(c, '#A7ACB4');
-      R(c, 40, 62, 180, 3, 'rgba(255,255,255,0.12)');
-      for (let y = 80; y <= 86; y++) R(c, 50, y, 160, 1, 'rgba(0,0,0,0.12)');
-      R(c, 52, 78, 158, 2, accent);
-      for (let wx = 70; wx < 196; wx += 5) R(c, wx, 69, 2, 3, '#E7B068');
-      R(c, 203, 67, 7, 3, '#1E2630');
-      R(c, 186, 66, 5, 12, '#8E939A'); // door
-      // wing and engine
-      for (let y = 82; y < 98; y++) R(c, 96 + Math.round((y - 82) * 0.4), y, 54 - (y - 82) * 2, 1, '#6E737B');
-      R(c, 112, 90, 20, 8, '#80858C'); R(c, 112, 91, 3, 6, '#2A2C31');
-      // gear
-      R(c, 120, 98, 2, 4, '#1A1B1E'); R(c, 196, 86, 2, 16, '#1A1B1E');
-      // jet bridge
-      R(c, 188, 44, 52, 16, '#2C2F36'); R(c, 188, 58, 6, 10, '#2C2F36');
-      for (let bx = 194; bx < 236; bx += 6) R(c, bx, 48, 4, 4, '#3A3424');
+      fin(c, tail);
+      fuse(c, WHITE);
+      R(c, 52, 79, 160, 2, tail);
+      for (let wx = 72; wx < 194; wx += 5) { R(c, wx, 69, 2, 3, '#E7B068'); P(c, wx, 69, '#F6D49A'); }
+      R(c, 204, 66, 9, 4, GLASS[1]); R(c, 204, 66, 9, 1, GLASS[0]);
+      R(c, 184, 65, 6, 14, WHITE[3]); R(c, 184, 65, 6, 1, WHITE[4]); // door
+      // wing (near side) and engine
+      for (let y = 84; y < 100; y++) { const x0 = 98 + Math.round((y - 84) * 0.5); R(c, x0, y, 58 - (y - 84) * 2, 1, y === 84 ? '#9AA0A8' : '#767C85'); P(c, x0 - 1, y, INK); }
+      R(c, 108, 92, 26, 9, '#B7BCC3'); R(c, 108, 92, 26, 1, '#E2E5E9'); R(c, 108, 100, 26, 1, '#6C727B');
+      R(c, 108, 93, 3, 7, '#1A1C20'); R(c, 107, 92, 1, 9, INK);
+      // gear and wheel
+      R(c, 120, 101, 2, 5, '#1A1B1E'); disc(c, 121, 107, 2, '#0F1012');
+      R(c, 196, 88, 2, 16, '#1A1B1E'); disc(c, 197, 105, 2, '#0F1012');
+      // jet bridge with its canopy on the door
+      R(c, 190, 44, 50, 16, '#2B2E35'); R(c, 190, 44, 50, 1, '#3D4148');
+      for (let bx = 196; bx < 238; bx += 7) R(c, bx, 48, 5, 4, '#3A3222');
+      R(c, 186, 56, 10, 12, '#1F2126'); R(c, 186, 56, 1, 12, INK);
+      // nose light
+      P(c, 214, 82, '#FFF1C9');
     },
-    mask: c => { fuse(c, '#FFFFFF'); fin(c, '#FFFFFF'); },
+    mask: c => { fuse(c, null); fin(c, null); },
     foreground: c => {
-      R(c, 0, 100, PW, 40, '#1A1C20');
-      for (let i = 0; i < 60; i++) R(c, 10 + i * 2.6, 132 - i * 0.5, 2, 1, '#C9A63A');
-      R(c, 0, 100, PW, 1, '#2A2C31');
+      R(c, 0, 104, PW, 36, '#17191C'); R(c, 0, 104, PW, 1, '#262930');
+      for (let i = 0; i < 70; i++) P(c, 6 + i * 2.6, 134 - i * 0.42, '#C9A63A');
+      for (let i = 0; i < 50; i++) P(c, 70 + i * 3, 112, 'rgba(201,166,58,0.5)');
     },
   };
 }
 
 export function sceneFor(mode: Mode, accent: string): Scene {
-  return mode === 'SUBWAY' ? metro(accent) : mode === 'TRAIN' ? train(accent) : mode === 'BUS' ? bus(accent) : plane(accent);
+  return mode === 'SUBWAY' ? metro('#D93A2F') : mode === 'TRAIN' ? train(accent) : mode === 'BUS' ? bus() : plane(accent);
 }
 
-// A cheap box blur for the out-of-focus cars (canvas `filter` is not
-// available everywhere).
+// Box blur for the out-of-focus cars (canvas `filter` is not everywhere).
 export function boxBlur(c: C, radius: number) {
   const img = c.getImageData(0, 0, PW, PH);
   const src = img.data;

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Drawer } from 'vaul';
 import { AirplaneTilt, Bus, Subway, Train, X, type IconWeight } from '@phosphor-icons/react';
 import type { Mode } from '../../lib/lab/model';
-import { C, FILLED, LINE_COLORS, MODE_COLOR, SPRING_SHEET, TONAL } from './theme';
+import { C, FILLED, LINE_COLORS, MODE_COLOR, TONAL } from './theme';
 
 export function ModeGlyph({ mode, size = 20, weight = 'fill', color }: { mode: Mode; size?: number; weight?: IconWeight; color?: string }) {
   const props = { size, weight, color, 'aria-hidden': true } as const;
@@ -39,84 +39,48 @@ export function LineBadge({ line }: { line: string }) {
   return <span className="inline-flex items-center h-[22px] px-[7px] rounded-[7px] text-[12.5px] font-semibold tabular-nums" style={{ background: bg, color: fg }}>{line}</span>;
 }
 
-// Sheets follow iOS: a grabber appears only when the sheet can actually
-// change size. Short content opens at its own height with no grabber; long
-// content opens at 60% and drags up to full height.
-const MEDIUM = 0.6;
-const LARGE = 0.92;
+// Sheets, after iOS. Tall sheets open at a medium detent with the rest of
+// the content running off the bottom edge, so it is visible that there is
+// more. At that detent a drag anywhere moves the whole sheet; fully up, the
+// content scrolls, and only when it is scrolled to the top does a downward
+// drag move the sheet again. `dismissFromTop` closes straight from full
+// height (used for answers: pulling down means "done with this").
+// Short sheets open at their own height, with no grabber.
+const MEDIUM = 0.62;
 
-export function Sheet({ open, onClose, title, children, large = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; large?: boolean }) {
-  const reduce = useReducedMotion();
-  const controls = useDragControls();
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const [natural, setNatural] = useState(0);
-  const [viewport, setViewport] = useState(800);
-  const [expanded, setExpanded] = useState(large);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = overflow; };
-  }, [open, onClose]);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    const measure = () => {
-      setViewport(window.innerHeight);
-      if (bodyRef.current) setNatural(bodyRef.current.scrollHeight + 64);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    if (bodyRef.current?.firstElementChild) observer.observe(bodyRef.current.firstElementChild);
-    window.addEventListener('resize', measure);
-    return () => { observer.disconnect(); window.removeEventListener('resize', measure); setExpanded(large); };
-  }, [open, large]);
-
-  const resizable = natural > viewport * MEDIUM;
-  const height = resizable ? viewport * (expanded ? LARGE : MEDIUM) : Math.min(natural, viewport * LARGE);
-
+export function Sheet({ open, onClose, title, children, tall = false, large = false, dismissFromTop = false, header }: {
+  open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; dismissFromTop?: boolean; header?: ReactNode;
+}) {
+  const detents = tall || large ? [MEDIUM, 1] : undefined;
+  const [snap, setSnap] = useState<number | string | null>(large ? 1 : MEDIUM);
+  useEffect(() => { if (open) { const t = setTimeout(() => setSnap(large ? 1 : MEDIUM), 0); return () => clearTimeout(t); } }, [open, large]);
+  const full = !detents || snap === 1;
+  const body = (
+      <Drawer.Portal>
+      <Drawer.Overlay className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.55)' }} />
+      <Drawer.Content aria-describedby={undefined} className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] flex flex-col outline-none"
+        style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, height: detents ? '94dvh' : undefined, maxHeight: '94dvh', boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)` }}>
+        {detents ? <div className="pt-2 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div> : <div className="h-2" />}
+        <div className="flex items-center justify-between gap-3 px-5 pt-2 pb-3 select-none">
+          {header ?? <Drawer.Title className="text-[18px] font-semibold tracking-tight">{title}</Drawer.Title>}
+          {header && <Drawer.Title className="sr-only">{title}</Drawer.Title>}
+          <button onClick={onClose} aria-label="关闭" className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
+            <X size={14} weight="bold" color={C.text2} />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 px-5 overscroll-contain" style={{ overflowY: full ? 'auto' : 'hidden', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
+          {children}
+        </div>
+      </Drawer.Content>
+    </Drawer.Portal>
+  );
+  const change = (o: boolean) => { if (!o) onClose(); };
+  if (!detents) return <Drawer.Root open={open} onOpenChange={change}>{body}</Drawer.Root>;
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.55)' }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }} onClick={onClose} />
-          <motion.div
-            role="dialog" aria-modal="true" aria-label={title}
-            className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] flex flex-col overflow-hidden"
-            style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)` }}
-            initial={reduce ? { opacity: 0 } : { y: '100%' }}
-            animate={reduce ? { opacity: 1, height } : { y: 0, height }}
-            exit={reduce ? { opacity: 0 } : { y: '100%' }}
-            transition={SPRING_SHEET}
-            drag={reduce ? false : 'y'} dragListener={false} dragControls={controls}
-            dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: resizable && !expanded ? 0.25 : 0.04, bottom: 0.7 }}
-            onDragEnd={(_, info) => {
-              if (resizable && !expanded && info.offset.y < -40) setExpanded(true);
-              else if (info.offset.y > 90 || info.velocity.y > 700) { if (expanded) setExpanded(false); else onClose(); }
-            }}
-          >
-            <div onPointerDown={e => controls.start(e)} className="shrink-0 touch-none select-none cursor-grab active:cursor-grabbing">
-              {resizable
-                ? <div className="pt-2 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div>
-                : <div className="h-2" />}
-              <div className="flex items-center justify-between px-5 pt-2 pb-3">
-                <h2 className="text-[18px] font-semibold tracking-tight">{title}</h2>
-                <button onClick={onClose} onPointerDown={e => e.stopPropagation()} aria-label="关闭" className="w-[30px] h-[30px] rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
-                  <X size={14} weight="bold" color={C.text2} />
-                </button>
-              </div>
-            </div>
-            <div ref={bodyRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
-              <div>{children}</div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <Drawer.Root open={open} onOpenChange={change} snapPoints={detents} activeSnapPoint={snap} fadeFromIndex={0}
+      setActiveSnapPoint={next => { if (dismissFromTop && snap === 1 && next === MEDIUM) { onClose(); return; } setSnap(next); }}>
+      {body}
+    </Drawer.Root>
   );
 }
 

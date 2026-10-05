@@ -1,24 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import Solari, { type Mood } from '../../../components/lab/Solari';
+import { LedBoard, LedFace, type Mood } from '../../../components/lab/Led';
 
-// Every expression at three sizes, for review.
+// Both forms of the face in every mood, for review. The board runs its
+// idle programme when the mood is idle; "换一天" sends it a day message.
 const MOODS: [Mood, string][] = [['idle', '待机'], ['thinking', '判断中'], ['happy', '不受影响'], ['alarm', '会受影响'], ['unsure', '待确认'], ['sorry', '答不了']];
 
 export default function SolariGallery() {
   const [mood, setMood] = useState<Mood>('idle');
+  const [day, setDay] = useState(13);
   return (
     <main className="min-h-[100dvh] flex flex-col items-center gap-10 px-6 py-12" style={{ background: '#0A0B0D', color: '#F5F6F7' }}>
+      <LedBoard mood={mood} lines={['OGGI NESSUNO SCIOPERO', 'PROSSIMO SCIOPERO 16 OTT']} message={`${day} OTT · NESSUNO SCIOPERO`} pitch={6} />
       <div className="flex items-end gap-8">
-        <Solari mood={mood} size={84} float />
-        <Solari mood={mood} size={40} float />
-        <Solari mood={mood} size={20} float />
+        <LedFace mood={mood} size={40} />
+        <LedFace mood={mood} size={18} />
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         {MOODS.map(([m, label]) => (
           <button key={m} onClick={() => setMood(m)} className="h-9 px-3.5 rounded-full text-[14px] font-medium" style={{ background: mood === m ? '#454A54' : '#1E2025' }}>{label}</button>
         ))}
+        <button onClick={() => setDay(d => d + 1)} className="h-9 px-3.5 rounded-full text-[14px] font-medium" style={{ background: '#1E2025' }}>换一天</button>
       </div>
     </main>
   );

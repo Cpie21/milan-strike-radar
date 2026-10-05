@@ -10,7 +10,7 @@ const ENDS: Record<string, Partial<Record<Mode, ServiceEnd>>> = {
   MILANO: {
     SUBWAY: {
       end: '00:30',
-      note: ['ATM 地铁末班约 00:30，各线略有不同', 'ATM metro runs to about 00:30; varies by line'],
+      note: ['+1 即次日 · ATM 地铁末班约 00:30，各线略有不同', '+1 = next day · ATM metro runs to about 00:30; varies by line'],
       // ATM: "La blu è in servizio tutti i giorni dalla prima mattina fino alle 00:30 circa" (M4); M1–M3 run to a similar time.
       source: { name: 'ATM', url: 'https://www.atm.it/it/AtmNews/AtmInforma/Pagine/M4informazionisulserviziopasseggeribis.aspx' },
     },

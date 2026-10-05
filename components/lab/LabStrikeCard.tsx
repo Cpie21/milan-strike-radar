@@ -174,7 +174,11 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
               <p className={TYPE.display}>
                 {span.start ?? word(tx(lang, '运营开始', 'Start'))}
                 <span className="mx-2" style={{ color: C.text3 }}>–</span>
-                {span.end ?? (lastRun ? <>{sub(tx(lang, '次日', 'next day'))}<span className="ml-1">{lastRun.end}</span></> : word(tx(lang, '末班车', 'last service')))}
+                {span.end ?? (lastRun
+                  // "+1", as on boarding passes: it marks the next day without
+                  // taking width, so the dash stays centred between the times.
+                  ? <span className="relative">{lastRun.end}<sup className="absolute left-full top-[3px] ml-1 text-[13px] font-semibold" style={{ color: C.text3, fontFamily: SANS }}>+1</sup></span>
+                  : word(tx(lang, '末班车', 'last service')))}
               </p>
               {lastRun && (
                 <a href={lastRun.source.url} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>

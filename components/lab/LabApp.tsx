@@ -12,7 +12,7 @@ import { addDaysIso } from '../../lib/romeDate';
 import { detectBrowserLanguage, LANGUAGE_STORAGE_KEY } from '../i18n';
 import DateRail from './DateRail';
 import LabStrikeCard, { type CardContext } from './LabStrikeCard';
-import { AskField, AskSheet, AskSuggestions, useAsk } from './LabAsk';
+import { AskField, AskModule, AskSheet, useAsk } from './LabAsk';
 import type { Translation } from '../../lib/lab/translate';
 import { CalendarSheet, CitySheet, HomeScreenSheet, SupportSheet, WidgetSheet } from './sheets';
 import { ModeBadge } from './ui';
@@ -99,14 +99,12 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
   const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });
   const calm = dayCards.length === 0;
-  const [typing, setTyping] = useState(false);
-  // Calm-day suggestions, phrased from the data the reader is looking at.
-  const nextModes = next ? [...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))] : [];
-  const suggestions = [
-    ...(next && nextModes[0] ? [tx(lang, `${Number(next.slice(5, 7))}月${Number(next.slice(8))}日${modeName(nextModes[0], lang)}会停吗？`, `Is the ${modeName(nextModes[0], lang).toLowerCase()} running on ${Number(next.slice(8))}/${Number(next.slice(5, 7))}?`)] : []),
-    tx(lang, '这周还有别的罢工吗？', 'Any other strikes this week?'),
-  ];
-  const typeQuestion = (prefill?: string) => { if (prefill) ask.setQuery(prefill); setTyping(true); };
+  // What the board says between expressions: true things, in the boards'
+  // own Italian. When the day changes it scrolls the new day through.
+  const IT = ['GEN', 'FEB', 'MAR', 'APR', 'MAG', 'GIU', 'LUG', 'AGO', 'SET', 'OTT', 'NOV', 'DIC'];
+  const itDate = (iso: string) => `${Number(iso.slice(8))} ${IT[Number(iso.slice(5, 7)) - 1]}`;
+  const boardLines = [selected === today ? 'OGGI NESSUNO SCIOPERO' : `${itDate(selected)} NESSUNO SCIOPERO`, next ? `PROSSIMO SCIOPERO ${itDate(next)}` : 'NESSUNO SCIOPERO IN VISTA'];
+  const boardMessage = calm ? `${itDate(selected)} · NESSUNO SCIOPERO` : undefined;
   const neighbour = (iso: string, mode: Mode) => (byDate.get(iso) || []).find(c => c.category === mode);
   const variants = {
     enter: (d: number) => ({ opacity: 0, x: reduce ? 0 : d * 24, filter: reduce ? 'none' : 'blur(6px)' }),
@@ -141,10 +139,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           </button>
         </header>
 
-        <div className="flex flex-col items-center px-5 mt-7 mb-4">
+        {/* Title left, the way out to the full calendar right, on one baseline */}
+        <div className="flex items-end justify-between gap-3 px-5 mt-7 mb-3">
           <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
-          <button onClick={() => setSheet('month')} className={`mt-2.5 h-[32px] px-3 rounded-full flex items-center gap-1.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
-            <CalendarDots size={15} weight="bold" />{tx(lang, '查看全部日期', 'All dates')}
+          <button onClick={() => setSheet('month')} className={`mb-0.5 h-[34px] pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: C.surface2, color: C.text }}>
+            <CalendarDots size={16} weight="bold" />{tx(lang, '全部日期', 'All dates')}
           </button>
         </div>
 
@@ -170,27 +169,27 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
                 return <LabStrikeCard key={card.id} card={card} ctx={ctx} highlighted={highlight === card.id}
                   prev={continuesOvernight(prev, card) ? prev : undefined} next={continuesOvernight(card, nxt) ? nxt : undefined} />;
               }) : (
-                <section style={{ background: C.surface, borderRadius: R.card }}>
-                  <div className="flex flex-col items-center text-center px-6 pt-10 pb-8">
-                    <CheckCircle size={34} weight="fill" color={C.ok} />
-                    <p className={`mt-3 ${TYPE.title}`}>{tx(lang, '无交通罢工', 'No transport strikes')}</p>
-                    <p className={`mt-1 ${TYPE.body}`} style={{ color: C.text2 }}>{tx(lang, '安心出行', 'Travel with peace of mind')}</p>
-                  </div>
+                // The day's answer, then (as a footnote of it, not a sibling)
+                // when the next strike is.
+                <section className="flex flex-col items-center text-center px-6 pt-8 pb-6" style={{ background: C.surface, borderRadius: R.card }}>
+                  <CheckCircle size={34} weight="fill" color={C.ok} />
+                  <p className={`mt-3 ${TYPE.title}`}>{tx(lang, '无交通罢工', 'No transport strikes')}</p>
+                  <p className={`mt-1 ${TYPE.body}`} style={{ color: C.text2 }}>{tx(lang, '安心出行', 'Travel with peace of mind')}</p>
                   {next && (
-                    <button onClick={() => select(next)} className="w-full flex items-center gap-2 px-5 h-[52px] text-left" style={{ borderTop: `1px solid ${C.line}` }}>
-                      <span className={TYPE.label} style={{ color: C.text3 }}>{tx(lang, '下一次罢工', 'Next strike')}</span>
-                      <span className="text-[15px] font-semibold">{dayLabel(next, lang)}</span>
-                      <span className="flex gap-1 ml-auto">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeBadge key={m} mode={m} size={16} />)}</span>
-                      <CaretRight size={13} weight="bold" color={C.text3} />
+                    <button onClick={() => select(next)} className={`mt-5 h-9 pl-3.5 pr-2.5 rounded-full flex items-center gap-2 ${TYPE.label}`} style={{ background: C.surface2 }}>
+                      <span style={{ color: C.text3 }}>{tx(lang, '下一次', 'Next')}</span>
+                      <span className="font-semibold" style={{ color: C.text }}>{dayLabel(next, lang)}</span>
+                      <span className="flex gap-1">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeBadge key={m} mode={m} size={16} />)}</span>
+                      <CaretRight size={12} weight="bold" color={C.text3} />
                     </button>
                   )}
-                  <div style={{ borderTop: `1px solid ${C.line}` }}>
-                    <AskSuggestions ask={ask} suggestions={suggestions} onType={typeQuestion} />
-                  </div>
                 </section>
               )}
             </motion.div>
           </AnimatePresence>
+
+          {/* Outside the per-day transition, so it stays put across calm days */}
+          {calm && <AskModule ask={ask} lines={boardLines} message={boardMessage} />}
 
           {/* Tools: one line each says enough */}
           <div className="grid grid-cols-3 gap-2.5 mt-3">
@@ -201,11 +200,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
           <section className="mt-3 flex items-center gap-3 px-5 py-4" style={{ background: C.surface, borderRadius: R.card }}>
             <div className="flex-1 min-w-0">
-              <p className="text-[16px] font-semibold">{tx(lang, '支持作者', 'Support the creator')}</p>
-              <p className={`mt-0.5 ${TYPE.label} font-normal`} style={{ color: C.text2 }}>{tx(lang, '独立开发不易，如果对你有用请支持一杯奶茶。', 'Built independently. If it helps you, consider buying a bubble tea.')}</p>
+              <p className="text-[16px] font-semibold">{tx(lang, '支持与反馈', 'Support & feedback')}</p>
+              <p className={`mt-0.5 ${TYPE.label} font-normal`} style={{ color: C.text2 }}>{tx(lang, '独立开发不易，如果有用请支持一杯奶茶，也欢迎提建议。', 'Built independently. Buy a bubble tea or send a suggestion.')}</p>
             </div>
             <button onClick={() => setSheet('support')} className={`h-[38px] px-3.5 rounded-full shrink-0 active:scale-95 transition-transform ${TYPE.label} font-semibold`} style={TONAL}>
-              {tx(lang, '支持一下', 'Support')}
+              {tx(lang, '去看看', 'Open')}
             </button>
           </section>
 
@@ -213,7 +212,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
       </div>
 
       <AnimatePresence>
-        {(!calm || typing) && <AskField key="dock" ask={ask} autoFocus={calm && typing} onIdle={() => calm && setTyping(false)} />}
+        {!calm && <AskField key="dock" ask={ask} />}
       </AnimatePresence>
       <AskSheet ask={ask} />
       <MonthSheet open={sheet === 'month'} onClose={() => setSheet(null)} lang={lang} byDate={byDate} from={from} to={to} today={today} selected={selected} onSelect={select} />
