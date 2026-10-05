@@ -189,6 +189,8 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       region: regionTag || first.region,
       source_key: undefined,
       scopeType:['AIRPORT','TRAIN'].includes(first.category || '')?scopeOf(first):undefined,
+      officialGeography:relevant.map(e=>e.timing_evidence?.fields?.officialGeography).filter(Boolean),
+      supportedCityProjection:[...new Set(relevant.flatMap(e=>e.timing_evidence?.fields?.supportedCityProjection?.value || []))],
       guaranteeSource,
       guaranteedServiceWindow:active.some(e=>!e.windows.length)?[]:intersectGuarantees(active),
       provider: normalizeProviderForDisplay(relevant.map(e=>e.provider).join(' / '),first.category),

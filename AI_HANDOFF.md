@@ -30,7 +30,7 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 - Guarantees distinguish `OFFICIAL_STRIKE_NOTICE`, `STANDARD_RULE`, `OPERATOR_RULE`, `UNKNOWN`. No city-based default or inferred complement guarantees. Protected flights / minimum service do not mean every departure runs normally.
 - Keep source links and timing differences in the existing bottom source area; retain the timeline and semantic service-start/service-end endpoints. Do not change the affected-user counter.
 - Concrete operator notice detail can supersede coarse MIT timing, while preserving both sources and differences. Reported detail remains labelled as reported; blocked or unmatched sites are not official verification.
-- Production runtime commit: `ef54eac`, deployment `dpl_CK1zU1MagNqvJvtjFVN3YKZ4xhDd`; semantic QA release/audit in `docs/archive/2026-10-v1.6-semantic-qa-audit.md` (PR #2). Audit proofs are in `docs/archive/2026-10-v1.5-evidence-audit.md` and `docs/verification/2026-10-v1.5-*`. Scope/method/passenger-impact facts use the existing JSON column; v1.6 budget/cache migration is described below.
+- Production runtime commit: `5319bc3`, deployment `dpl_eUZaNxcvEuH5T1WbCTW76QfHVzNQ`; geography/review audit in `docs/archive/2026-10-v1.7-geography-and-review-audit.md` (PR #3). Earlier semantic QA audit is v1.6 (PR #2). Scope/method/passenger-impact/geography facts use the existing JSON column; the v1.6 budget/cache migration is described below.
 
 ## Natural-language query (Claude, branch `claude/ai-ask`)
 
@@ -43,8 +43,15 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 - Additive migration `20261004215721_strike_semantic_review_budget`: service-only hash cache and atomic USD 0.20 monthly reservation ledger. Each request reserves before calling; unknown billing retains the reservation. No public roles can read or call budget functions. Applied after PostgreSQL regression tests on 2026-10-05.
 - Jev reviews compact official fields vs parser output, not dates/time arithmetic or user prose. Corrections require independently supported official candidates; high-confidence unsupported mismatches stay flagged; low-confidence disagreements remain INCONCLUSIVE and never replace official data. Same unchanged input uses a 24-hour cache; at most 30 paid calls per sync with a 55-second QA deadline; no retry storms.
-- Current production cron remains daily; no paid plan upgrade or hourly Jev loop. This ceiling covers semantic QA only; Claude must route future public Ask calls through the shared budget before claiming a site-wide AI cap. Existing Ask client is not deployed by this branch. Real production QA yielded 8 AGREES/18 INCONCLUSIVE across 26 announcements; do not advertise these as all AI-validated facts.
+- Current production cron remains daily; no paid plan upgrade or hourly Jev loop. This ceiling covers semantic QA only; Claude must route future public Ask calls through the shared budget before claiming a site-wide AI cap. Existing Ask client is not deployed by this branch. Current semantic-v5 production QA yielded 11 AGREES/15 INCONCLUSIVE across 26 announcements; do not advertise these as all AI-validated facts. The persisted queue is currently empty; cached rereads of all 26 results made no paid calls. October ledger remains USD 0.004267 after those rereads.
 - Railway scope subtypes and MIXED_AIRPORT_SERVICES are additive API values. Frontend/Ask must not treat security/infrastructure hours as confirmed train cancellations.
+
+## Geography and review follow-up (Codex)
+
+- `RAIL_GENERAL` uses the same explicit FERROVIARIO section as time parsing; separate APPALTI FERROVIARI / freight clauses remain in `fields.railSections` and cannot downgrade that event to support-only.
+- `fields.officialGeography` preserves MIT raw region/province/relevance; `supportedCityProjection` is a subset for this site's 20-city routes, not an exclusivity claim. `locationStatus` distinguishes unsupported official cities from unknown locations. These are additive existing-JSON/API fields; no schema migration.
+- `/api/ask` integration must carry officialGeography/projection through responses and may not say only Bologna from a supported-city projection. Foggia/Udine remain outside the UI registry; declared province remains known. Checked Claude's current `lib/ask/pipeline.ts`: candidate loading still omits scopeType, passengerImpact and geography/projection. Ask code stays on Claude's branch; this release does not claim that Ask has been fixed.
+- Semantic review >=0.80 concerns enter NEEDS_REVIEW (or FLAGGED for high-confidence conflicts), independently of low subtype confidence. >=0.97 corrections still require explicit official evidence; model uncertainty alone cannot alter facts. `npm run review:queue` reads the service-only persisted queue without paid calls, uses the latest result per source and current review version.
 
 ## Schema changes
 
@@ -52,13 +59,13 @@ Shared state between Claude and Codex. Keep it short: decisions, contracts and o
 
 ## Current ownership
 
-- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/strike-semantic-qa`.
+- Codex: sync, enrichment, timing evidence, data APIs; worktree `/Users/tristan/.codex/worktrees/strike-card-coverage/milan-strike-radar`, branch `codex/strike-geography-review`.
 - Claude: frontend redesign (exploration under `/lab`, then the city page), natural-language query UI.
 - Shared hot file: `components/StrikeDashboard.tsx` — the redesign will replace most of it. Codex, prefer data-layer changes over edits there until the redesign lands.
 
 ## Open cross-module issues
 
 - `main` is behind the committed production backend; review `codex/strike-evidence-handoff` before integrating it. PR body is prepared in `docs/archive/2026-10-backend-handoff-pr.md`; Git HTTPS authentication is now available; the backend base branch has been pushed for PR review.
-- Latest backend production build is committed (`ef54eac`), excluding Claude's Ask feature. Claude's `df13f07` is based on the preceding `e4ed9d7` backend commit; preserve its Rome-date and dashboard changes during integration. Collaboration docs originated in Claude's `361f3ed` and were cherry-picked, then updated here.
+- Latest backend production build is committed (`5319bc3`), excluding Claude's Ask feature. Claude's worktree is currently `claude/redesign-lab` at `e8cb37a`; its Ask commit `df13f07` is based on the preceding `e4ed9d7` backend commit. Preserve its Rome-date and dashboard changes during integration. Collaboration docs originated in Claude's `361f3ed` and were cherry-picked, then updated here. User explicitly assigned frontend redesign to Claude; Codex should focus on backend logic/data accuracy and pass new evidence fields through this contract.
 - Evidence coverage remains incomplete: 6 future active supported-city records have operator official matches, 5 have reported supplements, 24 are MIT-only (35 source records including cargo, not cards). Firenze/Pisa 14 October TPL still has unknown clock times; some official sites block fetches. Never describe these as all officially verified.
 - `/api/ask` rate limiting and Jev calibration on real questions are unverified.

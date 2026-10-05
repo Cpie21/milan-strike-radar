@@ -3,21 +3,20 @@ export type TimingCategory = 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
 
 // Sector labels are boundaries. A general 24-hour announcement must not
 // override its railway exception, or leak railway times into bus/air records.
+export function timingSections(text: string) {
+  const labels = /(?:SETTORE\s+)?(?:APPALTI\s+FERROVIARI|TRASPORTO\s+MERCI\s+SU\s+ROTAIA|TRASPORTO\s+PUBBLICO\s+LOCALE|FERROVIARIO|TPL|AUTOFERROTRANVIARIO|MARITTIMO|AUTOSTRADE|AEREO)\b\s*:?/gi;
+  const matches=[...text.matchAll(labels)];
+  return matches.map((match,index)=>({label:match[0].trim().replace(/:$/,'').trim().toUpperCase(),body:text.slice(match.index!+match[0].length,matches[index+1]?.index ?? text.length)}));
+}
 export function scopeTiming(text: string, category?: TimingCategory) {
   if (!category) return text;
-  const labels = /(?:SETTORE\s+)?(?:APPALTI\s+FERROVIARI|TRASPORTO\s+MERCI\s+SU\s+ROTAIA|TRASPORTO\s+PUBBLICO\s+LOCALE|FERROVIARIO|TPL|AUTOFERROTRANVIARIO|MARITTIMO|AUTOSTRADE|AEREO)\b\s*:?/gi;
-  const matches = [...text.matchAll(labels)];
-  if (!matches.length) return text;
-  const relevant = matches.filter(match => {
-    const label = match[0].toUpperCase();
-    if (category === 'TRAIN') return /FERROVIARIO/.test(label) && !/APPALTI|MERCI/.test(label);
-    if (category === 'AIRPORT') return /AEREO/.test(label);
+  const sections=timingSections(text);
+  if (!sections.length) return text;
+  return sections.filter(({label})=>{
+    if(category==='TRAIN') return /FERROVIARIO/.test(label) && !/APPALTI|MERCI/.test(label);
+    if(category==='AIRPORT') return /AEREO/.test(label);
     return /TPL|PUBBLICO|AUTOFERRO/.test(label);
-  });
-  return relevant.map(match => {
-    const index = matches.indexOf(match);
-    return text.slice(match.index! + match[0].length, matches[index + 1]?.index ?? text.length);
-  }).join(' / ');
+  }).map(s=>s.body).join(' / ');
 }
 
 function minutes(time: string) {

@@ -1,11 +1,17 @@
 import type { TimingEvidence, TimingSource } from './strikeEvidence';
-import { affectedScopeText, normalizeAirportAffectedLines } from './strikeNormalization';
+import { CITIES, resolveCity } from './cities';
+import { scopeTiming, timingSections } from './strikeTiming';
+import { affectedScopeText, classifyRegionTags, normalizeAirportAffectedLines } from './strikeNormalization';
 
-export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'UNKNOWN';
+export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_GENERAL' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'UNKNOWN';
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
 export type FieldEvidence<T> = { value: T; confidence: 'HIGH' | 'MEDIUM' | 'UNKNOWN' | 'CONFLICT'; source: 'MIT' | 'OPERATOR_OFFICIAL' | 'STANDARD_RULE' | 'REPORTED' | 'UNKNOWN'; url?: string; excerpt?: string; method?: 'OFFICIAL' | 'CODE' | 'JEV' };
 export type ScopeEvidence = {
   location: FieldEvidence<string>;
+  officialGeography?: FieldEvidence<{region:string;province:string;relevance:string}>;
+  supportedCityProjection?: FieldEvidence<string[]>;
+  locationStatus?: 'SUPPORTED_PROJECTION' | 'UNSUPPORTED_CITY' | 'UNSUPPORTED_REGION' | 'UNPROJECTED_GEOGRAPHY' | 'UNKNOWN_LOCATION';
+  railSections?: FieldEvidence<{subject:'RAIL_SERVICE'|'RAIL_CONTRACTORS'|'RAIL_FREIGHT';text:string;representedByThisEvent:boolean}[]>;
   passengerImpact?: FieldEvidence<'DIRECT_SERVICE' | 'INDIRECT_OR_UNCONFIRMED' | 'UNKNOWN'>;
   scopeType: FieldEvidence<ScopeType>;
   affectedLines: FieldEvidence<string[] | 'ALL_LINES' | 'UNKNOWN'>;
@@ -30,16 +36,23 @@ export function aviationScope(text: string, region: string): ScopeType {
   return 'UNKNOWN';
 }
 
-export function railScope(text: string): ScopeType {
+export function railScope(text: string, context: {modalita?:string;note?:string} = {}): ScopeType {
+  // A general strike has separately scoped rail and contractor clauses. Classify
+  // the same FERROVIARIO section used by the clock parser, not its broad title.
+  if (/sciopero generale|plurisettorial/i.test(text)) {
+    const railSection=scopeTiming(context.modalita || '', 'TRAIN');
+    return timingSections(context.modalita || '').some(s=>/^(?:SETTORE\s+)?FERROVIARIO$/.test(s.label)) && railSection.trim() ? 'RAIL_GENERAL' : 'UNKNOWN';
+  }
   if (/\bFS SECURITY\b|rail.*security|铁路安保/i.test(text)) return 'RAIL_SECURITY';
   if (/\bRFI\b|\bDOIT\b|infrastruttur|infrastructure|基础设施/i.test(text)) return 'RAIL_INFRASTRUCTURE';
   if (/personale.*(?:macchina|bordo)|macchinist|capotren|train crew|司乘/i.test(text)) return 'RAIL_CREW';
   if (/\bTRENITALIA\b|\bTRENORD\b|\bITALO\b|ferrovie dello stato|国家铁路|高铁/i.test(text)) return 'RAIL_OPERATOR';
-  if (/pulizi|manutenzione|appalto|support|清洁|维护/i.test(text)) return 'RAIL_SUPPORT';
+  if (/pulizi|manutenzione|appalt[oi]|appaltatric|support|清洁|维护/i.test(text)) return 'RAIL_SUPPORT';
   return 'UNKNOWN';
 }
 export function railTitle(scope: ScopeType, language: 'zh' | 'en' = 'zh') {
   const titles: Partial<Record<ScopeType,[string,string]>> = {
+    RAIL_GENERAL:['铁路罢工（总罢工铁路部分）','Rail service strike (general strike)'],
     RAIL_SECURITY:['铁路安保人员罢工','Railway security staff strike'],
     RAIL_INFRASTRUCTURE:['铁路基础设施人员罢工','Rail infrastructure staff strike'],
     RAIL_SUPPORT:['铁路配套服务人员罢工','Rail support staff strike'],
@@ -68,11 +81,19 @@ export function extractLineScope(text: string): string[] | 'ALL_LINES' | 'UNKNOW
 export function makeScopeEvidence(row: {provider:string; note:string; sector:string; modalita:string; sourceUrl?:string; rawRegion?:string; province?:string; rilevanza?:string}, region: string, category: string, windows: {start:string;end:string}[], guarantees: {start:string;end:string}[] = []): ScopeEvidence {
   const url=row.sourceUrl || 'https://scioperi.mit.gov.it/mit2/public/scioperi';
   const fact=<T>(value:T, known=true, excerpt=row.provider):FieldEvidence<T>=>({value,confidence:known?'HIGH':'UNKNOWN',source:known?'MIT':'UNKNOWN',method:'CODE',...(known?{url,excerpt}:{})});
-  const scope=category==='AIRPORT'?aviationScope(row.provider,region):category==='TRAIN'?railScope(row.provider):'UNKNOWN';
+  const scope=category==='AIRPORT'?aviationScope(row.provider,region):category==='TRAIN'?railScope(row.provider,row):'UNKNOWN';
+  const projected=classifyRegionTags({regionText:row.rawRegion,provinceText:row.province,providerText:row.provider,sectorText:row.sector,noteText:row.note,relevanceText:row.rilevanza});
+  const projection=projected.includes('NATIONAL') ? CITIES.map(c=>c.tag) : projected.filter(tag=>Boolean(resolveCity(tag)));
+  const declared={region:row.rawRegion || '',province:row.province || '',relevance:row.rilevanza || ''};
+  const hasProvince=Boolean(declared.province) && !/^(tutte|italia|nazionale|n\/?d|unknown)$/i.test(declared.province);
+  const geographyKnown=Boolean(declared.region && !/^(unknown|n\/?d)$/i.test(declared.region) || hasProvince);
+  const locationStatus:ScopeEvidence['locationStatus']=region!=='UNKNOWN' ? 'SUPPORTED_PROJECTION' : hasProvince&&!resolveCity(declared.province)?'UNSUPPORTED_CITY':geographyKnown?(CITIES.some(c=>c.region===declared.region.toLowerCase()) || /^italia$/i.test(declared.region)?'UNPROJECTED_GEOGRAPHY':'UNSUPPORTED_REGION'):'UNKNOWN_LOCATION';
   const lines=extractLineScope(row.note);
   const airports=category==='AIRPORT' && !['AIRLINE','AIRLINE_CREW','CARGO'].includes(scope) ? normalizeAirportAffectedLines([],{contextText:affectedScopeText(row.provider)+' '+affectedScopeText(row.note)}) : [];
   return {
-    location:fact(region,region!=='UNKNOWN',[row.rawRegion,row.province,row.rilevanza,row.provider].filter(Boolean).join(' | ')), passengerImpact:fact(indirectRail(scope)?'INDIRECT_OR_UNCONFIRMED':scope==='RAIL_OPERATOR'||scope==='RAIL_CREW'?'DIRECT_SERVICE':'UNKNOWN',scope!=='UNKNOWN'), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN'),
+    officialGeography:{...fact(declared,geographyKnown,[declared.region,declared.province,declared.relevance].join(' | ')),method:'OFFICIAL'}, supportedCityProjection:fact(projection,geographyKnown), locationStatus,
+    ...(category==='TRAIN'?{railSections:fact(timingSections(row.modalita).filter(s=>/FERROVIAR|MERCI.*ROTAIA/.test(s.label)).map(s=>({subject:/APPALTI/.test(s.label)?'RAIL_CONTRACTORS' as const:/MERCI/.test(s.label)?'RAIL_FREIGHT' as const:'RAIL_SERVICE' as const,text:s.body.trim().replace(/\s*\/\s*$/,''),representedByThisEvent:/^(?:SETTORE\s+)?FERROVIARIO$/.test(s.label)})),timingSections(row.modalita).length>0,row.modalita)}:{}),
+    location:fact(region,region!=='UNKNOWN',[row.rawRegion,row.province,row.rilevanza,row.provider].filter(Boolean).join(' | ')), passengerImpact:fact(indirectRail(scope)?'INDIRECT_OR_UNCONFIRMED':scope==='RAIL_GENERAL'||scope==='RAIL_OPERATOR'||scope==='RAIL_CREW'?'DIRECT_SERVICE':'UNKNOWN',scope.startsWith('RAIL_')), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN',scope==='RAIL_GENERAL'?scopeTiming(row.modalita,'TRAIN'):row.provider),
     affectedLines:fact(lines,lines!=='UNKNOWN',row.note), affectedAirports:fact(airports,!!airports.length),
     // Do not treat a list of all staff as a list of all operators.
     affectedOperators:fact(/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)?[]:row.provider?[row.provider]:[],!!row.provider && !/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)),
@@ -91,4 +112,14 @@ export function sourceFact<T>(value:T, source:TimingSource):FieldEvidence<T> {
 export function scopeTitle(scope: ScopeType, language:'zh'|'en'='zh') {
   const titles:Partial<Record<ScopeType,[string,string]>>={AIRPORT:['机场人员罢工','Airport staff strike'],AIRLINE:['航司罢工','Airline strike'],AIRLINE_CREW:['航司机组罢工','Airline crew strike'],MIXED_AIRPORT_SERVICES:['机场综合服务人员罢工','Mixed airport services strike'],GROUND_HANDLING:['地面服务人员罢工','Ground handling strike'],CARGO:['货运航空罢工','Cargo airline strike'],NATIONAL_AVIATION:['全国航空人员罢工','National aviation strike'],UNKNOWN:['航空相关罢工（范围待核实）','Aviation strike (scope unverified)']};
   return (titles[scope] || titles.UNKNOWN!)[language==='zh'?0:1];
+}
+
+// Preserve declared administrative scope; a supported-city card is only a
+// projection, never proof that this city is the entire official impact area.
+export function geographyContext(f: ScopeEvidence | undefined, language:'zh'|'en'='zh') {
+  const g=f?.officialGeography?.value;
+  if(!g || !/^regionale$/i.test(g.relevance) || !g.region) return '';
+  return language==='zh'
+    ? `官方登记范围：${g.region}（区域级，省份：${/^tutte$/i.test(g.province)?'全部':g.province || '未注明'}）。本站按支持城市展示，不代表仅影响本城市。`
+    : `Official administrative scope: ${g.region} (regional; provinces: ${g.province || 'unspecified'}). This card projects the supported city; it is not the entire affected geography.`;
 }

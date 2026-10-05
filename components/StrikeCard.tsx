@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { submitDoodle, getDoodleCount } from '../app/actions';
 import { normalizeDisplayLines } from './utils';
 import { normalizeProviderList } from '../lib/strikeNormalization';
-import { scopeTitle, scopeOf, railTitle, indirectRail, type GuaranteeSource } from '../lib/strikeScope';
+import { scopeTitle, scopeOf, railTitle, indirectRail, geographyContext, type GuaranteeSource } from '../lib/strikeScope';
 import DoodleCanvas, { DoodleCategory } from './DoodleOverlay';
 import { capture, isWeChatBrowser } from '../utils/analytics';
 import {
@@ -552,9 +552,10 @@ export default function StrikeCard({ strike, isDark, language = 'zh' }: { strike
                 {guaranteeWindows.length>0 && <p className={`mt-2 text-[12px] ${isDark?'text-white/60':'text-[#64748B]'}`}>{pickText(language,'保障仅针对规定的最低服务或受保护航班，不代表全部班次正常；请核对具体班次。','Protection covers specified minimum services or protected flights; verify your train or flight.')}</p>}
 
                 {(strike.strike_events || []).flatMap(e=>e.timing_evidence?.fields?.exclusions?.value || []).length>0 && <p className={`mt-2 text-[12px] ${isDark?'text-white/60':'text-[#64748B]'}`}>{pickText(language,'原公告排除项：','Official exclusions: ')}{[...new Set((strike.strike_events || []).flatMap(e=>e.timing_evidence?.fields?.exclusions?.value || []))].join(' / ')}</p>}
+                {[...new Set((strike.strike_events || []).map(e=>geographyContext(e.timing_evidence?.fields,language)).filter(Boolean))].map(text=><p key={text} className={`mt-2 text-[12px] ${isDark?'text-white/70':'text-[#64748B]'}`}>{text}</p>)}
                 {/* Persistent Separator */}
                 <div className={`mt-3 pt-3 border-t ${isDark ? 'border-[#e2e8f0]/20' : 'border-[#E2E8F0]'}`}>
-                    {isTrain && indirectRail(scopeOf(strike)) && <p className="text-xs mb-3 opacity-70">{pickText(language,'此处为相关人员停工时段；旅客列车的实际影响尚未确认，不代表所有列车停运。','These are staff strike hours. Passenger train impacts are unconfirmed; this does not mean all trains stop.')}</p>}
+                    {isTrain && indirectRail(scopeOf(strike)) && <p className={`text-xs mb-3 ${isDark?'text-white/70':'text-[#64748B]'}`}>{pickText(language,'此处为相关人员停工时段；旅客列车的实际影响尚未确认，不代表所有列车停运。','These are staff strike hours. Passenger train impacts are unconfirmed; this does not mean all trains stop.')}</p>}
                     <span className={`text-[12px] mb-2 block font-normal ${isDark ? 'text-white' : 'text-[#64748B]'}`}>{isPlane ? pickText(language, ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?'涉事航司的航班（非整个机场）':'受影响机场 / 服务', ['AIRLINE','AIRLINE_CREW'].includes(scopeOf(strike))?'Flights of this airline (not the entire airport)':'Affected airports / services') : pickText(language, '受影响线路', 'Affected lines')}</span>
                     {strike.has_unknown_lines && displayLines.length>0 && <p className="text-[12px] mb-2">{pickText(language,'部分公告未注明线路，以上信息并非完整范围。','Some notices omit line details; this list may be incomplete.')}</p>}
                     <div className="flex gap-2 flex-wrap">

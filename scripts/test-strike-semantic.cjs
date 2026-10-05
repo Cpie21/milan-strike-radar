@@ -103,3 +103,52 @@ test('PostgreSQL budget enforces cap, leases, cache, uncertain costs and role is
   await db.exec('set role anon');await assert.rejects(db.query('select * from ai_monthly_budget'));await assert.rejects(db.query('select * from reserve_strike_semantic_review($1,1)',['d'.repeat(64)]));await db.exec('reset role');
  }finally{await db.close();}
 });
+const toscana={...raw,date:'14/10/2026',endDate:'14/10/2026',rawRegion:'Toscana',region:'FIRENZE',sector:'Generale',provider:'SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA',modalita:"INTERA GIORNATA DI LAVORO - FERROVIARIO: DALLE 09.01 ALLE 17.00 / APPALTI FERROVIARI: SECONDO MEZZO TURNO DEL TURNO DI LAVORO / TPL: 4 ORE VARIE MODALITA' / TRASPORTO MERCI SU ROTAIA: INTERA PRESTAZIONE LAVORATIVA",note:'ESCLUSO SETTORE TRASPORTO AEREO E PERSONALE SOC. GEST DI FIRENZE'};
+test('general strike rail classification and clocks share the same section, contractors stay separate',async()=>{
+ const records=await transformRows([toscana,{...toscana,region:'PISA'}]);const train=records.filter(r=>r.category==='TRAIN');
+ assert.equal(train.length,2);
+ for(const r of train){assert.equal(r.timing_evidence.fields.scopeType.value,'RAIL_GENERAL');assert.equal(r.timing_evidence.fields.passengerImpact.value,'DIRECT_SERVICE');assert.deepEqual(r.strike_windows,[{start:'09:01',end:'17:00'}]);
+  assert.deepEqual(r.timing_evidence.fields.railSections.value.map(s=>[s.subject,s.representedByThisEvent]),[['RAIL_SERVICE',true],['RAIL_CONTRACTORS',false],['RAIL_FREIGHT',false]]);
+ }
+ assert.ok(records.filter(r=>r.category==='BUS').every(r=>!r.strike_windows.length));assert.ok(!records.some(r=>r.category==='AIRPORT'));
+ assert.equal(railScope(toscana.provider,{modalita:'APPALTI FERROVIARI: SECONDO MEZZO TURNO'}),'UNKNOWN');
+ assert.equal(railScope('PERSONALE APPALTI FERROVIARI'), 'RAIL_SUPPORT');
+ assert.equal(railScope('SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE',{modalita:'INTERA GIORNATA - FERROVIARIO DALLE 21.00 DEL 3/12 ALLE 21.00 DEL 4/12; AUTOSTRADE DALLE 22.00 ALLE 22.00'}),'RAIL_GENERAL');
+});
+test('official regional geography survives supported-city projection and aggregation',async()=>{
+ const row={...raw,date:'29/10/2026',endDate:'29/10/2026',rawRegion:'Emilia-Romagna',region:'BOLOGNA',provider:'PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI',modalita:'24 ORE: DALLE 00.00 ALLE 23.59'};
+ const records=await transformRows([row]);assert.equal(records.length,1);const fields=records[0].timing_evidence.fields;
+ assert.deepEqual(fields.officialGeography.value,{region:'Emilia-Romagna',province:'Tutte',relevance:'Regionale'});assert.deepEqual(fields.supportedCityProjection.value,['BOLOGNA']);assert.equal(fields.officialGeography.method,'OFFICIAL');
+ const card=aggregateStrikes(records,'BOLOGNA')[0];assert.equal(card.officialGeography[0].value.region,'Emilia-Romagna');assert.deepEqual(card.supportedCityProjection,['BOLOGNA']);
+ assert.ok(require('../lib/strikeScope.ts').geographyContext(fields).includes('不代表仅影响本城市'));
+});
+test('unsupported official cities differ from missing official geography without inventing supported coverage',async()=>{
+ for(const [province,region,provider] of [['Foggia','Puglia','PERSONALE SOC. ATAF DI FOGGIA'],['Udine','Friuli-Venezia Giulia','PERSONALE SOC. ARRIVA UDINE DI UDINE']]) {
+  const record=(await transformRows([{...raw,endDate:raw.date,sector:'Trasporto pubblico locale',region:'UNKNOWN',rawRegion:region,province,provider,modalita:'24 ORE',rilevanza:'Locale'}]))[0];
+  assert.equal(record.region,'UNKNOWN');assert.equal(record.timing_evidence.fields.locationStatus,'UNSUPPORTED_CITY');assert.equal(record.timing_evidence.fields.officialGeography.value.province,province);assert.deepEqual(record.timing_evidence.fields.supportedCityProjection.value,[]);
+ }
+ const fields=makeScopeEvidence({provider:'Unknown provider',note:'',sector:'Ferroviario',modalita:''},'UNKNOWN','TRAIN',[]);assert.equal(fields.locationStatus,'UNKNOWN_LOCATION');
+});
+test('omission probability above 0.8 enters persistent review even when subtype confidence is lower',async()=>{
+ const records=await transformRows([toscana]),input=reviewInput(toscana,records);const result=answer();result.answers.subtype=choice('RAIL_GENERAL',.71);result.answers.omitted.noul=.84;
+ const review=decodeReview(result,input,now),out=reconcileSemanticReview(records,toscana,review);assert.equal(out[0].timing_evidence.semantic_review.disposition,'NEEDS_REVIEW');assert.ok(out[0].timing_evidence.semantic_review.reviewReasons.includes('parserOmittedImpact'));
+ const saved=[];const db={rpc:async(name,args)=>{if(name.startsWith('reserve'))return{data:[{decision:'call',lease:'x'}]};saved.push(args.review_result);return{data:true};}};
+ const warnings=[];const actual=await reviewStrikeSemantics(records,[toscana],db,warnings,now,{enabled:true,price:async()=>{},decide:async()=>result});assert.equal(actual.stats.needsReview,1);assert.equal(saved[0].disposition,'NEEDS_REVIEW');assert.equal(saved[0].source_key,toscana.sourceKey);assert.ok(warnings.length);assert.deepEqual(actual.records.filter(r=>r.category==='TRAIN')[0].strike_windows,[{start:'09:01',end:'17:00'}]);
+});
+test('multi-mode announcements compare subtype only to its transport mode',async()=>{
+ const records=await transformRows([toscana]),result=answer();result.answers.subtype=choice('RAIL_GENERAL');const out=reconcileSemanticReview(records,toscana,decodeReview(result,reviewInput(toscana,records),now));assert.equal(out[0].timing_evidence.semantic_review.disposition,'AGREES');
+});
+test('review queue clears older flags after later agreement and does not mix review versions',()=>{
+ const {pendingSemanticReviews}=require('../lib/semanticReviewQueue.ts'),{REVIEW_VERSION}=require('../lib/strikeSemanticReview.ts');
+ const review={version:REVIEW_VERSION,source_key:'one',disposition:'NEEDS_REVIEW'};
+ const rows=[{input_hash:'a',checked_at:'2026-10-05T00:00:00Z',result:review},{input_hash:'b',checked_at:'2026-10-05T01:00:00Z',result:{...review,disposition:'AGREES'}},{input_hash:'c',checked_at:'2026-10-05T00:00:00Z',result:{...review,source_key:'two',disposition:'FLAGGED'}},{input_hash:'d',checked_at:'2026-10-05T02:00:00Z',result:{...review,source_key:'two',version:'obsolete'}}];
+ assert.deepEqual(pendingSemanticReviews(rows).map(r=>r.source_key),['two']);
+});
+test('officially supported rail correction keeps passenger-impact provenance consistent',async()=>{
+ const records=await transformRows([toscana]);for(const r of records.filter(r=>r.category==='TRAIN')) {r.timing_evidence.fields.scopeType.value='RAIL_SUPPORT';r.timing_evidence.fields.passengerImpact.value='INDIRECT_OR_UNCONFIRMED';}
+ const result=answer();result.answers.subtype=choice('RAIL_GENERAL');const out=reconcileSemanticReview(records,toscana,decodeReview(result,reviewInput(toscana,records),now));const train=out.find(r=>r.category==='TRAIN');assert.equal(train.timing_evidence.fields.scopeType.value,'RAIL_GENERAL');assert.equal(train.timing_evidence.fields.passengerImpact.value,'DIRECT_SERVICE');assert.equal(train.timing_evidence.semantic_review.disposition,'CORRECTED');
+});
+test('regional correction updates supported projection as well as individual city rows',async()=>{
+ const records=(await transformRows([raw])).filter(r=>r.region==='PALERMO');for(const r of records)r.timing_evidence.fields.supportedCityProjection.value=['PALERMO'];
+ const result=answer();result.answers.location=choice('ADMIN_REGION');const out=reconcileSemanticReview(records,raw,decodeReview(result,reviewInput(raw,records),now));assert.equal(out.length,6);assert.deepEqual(out[0].timing_evidence.fields.supportedCityProjection.value.sort(),['CATANIA','MESSINA','PALERMO']);
+});
