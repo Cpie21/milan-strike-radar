@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       }
       const signal = AbortSignal.timeout(12000);
       const response = source === 'CGSSE' ? await fetchCgsse(url, signal) : await fetch(url, { signal, redirect: 'manual', cache: 'no-store', headers: { 'User-Agent': 'ItalyStrike/1.0 (+https://www.theitalystrike.com)', Accept: 'text/html,application/pdf' } });
-      const reader = response.body?.getReader();
+      const reader = response.ok ? response.body?.getReader() : undefined;
       let bytes = 0;
       if (response.ok && reader) {
         for (;;) {
