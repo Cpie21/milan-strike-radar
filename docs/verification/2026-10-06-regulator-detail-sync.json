@@ -1,0 +1,43 @@
+{
+  "httpStatus": 200,
+  "result": {
+    "success": true,
+    "runId": "73a628de-9b21-4476-b149-dc3fba9f77e2",
+    "fetched": 75,
+    "upserted": 59,
+    "unknownTiming": 9,
+    "retired": 0,
+    "enriched": 4,
+    "sourcesChecked": 112,
+    "conflicts": 3,
+    "transit": {
+      "profilesApplied": 6,
+      "routeCatalogs": 1,
+      "serviceSchedules": 2,
+      "scheduleFeeds": 1,
+      "membershipCatalogs": 5,
+      "membershipProjections": 8
+    },
+    "semantic": {
+      "called": 7,
+      "cached": 21,
+      "flagged": 0,
+      "needsReview": 0,
+      "inconclusive": 17,
+      "failed": 0,
+      "skipped": 0,
+      "budgetExhausted": false
+    },
+    "semanticEnabled": true,
+    "verification": {
+      "operatorOfficial": 11,
+      "reported": 0,
+      "mitOnly": 20,
+      "acquisition": {
+        "cgsseDocuments": 7,
+        "toscanaApiDocuments": 1
+      }
+    },
+    "warningCount": 19
+  }
+}
