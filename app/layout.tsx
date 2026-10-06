@@ -17,11 +17,10 @@ export const metadata: Metadata = {
   description: "Italy Strike Query - Real-time strike information for Italy",
   appleWebApp: {
     capable: true,
-    // No status-bar style at all: iOS then starts the page below an opaque
-    // status bar tinted from theme-color. Since iOS 26 a page that runs
-    // under the bar (black-translucent) gets ~110px of Liquid Glass blur
-    // over its top, while env(safe-area-inset-top) reports 0 there, so the
-    // page can't even make room for it.
+    // The page runs under the status bar, and iOS 26 lays its Liquid Glass
+    // blur over the top ~110px there: the owner likes that soft top over the
+    // glow. The header row is kept below it (LabApp, .lab-header).
+    statusBarStyle: "black-translucent",
     title: "罢工查询",
   },
   icons: {
@@ -57,7 +56,12 @@ export default function RootLayout({
       <body
         className={`${jetBrainsMono.variable} ${num.variable} antialiased`}
       >
-        <style>{'html,body{background:#0A0B0D;color-scheme:dark;overscroll-behavior-y:none}'}</style>
+        <style>{'html,body{background:#0A0B0D;color-scheme:dark;overscroll-behavior-y:none}'
+          // In the browser the header sits under the status bar's inset; in
+          // the Home Screen app (display-mode standalone, where iOS 26 blurs
+          // ~110px and reports a zero inset) it starts just below the blur.
+          + '.lab-header{padding-top:max(14px,calc(env(safe-area-inset-top) + 14px))}'
+          + '@media (display-mode: standalone){.lab-header{padding-top:max(108px,calc(env(safe-area-inset-top) + 50px))}}'}</style>
         <CSPostHogProvider>
           {children}
         </CSPostHogProvider>

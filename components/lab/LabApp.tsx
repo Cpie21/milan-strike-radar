@@ -147,22 +147,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         <motion.div key={glow} aria-hidden className="absolute inset-x-0 top-0 h-[460px] pointer-events-none" style={{ background: glow }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
       </AnimatePresence>
-      {/* Three layers at the top: the glow (above), a fixed wash in the
-          page's colour, and the header, which scrolls with the page.
-          Where the page runs under the status bar, iOS 26 blurs the top of
-          it unless the edge belongs to a fixed full-width box with a plain
-          background-color: WebKit hit-tests a point 8px down, walks up to
-          the first fixed ancestor and extends that colour into the status
-          bar instead (gradients don't count, and a pointer-events:none box
-          is never hit). So the wash is a thin hit-testable solid line at the
-          very edge, then an eased fade (a scrim: the alpha follows a curve,
-          not a straight line, so it has no visible start or end) over the
-          rest of the status bar and a little past it. */}
-      <div aria-hidden className="fixed inset-x-0 top-0 z-[30]" style={{ height: 'env(safe-area-inset-top)', backgroundColor: C.bg }}>
-        <div className="absolute inset-x-0 top-full h-4 pointer-events-none" style={{ background: SCRIM }} />
-      </div>
+      {/* The top: the glow runs right up under the status bar, where iOS
+          blurs it softly in the Home Screen app; the header row starts below
+          that blur (.lab-header, app/layout.tsx). */}
       <div>
-        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'max(14px, calc(env(safe-area-inset-top) + 14px))' }}>
+        <header className="lab-header mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4">
           <div className="justify-self-start flex p-[3px] rounded-full" style={{ background: C.surface2 }} role="group" aria-label="语言 / Language">
             {(['zh', 'en'] as Lang[]).map(l => (
               <button key={l} onClick={() => changeLang(l)} aria-pressed={lang === l} className="relative h-7 w-9 rounded-full text-[12.5px] font-semibold" style={{ color: lang === l ? C.text : C.text3 }}>
@@ -322,10 +311,6 @@ function WidgetGlyph() {
     </svg>
   );
 }
-
-// The page colour fading out along an eased curve (scrim / easing gradients:
-// css-tricks.com/easing-linear-gradients): no hard edge where it ends.
-const SCRIM = `linear-gradient(180deg, ${[[1, 0], [0.738, 19], [0.541, 34], [0.382, 47], [0.278, 56.5], [0.194, 65], [0.126, 73], [0.075, 80.2], [0.042, 86.1], [0.021, 91], [0.008, 95.2], [0.002, 98.2], [0, 100]].map(([a, p]) => `rgba(10,11,13,${a}) ${p}%`).join(', ')})`;
 
 function Tool({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
