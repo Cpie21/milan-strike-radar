@@ -159,16 +159,25 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
         <DateRail tiles={tiles} today={today} selected={selected} lang={lang} onSelect={select} onMonth={setMonth} />
 
-        {/* Tap-to-jump: only when there is more than one card to jump between */}
-        {dayCards.length > 1 && jumpModes.length > 0 && (
-          <div className="flex justify-center gap-2 px-5 pt-2 pb-1">
-            {jumpModes.map(mode => (
-              <motion.button key={mode} whileTap={{ scale: 0.95 }} onClick={() => jump(mode)} className={`h-9 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: MODE_COLOR[mode].soft, color: MODE_COLOR[mode].main }}>
-                <ModeBadge mode={mode} size={18} />{modeName(mode, lang)}
-              </motion.button>
-            ))}
-          </div>
-        )}
+        {/* Tap-to-jump: only when there is more than one card to jump between.
+            It opens and closes with the day, chips rising in one after another. */}
+        <AnimatePresence initial={false}>
+          {dayCards.length > 1 && jumpModes.length > 0 && (
+            <motion.div key="jump" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: reduce ? 0 : 0.28, ease: EASE }} className="overflow-hidden">
+              <div className="flex justify-center gap-2 px-5 pt-2 pb-1">
+                <AnimatePresence initial={false} mode="popLayout">
+                  {jumpModes.map((mode, i) => (
+                    <motion.button key={mode} layout initial={{ opacity: 0, y: reduce ? 0 : 8, scale: reduce ? 1 : 0.92 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: reduce ? 1 : 0.92 }}
+                      transition={{ ...SPRING, delay: reduce ? 0 : 0.04 * i }} whileTap={{ scale: 0.95 }} onClick={() => jump(mode)}
+                      className={`h-9 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: MODE_COLOR[mode].soft, color: MODE_COLOR[mode].main }}>
+                      <ModeBadge mode={mode} size={18} />{modeName(mode, lang)}
+                    </motion.button>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="px-4 pt-3">
           <div className="relative -mx-4 px-4" style={{ overflowX: 'clip' }}>
@@ -201,16 +210,23 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           </div>
 
           {/* Outside the per-day transition, so it stays put across calm days */}
-          {calm && <AskModule ask={ask} nudge={{ key: selected, dir: direction }} />}
+          <AnimatePresence initial={false}>
+            {calm && (
+              <motion.div key="ask" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: reduce ? 0 : 0.32, ease: EASE }} className="overflow-hidden">
+                <AskModule ask={ask} nudge={{ key: selected, dir: direction }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Tools: one line each says enough */}
-          <div className="grid grid-cols-3 gap-2.5 mt-3">
+          {/* These follow the content above as it grows and shrinks, gliding, never jumping */}
+          <motion.div layout="position" transition={SPRING} className="grid grid-cols-3 gap-2.5 mt-3">
             <Tool icon={<DeviceMobile size={19} weight="fill" />} label={tx(lang, '添加到桌面', 'Home Screen')} onClick={() => setSheet('home')} />
             <Tool icon={<SquaresFour size={19} weight="fill" />} label={tx(lang, '添加小组件', 'Widget')} onClick={() => setSheet('widget')} />
             <Tool icon={<ArrowsClockwise size={19} weight="bold" />} label={tx(lang, '同步日历', 'Calendar')} onClick={() => setSheet('calendar')} />
-          </div>
+          </motion.div>
 
-          <section className="mt-3 flex items-center gap-3 px-5 py-4" style={{ background: C.surface, borderRadius: R.card }}>
+          <motion.section layout="position" transition={SPRING} className="mt-3 flex items-center gap-3 px-5 py-4" style={{ background: C.surface, borderRadius: R.card }}>
             <div className="flex-1 min-w-0">
               <p className="text-[16px] font-semibold">{tx(lang, '支持与反馈', 'Support & feedback')}</p>
               <p className={`mt-0.5 ${TYPE.label} font-normal`} style={{ color: C.text2 }}>{tx(lang, '独立开发不易，如果有用请支持一杯奶茶，也欢迎提建议。', 'Built independently. Buy a bubble tea or send a suggestion.')}</p>
@@ -218,7 +234,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
             <button onClick={() => setSheet('support')} className={`h-[38px] px-3.5 rounded-full shrink-0 active:scale-95 transition-transform ${TYPE.label} font-semibold`} style={TONAL}>
               {tx(lang, '去看看', 'Open')}
             </button>
-          </section>
+          </motion.section>
 
         </div>
       </div>

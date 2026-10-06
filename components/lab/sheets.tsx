@@ -173,7 +173,8 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
 
 // What the widget looks like, calm and on a strike day: the same face.
 function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
-  const [strike, setStrike] = useState(false);
+  const [state, setState] = useState<'calm' | 'strike' | 'many'>('calm');
+  const strike = state === 'strike', many = state === 'many';
   // An example day: metro and bus strike 08:45–15:00 and 18:00–end, guaranteed 15:00–18:00.
   const x = (m: number) => `${Math.max(0, Math.min(1, (m - 300) / 1200)) * 100}%`;
   const seg = (a: number, b: number, color: string) => <i className="absolute top-0 h-[8px] rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: color }} />;
@@ -181,14 +182,33 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
   const wd = lang === 'en' ? ['T', 'W', 'T', 'F', 'S', 'S', 'M'] : ['二', '三', '四', '五', '六', '日', '一'];
   return (
     <div className="mt-3 mb-1 flex flex-col items-center gap-3">
-      <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] px-4 py-3.5 flex flex-col overflow-hidden" style={{ background: strike ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
+      <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] px-4 py-3.5 flex flex-col overflow-hidden" style={{ background: strike || many ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
         <div className="flex items-center gap-1.5">
-          {strike ? <><ModeBadge mode="SUBWAY" size={18} /><ModeBadge mode="BUS" size={18} /><span className="ml-1 text-[12.5px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '地铁 · 公交', 'Metro · Bus')}</span></>
+          {many ? <span className="text-[12.5px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '今天 2 项罢工', '2 strikes today')}</span> : strike ? <><ModeBadge mode="SUBWAY" size={18} /><ModeBadge mode="BUS" size={18} /><span className="ml-1 text-[12.5px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '地铁 · 公交', 'Metro · Bus')}</span></>
             : <span className="text-[12.5px] font-semibold" style={{ color: C.text2 }}>{cityName} · {tx(lang, '周二', 'Tue')}</span>}
-          <span className="ml-auto"><LedFace mood={strike ? 'alert' : 'idle'} size={11} cols={17} /></span>
+          <span className="ml-auto"><LedFace mood={strike || many ? 'alert' : 'idle'} size={11} cols={17} /></span>
         </div>
         <div className="flex-1" />
-        {strike ? <>
+        {many ? (
+          // different hours, one row each: badges, a slim track, its own status
+          <div className="flex flex-col gap-2.5 pb-1">
+            {([
+              [['SUBWAY', 'BUS'], [[525, 900], [1080, 1500]], [[900, 1080]], tx(lang, '至 15:00', 'until 15:00'), true],
+              [['TRAIN'], [[1260, 1500]], [], tx(lang, '21:00 起罢工', 'Strike from 21:00'), false],
+            ] as [Mode[], number[][], number[][], string, boolean][]).map(([modes, ws, gs, label, now], k) => (
+              <div key={k} className="flex items-center gap-2">
+                <span className="w-[40px] flex gap-[3px]">{modes.map(m => <ModeBadge key={m} mode={m} size={18} />)}</span>
+                <span className="relative flex-1 h-[6px]">
+                  <i className="absolute inset-x-0 top-[1.5px] h-[3px] rounded-full" style={{ background: '#2A2D33' }} />
+                  {ws.map(([a, b]) => <i key={a} className="absolute top-0 h-[6px] rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: MODE_COLOR[modes[0]].main }} />)}
+                  {gs.map(([a, b]) => <i key={a} className="absolute top-0 h-[6px] rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: C.run }} />)}
+                  <i className="absolute -top-[2px] w-[10px] h-[10px] -ml-[5px] rounded-full flex items-center justify-center" style={{ left: x(630), background: '#0E0F12' }}><i className="w-[6px] h-[6px] rounded-full bg-white" /></i>
+                </span>
+                <span className="w-[92px] text-right text-[12.5px] font-semibold tabular-nums" style={{ color: now ? MODE_COLOR[modes[0]].main : C.text }}>{label}</span>
+              </div>
+            ))}
+          </div>
+        ) : strike ? <>
           <p className="text-[12.5px] font-semibold" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '罢工时段内', 'In strike hours')}</p>
           <p className="text-[26px] leading-[1.1] font-bold tabular-nums" style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif' }}>{tx(lang, '至 15:00', 'until 15:00')}</p>
           <div className="relative mt-2.5 h-[8px]">
@@ -214,9 +234,9 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
         </>}
       </div>
       <div className="flex p-[3px] rounded-full" style={{ background: C.surface2 }}>
-        {[false, true].map(v => (
-          <button key={String(v)} onClick={() => setStrike(v)} className="h-7 px-3 rounded-full text-[12.5px] font-semibold" style={{ background: strike === v ? C.surface3 : 'transparent', color: strike === v ? C.text : C.text3 }}>
-            {v ? tx(lang, '罢工日', 'Strike day') : tx(lang, '平日', 'Calm day')}
+        {(['calm', 'strike', 'many'] as const).map(v => (
+          <button key={v} onClick={() => setState(v)} className="h-7 px-3 rounded-full text-[12.5px] font-semibold" style={{ background: state === v ? C.surface3 : 'transparent', color: state === v ? C.text : C.text3 }}>
+            {v === 'calm' ? tx(lang, '平日', 'Calm') : v === 'strike' ? tx(lang, '罢工日', 'Strike') : tx(lang, '多项罢工', 'Several')}
           </button>
         ))}
       </div>
@@ -224,9 +244,20 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
   );
 }
 
+// Tutorial shots keep their place while they load: a shimmering skeleton of
+// the right shape, then the picture fades in over it, so nothing below jumps.
+const SHOT_RATIO: Record<string, number> = { tutorial: 585 / 351, widget: 972 / 297 };
 function Shot({ src }: { src: string }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" className="w-full max-w-[260px] rounded-[14px]" style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }} />;
+  const [loaded, setLoaded] = useState(false);
+  const ratio = SHOT_RATIO[src.includes('widget') ? 'widget' : 'tutorial'];
+  return (
+    <div className="relative w-full max-w-[260px] rounded-[14px] overflow-hidden" style={{ aspectRatio: ratio, background: C.surface2, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
+      {!loaded && <motion.span aria-hidden className="absolute inset-y-0 w-1/2" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent)' }} animate={{ x: ['-100%', '220%'] }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} />}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="" onLoad={() => setLoaded(true)} ref={el => { if (el?.complete && el.naturalWidth && !loaded) setLoaded(true); }}
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" style={{ opacity: loaded ? 1 : 0 }} />
+    </div>
+  );
 }
 
 // ── Add to Home Screen ─────────────────────────────────────────────────

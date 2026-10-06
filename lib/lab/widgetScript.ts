@@ -12,6 +12,9 @@
 //     concerned, never cross.
 //   Calm – "今天没有罢工" big, the next strike under it, and the coming week
 //     as seven days with the strike days filled in. The face is at ease.
+//   Several strikes – modes with the same hours share one view; when the
+//     hours differ, each group gets its own row: badges, a slim track of its
+//     day and its own status, side by side like departure rows.
 // It never says a line "is stopped": planned hours are planned hours, and
 // a notice's open end stays "运营结束".
 //
@@ -23,13 +26,13 @@ export type LabWidgetOptions = { origin: string; region: string; types: string[]
 const LABELS = {
   zh: {
     modes: { SUBWAY: '地铁', BUS: '公交', TRAIN: '火车', AIRPORT: '机场' },
-    calm: '今天没有罢工', next: '下一次', later: '再往后一周', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
+    calm: '今天没有罢工', next: '下一次', later: '再往后一周', over: '已过', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
     past: '今天的罢工时段已过', end: '运营结束', pending: '时段待公布', guaranteed: '保障',
     error: '暂时无法更新', weekday: ['日', '一', '二', '三', '四', '五', '六'], week: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
   },
   en: {
     modes: { SUBWAY: 'Metro', BUS: 'Bus', TRAIN: 'Train', AIRPORT: 'Airport' },
-    calm: 'No strikes today', next: 'Next', later: 'The week after', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
+    calm: 'No strikes today', next: 'Next', later: 'The week after', over: 'Over', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
     past: 'Today’s strike hours are over', end: 'end of service', pending: 'Hours pending', guaranteed: 'Guaranteed',
     error: 'Can’t update right now', weekday: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], week: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
@@ -41,11 +44,13 @@ export function buildLabWidgetScript({ origin, region, types, cityName, path, la
   const fns = lang === 'zh'
     ? `const inDays = n => n === 1 ? "明天" : n + " 天后";
 const dateText = (m, d, w) => m + "月" + d + "日 " + w;
-const fromText = t => t + " 起罢工";`
+const fromText = t => t + " 起罢工";
+const manyText = n => "今天 " + n + " 项罢工";`
     : `const inDays = n => n === 1 ? "Tomorrow" : "In " + n + " days";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const dateText = (m, d, w) => w + " " + d + " " + MONTHS[m - 1];
-const fromText = t => "Strike from " + t;`;
+const fromText = t => "Strike from " + t;
+const manyText = n => n + " strikes today";`;
   return `// ${cityName} · strike radar widget. Medium is the main size; small and large work too.
 const API_URL = ${JSON.stringify(`${origin}/api/strikes?region=${region}`)};
 const OPEN_URL = ${JSON.stringify(`${origin}${path}`)};
@@ -120,6 +125,19 @@ function todayState(items, now) {
   return { kind: "past" };
 }
 
+// Modes with the same hours (and guarantees) read as one strike.
+function groupsOf(items) {
+  const map = new Map();
+  items.forEach(x => {
+    const k = JSON.stringify([windowsOf(x), guaranteesOf(x)]);
+    const g = map.get(k) || { modes: [], items: [] };
+    if (!g.modes.includes(x.category)) g.modes.push(x.category);
+    g.items.push(x); map.set(k, g);
+  });
+  return [...map.values()].sort((a, b) => ORDER[a.modes[0]] - ORDER[b.modes[0]]);
+}
+const shortState = st => st.kind === "inside" ? T.until + " " + st.until : st.kind === "later" ? fromText(st.from) : st.kind === "past" ? T.over : T.pending;
+
 // ── Pieces ──
 function badge(parent, mode, size) {
   const b = parent.addStack();
@@ -136,20 +154,22 @@ function label(parent, s, size, color, weight) {
   t.textColor = c(color); t.lineLimit = 1; t.minimumScaleFactor = 0.7;
   return t;
 }
-// The day as a track, 05:00 → end of service
-function track(items, now, width) {
-  const h = 30, y = 8, dc = new DrawContext();
+// The day as a track, 05:00 → end of service (slim: one row of several)
+function track(items, now, width, slim) {
+  const h = slim ? 14 : 30, y = slim ? 7 : 8, dc = new DrawContext();
   dc.size = new Size(width, h); dc.opaque = false; dc.respectScreenScale = true;
   const x = m => Math.max(0, Math.min(1, (m - 300) / 1200)) * width;
   const bar = (a, b, color, th) => { const p = new Path(); p.addRoundedRect(new Rect(x(a), y - th / 2, Math.max(th, x(b) - x(a)), th), th / 2, th / 2); dc.addPath(p); dc.setFillColor(c(color)); dc.fillPath(); };
-  bar(300, 1500, COL.track, 4);
+  const th = slim ? 6 : 8;
+  bar(300, 1500, COL.track, slim ? 3 : 4);
   items.forEach(item => {
-    windowsOf(item).forEach(w => { const [a, b] = spanOf(w); bar(a, b, COL.main[item.category], 8); });
-    guaranteesOf(item).forEach(g => bar(mins(g.start), mins(g.end), COL.run, 8));
+    windowsOf(item).forEach(w => { const [a, b] = spanOf(w); bar(a, b, COL.main[item.category], th); });
+    guaranteesOf(item).forEach(g => bar(mins(g.start), mins(g.end), COL.run, th));
   });
-  const nx = x(now < 300 ? now + 1440 : now);
-  dc.setFillColor(c(COL.bg)); dc.fillEllipse(new Rect(nx - 7, y - 7, 14, 14));
-  dc.setFillColor(c("#FFFFFF")); dc.fillEllipse(new Rect(nx - 4.5, y - 4.5, 9, 9));
+  const nx = x(now < 300 ? now + 1440 : now), rr = slim ? 5 : 7;
+  dc.setFillColor(c(COL.bg)); dc.fillEllipse(new Rect(nx - rr, y - rr, rr * 2, rr * 2));
+  dc.setFillColor(c("#FFFFFF")); dc.fillEllipse(new Rect(nx - rr * 0.64, y - rr * 0.64, rr * 1.28, rr * 1.28));
+  if (slim) return dc.getImage();
   // the edges that matter, under the track
   const edges = [...new Set(items.flatMap(windowsOf).flatMap(w => [w.start, w.end]).filter(Boolean))].sort().slice(0, 4);
   dc.setFont(Font.mediumSystemFont(9.5)); dc.setTextColor(c(COL.text3));
@@ -196,19 +216,36 @@ try {
   const upcoming = live.filter(x => x.date > today).sort((a, b) => (a.date < b.date ? -1 : 1));
   const nextDate = upcoming.length ? upcoming[0].date : null;
   const strike = todays.length > 0;
+  const groups = groupsOf(todays);
   background(widget, strike ? modes[0] : null);
   widget.setPadding(14, 16, 14, 16);
 
   // top row: what (or where) on the left, the face on the right
   const top = widget.addStack(); top.layoutHorizontally(); top.centerAlignContent();
-  if (strike) { modes.forEach((m, i) => { if (i) top.addSpacer(3); badge(top, m, 18); }); top.addSpacer(6); label(top, modes.map(m => T.modes[m]).join(" · "), 12.5, COL.text2, "semibold"); }
+  if (strike && groups.length > 1 && family !== "small") label(top, manyText(groups.length), 12.5, COL.text2, "semibold");
+  else if (strike) { modes.forEach((m, i) => { if (i) top.addSpacer(3); badge(top, m, 18); }); top.addSpacer(6); label(top, modes.map(m => T.modes[m]).join(" · "), 12.5, COL.text2, "semibold"); }
   else label(top, CITY + " · " + T.week[dow(today)], 12.5, COL.text2, "semibold");
   top.addSpacer();
   const fimg = top.addImage(face(strike ? ["worryL", "worryR"] : ["open", "open"], family === "small" ? 2.2 : 2.6));
   fimg.imageSize = family === "small" ? new Size(42, 24) : new Size(50, 28);
   widget.addSpacer();
 
-  if (strike) {
+  if (strike && groups.length > 1 && family !== "small") {
+    // several strikes with different hours: one row each
+    const rowsShown = family === "large" ? groups : groups.slice(0, 3);
+    rowsShown.forEach((g, i) => {
+      if (i) widget.addSpacer(family === "large" ? 10 : 7);
+      const row = widget.addStack(); row.layoutHorizontally(); row.centerAlignContent();
+      const bs = row.addStack(); bs.size = new Size(40, 18); bs.layoutHorizontally();
+      g.modes.slice(0, 2).forEach((m, k) => { if (k) bs.addSpacer(3); badge(bs, m, 18); });
+      row.addSpacer(6);
+      const img = row.addImage(track(g.items, now, 150, true)); img.imageSize = new Size(150, 14);
+      row.addSpacer();
+      const st = todayState(g.items, now);
+      label(row, shortState(st), 12.5, st.kind === "inside" ? COL.main[g.modes[0]] : COL.text, "semibold");
+    });
+    if (groups.length > rowsShown.length) { widget.addSpacer(4); label(widget, "+" + (groups.length - rowsShown.length), 11, COL.text3); }
+  } else if (strike) {
     const st = todayState(todays, now);
     const head = st.kind === "inside" ? T.inside : st.kind === "later" ? "" : st.kind === "past" ? T.past : T.pending;
     if (head) label(widget, head, 12.5, st.kind === "inside" ? COL.main[modes[0]] : COL.text2, "semibold");
