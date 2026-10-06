@@ -569,8 +569,8 @@ function LedSign({ lines }: { lines: string[] }) {
     return () => cancelAnimationFrame(raf);
   }, [text, reduce]);
   return (
-    <div className="relative rounded-[3px] p-[3px]" style={{ background: '#050505', boxShadow: '0 0 0 1.5px #2B2D32, 0 2px 6px rgba(0,0,0,0.6)' }}>
-      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[33px]" />
+    <div className="relative rounded-[2px] px-[3px] py-[2px]" style={{ background: '#050505', boxShadow: '0 0 0 1px #3A3D43, 0 0 0 2px #121316, 0 2px 5px rgba(0,0,0,0.55)' }}>
+      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[22px]" />
     </div>
   );
 }

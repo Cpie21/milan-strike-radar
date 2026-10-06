@@ -263,11 +263,11 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
     ? tx(lang, '仅该航司航班', 'This airline only')
     : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
       ? <span className="inline-flex flex-wrap justify-end gap-1">{card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l}>{l}</span>)}</span>
-      : lineImpacts.length
-        ? <span className="inline-flex flex-col items-end gap-1.5">
-            <span>{lineImpacts.map(i => tx(lang, i.zh, i.en)).join(tx(lang, '；', '; '))}</span>
-            {routes.length > 0 && <span className="inline-flex flex-wrap justify-end gap-1">{routes.slice(0, 8).map(r => <LineBadge key={r} line={r} />)}</span>}
-          </span>
+      // Known lines are shown as the lines themselves: people know which
+      // one they ride, so no "operator's lines…" sentence on top of them.
+      : routes.length
+        ? <span className="inline-flex flex-wrap justify-end gap-1">{routes.slice(0, 10).map(r => <LineBadge key={r} line={r} />)}</span>
+        : lineImpacts.length ? lineImpacts.map(i => tx(lang, i.zh, i.en)).join(tx(lang, '；', '; '))
         : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
           : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
   const scopeNote = impacts.filter(i => !i.lines).map(i => tx(lang, i.zh, i.en));
@@ -276,28 +276,30 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
   const guaranteeLabel = (
     <span className="flex flex-col gap-0.5">
       <span className="flex items-center gap-1.5" style={{ color: has ? C.ok : C.text3 }}>
-        <ShieldCheck size={15} weight="fill" />
+        <ShieldCheck size={14} weight="fill" />
         {card.guaranteeKind === 'PROTECTED_FLIGHTS' ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时段', 'Guaranteed')}
       </span>
-      {has && from && <span className={TYPE.caption} style={{ color: C.text3 }}>{tx(lang, ...from)}</span>}
+      {has && from && <span className="text-[11px]" style={{ color: C.text3 }}>{tx(lang, ...from)}</span>}
     </span>
   );
+  // One line of quiet green pills: each window its own, so two read as two.
   const guaranteeValue = has
-    ? <span className="flex flex-col items-end gap-1 tabular-nums" style={{ color: C.ok, fontFamily: NUM, fontSize: 16, fontWeight: 600 }}>{card.guarantees.map((g, i) => <span key={i}>{windowsText([g], lang)}</span>)}</span>
+    ? <span className="inline-flex flex-wrap justify-end gap-1 tabular-nums">{card.guarantees.map((g, i) => <span key={i} className="h-[24px] px-[7px] rounded-[7px] inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold" style={{ color: C.ok, background: C.okSoft, fontFamily: NUM }}>{windowsText([g], lang)}</span>)}</span>
     : <span style={{ color: C.text3 }}>{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '待公布', 'Not yet published') : tx(lang, '无', 'None')}</span>;
   const rows: [React.ReactNode, React.ReactNode, string][] = [
     [guaranteeLabel, guaranteeValue, 'guarantee'],
     [tx(lang, '罢工人员', 'Who'), say(card.provider), 'who'],
     ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), say(card.scope), 'type'] as [React.ReactNode, React.ReactNode, string]] : []),
     ...(card.category === 'AIRPORT' && scopeNote.length ? [[tx(lang, '影响范围', 'Scope'), scopeNote.join(tx(lang, '；', '; ')), 'scope'] as [React.ReactNode, React.ReactNode, string]] : []),
-    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines'), lines, 'lines'] as [React.ReactNode, React.ReactNode, string]] : []),
+    // Lines from a whole-operator notice may be hit, not certainly: the label says so.
+    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : routes.length && !(card.lineScope === 'SPECIFIC_LINES' && card.lines.length) ? tx(lang, '可能受影响', 'May be affected') : tx(lang, '受影响线路', 'Affected lines'), lines, 'lines'] as [React.ReactNode, React.ReactNode, string]] : []),
   ];
   return (
     <div className="mt-5">
       <dl className="rounded-[16px] px-3.5" style={{ background: C.surface2 }}>
         {rows.map(([label, value, key], i) => (
           <div key={key} className="flex items-start gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
-            <dt className={`shrink-0 ${TYPE.label} pt-[2px]`} style={{ color: C.text3 }}>{label}</dt>
+            <dt className={`shrink-0 ${TYPE.label} pt-[3px]`} style={{ color: C.text3 }}>{label}</dt>
             <dd className="flex-1 min-w-0 text-right text-[14.5px] font-medium leading-snug" style={{ color: value === null ? C.text3 : C.text }}>{value ?? tx(lang, '待核实', 'Unverified')}</dd>
           </div>
         ))}

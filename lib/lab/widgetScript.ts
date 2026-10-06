@@ -1,22 +1,19 @@
 // The lab's Home Screen widget (Scriptable), in the page's language and with
-// the same amber LED face as the page's assistant.
+// the page's assistant in it.
 //
-// After the widgets people keep (Flighty's flight card, the Weather and
-// Activity widgets): one hero line you read from across the room, one
-// picture that tells the story, small metadata in the corners, and colour
-// only where it means something.
-//   Strike today – the status ("罢工时段内" or "08:45 起罢工") over a big
-//     time, then the day as a track: strike hours in the mode's colour,
-//     guaranteed hours in timetable ivory, a white dot for now. Which modes
-//     at the top, guaranteed hours and the city at the bottom. The face is
-//     concerned, never cross.
-//   Calm – "今天没有罢工" big, the next strike under it, and the coming week
-//     as seven days with the strike days filled in. The face is at ease.
-//   Several strikes – modes with the same hours share one view; when the
-//     hours differ, each group gets its own row: badges, a slim track of its
-//     day and its own status, side by side like departure rows.
-// It never says a line "is stopped": planned hours are planned hours, and
-// a notice's open end stays "运营结束".
+// The assistant is the point of the widget: it reads the day for you. So
+// it is the widget's character, as Duolingo's owl is: its amber LED face
+// fills the left, its expression is the day at a glance (at ease, or
+// concerned), and the right side is what it is telling you.
+//   Calm – "今天没有罢工", the next strike, the coming week.
+//   One strike – the mode, the state now ("罢工时段内" over "至 15:00"),
+//     the day as one track (strike hours in the mode's colour, guaranteed
+//     hours green, a white dot for now), the guaranteed hours in words.
+//   Several – one line per strike (badges, which, its own state), then a
+//     single day chart: a thin lane per strike on one time axis with one
+//     "now" line, so overlaps and gaps read at once.
+// Modes with identical hours count as one strike. It never says a line
+// "is stopped": planned hours are planned hours; an open end is "运营结束".
 //
 // The production widget (lib/widgetScript.ts, WidgetGuideModal) is left as
 // it is; this one ships from the lab sheet only.
@@ -26,13 +23,13 @@ export type LabWidgetOptions = { origin: string; region: string; types: string[]
 const LABELS = {
   zh: {
     modes: { SUBWAY: '地铁', BUS: '公交', TRAIN: '火车', AIRPORT: '机场' },
-    calm: '今天没有罢工', next: '下一次', later: '再往后一周', over: '已过', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
+    calm: '今天没有罢工', next: '下一次', later: '再往后一周', over: '已过', today: '今天', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
     past: '今天的罢工时段已过', end: '运营结束', pending: '时段待公布', guaranteed: '保障',
     error: '暂时无法更新', weekday: ['日', '一', '二', '三', '四', '五', '六'], week: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
   },
   en: {
     modes: { SUBWAY: 'Metro', BUS: 'Bus', TRAIN: 'Train', AIRPORT: 'Airport' },
-    calm: 'No strikes today', next: 'Next', later: 'The week after', over: 'Over', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
+    calm: 'No strikes today', next: 'Next', later: 'The week after', over: 'Over', today: 'today', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
     past: 'Today’s strike hours are over', end: 'end of service', pending: 'Hours pending', guaranteed: 'Guaranteed',
     error: 'Can’t update right now', weekday: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], week: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
@@ -76,6 +73,7 @@ const EYES = {
   worryL: [".......", "......#", "....###", "..#####", ".######", ".#####.", "..###.."],
   worryR: [".......", "#......", "###....", "#####..", "######.", ".#####.", "..###.."],
   down: [".......", ".......", "#.....#", "#.....#", ".#...#.", "..###..", "......."],
+  happy: [".......", "..###..", ".#...#.", "#.....#", "#.....#", ".......", "......."],
 };
 function face(pair, pitch) {
   const cols = 17, rows = 9, pad = pitch * 0.9;
@@ -177,6 +175,27 @@ function track(items, now, width, slim) {
   edges.forEach(t => { const px = x(mins(t)); if (px - last < 34) return; last = px; dc.drawText(t, new Point(Math.max(0, Math.min(width - 28, px - 13)), y + 9)); });
   return dc.getImage();
 }
+// Several strikes on one axis: a thin lane each, one "now" line through all
+function lanes(groups, now, width) {
+  const lane = 5, gap = 4, top = 2, h = top + groups.length * (lane + gap) + 12, dc = new DrawContext();
+  dc.size = new Size(width, h); dc.opaque = false; dc.respectScreenScale = true;
+  const x = m => Math.max(0, Math.min(1, (m - 300) / 1200)) * width;
+  const bar = (a, b, y, color) => { const p = new Path(); p.addRoundedRect(new Rect(x(a), y, Math.max(lane, x(b) - x(a)), lane), lane / 2, lane / 2); dc.addPath(p); dc.setFillColor(c(color)); dc.fillPath(); };
+  groups.forEach((g, i) => {
+    const y = top + i * (lane + gap);
+    bar(300, 1500, y, COL.track);
+    g.items.forEach(item => {
+      windowsOf(item).forEach(w => { const [a, b] = spanOf(w); bar(a, b, y, COL.main[g.modes[0]]); });
+      guaranteesOf(item).forEach(gg => bar(mins(gg.start), mins(gg.end), y, COL.run));
+    });
+  });
+  const nx = x(now < 300 ? now + 1440 : now), bottom = top + groups.length * (lane + gap) - gap;
+  dc.setFillColor(c("#FFFFFF")); dc.fillRect(new Rect(nx - 1, 0, 2, bottom + 2));
+  dc.setFont(Font.mediumSystemFont(9)); dc.setTextColor(c(COL.text3));
+  [["06", 360], ["12", 720], ["18", 1080], ["24", 1440]].forEach(([t, m]) => dc.drawText(t, new Point(Math.min(width - 12, x(m) - 5), bottom + 2)));
+  return dc.getImage();
+}
+
 // Seven days, strike days filled with their mode's colour
 function week(parent, byDate, from, n, today) {
   const row = parent.addStack(); row.layoutHorizontally();
@@ -204,6 +223,7 @@ function background(w, mode) {
 const widget = new ListWidget();
 widget.url = OPEN_URL;
 widget.refreshAfterDate = new Date(Date.now() + 20 * 60 * 1000);
+widget.setPadding(14, 14, 14, 16);
 try {
   const all = JSON.parse(await new Request(API_URL).loadString());
   if (!Array.isArray(all)) throw new Error("bad data");
@@ -212,81 +232,92 @@ try {
   const byDate = {};
   live.forEach(x => { (byDate[x.date] = byDate[x.date] || []).push(x); });
   const todays = (byDate[today] || []).sort((a, b) => ORDER[a.category] - ORDER[b.category]);
-  const modes = [...new Set(todays.map(x => x.category))];
+  const groups = groupsOf(todays);
+  const strike = groups.length > 0;
   const upcoming = live.filter(x => x.date > today).sort((a, b) => (a.date < b.date ? -1 : 1));
   const nextDate = upcoming.length ? upcoming[0].date : null;
-  const strike = todays.length > 0;
-  const groups = groupsOf(todays);
-  background(widget, strike ? modes[0] : null);
-  widget.setPadding(14, 16, 14, 16);
+  background(widget, strike ? groups[0].modes[0] : null);
+  const small = family === "small";
 
-  // top row: what (or where) on the left, the face on the right
-  const top = widget.addStack(); top.layoutHorizontally(); top.centerAlignContent();
-  if (strike && groups.length > 1 && family !== "small") label(top, manyText(groups.length), 12.5, COL.text2, "semibold");
-  else if (strike) { modes.forEach((m, i) => { if (i) top.addSpacer(3); badge(top, m, 18); }); top.addSpacer(6); label(top, modes.map(m => T.modes[m]).join(" · "), 12.5, COL.text2, "semibold"); }
-  else label(top, CITY + " · " + T.week[dow(today)], 12.5, COL.text2, "semibold");
-  top.addSpacer();
-  const fimg = top.addImage(face(strike ? ["worryL", "worryR"] : ["open", "open"], family === "small" ? 2.2 : 2.6));
-  fimg.imageSize = family === "small" ? new Size(42, 24) : new Size(50, 28);
-  widget.addSpacer();
+  const root = widget.addStack(); root.layoutHorizontally(); root.topAlignContent();
+  // The assistant: its face is the day at a glance
+  const left = root.addStack(); left.layoutVertically();
+  const pitch = small ? 2.4 : 4.2;
+  const fimg = left.addImage(face(strike ? ["worryL", "worryR"] : ["happy", "happy"], pitch));
+  fimg.imageSize = small ? new Size(46, 26) : new Size(80, 45);
+  left.addSpacer(5);
+  label(left, CITY, 11, COL.text3, "semibold");
+  if (small) { root.addSpacer(); }
+  else { left.size = new Size(84, 0); root.addSpacer(12); }
+  const right = small ? widget : root.addStack();
+  if (!small) { right.layoutVertically(); }
+  if (small) widget.addSpacer();
 
-  if (strike && groups.length > 1 && family !== "small") {
-    // several strikes with different hours: one row each
-    const rowsShown = family === "large" ? groups : groups.slice(0, 3);
-    rowsShown.forEach((g, i) => {
-      if (i) widget.addSpacer(family === "large" ? 10 : 7);
-      const row = widget.addStack(); row.layoutHorizontally(); row.centerAlignContent();
-      const bs = row.addStack(); bs.size = new Size(40, 18); bs.layoutHorizontally();
-      g.modes.slice(0, 2).forEach((m, k) => { if (k) bs.addSpacer(3); badge(bs, m, 18); });
-      row.addSpacer(6);
-      const img = row.addImage(track(g.items, now, 150, true)); img.imageSize = new Size(150, 14);
-      row.addSpacer();
-      const st = todayState(g.items, now);
-      label(row, shortState(st), 12.5, st.kind === "inside" ? COL.main[g.modes[0]] : COL.text, "semibold");
-    });
-    if (groups.length > rowsShown.length) { widget.addSpacer(4); label(widget, "+" + (groups.length - rowsShown.length), 11, COL.text3); }
-  } else if (strike) {
-    const st = todayState(todays, now);
+  const names = ms => ms.map(m => T.modes[m]).join(" · ");
+  const modeLine = (parent, ms, extra) => {
+    const r = parent.addStack(); r.layoutHorizontally(); r.centerAlignContent();
+    ms.forEach((m, i) => { if (i) r.addSpacer(3); badge(r, m, 16); });
+    r.addSpacer(5); label(r, names(ms) + (extra ? " · " + extra : ""), 12, COL.text2, "semibold");
+    return r;
+  };
+
+  if (!strike) {
+    label(right, T.calm, small ? 18 : 21, COL.text, "bold");
+    right.addSpacer(4);
+    if (nextDate) {
+      const t = new Date(nextDate + "T12:00:00Z");
+      const ms = [...new Set((byDate[nextDate] || []).map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
+      const r = right.addStack(); r.layoutHorizontally(); r.centerAlignContent();
+      ms.forEach((m, i) => { if (i) r.addSpacer(2); badge(r, m, 14); });
+      r.addSpacer(5);
+      label(r, (small ? "" : T.next + " · ") + dateText(t.getUTCMonth() + 1, t.getUTCDate(), T.week[t.getUTCDay()]) + " · " + inDays(daysBetween(today, nextDate)), 11.5, COL.text2);
+    } else label(right, T.none, 11.5, COL.text2);
+    if (!small) { right.addSpacer(); week(right, byDate, today, 7, today); }
+  } else if (groups.length === 1 || small) {
+    const g = groups[0], st = todayState(groups.flatMap(x => x.items), now);
+    if (!small) modeLine(right, groups.flatMap(x => x.modes), T.today);
+    if (!small) right.addSpacer(4);
     const head = st.kind === "inside" ? T.inside : st.kind === "later" ? "" : st.kind === "past" ? T.past : T.pending;
-    if (head) label(widget, head, 12.5, st.kind === "inside" ? COL.main[modes[0]] : COL.text2, "semibold");
+    if (head) label(right, head, 12, st.kind === "inside" ? COL.main[g.modes[0]] : COL.text2, "semibold");
     const big = st.kind === "inside" ? T.until + " " + st.until : st.kind === "later" ? fromText(st.from) : null;
-    if (big) label(widget, big, family === "small" ? 22 : 26, COL.text, "bold");
-    if (family !== "small") {
-      widget.addSpacer(8);
-      const tr = widget.addImage(track(todays, now, 296));
-      tr.imageSize = new Size(296, 30);
-      const g = todays.flatMap(guaranteesOf).filter((x, i, all) => all.findIndex(o => o.start === x.start && o.end === x.end) === i);
-      const foot = widget.addStack(); foot.layoutHorizontally();
-      label(foot, g.length ? T.guaranteed + " " + g.map(x => x.start + "–" + x.end).join(" · ") : "", 11, COL.run);
-      foot.addSpacer();
-      label(foot, CITY, 11, COL.text3);
+    if (big) label(right, big, small ? 21 : 24, COL.text, "bold");
+    if (!small) {
+      right.addSpacer();
+      const tr = right.addImage(track(g.items, now, 196)); tr.imageSize = new Size(196, 30);
+      const gs = g.items.flatMap(guaranteesOf).filter((x, i, all) => all.findIndex(o => o.start === x.start && o.end === x.end) === i);
+      if (gs.length) label(right, T.guaranteed + " " + gs.map(x => x.start + "–" + x.end).join(" · "), 11, COL.run, "semibold");
     }
   } else {
-    label(widget, T.calm, family === "small" ? 19 : 24, COL.text, "bold");
-    widget.addSpacer(3);
-    const nx = widget.addStack(); nx.layoutHorizontally(); nx.centerAlignContent();
-    if (nextDate) {
-      const ms = [...new Set((byDate[nextDate] || []).map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
-      ms.forEach((m, i) => { if (i) nx.addSpacer(2); badge(nx, m, 14); });
-      nx.addSpacer(5);
-      const t = new Date(nextDate + "T12:00:00Z");
-      label(nx, (family === "small" ? "" : T.next + " · ") + dateText(t.getUTCMonth() + 1, t.getUTCDate(), T.week[t.getUTCDay()]) + " · " + inDays(daysBetween(today, nextDate)), 11.5, COL.text2);
-    } else label(nx, T.none, 11.5, COL.text2);
-    if (family !== "small") { widget.addSpacer(10); week(widget, byDate, today, 7, today); }
+    // several strikes: the list, then one shared day chart
+    label(right, manyText(groups.length), 15, COL.text, "bold");
+    right.addSpacer(5);
+    const shown = family === "large" ? groups : groups.slice(0, 3);
+    shown.forEach((g, i) => {
+      if (i) right.addSpacer(4);
+      const r = right.addStack(); r.layoutHorizontally(); r.centerAlignContent();
+      g.modes.slice(0, 3).forEach((m, k) => { if (k) r.addSpacer(2); badge(r, m, 15); });
+      r.addSpacer(5); label(r, names(g.modes), 12, COL.text2, "semibold");
+      r.addSpacer();
+      const st = todayState(g.items, now);
+      label(r, shortState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
+    });
+    right.addSpacer();
+    const ln = right.addImage(lanes(shown, now, 196)); ln.imageSize = new Size(196, 2 + shown.length * 9 + 12);
   }
   if (family === "large") {
-    widget.addSpacer(14);
+    widget.addSpacer(16);
     label(widget, T.later, 11, COL.text3, "semibold");
     widget.addSpacer(4);
     week(widget, byDate, addDays(today, 7), 7, today);
   }
 } catch (e) {
   background(widget, null);
-  widget.setPadding(14, 16, 14, 16);
-  const top = widget.addStack(); top.addSpacer(); top.addImage(face(["down", "down"], 2.6)).imageSize = new Size(50, 28);
-  widget.addSpacer();
-  label(widget, T.error, 16, COL.text, "bold");
-  label(widget, CITY, 11, COL.text3);
+  const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
+  r.addImage(face(["down", "down"], 4.2)).imageSize = new Size(80, 45);
+  r.addSpacer(12);
+  const col = r.addStack(); col.layoutVertically();
+  label(col, T.error, 16, COL.text, "bold");
+  label(col, CITY, 11, COL.text3);
 }
 
 Script.setWidget(widget);

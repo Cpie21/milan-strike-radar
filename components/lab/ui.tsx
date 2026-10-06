@@ -110,12 +110,14 @@ function useContentGestures(node: HTMLDivElement | null, on: boolean, full: bool
   }, [node, on]);
 }
 
-export function Sheet({ open, onClose, title, children, tall = false, large = false, header }: {
+export function Sheet({ open, onClose, title, children, tall = false, large = false, header, expand = false }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; header?: ReactNode;
+  expand?: boolean; // content that needs room asks for full height itself
 }) {
   const detents = tall || large ? [MEDIUM, 1] : undefined;
   const [snap, setSnap] = useState<number | string | null>(large ? 1 : MEDIUM);
   useEffect(() => { if (open) { const t = setTimeout(() => setSnap(large ? 1 : MEDIUM), 0); return () => clearTimeout(t); } }, [open, large]);
+  useEffect(() => { if (open && expand && detents) { const t = setTimeout(() => setSnap(1), 0); return () => clearTimeout(t); } }, [open, expand]); // eslint-disable-line react-hooks/exhaustive-deps
   const full = !detents || snap === 1;
   // A callback ref: the drawer mounts its content after this renders.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);

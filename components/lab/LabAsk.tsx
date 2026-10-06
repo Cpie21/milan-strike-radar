@@ -355,7 +355,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   const { lang, today, open, setOpen, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall
+    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall expand={trace}
       header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(a)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{asked}”</p></div>}>
       <AnimatePresence mode="wait" initial={false}>
       {busy ? (
@@ -401,12 +401,19 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 
       {result?.kind === 'result' && verdict && (
         <div className="mt-4 flex flex-col gap-3">
-          <div className="rounded-[18px] px-4 py-3.5" style={{ background: `${verdict[2]}24` }}>
-            <p className="text-[19px] font-bold flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: verdict[2] }} />{verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]}</p>
-            <p className="mt-1 text-[13px] tabular-nums" style={{ color: C.text2 }}>
-              {result.range.from === result.range.to ? dayLabel(result.range.from, lang) : `${dayLabel(result.range.from, lang)} – ${dayLabel(result.range.to, lang)}`}
-              {result.understanding.time ? ` · ${result.understanding.time}` : ''}
-            </p>
+          {/* The answer is said by the face above: a speech bubble in the
+              verdict's colour, its tail pointing up at the face, with "was this
+              helpful?" as the bubble's last line. */}
+          <div className="relative mt-1">
+            <span aria-hidden className="absolute -top-[6px] left-[26px] w-[14px] h-[14px] rotate-45 rounded-[3px]" style={{ background: bubble(verdict[2]) }} />
+            <div className="relative rounded-[20px] rounded-tl-[10px] px-4 pt-3.5 pb-2.5" style={{ background: bubble(verdict[2]) }}>
+              <p className="text-[19px] font-bold flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: verdict[2] }} />{verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]}</p>
+              <p className="mt-1 text-[13px] tabular-nums" style={{ color: C.text2 }}>
+                {result.range.from === result.range.to ? dayLabel(result.range.from, lang) : `${dayLabel(result.range.from, lang)} – ${dayLabel(result.range.to, lang)}`}
+                {result.understanding.time ? ` · ${result.understanding.time}` : ''}
+              </p>
+              <Feedback key={asked} ask={a} inline />
+            </div>
           </div>
 
           <Assumptions ask={a} result={result} />
@@ -476,11 +483,11 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
       )}
 
       {result?.kind === 'result' && <ShareAnswer ask={a} />}
-      {(result?.kind === 'result' || result?.kind === 'clarify') && <Feedback key={asked} ask={a} />}
+      {result?.kind === 'clarify' && <Feedback key={asked} ask={a} />}
 
       {stages.length > 0 && (
         <div className="mt-3 mb-1">
-          <button onClick={() => setTrace(v => !v)} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+          <button onClick={e => { const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
             <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
             <motion.span animate={{ rotate: trace ? 180 : 0 }} className="flex"><CaretDown size={13} weight="bold" /></motion.span>
           </button>
@@ -559,7 +566,9 @@ function ShareAnswer({ ask: a }: { ask: AskState }) {
 // After an answer: was it good? Each rating keeps the question, how it was
 // read and what was shown, so bad cases can be replayed and fixed.
 const BAD_REASONS: [string, string, string][] = [['misread', '理解错了', 'Misread'], ['irrelevant', '有无关结果', 'Irrelevant results'], ['wrong', '结论不对', 'Wrong answer'], ['missing', '漏了信息', 'Missing something']];
-function Feedback({ ask: a }: { ask: AskState }) {
+const bubble = (color: string) => `color-mix(in srgb, ${color} 17%, ${C.surface})`;
+
+function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean }) {
   const { lang, asked, result, stages } = a;
   const [rating, setRating] = useState<'good' | 'bad' | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -575,20 +584,21 @@ function Feedback({ ask: a }: { ask: AskState }) {
       if (!res.ok) throw new Error(String(res.status));
     } catch { setFailed(true); setRating(null); setReason(null); }
   };
+  const chip = inline ? 'rgba(255,255,255,0.08)' : C.surface3;
   return (
-    <div className="mt-4 rounded-[14px] px-4 py-3" style={{ background: C.surface2 }}>
+    <div className={inline ? 'mt-3 pt-2.5' : 'mt-4 rounded-[14px] px-4 py-3'} style={inline ? { borderTop: '1px solid rgba(255,255,255,0.08)' } : { background: C.surface2 }}>
       {rating === null ? (
         <div className="flex items-center gap-2">
-          <span className="flex-1 text-[13.5px]" style={{ color: failed ? C.stop : C.text2 }}>{failed ? tx(lang, '没提交成功，再点一次试试', 'Not sent — try again') : tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
-          <button onClick={() => { setRating('good'); send('good'); }} aria-label={tx(lang, '答得好', 'Good answer')} className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium" style={{ background: C.surface3, color: C.text }}><ThumbsUp size={15} weight="bold" />{tx(lang, '答得好', 'Good')}</button>
-          <button onClick={() => setRating('bad')} aria-label={tx(lang, '答得不好', 'Bad answer')} className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium" style={{ background: C.surface3, color: C.text }}><ThumbsDown size={15} weight="bold" />{tx(lang, '不好', 'Bad')}</button>
+          <span className="flex-1 text-[13px]" style={{ color: failed ? C.stop : C.text2 }}>{failed ? tx(lang, '没提交成功，再点一次试试', 'Not sent — try again') : tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
+          <button onClick={() => { setRating('good'); send('good'); }} aria-label={tx(lang, '答得好', 'Good answer')} className="h-8 px-2.5 rounded-full flex items-center gap-1 text-[12.5px] font-medium" style={{ background: chip, color: C.text }}><ThumbsUp size={14} weight="bold" />{tx(lang, '答得好', 'Good')}</button>
+          <button onClick={() => setRating('bad')} aria-label={tx(lang, '答得不好', 'Bad answer')} className="h-8 px-2.5 rounded-full flex items-center gap-1 text-[12.5px] font-medium" style={{ background: chip, color: C.text }}><ThumbsDown size={14} weight="bold" />{tx(lang, '不好', 'Bad')}</button>
         </div>
       ) : rating === 'bad' && reason === null ? (
         <div>
           <p className="text-[13.5px]" style={{ color: C.text2 }}>{tx(lang, '哪里不好？', 'What went wrong?')}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {BAD_REASONS.map(([key, zh, en]) => (
-              <button key={key} onClick={() => { setReason(key); send('bad', key); }} className="h-8 px-3 rounded-full text-[13px]" style={{ background: C.surface3, color: C.text }}>{tx(lang, zh, en)}</button>
+              <button key={key} onClick={() => { setReason(key); send('bad', key); }} className="h-8 px-3 rounded-full text-[13px]" style={{ background: chip, color: C.text }}>{tx(lang, zh, en)}</button>
             ))}
           </div>
         </div>

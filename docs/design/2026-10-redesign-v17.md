@@ -17,3 +17,24 @@
   4. Write width (hex) followed by 12 rows of 3 hex digits per character.
   5. The character set is every Han character in `lib/lab/model.ts`, the sign's own wording, and ASCII.
 - **Rendering.** Every dot is a lamp, lit or dim. The message crawls right to left one column at a time and loops.
+
+## v17c
+**Card**
+- **Guaranteed hours.** One line of small green pills, one per window, so two windows read as two.
+- **Affected lines.** Known lines are shown only as their badges, under the label "可能受影响" when they come from an operator-wide notice. There's no "operator's lines…" sentence on top of them.
+
+**Answer**
+- **The verdict is a speech bubble** from the face above. It is tinted by the verdict, its tail points at the face, and "有帮助吗？" is its last line.
+- **Opening the full reasoning** raises the sheet to full height by itself and scrolls to it.
+
+**Station sign**
+- Shorter (22 px), smaller lamps, with a finer double-rule frame. The length is unchanged.
+
+**Widget: the assistant is its character**
+The face fills the left, as Duolingo's owl does, and its expression is the day at a glance. The right side is what it says.
+- **Calm:** "今天没有罢工", the next strike, and the week.
+- **One strike:** mode and "今天", the state over a big time, the day's track, and the guaranteed hours.
+- **Several strikes:**
+  - one line per strike, showing badges, names and its own state;
+  - one shared day chart below, with a thin lane per strike, one "now" line, and hour ticks.
+  - Modes with identical hours are one strike.

@@ -175,63 +175,75 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
 function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
   const [state, setState] = useState<'calm' | 'strike' | 'many'>('calm');
   const strike = state === 'strike', many = state === 'many';
-  // An example day: metro and bus strike 08:45–15:00 and 18:00–end, guaranteed 15:00–18:00.
+  // Example days: the metro strikes 08:45–15:00 and 18:00–end (guaranteed
+  // 15:00–18:00); on the busy day a rail strike runs 21:00–24:00 too.
   const x = (m: number) => `${Math.max(0, Math.min(1, (m - 300) / 1200)) * 100}%`;
-  const seg = (a: number, b: number, color: string) => <i className="absolute top-0 h-[8px] rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: color }} />;
+  const NOW = 630;
+  const seg = (a: number, b: number, color: string, h = 8) => <i key={`${a}${color}`} className="absolute top-0 rounded-full" style={{ height: h, left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: color }} />;
   const week = [6, 7, 8, 9, 10, 11, 12];
   const wd = lang === 'en' ? ['T', 'W', 'T', 'F', 'S', 'S', 'M'] : ['二', '三', '四', '五', '六', '日', '一'];
+  const rows: [Mode[], number[][], number[][], string, 'now' | 'later'][] = [
+    [['SUBWAY'], [[525, 900], [1080, 1500]], [[900, 1080]], tx(lang, '至 15:00', 'until 15:00'), 'now'],
+    [['TRAIN'], [[1260, 1500]], [], tx(lang, '21:00 起罢工', 'from 21:00'), 'later'],
+  ];
   return (
     <div className="mt-3 mb-1 flex flex-col items-center gap-3">
-      <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] px-4 py-3.5 flex flex-col overflow-hidden" style={{ background: strike || many ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
-        <div className="flex items-center gap-1.5">
-          {many ? <span className="text-[12.5px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '今天 2 项罢工', '2 strikes today')}</span> : strike ? <><ModeBadge mode="SUBWAY" size={18} /><ModeBadge mode="BUS" size={18} /><span className="ml-1 text-[12.5px] font-semibold" style={{ color: C.text2 }}>{tx(lang, '地铁 · 公交', 'Metro · Bus')}</span></>
-            : <span className="text-[12.5px] font-semibold" style={{ color: C.text2 }}>{cityName} · {tx(lang, '周二', 'Tue')}</span>}
-          <span className="ml-auto"><LedFace mood={strike || many ? 'alert' : 'idle'} size={11} cols={17} /></span>
+      <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] pl-3.5 pr-4 py-3.5 flex gap-3 overflow-hidden" style={{ background: strike || many ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
+        {/* the assistant, whose face is the day at a glance */}
+        <div className="w-[84px] shrink-0 flex flex-col gap-1.5">
+          <LedFace mood={strike || many ? 'alert' : 'happy'} size={27} cols={17} />
+          <span className="text-[11px] font-semibold" style={{ color: C.text3 }}>{cityName}</span>
         </div>
-        <div className="flex-1" />
-        {many ? (
-          // different hours, one row each: badges, a slim track, its own status
-          <div className="flex flex-col gap-2.5 pb-1">
-            {([
-              [['SUBWAY', 'BUS'], [[525, 900], [1080, 1500]], [[900, 1080]], tx(lang, '至 15:00', 'until 15:00'), true],
-              [['TRAIN'], [[1260, 1500]], [], tx(lang, '21:00 起罢工', 'Strike from 21:00'), false],
-            ] as [Mode[], number[][], number[][], string, boolean][]).map(([modes, ws, gs, label, now], k) => (
-              <div key={k} className="flex items-center gap-2">
-                <span className="w-[40px] flex gap-[3px]">{modes.map(m => <ModeBadge key={m} mode={m} size={18} />)}</span>
-                <span className="relative flex-1 h-[6px]">
-                  <i className="absolute inset-x-0 top-[1.5px] h-[3px] rounded-full" style={{ background: '#2A2D33' }} />
-                  {ws.map(([a, b]) => <i key={a} className="absolute top-0 h-[6px] rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: MODE_COLOR[modes[0]].main }} />)}
-                  {gs.map(([a, b]) => <i key={a} className="absolute top-0 h-[6px] rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: C.run }} />)}
-                  <i className="absolute -top-[2px] w-[10px] h-[10px] -ml-[5px] rounded-full flex items-center justify-center" style={{ left: x(630), background: '#0E0F12' }}><i className="w-[6px] h-[6px] rounded-full bg-white" /></i>
+        <div className="flex-1 min-w-0 flex flex-col">
+          {state === 'calm' && <>
+            <p className="text-[21px] leading-[1.15] font-bold" style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif' }}>{tx(lang, '今天没有罢工', 'No strikes today')}</p>
+            <p className="mt-1 flex items-center gap-1 text-[11.5px] truncate" style={{ color: C.text2 }}><ModeBadge mode="SUBWAY" size={14} /><span className="ml-1 truncate">{tx(lang, '下一次 · 10月9日 周五 · 3 天后', 'Next · Fri 9 Oct · in 3 days')}</span></p>
+            <div className="mt-auto flex justify-between">
+              {week.map((d, i) => (
+                <span key={d} className="flex flex-col items-center gap-[2px]">
+                  <span className="text-[9px] font-medium" style={{ color: i ? C.text3 : C.text2 }}>{wd[i]}</span>
+                  <span className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[9.5px] font-semibold tabular-nums" style={{ background: d === 9 ? MODE_COLOR.SUBWAY.deep : '#1A1C21', color: d === 9 ? '#FFFFFF' : C.text2, boxShadow: i ? 'none' : 'inset 0 0 0 1.5px rgba(255,255,255,0.85)' }}>{d}</span>
                 </span>
-                <span className="w-[92px] text-right text-[12.5px] font-semibold tabular-nums" style={{ color: now ? MODE_COLOR[modes[0]].main : C.text }}>{label}</span>
+              ))}
+            </div>
+          </>}
+          {strike && <>
+            <p className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: C.text2 }}><ModeBadge mode="SUBWAY" size={16} />{tx(lang, '地铁 · 今天', 'Metro · today')}</p>
+            <p className="mt-1 text-[12px] font-semibold" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '罢工时段内', 'In strike hours')}</p>
+            <p className="text-[24px] leading-[1.1] font-bold tabular-nums" style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif' }}>{tx(lang, '至 15:00', 'until 15:00')}</p>
+            <div className="mt-auto relative h-[8px]">
+              <i className="absolute inset-x-0 top-[2px] h-[4px] rounded-full" style={{ background: '#2A2D33' }} />
+              {seg(525, 900, MODE_COLOR.SUBWAY.main)}{seg(900, 1080, C.run)}{seg(1080, 1500, MODE_COLOR.SUBWAY.main)}
+              <i className="absolute -top-[3px] w-[14px] h-[14px] -ml-[7px] rounded-full flex items-center justify-center" style={{ left: x(NOW), background: '#0E0F12' }}><i className="w-[9px] h-[9px] rounded-full bg-white" /></i>
+            </div>
+            <p className="mt-1.5 text-[11px] font-semibold" style={{ color: C.run }}>{tx(lang, '保障 15:00–18:00', 'Guaranteed 15:00–18:00')}</p>
+          </>}
+          {many && <>
+            <p className="text-[15px] font-bold">{tx(lang, '今天 2 项罢工', '2 strikes today')}</p>
+            <div className="mt-1.5 flex flex-col gap-1">
+              {rows.map(([modes, , , label, kind]) => (
+                <p key={modes.join()} className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: C.text2 }}>
+                  {modes.map(m => <ModeBadge key={m} mode={m} size={15} />)}{modes.map(m => modeName(m, lang)).join(' · ')}
+                  <span className="ml-auto tabular-nums" style={{ color: kind === 'now' ? MODE_COLOR[modes[0]].main : C.text }}>{label}</span>
+                </p>
+              ))}
+            </div>
+            {/* one shared day: a lane per strike, one "now" line */}
+            <div className="mt-auto relative">
+              {rows.map(([modes, ws, gs], k) => (
+                <div key={k} className="relative h-[5px] mb-[4px]">
+                  <i className="absolute inset-0 rounded-full" style={{ background: '#2A2D33' }} />
+                  {ws.map(([a, b]) => seg(a, b, MODE_COLOR[modes[0]].main, 5))}
+                  {gs.map(([a, b]) => seg(a, b, C.run, 5))}
+                </div>
+              ))}
+              <i className="absolute -top-[1px] w-[2px] rounded-full bg-white" style={{ left: x(NOW), height: rows.length * 9 + 1 }} />
+              <div className="relative h-[10px] text-[9px] tabular-nums" style={{ color: C.text3 }}>
+                {[['06', 360], ['12', 720], ['18', 1080], ['24', 1440]].map(([t, m]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m as number) }}>{t}</span>)}
               </div>
-            ))}
-          </div>
-        ) : strike ? <>
-          <p className="text-[12.5px] font-semibold" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '罢工时段内', 'In strike hours')}</p>
-          <p className="text-[26px] leading-[1.1] font-bold tabular-nums" style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif' }}>{tx(lang, '至 15:00', 'until 15:00')}</p>
-          <div className="relative mt-2.5 h-[8px]">
-            <i className="absolute inset-x-0 top-[2px] h-[4px] rounded-full" style={{ background: '#2A2D33' }} />
-            {seg(525, 900, MODE_COLOR.SUBWAY.main)}{seg(900, 1080, C.run)}{seg(1080, 1500, MODE_COLOR.SUBWAY.main)}
-            <i className="absolute -top-[3px] w-[14px] h-[14px] -ml-[7px] rounded-full flex items-center justify-center" style={{ left: x(630), background: '#0E0F12' }}><i className="w-[9px] h-[9px] rounded-full bg-white" /></i>
-          </div>
-          <div className="relative h-[13px] mt-[2px] text-[9.5px] tabular-nums" style={{ color: C.text3 }}>
-            {[[525, '08:45'], [900, '15:00'], [1080, '18:00']].map(([m, t]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m as number) }}>{t}</span>)}
-          </div>
-          <div className="flex text-[11px] font-medium"><span style={{ color: C.run }}>{tx(lang, '保障 15:00–18:00', 'Guaranteed 15:00–18:00')}</span><span className="ml-auto" style={{ color: C.text3 }}>{cityName}</span></div>
-        </> : <>
-          <p className="text-[24px] leading-[1.15] font-bold" style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif' }}>{tx(lang, '今天没有罢工', 'No strikes today')}</p>
-          <p className="mt-1 flex items-center gap-1 text-[11.5px]" style={{ color: C.text2 }}><ModeBadge mode="SUBWAY" size={14} /><ModeBadge mode="BUS" size={14} /><span className="ml-1">{tx(lang, '下一次 · 10月9日 周五 · 3 天后', 'Next · Fri 9 Oct · in 3 days')}</span></p>
-          <div className="mt-2.5 flex justify-between">
-            {week.map((d, i) => (
-              <span key={d} className="flex flex-col items-center gap-[3px]">
-                <span className="text-[9.5px] font-medium" style={{ color: i ? C.text3 : C.text2 }}>{wd[i]}</span>
-                <span className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums" style={{ background: d === 9 ? MODE_COLOR.SUBWAY.deep : '#1A1C21', color: d === 9 ? '#FFFFFF' : C.text2, boxShadow: i ? 'none' : 'inset 0 0 0 1.5px rgba(255,255,255,0.85)' }}>{d}</span>
-              </span>
-            ))}
-          </div>
-        </>}
+            </div>
+          </>}
+        </div>
       </div>
       <div className="flex p-[3px] rounded-full" style={{ background: C.surface2 }}>
         {(['calm', 'strike', 'many'] as const).map(v => (
