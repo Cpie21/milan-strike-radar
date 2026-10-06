@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-10-06T13:34:50.470Z",
+  "run": {
+    "id": "c7c1c741-bbeb-4211-aaa3-e4920eff6e8a",
+    "started_at": "2026-10-06T13:34:09.286931+00:00",
+    "completed_at": "2026-10-06T13:34:35.62185+00:00",
+    "status": "success",
+    "fetched": 75,
+    "upserted": 59,
+    "unknown_timing": 9,
+    "warnings": [
+      "Supplement unavailable: www.bresciamobilita.it/: HTTP 403",
+      "Supplement unavailable: www.veneziaairport.it/it_it/news.html: HTTP 403",
+      "Supplement unavailable: www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio: HTTP 403",
+      "Supplement unavailable: www.trenord.it/news/trenord-informa/avvisi/: HTTP 403",
+      "Timing conflict requires review: 2026-10-09 MILANO BUS AL-COBAS",
+      "Timing conflict requires review: 2026-10-09 MILANO SUBWAY AL-COBAS",
+      "Operational timing unresolved: 2026-10-09 UNKNOWN BUS PERSONALE SOC. START  ROMAGNA DEI BACINI DI FORLI'-CESENA, RAVENNA E RIMINI",
+      "Timing conflict requires review: 2026-10-12 BARI BUS OST FILT-CGIL/FIT-CISL/UILT-UIL/UGL AUTOFERRO",
+      "Operational timing unresolved: 2026-10-14 FIRENZE BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-10-14 PISA BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-12-04 NATIONAL AIRPORT SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-12-04 NATIONAL BUS SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE ASPP SOC. ENAV - SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE SOC. ENAV STRUTTURA PROCUREMENT SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-10-03 GENOVA BUS PERSONALE SOC. AMT DI GENOVA",
+      "Operational timing unresolved: 2026-10-03 GENOVA SUBWAY PERSONALE SOC. AMT DI GENOVA",
+      "Operator guarantee source unavailable: ATAC_ROMA",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09"
+    ]
+  }
+}
