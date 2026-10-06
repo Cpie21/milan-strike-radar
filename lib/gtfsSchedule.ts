@@ -78,7 +78,7 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   const feed=GTFS_FEEDS[feedId],allowed=new Set(small.filter(r=>feed.agency.test(r.agency_name)&&r.agency_timezone==='Europe/Rome').map(r=>r.agency_id||''));
   if(!allowed.size)throw new Error('Schedule agency/timezone not verified');
   const routes:ScheduleIndex['routes']=[];
-  await csv('routes.txt',r=>{if(allowed.has(r.agency_id||'')||!r.agency_id&&small.length===1)routes.push({id:r.route_id,name:r.route_short_name,type:Number(r.route_type)});});
+  await csv('routes.txt',r=>{if(allowed.has(r.agency_id||'')||!r.agency_id&&small.length===1)routes.push({id:r.route_id,name:r.route_short_name,longName:r.route_long_name,type:Number(r.route_type)});});
   if(!routes.length||routes.some(r=>!r.id||!Number.isInteger(r.type))||new Set(routes.map(r=>r.id)).size!==routes.length)throw new Error('Invalid schedule routes');
   const routeIds=new Set(routes.map(r=>r.id)),calendar:Record<string,string>[]=[],exceptions:Record<string,string>[]=[],info:Record<string,string>[]=[];
   await csv('calendar.txt',r=>calendar.push(r));await csv('calendar_dates.txt',r=>exceptions.push(r));await csv('feed_info.txt',r=>info.push(r));
@@ -110,7 +110,7 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   const from=calendar.map(c=>iso(c.start_date)).concat(exceptions.filter(c=>c.exception_type==='1').map(c=>iso(c.date))).sort();
   const to=calendar.map(c=>iso(c.end_date)).concat(exceptions.filter(c=>c.exception_type==='1').map(c=>iso(c.date))).sort();
   const declaredFrom=iso(info[0]?.feed_start_date),declaredTo=iso(info[0]?.feed_end_date);
-  return {operator:feed.operator,source:feed.url,checkedAt:new Date().toISOString(),contentHash:hash,timezone:'Europe/Rome',validFrom:declaredFrom||from[0]||null,validTo:declaredTo||to.at(-1)||null,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(iso(info[0]?.surface_end_date)?{BUS:iso(info[0].surface_end_date)}:{}),...(iso(info[0]?.mm_end_date)?{SUBWAY:iso(info[0].mm_end_date)}:{})}}:{}),routes,calendar,exceptions,services:[...groups.values()].map(g=>({...g,first:Number.isFinite(g.first)?g.first:0}))};
+  return {feedId,operator:feed.operator,source:feed.url,checkedAt:new Date().toISOString(),contentHash:hash,timezone:'Europe/Rome',validFrom:declaredFrom||from[0]||null,validTo:declaredTo||to.at(-1)||null,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(iso(info[0]?.surface_end_date)?{BUS:iso(info[0].surface_end_date)}:{}),...(iso(info[0]?.mm_end_date)?{SUBWAY:iso(info[0].mm_end_date)}:{})}}:{}),routes,calendar,exceptions,services:[...groups.values()].map(g=>({...g,first:Number.isFinite(g.first)?g.first:0}))};
 }
 export async function loadScheduleIndex(id:FeedId,deadline=Date.now()+45000) {
   const url=await resolveGtfsSource(id,deadline);

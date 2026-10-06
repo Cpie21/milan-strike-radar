@@ -1,6 +1,7 @@
 import { inflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import type { LineScope } from './lineScope';
+import { canonicalLineAlias } from './canonicalLineAlias';
 import * as cheerio from 'cheerio';
 
 const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it','dati.toscana.it','www.amtabservizio.it','www.amt.genova.it','www.ctmcagliari.it','www.amts.ct.it','www.wimob.it','actv.avmspa.it','solweb.tper.it','www.dati.lombardia.it','www.atb.bergamo.it','www.eavsrl.it','bergamo.arriva.it','www.bresciamobilita.it','www.triestetrasporti.it','www.amat.pa.it','www.atv.verona.it']);
@@ -150,7 +151,7 @@ export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):
 }
 
 export function validateLineRoutes(scope:LineScope,catalog:RouteCatalog,date:string,category:string):LineScope {
-  const value={...scope,affectedRouteIds:[],excludedRouteIds:[],gtfsFeedId:catalog.feedId};
+  const value={...scope,affectedRouteIds:[],excludedRouteIds:[],routeAliases:[],gtfsFeedId:catalog.feedId};
   const modeEnd=catalog.modeValidTo?.[category as 'BUS'|'SUBWAY'];
   if(!catalog.validFrom || !catalog.validTo || date<catalog.validFrom || date>catalog.validTo || modeEnd&&date>modeEnd) return {...value,routeValidation:'OUT_OF_VALIDITY'};
   if(scope.operatorIds.length!==1||scope.operatorIds[0]!==GTFS_FEEDS[catalog.feedId].operator)return {...value,routeValidation:'UNAVAILABLE'};
@@ -158,13 +159,15 @@ export function validateLineRoutes(scope:LineScope,catalog:RouteCatalog,date:str
   const types=category==='SUBWAY'?[1]:category==='BUS'?[0,3,11]:category==='TRAIN'?[2]:[];
   const candidates=catalog.routes.filter(r=>types.includes(r.type));
   const affected:string[]=[],excluded:string[]=[];let missing=false,ambiguous=false;
+  const context={...catalog,operator:scope.operatorIds[0],date,category};
+  const aliases:NonNullable<LineScope['routeAliases']>=[];
   for(const [names,out] of [[scope.affectedLineNames,affected],[scope.excludedLineNames,excluded]] as const)for(const name of names) {
-    const matches=candidates.filter(r=>r.name.toUpperCase()===name.toUpperCase() ||
+    const matches=candidates.filter(r=>r.name.toUpperCase()===name.toUpperCase() || canonicalLineAlias(r,context)?.officialName===name.toUpperCase() ||
       // Milan publishes metro short names as 1..5, IDs as M1..M5. Require
       // both identities and metro mode, never confuse these with tram 1..5.
       catalog.feedId==='GTFS_MILANO'&&category==='SUBWAY'&&/^M[1-5]$/i.test(name)&&r.id===name.toUpperCase()&&'M'+r.name===name.toUpperCase());
-    if(matches.length===1)out.push(matches[0].id);else if(!matches.length)missing=true;else ambiguous=true;
+    if(matches.length===1){out.push(matches[0].id);const alias=canonicalLineAlias(matches[0],context);if(alias&&!aliases.some(a=>a.routeId===alias.routeId))aliases.push(alias);}else if(!matches.length)missing=true;else ambiguous=true;
   }
   // IDs are local to gtfsFeedId. No fuzzy matching, zero stripping, or invented IDs.
-  return {...value,affectedRouteIds:affected,excludedRouteIds:excluded,routeValidation:ambiguous?'AMBIGUOUS':missing?'PARTIAL':'VERIFIED'};
+  return {...value,affectedRouteIds:affected,excludedRouteIds:excluded,routeAliases:aliases,routeValidation:ambiguous?'AMBIGUOUS':missing?'PARTIAL':'VERIFIED'};
 }
