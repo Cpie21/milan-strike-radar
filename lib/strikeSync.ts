@@ -561,7 +561,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
       const timeInfo = splitTimeInfoForDate(parsedTimeInfo, dateSpan, dateIndex);
       // Only aviation's protected flight bands are a documented general rule.
       // A city is not an operator, so never donate ATM/ATAC/GTT guarantees.
-      const guaranteeWindows = category === 'AIRPORT' && !/cargo/i.test(row.provider) && timeInfo.windows.length ? getGuaranteeWindows({category,dateIso,region:row.region,isFullDay:/\b24\s*ORE\b/i.test(row.modalita) && timeInfo.windows.some(w=>w.start<='07:00' && w.end>='21:00')}) : [];
+      const guaranteeWindows = category === 'AIRPORT' && !/cargo/i.test(row.provider) && timeInfo.windows.length ? getGuaranteeWindows({category,dateIso,region:row.region,isFullDay:/\bENAV\b/i.test(row.provider) || /\b24\s*ORE\b/i.test(row.modalita) && timeInfo.windows.some(w=>w.start<='07:00' && w.end>='21:00')}) : [];
       if (!timeInfo.windows.length && resolvedStatus === 'CONFIRMED') resolvedStatus = 'UNCERTAIN';
       const fields=makeScopeEvidence(row,row.region,category,timeInfo.windows,guaranteeWindows);
       const lineScope=extractLineScope(row.note);

@@ -1,3 +1,4 @@
+import { noticeRootsForRecord, officialOperatorIds } from './operatorAdapters';
 import { createHash } from 'node:crypto';
 import * as cheerio from 'cheerio';
 import { classifyRegionTags } from './strikeNormalization';
@@ -7,7 +8,7 @@ import { CITY_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES, 
 import { mergeEvidenceWindows, numericWindows } from './strikePresentation';
 import { extractLineScope, sourceFact, makeScopeEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
-import { officialLineScope } from './lineScope';
+import { officialLineScope, parseLineScope, lineTextForMode } from './lineScope';
 import { eavDepartmentModes } from './operatorDepartments';
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence, type TimingSource } from './strikeEvidence';
 
@@ -235,6 +236,18 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
       const territory = [title,...cities.map(c=>resolveCity(c)?.slug || c)].join(' ');
       output.push({ date, provider: title+' '+operatorContext+' '+text.slice(0,1000), territory, cities, unions:part.unions || text, sector:sourceCategory(url) || title, field_text:parts.filter(p=>p.heading===part.heading && p.unions===part.unions && p.dates.includes(date)).map(p=>p.text).join(' '), section_heading:part.heading, timing:candidate, status:'', operator_day:official && !namedUnion, source:sourceFor(url,candidate,checkedAt) });
     }
+    // Official scope-only clauses are useful even before operational hours
+    // are published. Keep the same date/union/heading fences as timing facts.
+    if(official) for(const part of parts) for(const date of part.dates) {
+      if(!eventDates.includes(date) || /ultimi scioperi|precedent[ei] scioperi|motivazioni|motivi dello sciopero/i.test(part.heading+' '+part.text))continue;
+      const fieldText=parts.filter(p=>p.heading===part.heading && sameUnionContext(p.unions,part.unions) && p.dates.includes(date)).map(p=>p.text).join(' ');
+      if(!/\bline[ae]\b|intera\s+rete|servizi di linea/i.test(fieldText))continue;
+      const cities=cityByHeading.get(part.heading) || knownCities;
+      const operators=[...new Set(cities.flatMap(c=>officialOperatorIds(url,c)))];
+      if(parseLineScope(fieldText,operators,true).kind==='UNKNOWN')continue;
+      if(output.some(n=>n.date===date && n.section_heading===part.heading && sameUnionContext(n.unions,part.unions)))continue;
+      output.push({date,provider:title+' '+operatorContext+' '+text.slice(0,1000),territory:[title,...cities.map(c=>resolveCity(c)?.slug)].join(' '),cities,unions:part.unions || text,sector:sourceCategory(url)||title,field_text:fieldText,section_heading:part.heading,timing:'',status:'',operator_day:!namedUnion,source:sourceFor(url,fieldText,checkedAt)});
+    }
     // Guarantees belong to the same dated union/mode section, never the
     // whole page. A dated notice with only guarantees can still verify fields.
     if(hasParts) {
@@ -379,7 +392,7 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
         result.timing_evidence!.fields!.affectedLines={...chosen,value:chosen.value.affectedLineNames};
       }
     }
-    const named=official.map(n=>({notice:n,lines:extractLineScope(n.field_text || n.timing)})).filter(n=>n.lines!=='UNKNOWN');
+    const named=official.map(n=>({notice:n,lines:extractLineScope(lineTextForMode(n.field_text || n.timing,record.category))})).filter(n=>n.lines!=='UNKNOWN');
     if(!lineFacts.length && named.length && new Set(named.map(n=>JSON.stringify(n.lines))).size===1 && record.category!=='AIRPORT') {
       result.affected_lines=named[0].lines==='ALL_LINES'?['全部线路']:named[0].lines as string[];
       result.timing_evidence!.fields={...result.timing_evidence!.fields!,affectedLines:sourceFact(named[0].lines,{...named[0].notice.source,excerpt:(named[0].notice.field_text || named[0].notice.timing).slice(0,800)})};
@@ -466,6 +479,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   await collect([...operatorIndexes, ...MEDIA_INDEXES, ...search]);
   const articles: string[] = [];
   const linkedByOfficialIndex=new Set<string>();
+  const discoveryLinks:{root:string;url:string;dates:string[]}[]=[];
   for (const [url, html] of documents) {
     const $ = cheerio.load(html);
     if (new URL(url).hostname === 'sciopero.net') {
@@ -484,7 +498,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
         const href = $(a).attr('href');
         if (!href) return;
         const candidate = linkUrl(href, url);
-        if (candidate && /scioper/i.test($(a).text() + ' ' + href) && (OFFICIAL_HOSTS.has(new URL(url).hostname) || dates.some(d => exactDate($(a).text(), d) || exactDate(href.replace(/-/g, ' '), d)) || /scioperi-settimana|scioperi-.*calendario/.test(candidate)) && candidate !== url && !/garantiti-incasodisciopero|in-caso-di-sciopero|tag\/|economia\/scioperi/.test(candidate)) { articles.push(candidate); if(operatorIndexes.includes(url) && OFFICIAL_HOSTS.has(new URL(url).hostname)) linkedByOfficialIndex.add(candidate); }
+        if (candidate && /scioper/i.test($(a).text() + ' ' + href) && (OFFICIAL_HOSTS.has(new URL(url).hostname) || dates.some(d => exactDate($(a).text(), d) || exactDate(href.replace(/-/g, ' '), d)) || /scioperi-settimana|scioperi-.*calendario/.test(candidate)) && candidate !== url && !/garantiti-incasodisciopero|in-caso-di-sciopero|tag\/|economia\/scioperi/.test(candidate)) { articles.push(candidate); if(operatorIndexes.includes(url) && OFFICIAL_HOSTS.has(new URL(url).hostname)) {linkedByOfficialIndex.add(candidate);discoveryLinks.push({root:url,url:candidate,dates:dates.filter(d=>exactDate($(a).text(),d)||exactDate(href.replace(/-/g,' '),d))});} }
       });
     }
   }
@@ -522,7 +536,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
       for (const category of categories) {
         const variant={...record,region:city.tag,category};
         const enriched=applyTimingEvidence(variant,scoped);
-        if (enriched.timing_evidence?.windows.length && enriched.timing_evidence.confidence !== 'conflict') {
+        if ((enriched.timing_evidence?.windows.length && enriched.timing_evidence.confidence !== 'conflict') || enriched.timing_evidence?.fields?.lineScope?.confidence==='HIGH' && enriched.timing_evidence.fields.lineScope.value.kind!=='UNKNOWN') {
           enriched.provider=[...new Set(CITY_STRIKE_SOURCES.filter(s=>s.cities.includes(city.tag) && enriched.timing_evidence!.sources.some(e=>s.urls.some(root=>new URL(root).hostname===new URL(e.url).hostname))).map(s=>s.name))].join(' / ') || enriched.provider;
           cityVariants.push(enriched);
         }
@@ -530,6 +544,15 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     }
   }
   const enrichedRecords = output.map(r => targets.some(t => t.source_key === r.source_key && t.date === r.date && t.category === r.category && t.region === r.region) ? applyTimingEvidence(r, notices) : r);
+  for (const r of [...enrichedRecords,...cityVariants]) {
+    if(!targets.some(t=>t.source_key===r.source_key&&t.date===r.date) || !r.timing_evidence?.fields)continue;
+    const roots=noticeRootsForRecord(r);
+    const discoveryUrls=[...new Set([...roots,...discoveryLinks.filter(link=>roots.includes(link.root) && link.dates.includes(r.date)).map(link=>link.url)])];
+    const sources=discoveryUrls.map(url=>({url,status:documents.has(url)?'FETCHED' as const:failed.has(url)?'FAILED' as const:'DEFERRED' as const}));
+    const matched=r.timing_evidence.sources.some(source=>source.authority==='official'&&roots.some(root=>new URL(root).hostname===new URL(source.url).hostname));
+    const status=matched?'MATCHED':!sources.length?'NOT_CHECKED':sources.every(s=>s.status==='FAILED')?'UNAVAILABLE':sources.some(s=>s.status!=='FETCHED')?'PARTIAL':'NO_MATCH';
+    r.timing_evidence.fields.noticeDiscovery={checkedAt:now.toISOString(),status,sources};
+  }
   let enriched = 0, conflicts = 0;
   const verification={operatorOfficial:0,reported:0,mitOnly:0};
   enrichedRecords.forEach((r, i) => {

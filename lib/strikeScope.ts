@@ -3,13 +3,16 @@ import { CITIES, resolveCity } from './cities';
 import { scopeTiming, timingSections } from './strikeTiming';
 import { affectedScopeText, classifyRegionTags, normalizeAirportAffectedLines } from './strikeNormalization';
 import { parseLineScope } from './lineScope';
-import { identifyOperators } from './operatorGuaranteeProfiles';
+import { intersectGuaranteeEvidence, identifyOperators } from './operatorGuaranteeProfiles';
 import { eavDepartmentModes, EAV_DEPARTMENT_SOURCE } from './operatorDepartments';
 
-export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_GENERAL' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'UNKNOWN';
+export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_GENERAL' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'RAIL_CUSTOMER_SERVICE' | 'UNKNOWN';
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
 export type FieldEvidence<T> = { value: T; confidence: 'HIGH' | 'MEDIUM' | 'UNKNOWN' | 'CONFLICT'; source: 'MIT' | 'OPERATOR_OFFICIAL' | 'STANDARD_RULE' | 'REPORTED' | 'UNKNOWN'; url?: string; excerpt?: string; method?: 'OFFICIAL' | 'CODE' | 'JEV' };
 export type ScopeEvidence = {
+  noticeDiscovery?: { checkedAt:string; status:'MATCHED'|'PARTIAL'|'UNAVAILABLE'|'NO_MATCH'|'NOT_CHECKED'; sources:{url:string;status:'FETCHED'|'FAILED'|'DEFERRED'}[] };
+  lineImpact?: import('./lineImpact').DeclaredLineImpact;
+  protectedFlightExceptions?: FieldEvidence<{airportName:string;direction:'TO_FROM';kind:'GUARANTEED_FLIGHTS'}[]>;
   location: FieldEvidence<string>;
   officialGeography?: FieldEvidence<{region:string;province:string;relevance:string}>;
   supportedCityProjection?: FieldEvidence<string[]>;
@@ -54,6 +57,7 @@ export function railScope(text: string, context: {modalita?:string;note?:string}
     const railSection=scopeTiming(context.modalita || '', 'TRAIN');
     return timingSections(context.modalita || '').some(s=>/^(?:SETTORE\s+)?FERROVIARIO$/.test(s.label)) && railSection.trim() ? 'RAIL_GENERAL' : 'UNKNOWN';
   }
+  if (/\bTrenitalia\b/i.test(text) && /\bCUSTOMER OPERATIONS\b|customer service|vendita e assistenza/i.test(text)) return 'RAIL_CUSTOMER_SERVICE';
   if (/\bFS SECURITY\b|rail.*security|铁路安保/i.test(text)) return 'RAIL_SECURITY';
   if (/\bRFI\b|\bDOIT\b|infrastruttur|infrastructure|基础设施/i.test(text)) return 'RAIL_INFRASTRUCTURE';
   if (eavDepartmentModes(text).includes('TRAIN')) {
@@ -70,6 +74,7 @@ export function railTitle(scope: ScopeType, language: 'zh' | 'en' = 'zh') {
     RAIL_GENERAL:['铁路罢工（总罢工铁路部分）','Rail service strike (general strike)'],
     RAIL_SECURITY:['铁路安保人员罢工','Railway security staff strike'],
     RAIL_INFRASTRUCTURE:['铁路基础设施人员罢工','Rail infrastructure staff strike'],
+    RAIL_CUSTOMER_SERVICE:['铁路客服与车站服务人员罢工','Rail customer and station service staff strike'],
     RAIL_SUPPORT:['铁路配套服务人员罢工','Rail support staff strike'],
     RAIL_CREW:['铁路司乘人员罢工','Train crew strike'],
     RAIL_OPERATOR:['铁路运营人员罢工','Rail operator strike'],
@@ -78,7 +83,7 @@ export function railTitle(scope: ScopeType, language: 'zh' | 'en' = 'zh') {
   return (titles[scope] || titles.UNKNOWN!)[language==='zh'?0:1];
 }
 export function indirectRail(scope: ScopeType) {
-  return ['RAIL_SECURITY','RAIL_INFRASTRUCTURE','RAIL_SUPPORT'].includes(scope);
+  return ['RAIL_SECURITY','RAIL_INFRASTRUCTURE','RAIL_SUPPORT','RAIL_CUSTOMER_SERVICE'].includes(scope);
 }
 
 export function extractLineScope(text: string): string[] | 'ALL_LINES' | 'UNKNOWN' {
@@ -115,7 +120,9 @@ export function makeScopeEvidence(row: {provider:string; note:string; sector:str
     // Do not treat a list of all staff as a list of all operators.
     affectedOperators:fact(/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)?[]:row.provider?[row.provider]:[],!!row.provider && !/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)),
     timing:fact(windows,!!windows.length,row.modalita),
-    guaranteeSource:guarantees.length?'STANDARD_RULE':'UNKNOWN', guaranteeType:category==='AIRPORT'?'PROTECTED_FLIGHTS':'GUARANTEED_SERVICE',
+    guaranteeSource:category==='AIRPORT' && /\bENAV\b/i.test(row.provider)?'STANDARD_RULE':guarantees.length?'STANDARD_RULE':'UNKNOWN', guaranteeType:category==='AIRPORT'?'PROTECTED_FLIGHTS':'GUARANTEED_SERVICE',
+    ...(category==='AIRPORT' && /\bENAV\b/i.test(row.provider)?{guaranteeEvidenceWindows:{value:[{start:'07:00',end:'10:00',end_kind:'clock' as const},{start:'18:00',end:'21:00',end_kind:'clock' as const}],confidence:'MEDIUM' as const,source:'STANDARD_RULE' as const,method:'CODE' as const,url:'https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti',excerpt:'General protected departure bands; not event-specific flight confirmation.'},guaranteeDuringStrike:{value:intersectGuaranteeEvidence([[{start:'07:00',end:'10:00',end_kind:'clock'},{start:'18:00',end:'21:00',end_kind:'clock'}],windows.map(w=>({...w,end_kind:'clock' as const}))]),confidence:windows.length?'HIGH' as const:'UNKNOWN' as const,source:'STANDARD_RULE' as const,method:'CODE' as const}}:{}),
+    ...(category==='AIRPORT' && /garantiti\s+i\s+voli\s+da\s+e\s+per\s+l.aeroporto\s+di\s+([^.;\n]+)/i.test(row.note)?{protectedFlightExceptions:fact([{airportName:row.note.match(/garantiti\s+i\s+voli\s+da\s+e\s+per\s+l.aeroporto\s+di\s+([^.;\n]+)/i)![1].trim().slice(0,160),direction:'TO_FROM' as const,kind:'GUARANTEED_FLIGHTS' as const}],true,row.note)}:{}),
     guaranteedServiceWindow:guarantees.length?{value:guarantees,confidence:'MEDIUM',source:'STANDARD_RULE',url:'https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/prestazioni-minime-garantite/',excerpt:'Protected departure bands, not a guarantee for every flight'}:fact([],false),
   };
 }

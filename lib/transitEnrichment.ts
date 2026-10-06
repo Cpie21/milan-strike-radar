@@ -1,7 +1,8 @@
+import { lineRouteCatalogFeed } from './lineImpact';
 import { unstable_cache } from 'next/cache';
 import { refreshGuaranteeProfiles, fetchProfileDocument } from './guaranteeProfileRefresh';
 import { applyGuaranteeProfile } from './operatorGuaranteeProfiles';
-import { loadRouteCatalog, validateLineRoutes, type FeedId } from './officialTransitData';
+import { GTFS_FEEDS, loadRouteCatalog, validateLineRoutes, type FeedId } from './officialTransitData';
 import { enrichServiceSchedules } from './serviceScheduleEnrichment';
 import { loadScheduleIndex } from './gtfsSchedule';
 import type { StrikeRecord } from './strikeSync';
@@ -19,15 +20,15 @@ export async function enrichTransitScope(records:StrikeRecord[],warnings:string[
   for(const r of output) {
     const scope=r.timing_evidence?.fields?.lineScope?.value;
     if(!scope || !['SPECIFIC_LINES','ALL_EXCEPT'].includes(scope.kind) || r.status==='CANCELLED' || r.date<today)continue;
-    if(scope.operatorIds.includes('ATM_MILANO'))needed.add('GTFS_MILANO');
-    if(scope.operatorIds.includes('ATAC_ROMA'))needed.add('GTFS_ROMA');
+    const id=lineRouteCatalogFeed(scope,GTFS_FEEDS) as FeedId|undefined;
+    if(id)needed.add(id);
   }
   const catalogs=new Map<FeedId,Awaited<ReturnType<typeof loadRouteCatalog>>>();
   await Promise.all([...needed].map(async id=>{try{catalogs.set(id,await cachedCatalog(id));}catch{warnings.push('GTFS route validation unavailable: '+id);}}));
   for(const r of output) {
     const fact=r.timing_evidence?.fields?.lineScope;
     if(!fact || !['SPECIFIC_LINES','ALL_EXCEPT'].includes(fact.value.kind) || r.status==='CANCELLED' || r.date<today)continue;
-    const id:FeedId|undefined=fact.value.operatorIds.includes('ATM_MILANO')?'GTFS_MILANO':fact.value.operatorIds.includes('ATAC_ROMA')?'GTFS_ROMA':undefined;
+    const id=lineRouteCatalogFeed(fact.value,GTFS_FEEDS) as FeedId|undefined;
     const catalog=id?catalogs.get(id):undefined;
     fact.value=catalog?validateLineRoutes(fact.value,catalog,r.date,r.category):{...fact.value,routeValidation:'UNAVAILABLE'};
     if(catalog) r.timing_evidence!.fields!.routeCatalog={value:{feedId:catalog.feedId,source:catalog.source,contentHash:catalog.contentHash,checkedAt:catalog.checkedAt,validFrom:catalog.validFrom,validTo:catalog.validTo},confidence:fact.value.routeValidation==='VERIFIED'?'HIGH':'UNKNOWN',source:'OPERATOR_OFFICIAL',method:'CODE',url:catalog.source};

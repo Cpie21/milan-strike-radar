@@ -1,9 +1,10 @@
+import { operatorAdapters } from './operatorAdapters';
 import { scheduledEndpoint, scheduleClockLabel } from './serviceSchedule';
 import { evidenceTimeLabel } from './strikeEvidence';
 import type { EvidenceWindow, TimingEvidence } from './strikeEvidence';
 import type { LineScope } from './lineScope';
 
-const operatorNames:Record<string,string>={ATM_MILANO:'ATM Milano',ATAC_ROMA:'ATAC Roma',GTT_TORINO:'GTT Torino',ARRIVA_BERGAMO:'Arriva Bergamo',TRENITALIA_REGIONALE:'Trenitalia Regionale',GEST_FIRENZE:'GEST Firenze',AIR_CAMPANIA:'AIR Campania',AMTAB_BARI:'AMTAB Bari',AMT_GENOVA:'AMT Genova',CTM_CAGLIARI:'CTM Cagliari',AMTS_CATANIA:'AMTS Catania'};
+const operatorNames:Record<string,string>={...Object.fromEntries(operatorAdapters.map(a=>[a.id,a.name])),TRENITALIA:'Trenitalia',TRENORD:'Trenord',ATAF_FOGGIA:'ATAF Foggia',ARRIVA_UDINE:'Arriva Udine',ATM_MILANO:'ATM Milano',ATAC_ROMA:'ATAC Roma',GTT_TORINO:'GTT Torino',ARRIVA_BERGAMO:'Arriva Bergamo',TRENITALIA_REGIONALE:'Trenitalia Regionale',GEST_FIRENZE:'GEST Firenze',AIR_CAMPANIA:'AIR Campania',AMTAB_BARI:'AMTAB Bari',AMT_GENOVA:'AMT Genova',CTM_CAGLIARI:'CTM Cagliari',AMTS_CATANIA:'AMTS Catania'};
 export function lineScopeLabels(scope:LineScope|undefined,language:'zh'|'en'='zh'):string[] {
   if(!scope || scope.kind==='UNKNOWN')return [];
   if(scope.kind==='SPECIFIC_LINES')return scope.affectedLineNames;
