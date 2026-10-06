@@ -164,3 +164,22 @@ test('the lab widget script never claims a line is stopped and keeps end of serv
     assert.doesNotThrow(() => new Function(`return async () => {${code}}`));
   }
 });
+
+
+test('lab translation cannot make a paid request even when an OpenRouter key exists', async () => {
+  const savedFetch = global.fetch;
+  const savedKey = process.env.OPENROUTER_API_KEY;
+  let calls = 0;
+  global.fetch = async () => { calls++; throw new Error('Network access is forbidden for lab translation'); };
+  process.env.OPENROUTER_API_KEY = 'unused-test-key';
+  try {
+    const { translateAll } = require('../lib/lab/translate.ts');
+    assert.deepEqual(await translateAll(['Le nostre linee M1 e M2: 08:45–15:00', '米兰交通局人员']), {});
+    assert.deepEqual(await translateAll([]), {});
+    assert.equal(calls, 0);
+  } finally {
+    global.fetch = savedFetch;
+    if (savedKey === undefined) delete process.env.OPENROUTER_API_KEY;
+    else process.env.OPENROUTER_API_KEY = savedKey;
+  }
+});

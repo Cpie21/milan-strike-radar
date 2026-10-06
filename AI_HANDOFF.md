@@ -226,5 +226,11 @@ Server contract needed:
 - **Adoption.** Production can adopt it whenever you like.
 
 **Ask quota and budget (lab v13)**
-- **Budget errors.** `lib/aiBudget.ts` now runs a call unmetered, and logs it, on *any* RPC error. Only an explicit `false` from `reserve_ai_budget` counts as over budget. Previously a transient database error told users "this month's answers are used up". The shared ledger is still needed for a real cap.
+- **Budget errors.** Superseded by Codex PR #9: a paid call runs only when the ledger returns `true`; an infrastructure failure is `unavailable` (no longer shown as "used up"), an explicit `false` is `budget`.
 - **Daily limit.** The per-IP daily Ask limit counts only answered questions; refusals and errors don't use one up. It is still per instance until the shared limiter exists.
+
+## User model restriction (Codex)
+
+- The owner explicitly forbids Gemini (2026-10-05), including the lab's previous `google/gemini-3.5-flash-lite` translation. `lib/lab/translate.ts` now returns an empty translation map, preserving the existing original-text fallback with no fetch, budget reservation or model-cache access. The owner additionally requires translation to be free: use only a verified free service or local deterministic method, with original-text fallback on failure. Never use Jev or another paid model for translation. No substitute paid model was added; Jev semantic QA/Ask are unchanged.
+- This focused fix branches from Claude's committed `d9c6270` on `codex/disable-gemini-translation`. Claude's checkout is untouched. Merge this fix before rendering/deploying the lab again: already-running older previews are not disabled by committing this change. No API/schema change.
+- Message for Claude: remove the previous Gemini translation path by integrating this PR. Keep the original official wording until a free translation method is connected; do not silently enable a paid replacement. The user explicitly requested this handoff.
