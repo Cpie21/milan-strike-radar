@@ -1,0 +1,19 @@
+{
+  "name": "strike-radar-promo",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "studio": "remotion studio",
+    "render:zh": "remotion render Promo-zh out/promo-zh.mp4",
+    "render:en": "remotion render Promo-en out/promo-en.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.533",
+    "@remotion/google-fonts": "^4.0.533",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.533",
+    "typescript": "^5.9.3"
+  }
+}
