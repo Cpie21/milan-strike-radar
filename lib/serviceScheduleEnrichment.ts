@@ -5,8 +5,8 @@ import { indirectRail, type FieldEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
 import { CITIES } from './cities';
 
-const FEED_CITIES:Record<FeedId,string[]>={GTFS_MILANO:['MILANO'],GTFS_ROMA:['ROMA'],GTFS_GEST:['FIRENZE'],GTFS_BARI:['BARI'],GTFS_GENOVA:['GENOVA'],GTFS_CAGLIARI:['CAGLIARI'],GTFS_CATANIA:['CATANIA']};
-const FEED_MODES:Record<FeedId,string[]>={GTFS_MILANO:['BUS','SUBWAY'],GTFS_ROMA:['BUS','SUBWAY'],GTFS_GEST:['BUS'],GTFS_BARI:['BUS'],GTFS_GENOVA:['BUS','SUBWAY'],GTFS_CAGLIARI:['BUS'],GTFS_CATANIA:['BUS']};
+export const FEED_CITIES:Record<FeedId,string[]>={GTFS_MILANO:['MILANO'],GTFS_ROMA:['ROMA'],GTFS_GEST:['FIRENZE'],GTFS_BARI:['BARI'],GTFS_GENOVA:['GENOVA'],GTFS_CAGLIARI:['CAGLIARI'],GTFS_CATANIA:['CATANIA'],GTFS_TORINO:['TORINO'],GTFS_EAV:['NAPOLI'],GTFS_ACTV:['VENEZIA'],GTFS_TPER:['BOLOGNA']};
+export const FEED_MODES:Record<FeedId,string[]>={GTFS_MILANO:['BUS','SUBWAY'],GTFS_ROMA:['BUS','SUBWAY'],GTFS_GEST:['BUS'],GTFS_BARI:['BUS'],GTFS_GENOVA:['BUS','SUBWAY'],GTFS_CAGLIARI:['BUS'],GTFS_CATANIA:['BUS'],GTFS_TORINO:['BUS','SUBWAY'],GTFS_EAV:['BUS','SUBWAY','TRAIN'],GTFS_ACTV:['BUS'],GTFS_TPER:['BUS']};
 export function serviceScheduleCoverage() {
   return CITIES.map(city=>({city:city.tag,modes:Object.fromEntries(['BUS','SUBWAY','TRAIN','AIRPORT'].map(mode=>[mode,{status:mode==='AIRPORT'?'NOT_APPLICABLE':Object.entries(FEED_CITIES).some(([id,cities])=>cities.includes(city.tag)&&FEED_MODES[id as FeedId].includes(mode))?'SOURCE_CONFIGURED':'NO_VERIFIED_FEED',feeds:Object.entries(FEED_CITIES).filter(([id,cities])=>cities.includes(city.tag)&&FEED_MODES[id as FeedId].includes(mode)).map(([id])=>({id,source:GTFS_FEEDS[id as FeedId].url})),note:'Source configuration is not proof of dated/mode/line coverage; each event must pass validation.'}]))}));
 }
@@ -14,6 +14,9 @@ export function scheduleFeedFor(record:StrikeRecord):FeedId|undefined {
   const f=record.timing_evidence?.fields,scope=f?.lineScope;
   if(record.status==='CANCELLED'||record.region==='NATIONAL'||record.category==='AIRPORT'||f?.passengerImpact?.value==='INDIRECT_OR_UNCONFIRMED'||f&&indirectRail(f.scopeType.value)||/amministrativ|uffici|manutenzione|security|appalt/i.test(record.raw_payload?.provider||record.provider))return;
   if(!scope||scope.confidence!=='HIGH'||scope.value.kind==='UNKNOWN'||scope.value.operatorIds.length!==1||scope.value.networkNames.length)return;
+  // EAV is regional. A Napoli ownership projection is partial and cannot
+  // donate the latest arrival of all regional services to a local event.
+  if(scope.value.operatorIds[0]==='EAV_NAPOLI'&&scope.value.kind!=='SPECIFIC_LINES')return;
   return (Object.keys(GTFS_FEEDS) as FeedId[]).find(id=>FEED_CITIES[id].includes(record.region)&&GTFS_FEEDS[id].operator===scope.value.operatorIds[0]);
 }
 const asFact=(value:ServiceSchedule):FieldEvidence<ServiceSchedule>=>({value,confidence:value.status==='COMPLETE'?'HIGH':'UNKNOWN',source:value.source?'OPERATOR_OFFICIAL':'UNKNOWN',method:'CODE',...(value.source?{url:value.source}:{}),excerpt:'Scheduled passenger service only. Does not confirm actual operation, strike cessation or service resumption.'});

@@ -2,7 +2,7 @@ import { createInflateRaw } from 'node:zlib';
 import { Readable } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 import { createHash } from 'node:crypto';
-import { transitBytes, GTFS_FEEDS, type FeedId } from './officialTransitData';
+import { transitBytes, resolveGtfsSource, GTFS_FEEDS, type FeedId } from './officialTransitData';
 import { gtfsSeconds, validServiceDate, type ScheduleIndex, type RouteService } from './serviceSchedule';
 
 // Version-consistent archive; inflate only timetable members, never shapes.
@@ -113,6 +113,7 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   return {operator:feed.operator,source:feed.url,checkedAt:new Date().toISOString(),contentHash:hash,timezone:'Europe/Rome',validFrom:declaredFrom||from[0]||null,validTo:declaredTo||to.at(-1)||null,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(iso(info[0]?.surface_end_date)?{BUS:iso(info[0].surface_end_date)}:{}),...(iso(info[0]?.mm_end_date)?{SUBWAY:iso(info[0].mm_end_date)}:{})}}:{}),routes,calendar,exceptions,services:[...groups.values()].map(g=>({...g,first:Number.isFinite(g.first)?g.first:0}))};
 }
 export async function loadScheduleIndex(id:FeedId,deadline=Date.now()+45000) {
-  const {bytes}=await transitBytes(GTFS_FEEDS[id].url,64_000_000,deadline);
-  return scheduleFromArchive(id,bytes,deadline);
+  const url=await resolveGtfsSource(id,deadline);
+  const {bytes}=await transitBytes(url,64_000_000,deadline);
+  return {...await scheduleFromArchive(id,bytes,deadline),source:url};
 }
