@@ -1,0 +1,62 @@
+{
+  "id": "dpl_Fx2bPgo7ZkeZCRiQ5S4NUZXjXsCk",
+  "checkedAt": "2026-10-06T14:37:26.798Z",
+  "region": "cdg1",
+  "results": [
+    {
+      "source": "CGSSE",
+      "url": "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381401",
+      "status": "READABLE",
+      "http": 200,
+      "bytes": 55646,
+      "elapsedMs": 1285
+    },
+    {
+      "source": "TOSCANA_AEROPORTI",
+      "url": "https://www.toscana-aeroporti.com/it/news/",
+      "status": "READABLE",
+      "bytes": 6366,
+      "elapsedMs": 2534
+    },
+    {
+      "source": "CTM",
+      "url": "https://www.ctmcagliari.it/comunicati/",
+      "status": "READABLE",
+      "http": 200,
+      "bytes": 72824,
+      "elapsedMs": 567
+    },
+    {
+      "source": "BRESCIA",
+      "url": "https://www.bresciamobilita.it/news",
+      "status": "HTTP_ERROR",
+      "http": 403,
+      "bytes": 0,
+      "elapsedMs": 180
+    },
+    {
+      "source": "TRENORD",
+      "url": "https://www.trenord.it/news/trenord-informa/avvisi/",
+      "status": "READABLE",
+      "http": 200,
+      "bytes": 100202,
+      "elapsedMs": 302
+    },
+    {
+      "source": "VENEZIA",
+      "url": "https://www.veneziaairport.it/it_it/news",
+      "status": "HTTP_ERROR",
+      "http": 403,
+      "bytes": 0,
+      "elapsedMs": 261
+    },
+    {
+      "source": "EASYJET",
+      "url": "https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information",
+      "status": "READABLE",
+      "http": 200,
+      "bytes": 357125,
+      "elapsedMs": 462
+    }
+  ]
+}
