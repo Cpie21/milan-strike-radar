@@ -557,7 +557,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     r.timing_evidence.fields.noticeDiscovery={checkedAt:now.toISOString(),status,sources};
   }
   let enriched = 0, conflicts = 0;
-  const verification={operatorOfficial:0,reported:0,mitOnly:0};
+  const verification={operatorOfficial:0,reported:0,mitOnly:0,acquisition:{cgsseDocuments:[...documents.keys()].filter(u=>['cgsse.it','www.cgsse.it'].includes(new URL(u).hostname)).length,toscanaApiDocuments:[...documents.keys()].filter(u=>new URL(u).hostname==='www.toscana-aeroporti.com'&&new URL(u).pathname.startsWith('/it/news/')).length}};
   enrichedRecords.forEach((r, i) => {
     if(r.status!=='CANCELLED' && r.date>=today && r.region!=='UNKNOWN') {
       if(r.timing_evidence?.sources.some(s=>s.authority==='official')) verification.operatorOfficial++;
