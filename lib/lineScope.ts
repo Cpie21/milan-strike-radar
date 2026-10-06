@@ -47,6 +47,9 @@ export function parseLineScope(text:string,operators:OperatorId[],officialOperat
 }
 
 export function lineTextForMode(text:string,category:string) {
+  // Historical grievances must be removed before selecting mode sections.
+  // Otherwise a later 'tram:' complaint can replace this strike's T1/T2 scope.
+  text=text.split(/\b(?:motivazioni|motivi dello sciopero|reasons for (?:the )?strike)\s*:/i)[0];
   if(!['BUS','SUBWAY'].includes(category))return text;
   const wanted=(label:string)=>category==='SUBWAY'?/metro|metropolitan/i.test(label):/superficie|autobus|bus|tram/i.test(label);
   const labels=[...text.matchAll(/\b(metropolitan[ae]|metro|superficie|autobus|bus|tram)\s*:\s*/gi)];

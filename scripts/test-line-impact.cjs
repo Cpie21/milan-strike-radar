@@ -164,3 +164,9 @@ test('official general-strike geography is retained without naming every operato
  const out=buildLineImpact(r);assert.equal(out.declaredScope.value.kind,kind);assert.deepEqual(out.declaredScope.value.operatorIds,[]);assert.deepEqual(out.declaredScope.value.affectedLineNames,[]);assert.equal(declaredLineMatch(out,'90'),'UNCONFIRMED');assert.doesNotMatch(out.presentation.zh,/全部线路|铁路/);
  }
 });
+
+test('mode extraction trims grievances before a historic tram section can replace current T1/T2',()=>{
+ const text='Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni. Le MOTIVAZIONI: Relazioni col Personale. Tram: linea 1 e turni precedenti.';
+ const source={authority:'official',url:'https://www.gestramvia.it/notice'};
+ const f=officialLineScope(record('GEST FIRENZE','FIRENZE'),text,source);assert.deepEqual(f.value.affectedLineNames,['T1','T2']);
+});
