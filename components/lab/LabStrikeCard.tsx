@@ -311,7 +311,7 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
   );
   // One line of quiet green pills: each window its own, so two read as two.
   const guaranteeValue = has
-    ? <span className="inline-flex flex-wrap justify-end gap-1 tabular-nums">{card.guarantees.map((g, i) => <span key={i} className="h-[24px] px-[7px] rounded-[7px] inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold" style={{ color: C.ok, background: C.okSoft, fontFamily: NUM }}>{windowsText([g], lang)}</span>)}</span>
+    ? <span className="inline-flex flex-wrap justify-end gap-1 tabular-nums">{card.guarantees.map((g, i) => <span key={i} className="h-[24px] px-[7px] rounded-[7px] inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold" style={{ color: C.ok, background: C.okSoft, fontFamily: NUM }}>{windowsText([g], lang).replace(/^\w/, ch => ch.toUpperCase())}</span>)}</span>
     : <span style={{ color: C.text3 }}>{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '待公布', 'Not yet published') : tx(lang, '无', 'None')}</span>;
   const rows: [React.ReactNode, React.ReactNode, string][] = [
     [guaranteeLabel, guaranteeValue, 'guarantee'],

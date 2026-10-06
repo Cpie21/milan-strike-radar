@@ -541,7 +541,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
                     {item.reason && item.status !== 'CANCELLED' && <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
                     <p className="mt-1 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
                     {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.run }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
-                    <div className="mt-2.5"><Bar card={card} /></div>
+                    <div className="mt-2.5"><Bar card={card} lang={lang} /></div>
                     {item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED' && (
                       <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium">{result.understanding.span && item.overlap === 'strike' ? tx(lang, '你说的时段里有一部分在罢工时段内', 'Part of the time you gave is inside the strike') : tx(lang, ...OVERLAP[item.overlap])}<Tag by="rule" lang={lang} /></p>
                     )}
