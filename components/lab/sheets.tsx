@@ -187,7 +187,7 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
     <div className="mt-3 mb-1 flex flex-col items-center gap-3">
       <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] p-4 flex gap-3 overflow-hidden" style={{ background: strike ? 'linear-gradient(180deg, rgba(255,90,78,0.22), #0E0F12 60%)' : 'linear-gradient(180deg, #16181D, #0E0F12 60%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
         <div className="w-[112px] shrink-0 flex flex-col">
-          <LedFace mood={strike ? 'alert' : 'idle'} size={13} flat />
+          <LedFace mood={strike ? 'alert' : 'idle'} size={13} />
           <p className="mt-2 text-[16px] font-bold leading-tight">{strike ? tx(lang, '今天 2 项罢工', '2 strikes today') : tx(lang, '今日无罢工', 'No strikes today')}</p>
           <p className="text-[11.5px]" style={{ color: C.text3 }}>{strike ? cityName : `${cityName} · ${tx(lang, '安心出行', 'All clear')}`}</p>
         </div>

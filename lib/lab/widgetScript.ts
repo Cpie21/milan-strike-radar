@@ -48,8 +48,8 @@ ${fns}
 const COL = {
   bg: "#0E0F12", surface: "#1A1C21", text: "#F5F6F7", text2: "#A9AEB7", text3: "#6E737C",
   stop: "#FF5A4E", pend: "#F2A33A", ok: "#4AD9A7", amber: "#FFB12E", amberOff: "#2A1E0C",
-  mode: { SUBWAY: "#D52B20", BUS: "#BF5700", TRAIN: "#178043", AIRPORT: "#1F6FD1" },
-  glow: { SUBWAY: "#FF5147", BUS: "#FF8F1F", TRAIN: "#3BBF6E", AIRPORT: "#4DA3FF" },
+  mode: { SUBWAY: "#D52B20", BUS: "#BF5700", TRAIN: "#2559C9", AIRPORT: "#7650DB" },
+  glow: { SUBWAY: "#FF5147", BUS: "#FF8F1F", TRAIN: "#5B93FF", AIRPORT: "#B08CFF" },
 };
 const c = (hex, a) => new Color(hex, a === undefined ? 1 : a);
 const family = config.widgetFamily || "medium";

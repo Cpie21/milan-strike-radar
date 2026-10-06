@@ -31,16 +31,16 @@ export const C = {
 // the colour to what they ride:
 //   metro   – rosso: the red "M" of Milan's and Rome's metro signs
 //   bus     – arancio ministeriale: the orange Italian buses wore for decades
-//   train   – verde: the green of regional trains (Trenord, the old "treni
-//             verdi"); red is taken by the metro
-//   airport – azzurro: the national azure, as on ITA Airways' tails
+//   train   – blu FS: Italian station signs are white on blue, and so are the
+//             Ferrovie dello Stato and Trenitalia marks
+//   airport – viola: the sky's other colour, kept clear of the rail blue
 // `main` marks things on dark (glyphs, bars, text); `deep` is the fill
 // behind white text (all >= 4.5:1); `soft` tints a surface.
 export const MODE_COLOR: Record<Mode, { main: string; deep: string; soft: string }> = {
   SUBWAY: { main: '#FF5147', deep: '#D52B20', soft: 'rgba(255,81,71,0.16)' },
   BUS: { main: '#FF8F1F', deep: '#BF5700', soft: 'rgba(255,143,31,0.16)' },
-  TRAIN: { main: '#3BBF6E', deep: '#178043', soft: 'rgba(59,191,110,0.17)' },
-  AIRPORT: { main: '#4DA3FF', deep: '#1F6FD1', soft: 'rgba(77,163,255,0.17)' },
+  TRAIN: { main: '#5B93FF', deep: '#2559C9', soft: 'rgba(91,147,255,0.17)' },
+  AIRPORT: { main: '#B08CFF', deep: '#7650DB', soft: 'rgba(176,140,255,0.17)' },
 };
 
 // Controls, one rule: on this dark ground every button label is white.

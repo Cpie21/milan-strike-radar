@@ -2,24 +2,25 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
+import { EyeLife, type Expr } from './eyes';
 
 // The assistant's face: an amber LED dot matrix, the kind on Italian
 // platforms, that speaks in pictures rather than words, so everyone reads it.
-//   LedBoard – a wide strip set flush into the top of the calm-day module.
-//              It wakes up when it first appears, then lives: blinks, looks
-//              around, watches a tram go by and gives a thumbs-up, shows the
-//              time, a heartbeat, a coffee in the morning, sleeps at night.
-//   LedFace  – the compact face: in the bar, in the answer sheet. On a strike
-//              day it is alert: startled, "!!", cross brows, a rail snapping.
-// Drawn on canvas: unlit dots stay faintly visible, lit dots bloom; changes
-// wipe across column by column, or fade with the slight persistence of real
-// LEDs, which leaves a trail behind anything that moves.
+//   LedBoard – a board hanging from a rail at the top of the calm-day
+//              module. It wakes up when it first appears, then lives: its
+//              eyes look around, a tram goes by and it gives a thumbs-up, it
+//              shows the time, a heartbeat, a coffee in the morning, sleeps
+//              at night.
+//   LedFace  – the compact face in its bezel: in the bar and the answer.
+// The eyes are living shapes (eyes.ts) drawn into the dots every frame;
+// pictures (tram, clock…) are bitmaps laid over them, wiping in column by
+// column or fading with the slight persistence of real LEDs.
 
 export type Mood = 'idle' | 'thinking' | 'happy' | 'alarm' | 'unsure' | 'sorry' | 'alert' | 'off';
 
 const ROWS = 9;
 type Cols = number[]; // one bitmask per column, bit y = row y
-type Frame = { cols: Cols; offset: number; mode: 'cut' | 'wipe' | 'fade' };
+type Frame = { cols: Cols; offset: number; mode: 'cut' | 'wipe' | 'fade'; cover?: boolean };
 
 const blank = (n: number): Cols => Array(Math.max(0, n)).fill(0);
 function bitmap(rows: string[], top = 0): Cols {
@@ -36,29 +37,6 @@ function compose(width: number, layers: [Cols, number, boolean?][]): Cols {
 const shift = (cols: Cols, dy: number) => cols.map(c => (dy >= 0 ? c << dy : c >> -dy) & 0x1ff);
 
 // ── Bitmaps ─────────────────────────────────────────────────────────────
-
-const EYES: Record<string, string[]> = {
-  open: ['..###..', '.#####.', '.#####.', '.#####.', '.#####.', '.#####.', '..###..'],
-  blink: ['.......', '.......', '.......', '#######', '.......', '.......', '.......'],
-  sleep: ['.......', '.......', '.......', '.......', '#.....#', '.#####.', '.......'],
-  squint: ['.......', '.......', '.#####.', '#######', '.#####.', '.......', '.......'],
-  wide: ['.#####.', '#######', '#######', '#######', '#######', '#######', '.#####.'],
-  happy: ['.......', '..###..', '.#...#.', '#.....#', '#.....#', '.......', '.......'],
-  down: ['.......', '.......', '#.....#', '#.....#', '.#...#.', '..###..', '.......'],
-  sadL: ['.......', '......#', '....###', '..#####', '.######', '.#####.', '..###..'],
-  sadR: ['.......', '#......', '###....', '#####..', '######.', '.#####.', '..###..'],
-  lookL: ['.###...', '#####..', '#####..', '#####..', '#####..', '#####..', '.###...'],
-  lookR: ['...###.', '..#####', '..#####', '..#####', '..#####', '..#####', '...###.'],
-  lookU: ['..###..', '.#####.', '.#####.', '.#####.', '..###..', '.......', '.......'],
-};
-type Pair = [string, string];
-const eye = (k: string) => bitmap(EYES[k], 1);
-const eyes = ([l, r]: Pair, gap = 3): Cols => [...eye(l), ...blank(gap), ...eye(r)]; // 17 wide
-const FACES: Record<Exclude<Mood, 'thinking' | 'alert' | 'off'>, Pair> = {
-  idle: ['open', 'open'], happy: ['happy', 'happy'], alarm: ['sadL', 'sadR'], unsure: ['open', 'squint'], sorry: ['down', 'down'],
-};
-const ANGRY: Pair = ['sadR', 'sadL']; // brows slanting down to the middle
-const THINK: Pair[] = [['lookL', 'lookL'], ['lookU', 'lookU'], ['lookR', 'lookR'], ['squint', 'squint']];
 
 const TRAM = bitmap([
   '......####.......',
@@ -86,7 +64,6 @@ const CUP = [
   bitmap(['..#..#...', '...#..#..', '..#..#...', ...CUP_BODY]),
   bitmap(['...#..#..', '..#..#...', '...#..#..', ...CUP_BODY]),
 ];
-const BANG = bitmap(['##', '##', '##', '##', '##', '##', '..', '##']);
 const ZED = bitmap(['####', '..#.', '.#..', '####']);
 const track = (w: number): Cols => Array.from({ length: w }, (_, x) => (x % 3 === 2 ? 0 : 1 << 8));
 const ECG = [5, 5, 5, 5, 4, 4, 5, 5, 6, 2, 0, 8, 6, 5, 5, 5, 4, 3, 3, 4, 5, 5, 5, 5];
@@ -143,24 +120,28 @@ function makeSprite(pitch: number): Sprite {
   return sprite;
 }
 
-function Panel({ cols, pitch, frame, glow }: { cols: number; pitch: number; frame: Frame; glow: number }) {
+// Two layers: the living eyes (every frame) and a picture over them.
+function Panel({ cols, pitch, frame, glow, eyes }: { cols: number; pitch: number; frame: Frame; glow: number; eyes?: EyeLife }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const reduce = useReducedMotion();
-  const state = useRef({ alpha: new Float32Array(0), goal: new Float32Array(0), start: 0, mode: 'cut' as Frame['mode'], raf: 0 });
+  const state = useRef({ alpha: new Float32Array(0), goal: new Float32Array(0), start: 0, mode: 'cut' as Frame['mode'], cover: new Uint8Array(0), raf: 0, last: 0 });
 
   useEffect(() => {
     const st = state.current;
     const n = cols * ROWS;
     if (st.alpha.length !== n) st.alpha = new Float32Array(n);
     const goal = new Float32Array(n);
+    const cover = new Uint8Array(cols);
     frame.cols.forEach((col, i) => {
       const x = i + frame.offset;
       if (x < 0 || x >= cols) return;
+      if (frame.cover && col) cover[x] = 1;
       for (let y = 0; y < ROWS; y++) if (col & (1 << y)) goal[y * cols + x] = 1;
     });
-    st.goal = goal;
+    st.goal = goal; st.cover = cover;
     st.mode = reduce ? 'cut' : frame.mode;
     st.start = performance.now();
+    eyes?.resize(cols);
     const sprite = makeSprite(pitch);
     // Sized here, on the client: the server can't know the pixel ratio,
     // and hydration keeps server attributes.
@@ -170,11 +151,20 @@ function Panel({ cols, pitch, frame, glow }: { cols: number; pitch: number; fram
       if (canvas.current.width !== w) canvas.current.width = w;
       if (canvas.current.height !== h) canvas.current.height = h;
     }
+    let visible = true;
+    const io = canvas.current ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; }) : null;
+    if (io && canvas.current) io.observe(canvas.current);
+    st.last = performance.now();
     const draw = () => {
       const c = canvas.current?.getContext('2d');
       if (!c) return;
       const now = performance.now();
+      const dt = Math.min(0.05, (now - st.last) / 1000);
+      st.last = now;
       let moving = false;
+      let live: Float32Array | null = null;
+      if (eyes) { if (!reduce) eyes.step(dt); else eyes.step(1); live = eyes.field(); moving = !reduce; }
+      if (!visible && moving) { st.raf = requestAnimationFrame(draw); return; }
       c.clearRect(0, 0, c.canvas.width, c.canvas.height);
       for (let i = 0; i < n; i++) {
         const x = i % cols, y = Math.floor(i / cols);
@@ -183,28 +173,29 @@ function Panel({ cols, pitch, frame, glow }: { cols: number; pitch: number; fram
         else if (st.mode === 'wipe') { if (now >= st.start + x * 14) st.alpha[i] += Math.sign(d) * Math.min(Math.abs(d), 0.22); }
         else st.alpha[i] += d > 0 ? Math.min(d, 0.55) : Math.max(d, -0.14); // lit fast, fades slow
         if (Math.abs(st.goal[i] - st.alpha[i]) > 0.001) moving = true; else st.alpha[i] = st.goal[i];
+        const a = live && !st.cover[x] ? Math.max(live[i], st.alpha[i]) : st.alpha[i];
         const cx = (x + 0.5) * pitch * dpr - sprite.s / 2, cy = (y + 0.5) * pitch * dpr - sprite.s / 2;
         c.globalAlpha = 1;
         c.drawImage(sprite.off, cx, cy);
-        if (st.alpha[i] > 0) { c.globalAlpha = st.alpha[i] * glow; c.drawImage(sprite.on, cx, cy); }
+        if (a > 0.02) { c.globalAlpha = a * glow; c.drawImage(sprite.on, cx, cy); }
       }
       c.globalAlpha = 1;
       if (moving) st.raf = requestAnimationFrame(draw);
     };
     cancelAnimationFrame(st.raf);
     st.raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(st.raf);
-  }, [frame, cols, pitch, glow, reduce]);
+    return () => { cancelAnimationFrame(st.raf); io?.disconnect(); };
+  }, [frame, cols, pitch, glow, reduce, eyes]);
 
   return <canvas ref={canvas} style={{ width: cols * pitch, height: ROWS * pitch, display: 'block' }} aria-hidden />;
 }
 
 // ── Programmes ─────────────────────────────────────────────────────────
-// A programme is an async script of frames and waits. Starting another
+// A programme is an async script of pictures and waits. Starting another
 // cancels the one running: its next wait throws STOP.
 
 const STOP = Symbol('stop');
-type Show = (cols: Cols, offset: number, mode?: Frame['mode']) => void;
+type Show = (cols: Cols, offset: number, mode?: Frame['mode'], cover?: boolean) => void;
 type Wait = (ms: number) => Promise<void>;
 
 function useProgramme(setFrame: (f: Frame) => void) {
@@ -216,7 +207,7 @@ function useProgramme(setFrame: (f: Frame) => void) {
     stop();
     const g = gen.current;
     const wait: Wait = ms => new Promise((res, rej) => { timers.current.push(setTimeout(() => (g === gen.current ? res() : rej(STOP)), ms)); });
-    const show: Show = (cols, offset, mode = 'wipe') => { if (g === gen.current) setFrame({ cols, offset, mode }); };
+    const show: Show = (cols, offset, mode = 'wipe', cover = false) => { if (g === gen.current) setFrame({ cols, offset, mode, cover }); };
     // Start on a timer, never synchronously inside the effect.
     wait(0).then(() => script(show, wait)).catch(e => { if (e !== STOP) throw e; });
     return stop;
@@ -224,73 +215,27 @@ function useProgramme(setFrame: (f: Frame) => void) {
 }
 
 const jitter = (ms: number) => ms * (0.8 + Math.random() * 0.5);
-
-// Eyes resting: open, with a blink or two.
-async function rest(show: Show, wait: Wait, at: number, ms: number) {
-  show(eyes(FACES.idle), at);
-  const end = Date.now() + ms;
-  while (Date.now() < end - 800) {
-    await wait(jitter(2600));
-    show(eyes(['blink', 'blink']), at, 'cut'); await wait(140);
-    show(eyes(FACES.idle), at, 'cut');
-  }
-  await wait(Math.max(0, end - Date.now()));
-}
-
-// The face for a mood (the same on board and face); loops while it lasts.
-async function moodScript(mood: Mood, show: Show, wait: Wait, at: number, width: number) {
-  if (mood === 'thinking') { for (let i = 0; ; i++) { show(eyes(THINK[i % THINK.length]), at); await wait(420); } }
-  if (mood === 'alarm') { show(eyes(['wide', 'wide']), at, 'cut'); await wait(600); show(eyes(FACES.alarm), at); return; }
-  if (mood === 'alert') return alert(show, wait, at, width);
-  // Off while its other self (in the answer sheet) is talking: eyes close,
-  // the panel goes dark. Only one face is ever awake on screen.
-  if (mood === 'off') { show(eyes(['blink', 'blink']), at, 'cut'); await wait(160); show([], 0, 'fade'); return; }
-  if (mood === 'idle') { for (;;) await rest(show, wait, at, 8000); }
-  show(eyes(FACES[mood]), at);
-}
-
-// Strike day: startled, then cross; every so often "!!", or a rail snaps.
-async function alert(show: Show, wait: Wait, at: number, width: number) {
-  const mid = Math.floor(width / 2);
-  for (const d of [0.25, 0.4]) { show(noise(width, d), 0, 'cut'); await wait(60); }
-  show(eyes(['wide', 'wide']), at, 'cut'); await wait(520);
-  for (let i = 0; ; i++) {
-    show(eyes(ANGRY), at);
-    await wait(jitter(2600));
-    show(eyes(['squint', 'squint']), at, 'cut'); await wait(110); show(eyes(ANGRY), at, 'cut');
-    await wait(jitter(2600));
-    if (i % 2 === 0) {
-      for (let k = 0; k < 3; k++) { show(compose(width, [[BANG, mid - 4], [BANG, mid + 2]]), 0, 'cut'); await wait(230); show([], 0, 'cut'); await wait(130); }
-    } else {
-      const rail = (gap: number, droop: number) => Array.from({ length: width }, (_, x) => (Math.abs(x - mid + 0.5) < gap ? 0 : Math.abs(x - mid + 0.5) < gap + droop ? 1 << 8 : 1 << 6));
-      show(rail(0, 0), 0); await wait(600);
-      show(rail(1, 0), 0, 'cut'); await wait(160);
-      for (let k = 0; k < 6; k++) {
-        const sparks = Array.from({ length: width }, (_, x) => (Math.abs(x - mid) < 4 && Math.random() < 0.5 ? 1 << (1 + Math.floor(Math.random() * 4)) : 0));
-        show(rail(1, 3).map((c, x) => c | sparks[x]), 0, 'fade'); await wait(90);
-      }
-      show(rail(1, 3), 0, 'fade'); await wait(700);
-      show(eyes(['wide', 'wide']), at, 'cut'); await wait(300);
-    }
-  }
-}
+const EXPR: Record<Mood, Expr> = { idle: 'idle', thinking: 'thinking', happy: 'happy', alarm: 'alarm', unsure: 'unsure', sorry: 'sorry', alert: 'concerned', off: 'off' };
+const glowOf = (mood: Mood) => (mood === 'alarm' ? 1 : mood === 'thinking' || mood === 'alert' ? 0.85 : mood === 'off' ? 0.4 : 0.72);
+const EMPTY: Frame = { cols: [], offset: 0, mode: 'cut' };
 
 // ── Housings ───────────────────────────────────────────────────────────
 
 const GLASS = 'linear-gradient(170deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 30%, transparent 31%), repeating-linear-gradient(180deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 3px)';
+const ANODISED = 'linear-gradient(180deg,#50545C 0%,#2C2E34 9%,#1C1D21 55%,#141518 100%)';
 
-// A small anodised bezel around recessed smoked glass.
-function Bezel({ children, pitch, glow, flat }: { children: React.ReactNode; pitch: number; glow: number; flat?: boolean }) {
-  const r = pitch * (flat ? 3.4 : 2.4);
+// The anodised housing with a chamfer, four screws and recessed smoked glass.
+function Housing({ children, pitch, glow, radius }: { children: React.ReactNode; pitch: number; glow: number; radius?: number }) {
+  const r = radius ?? pitch * 2.6;
+  const screw = (pos: React.CSSProperties) => <i aria-hidden className="absolute rounded-full" style={{ ...pos, width: Math.max(2, pitch * 0.95), height: Math.max(2, pitch * 0.95), background: 'radial-gradient(circle at 35% 30%, #A2A6AE, #3A3D44 60%, #1A1B1E)' }} />;
+  const s = Math.max(1.5, pitch * 0.32);
   return (
     <span className="relative inline-flex" style={{
-      padding: flat ? pitch * 0.6 : pitch * 0.8, borderRadius: r,
-      background: flat ? '#070707' : 'linear-gradient(180deg,#4B4F57 0%,#2A2C32 10%,#1B1C20 55%,#141518 100%)',
-      boxShadow: flat
-        ? `inset 0 1px 3px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(255,255,255,0.05), 0 0 ${pitch * 6}px rgba(255,150,30,${glow * 0.18})`
-        : `inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.7), 0 ${pitch}px ${pitch * 3}px rgba(0,0,0,0.5), 0 0 ${pitch * 8}px rgba(255,150,30,${0.1 + glow * 0.2})`,
+      padding: Math.max(3, pitch * 0.95), borderRadius: r, background: ANODISED,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.7), 0 ${pitch}px ${pitch * 3.2}px rgba(0,0,0,0.5), 0 0 ${pitch * 8}px rgba(255,150,30,${0.08 + glow * 0.2})`,
     }}>
-      <span className="relative block overflow-hidden" style={{ borderRadius: r * 0.6, padding: flat ? 0 : pitch * 0.4, background: '#040404', boxShadow: flat ? 'none' : 'inset 0 2px 4px rgba(0,0,0,0.95)' }}>
+      {screw({ left: s, top: s })}{screw({ right: s, top: s })}{screw({ left: s, bottom: s })}{screw({ right: s, bottom: s })}
+      <span className="relative block overflow-hidden" style={{ borderRadius: r * 0.55, padding: pitch * 0.45, background: '#040404', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.95), 0 0 0 1px rgba(0,0,0,0.6)' }}>
         {children}
         <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: GLASS }} />
       </span>
@@ -298,35 +243,28 @@ function Bezel({ children, pitch, glow, flat }: { children: React.ReactNode; pit
   );
 }
 
-const glowOf = (mood: Mood) => (mood === 'alarm' || mood === 'alert' ? 1 : mood === 'thinking' ? 0.85 : mood === 'off' ? 0.4 : 0.7);
-const still = (mood: Mood): Cols => (mood === 'off' ? [] : eyes(mood === 'alert' ? ANGRY : mood === 'thinking' ? THINK[0] : FACES[mood]));
-
 // ── Compact face ────────────────────────────────────────────────────────
+// `attend`: where its attention is (the field you are typing in).
 
-export function LedFace({ mood = 'idle', size = 20, flat }: { mood?: Mood; size?: number; flat?: boolean }) {
-  const reduce = useReducedMotion();
-  const W = 19, at = 1;
+export function LedFace({ mood = 'idle', size = 20, cols = 19, attend = false }: { mood?: Mood; size?: number; cols?: number; attend?: boolean }) {
   const pitch = size / 7;
-  const [frame, setFrame] = useState<Frame>({ cols: still(mood), offset: at, mode: 'cut' });
-  const play = useProgramme(setFrame);
-  useEffect(() => {
-    if (reduce) return play(async show => show(still(mood), at, 'cut'));
-    return play((show, wait) => moodScript(mood, show, wait, at, W));
-  }, [mood, reduce]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [eyes] = useState(() => new EyeLife(cols, ROWS));
+  useEffect(() => { eyes.setExpr(EXPR[mood]); }, [eyes, mood]);
+  useEffect(() => { if (attend) eyes.look(1, 0.25, 60_000); else eyes.look(0, 0, 0); }, [eyes, attend]);
   return (
     <span role="img" aria-hidden className="inline-flex">
-      <Bezel pitch={pitch} glow={glowOf(mood) * 0.6} flat={flat}>
-        <Panel cols={W} pitch={pitch} frame={frame} glow={glowOf(mood)} />
-      </Bezel>
+      <Housing pitch={pitch} glow={glowOf(mood) * 0.6}>
+        <Panel cols={cols} pitch={pitch} frame={EMPTY} glow={glowOf(mood)} eyes={eyes} />
+      </Housing>
     </span>
   );
 }
 
 // ── Board (calm-day module) ─────────────────────────────────────────────
-// As wide as the module allows. Wakes once per visit; after that it keeps
-// living through calm days, glancing the way you moved when the day changes.
+// Hangs from the module's top rail. Wakes once per visit; after that it
+// keeps living through calm days, glancing the way you moved.
 
-export function LedBoard({ mood = 'idle', pitch = 4.6, nudge }: { mood?: Mood; pitch?: number; nudge?: { key: string; dir: number } }) {
+export function LedBoard({ mood = 'idle', pitch = 4.4, nudge, attend = false }: { mood?: Mood; pitch?: number; nudge?: { key: string; dir: number }; attend?: boolean }) {
   const reduce = useReducedMotion();
   const box = useRef<HTMLSpanElement>(null);
   const [W, setW] = useState(41);
@@ -335,94 +273,97 @@ export function LedBoard({ mood = 'idle', pitch = 4.6, nudge }: { mood?: Mood; p
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(41, Math.min(96, Math.floor(e.contentRect.width / pitch)))));
+    // Room for the housing's frame on both sides
+    const ro = new ResizeObserver(([e]) => setW(Math.max(31, Math.min(64, Math.floor((e.contentRect.width - pitch * 3.4 - 8) / pitch)))));
     ro.observe(el);
     return () => ro.disconnect();
   }, [pitch]);
-  const [frame, setFrame] = useState<Frame>({ cols: [], offset: 0, mode: 'cut' });
+  const [eyes] = useState(() => new EyeLife(41, ROWS));
+  const [frame, setFrame] = useState<Frame>(EMPTY);
   const play = useProgramme(setFrame);
   const woke = useRef(false);
-  const at = () => Math.floor(width.current / 2) - 8;
 
-  // The idle life of the board.
+  // The idle life of the board: eyes most of the time, a little scene now and then.
   const live = async (show: Show, wait: Wait) => {
     if (!woke.current) {
       woke.current = true;
       const w = width.current;
+      eyes.show(false);
       for (const d of [0.06, 0.18, 0.34, 0.16, 0.05]) { show(noise(w, d), 0, 'cut'); await wait(70); }
       show([], 0, 'cut'); await wait(140);
       for (let x = 0; x < w; x += 2) { show([0x1ff, 0x1ff], x, 'fade'); await wait(14); }
-      show([], 0, 'fade'); await wait(260);
-      show(eyes(['blink', 'blink']), at(), 'cut'); await wait(300);
-      show(eyes(['squint', 'squint']), at(), 'cut'); await wait(120);
-      show(eyes(FACES.idle), at(), 'cut'); await wait(600);
-      show(eyes(['lookL', 'lookL']), at()); await wait(420);
-      show(eyes(['lookR', 'lookR']), at()); await wait(420);
+      show([], 0, 'fade'); await wait(220);
+      eyes.show(true); eyes.look(-0.8, 0, 500); await wait(600);
+      eyes.look(0.8, -0.2, 500); await wait(600);
+      eyes.look(0, 0, 0);
     }
-    const scenes = [tram, look, clock, heartbeat, wink, tram, morning];
+    const scenes = [tram, clock, heartbeat, tram, morning];
     for (let i = 0; ; i++) {
-      await rest(show, wait, at(), jitter(7000));
+      show([], 0, 'fade'); eyes.show(true);
+      await wait(jitter(9000));
       await (romeHour() < 6 ? sleep : scenes[i % scenes.length])(show, wait);
     }
   };
   // A tram goes by in front, the eyes follow it, then a thumbs-up: all fine.
   const tram = async (show: Show, wait: Wait) => {
-    const w = width.current, e = at();
-    show(eyes(['lookR', 'lookR']), e); await wait(700);
+    const w = width.current;
+    eyes.look(1, 0, 900); await wait(700);
     for (let x = w; x > -TRAM.length; x--) {
-      const pair: Pair = x + 8 > e + 8 ? ['lookR', 'lookR'] : ['lookL', 'lookL'];
-      show(compose(w, [[eyes(pair), e], [TRAM, x, true], [track(w), 0]]), 0, 'fade');
+      eyes.look(Math.max(-1, Math.min(1, ((x + 8) - w / 2) / (w / 2))), 0.1, 300);
+      show(compose(w, [[TRAM, x], [track(w), 0]]), 0, 'fade', true);
       await wait(40);
     }
-    show(eyes(['lookL', 'lookL']), e, 'fade'); await wait(500);
-    show(THUMB, Math.floor(w / 2) - 5); await wait(1600);
-    show(eyes(FACES.happy), e); await wait(1300);
+    show([], 0, 'fade'); eyes.look(-1, 0, 600); await wait(500);
+    eyes.show(false); await wait(150);
+    show(THUMB, Math.floor(w / 2) - 5); await wait(1500);
+    show([], 0, 'fade'); eyes.show(true); eyes.setExpr('happy'); await wait(1300); eyes.setExpr('idle');
   };
-  const look = async (show: Show, wait: Wait) => {
-    for (const k of ['lookL', 'lookR', 'lookU'] as const) { show(eyes([k, k]), at()); await wait(jitter(700)); }
+  const pictureThen = async (show: Show, wait: Wait, draw: () => Promise<void>) => {
+    eyes.show(false); await wait(160); await draw(); show([], 0, 'fade'); eyes.show(true);
   };
-  const clock = async (show: Show, wait: Wait) => {
+  const clock = (show: Show, wait: Wait) => pictureThen(show, wait, async () => {
     const cols = digits(romeClock());
-    show(cols, Math.floor((width.current - cols.length) / 2)); await wait(3200);
-  };
-  const heartbeat = async (show: Show, wait: Wait) => {
+    show(cols, Math.floor((width.current - cols.length) / 2)); await wait(3000);
+  });
+  const heartbeat = (show: Show, wait: Wait) => pictureThen(show, wait, async () => {
     const w = width.current, tape = pulse(2, w);
     for (let k = 0; k <= tape.length - w; k += 1) { show(tape.slice(k, k + w), 0, 'fade'); await wait(24); }
-  };
-  const wink = async (show: Show, wait: Wait) => {
-    show(eyes(['open', 'blink']), at(), 'cut'); await wait(260);
-    show(eyes(FACES.happy), at()); await wait(1100);
-  };
+  });
   const morning = async (show: Show, wait: Wait) => {
     const h = romeHour();
-    if (h < 6 || h > 10) return wink(show, wait);
-    const x = Math.floor(width.current / 2) - 4;
-    for (let k = 0; k < 10; k++) { show(CUP[k % 2], x, k ? 'fade' : 'wipe'); await wait(360); }
-    show(eyes(FACES.happy), at()); await wait(1000);
+    if (h < 6 || h > 10) { eyes.setExpr('happy'); await wait(1200); eyes.setExpr('idle'); return; }
+    await pictureThen(show, wait, async () => {
+      const x = Math.floor(width.current / 2) - 4;
+      for (let k = 0; k < 10; k++) { show(CUP[k % 2], x, k ? 'fade' : 'wipe'); await wait(360); }
+    });
   };
   const sleep = async (show: Show, wait: Wait) => {
-    const e = at();
-    for (let k = 0; k < 3; k++) for (let y = 5; y >= -3; y--) {
-      show(compose(width.current, [[eyes(['sleep', 'sleep']), e], [shift(ZED, y), e + 19]]), 0, 'fade'); await wait(380);
-    }
+    eyes.setExpr('sleepy');
+    const e = Math.floor(width.current / 2) + 10;
+    for (let k = 0; k < 3; k++) for (let y = 5; y >= -3; y--) { show(compose(width.current, [[shift(ZED, y), e]]), 0, 'fade'); await wait(380); }
+    eyes.setExpr('idle');
   };
 
   useEffect(() => {
-    if (reduce) return play(async show => show(still(mood), at(), 'cut'));
-    if (mood === 'idle') return play(live);
-    return play((show, wait) => moodScript(mood, show, wait, at(), width.current));
+    eyes.setExpr(EXPR[mood]);
+    if (reduce || mood !== 'idle') return play(async show => { show([], 0, 'cut'); eyes.show(mood !== 'off'); });
+    return play(live);
   }, [mood, reduce]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Re-centre on resize, and glance the way the day moved.
+  // Glance the way the day moved.
   useEffect(() => {
     if (!nudge || reduce || mood !== 'idle' || !woke.current) return;
-    const k: string = nudge.dir < 0 ? 'lookL' : 'lookR';
-    return play(async (show, wait) => { show(eyes([k, k]), at()); await wait(650); await live(show, wait); });
-  }, [nudge?.key, W]); // eslint-disable-line react-hooks/exhaustive-deps
+    eyes.look(nudge.dir < 0 ? -1 : 1, 0, 700);
+  }, [nudge?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Watching you type.
+  useEffect(() => { if (attend) eyes.look(0, 1, 60_000); else eyes.look(0, 0, 0); }, [eyes, attend]);
 
   return (
-    <span ref={box} role="img" aria-hidden className="relative block w-full overflow-hidden" style={{ padding: `${pitch * 0.7}px 0`, borderRadius: 16, background: '#060606', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(255,255,255,0.05), 0 1px 0 rgba(255,255,255,0.05)' }}>
-      <span className="flex justify-center"><Panel cols={W} pitch={pitch} frame={frame} glow={glowOf(mood)} /></span>
-      <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: GLASS }} />
+    <span ref={box} role="img" aria-hidden className="block w-full">
+      <span className="flex justify-center">
+        <Housing pitch={pitch} glow={glowOf(mood)}>
+          <Panel cols={W} pitch={pitch} frame={frame} glow={glowOf(mood)} eyes={eyes} />
+        </Housing>
+      </span>
     </span>
   );
 }

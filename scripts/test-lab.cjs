@@ -135,7 +135,7 @@ const { slotsFor, assignSlot } = require('../components/lab/wall/slots.ts');
 test('panels tile the body, centre-out, without overlap', () => {
   const body = { x0: 26, y0: 56, x1: 188, y1: 98 };
   const slots = slotsFor(body);
-  assert.ok(slots.length >= 3);
+  assert.ok(slots.length >= 2);
   slots.forEach(s => { assert.ok(s.x >= body.x0 - 1 && s.x + s.w <= body.x1 + 1); assert.ok(s.y >= body.y0 - 1 && s.y + s.h <= body.y1 + 1); });
   for (const a of slots) for (const b of slots) if (a !== b) assert.ok(a.x + a.w <= b.x + 1 || b.x + b.w <= a.x + 1 || a.y + a.h <= b.y + 1 || b.y + b.h <= a.y + 1, 'overlap');
   const cx = (body.x0 + body.x1) / 2;

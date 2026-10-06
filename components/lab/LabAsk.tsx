@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, MapPin, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
 import { LedBoard, LedFace, type Mood } from './Led';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, windowsText, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
@@ -213,12 +213,11 @@ export function moodOf(a: Pick<AskState, 'busy' | 'error' | 'result'>): Mood {
 
 // ── Input ─────────────────────────────────────────────────────────────
 // One input, two homes, one layoutId. On a calm day it lives in the module,
-// as a roomy two-row field after mobile Gemini, kept quiet: the text on top,
-// and below it only what the answer will assume (the city) and what is left
-// (today's questions), with send at the thumb. On a strike day it docks at
-// the bottom as a pill with the face inside it, within thumb reach.
+// roomy and quiet: the text grows to three lines, examples take turns in the
+// empty field, send sits at the thumb. On a strike day it docks at the
+// bottom as a pill with the face inside its round end.
 
-function AskInput({ a, big, place }: { a: AskState; big?: boolean; place?: string }) {
+function AskInput({ a, big }: { a: AskState; big?: boolean }) {
   const field = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
   const reduce = useReducedMotion();
   const { lang, query, setQuery, busy, setFocused, left, focused } = a;
@@ -255,7 +254,7 @@ function AskInput({ a, big, place }: { a: AskState; big?: boolean; place?: strin
   return (
     <motion.form layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
       onSubmit={e => { e.preventDefault(); send(); }}
-      className={`relative w-full ${big ? 'rounded-[26px] pl-4 pr-2 pt-3 pb-2' : 'h-[56px] rounded-full pl-[62px] pr-1.5 flex items-center gap-2'}`}
+      className={`relative w-full ${big ? 'rounded-[26px] pl-4 pr-1.5 py-1.5 flex items-end gap-2' : 'h-[56px] rounded-full pl-[58px] pr-1.5 flex items-center gap-2'}`}
       style={big ? { background: C.surface2, boxShadow: `inset 0 0 0 1px ${focused ? 'rgba(242,163,58,0.45)' : C.line}` } : PILL}>
       {/* While it works, a slow warm light travels the edge: the board's glow. */}
       {big && busy && <span aria-hidden className="pointer-events-none absolute -inset-px rounded-[27px] overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1.5 }}>
@@ -263,26 +262,19 @@ function AskInput({ a, big, place }: { a: AskState; big?: boolean; place?: strin
       </span>}
       {big ? (
         <>
-          <div className="relative">
+          <div className="relative flex-1 min-w-0 py-[8px]">
             <textarea ref={field} {...common} rows={1} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
               className="block w-full resize-none bg-transparent outline-none text-white text-[16px] leading-6 pr-2 disabled:opacity-60" style={{ minHeight: 24 }} />
             {!query && (
               <AnimatePresence mode="wait" initial={false}>
-                <motion.span key={example} aria-hidden className="absolute inset-x-0 top-0 pointer-events-none text-[16px] leading-6 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}
+                <motion.span key={example} aria-hidden className="absolute inset-x-0 top-[8px] pointer-events-none text-[16px] leading-6 truncate" style={{ color: 'rgba(255,255,255,0.4)' }}
                   initial={{ opacity: 0, y: reduce ? 0 : 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduce ? 0 : -6 }} transition={{ duration: 0.28, ease: EASE }}>
                   {example}
                 </motion.span>
               </AnimatePresence>
             )}
           </div>
-          <div className="mt-2.5 flex items-center gap-1.5">
-            {place && <span className={`h-7 pl-2 pr-2.5 rounded-full flex items-center gap-1 ${TYPE.caption}`} style={{ background: C.surface3, color: C.text2 }}><MapPin size={12} weight="fill" />{place}</span>}
-            <span className={`h-7 px-2.5 rounded-full flex items-center gap-1.5 ${TYPE.caption}`} style={{ background: C.surface3, color: C.text2 }} aria-label={tx(lang, `今天还可以问 ${left} 次`, `${left} left today`)}>
-              <span className="flex gap-[3px]">{Array.from({ length: DAILY_QUESTIONS }, (_, i) => <i key={i} className="w-[5px] h-[5px] rounded-full" style={{ background: i < left ? '#F2A33A' : 'rgba(255,255,255,0.18)' }} />)}</span>
-              {tx(lang, `今天 ${left} 次`, `${left} today`)}
-            </span>
-            <span className="ml-auto">{sendButton}</span>
-          </div>
+          {sendButton}
         </>
       ) : (
         <>
@@ -318,8 +310,10 @@ export function AskField({ ask: a }: { ask: AskState }) {
         <AnimatePresence><LastAnswer a={a} compact /></AnimatePresence>
         <div className="relative">
           <AskInput a={a} />
-          <span className="absolute left-[8px] inset-y-0 z-10 flex items-center pointer-events-none">
-            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood} size={15} flat /></motion.span>
+          {/* Centred on the pill's round end, as Apple centres a leading icon in
+              a capsule: the face's middle sits on the end circle's centre. */}
+          <span className="absolute left-0 inset-y-0 w-[56px] z-10 flex items-center justify-center pointer-events-none">
+            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood} size={13} cols={15} attend={a.focused} /></motion.span>
           </span>
         </div>
         {a.left <= 2 && (
@@ -334,18 +328,23 @@ export function AskField({ ask: a }: { ask: AskState }) {
 
 // The calm-day module. On a day with no strike there is room, and a reason,
 // to put the question front and centre: people arrive with something to
-// check. The board is set flush into the top of the module, as a screen is
-// set into a platform wall; it stays mounted while you move between calm
-// days and glances the way you went.
-export function AskModule({ ask: a, place, nudge }: { ask: AskState; place: string; nudge?: { key: string; dir: number } }) {
+// check. The board hangs from a rail along the module's top edge, rods and
+// all, as boards hang over platforms; it stays mounted while you move
+// between calm days and glances the way you went.
+export function AskModule({ ask: a, nudge }: { ask: AskState; nudge?: { key: string; dir: number } }) {
   return (
-    <motion.section layout transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="relative mt-3 overflow-hidden p-3 pb-4" style={{ background: C.surface, borderRadius: 24 }}>
-      <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={pageMood(a, false)} nudge={nudge} /></motion.div>
-      <span aria-hidden className="absolute inset-x-0 top-0 h-[150px] pointer-events-none" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(255,160,40,0.10), transparent 70%)' }} />
+    <motion.section layout transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="relative mt-3 overflow-hidden px-3 pb-4" style={{ background: C.surface, borderRadius: 24 }}>
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[170px] pointer-events-none" style={{ background: 'radial-gradient(60% 100% at 50% 0%, rgba(255,160,40,0.10), transparent 70%)' }} />
+      {/* The rail the board hangs from, fixed along the top edge */}
+      <span aria-hidden className="absolute left-[16%] right-[16%] top-0 h-[5px] rounded-b-[3px]" style={{ background: 'linear-gradient(180deg,#5A5E66,#2A2C31)', boxShadow: '0 1px 2px rgba(0,0,0,0.6)' }} />
+      <div className="relative mx-auto w-[88%] mt-[22px]">
+        {[0, 1].map(i => <i key={i} aria-hidden className="absolute bottom-full h-[22px] w-[3px]" style={{ [i ? 'right' : 'left']: '24%', background: 'linear-gradient(90deg,#26282D,#73777F,#26282D)' } as React.CSSProperties} />)}
+        <motion.div layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }}><LedBoard mood={pageMood(a, false)} nudge={nudge} attend={a.focused} /></motion.div>
+      </div>
       <div className="relative flex flex-col items-center px-1">
         <p className="mt-4 text-[18px] font-semibold">{tx(a.lang, '有什么想确认的？', 'Anything to check?')}</p>
         <p className={`mt-1 mb-4 ${TYPE.label}`} style={{ color: C.text3 }}>{tx(a.lang, '某天、某条线路，或群里听到的消息', 'A day, a line, or something you heard')}</p>
-        <AskInput a={a} big place={place} />
+        <AskInput a={a} big />
         <AnimatePresence><LastAnswer a={a} /></AnimatePresence>
       </div>
     </motion.section>

@@ -199,7 +199,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           </div>
 
           {/* Outside the per-day transition, so it stays put across calm days */}
-          {calm && <AskModule ask={ask} place={name} nudge={{ key: selected, dir: direction }} />}
+          {calm && <AskModule ask={ask} nudge={{ key: selected, dir: direction }} />}
 
           {/* Tools: one line each says enough */}
           <div className="grid grid-cols-3 gap-2.5 mt-3">

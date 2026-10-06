@@ -2,7 +2,7 @@
 // crowded wall is many small finished pieces rather than one tangle.
 //
 // Allocation (the same rules on the client preview and, later, the server):
-// 1. The paintable side is cut into a grid of panels about 55 pixels wide.
+// 1. The paintable side is cut into panels about half a carriage wide.
 // 2. Panels are ranked centre-out, so the first pieces land where they're
 //    seen and the wall fills like a real one, from the middle.
 // 3. A person's slot is the first free panel in that order, offset by a hash
@@ -20,9 +20,9 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
 
 export function slotsFor(body: Box): Slot[] {
   const W = body.x1 - body.x0, H = body.y1 - body.y0;
-  // Big enough to draw something in (about 55 wall pixels across, the full
-  // side's height unless it is a double-decker), few enough to stay readable.
-  const cols = Math.max(1, Math.round(W / 56)), rows = H > 52 ? 2 : 1;
+  // Big: about half a carriage side, full height, so there is room to
+  // actually write something; few enough that the wall stays readable.
+  const cols = Math.max(1, Math.round(W / 95)), rows = 1;
   const w = W / cols, h = H / rows;
   const cx = body.x0 + W / 2, cy = body.y0 + H / 2;
   return Array.from({ length: cols * rows }, (_, k) => ({ x: body.x0 + (k % cols) * w, y: body.y0 + Math.floor(k / cols) * h, w, h }))

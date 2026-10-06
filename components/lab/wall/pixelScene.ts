@@ -211,8 +211,9 @@ function metro(): Scene {
 function train(): Scene {
   const top = 34, bot = 102, H = bot - top;
   const cab0 = 36, x1 = 226, nose = x1 - 50;
-  const GREEN: Ramp = { shine: '#8FE0A9', hi: '#46B26F', base: '#2F9A5B', low: '#1F7344', edge: '#124A2B' };
-  const BLUE = '#2D6FD0';
+  // doors and band in FS blue, as on Trenitalia's regional double-deckers
+  const GREEN: Ramp = { shine: '#A9C8FF', hi: '#4F86E8', base: '#2E64C8', low: '#1F4796', edge: '#122C63' };
+  const BLUE = '#E8E9EB';
   // The Caravaggio's nose: the roof rolls over, slowly then steeply, into a
   // raked windscreen; a short rounded front below carries the lamps.
   const T = (x: number) => (x > nose ? top + Math.round(H * 0.62 * ((x - nose) / (x1 - nose)) ** 1.8) : top);
@@ -226,12 +227,12 @@ function train(): Scene {
     for (let i = 0; i < lower.length; i += 2) if (lower[i + 1] - lower[i] > 10) band(c, lower[i], lower[i + 1], top + 35, 12, '#474D56', 15);
     for (let x = a + 1; x < b; x++) {
       if (doors.some(d => x >= d - 1 && x <= d + 22) || T(x) > bot - 20) continue;
-      R(c, x, bot - 16, 1, 6, '#2F9A5B'); P(c, x, bot - 16, '#46B26F'); P(c, x, bot - 11, '#1F7344'); R(c, x, bot - 19, 1, 2, BLUE);
+      R(c, x, bot - 16, 1, 6, '#2E64C8'); P(c, x, bot - 16, '#4F86E8'); P(c, x, bot - 11, '#1F4796'); R(c, x, bot - 19, 1, 2, BLUE);
     }
     doors.forEach(d => {
       R(c, d - 1, top + 28, 24, H - 28, '#474D56');
       hull(c, d, d + 21, () => top + 29, floor, GREEN);
-      pane(c, d + 2, top + 33, 8, 22, '#124A2B'); pane(c, d + 12, top + 33, 8, 22, '#124A2B'); R(c, d + 10, top + 29, 2, H - 29, '#124A2B');
+      pane(c, d + 2, top + 33, 8, 22, '#122C63'); pane(c, d + 12, top + 33, 8, 22, '#122C63'); R(c, d + 10, top + 29, 2, H - 29, '#122C63');
     });
   };
   return {
@@ -259,7 +260,7 @@ function train(): Scene {
         if (b - t > 6) R(c, x, t + 2, 1, Math.min(3, b - t - 4), '#18212B'); // the dim cab inside
       }
       // the front below: green and blue wrap round the nose, lamps in black
-      for (let x = nose; x < x1 - 1; x++) { if (B(x) - 19 < T(x) + 2) continue; R(c, x, B(x) - 16, 1, 6, '#2F9A5B'); P(c, x, B(x) - 16, '#46B26F'); R(c, x, B(x) - 19, 1, 2, BLUE); }
+      for (let x = nose; x < x1 - 1; x++) { if (B(x) - 19 < T(x) + 2) continue; R(c, x, B(x) - 16, 1, 6, '#2E64C8'); P(c, x, B(x) - 16, '#4F86E8'); R(c, x, B(x) - 19, 1, 2, BLUE); }
       R(c, x1 - 10, bot - 26, 8, 4, '#0E1319'); R(c, x1 - 8, bot - 25, 3, 2, '#FFF3D0'); P(c, x1 - 8, bot - 25, '#FFFFFF');
       R(c, -60, bot, x1 + 50, 3, '#1E2024');
       bogie(c, -20, bot + 1); bogie(c, cab0 + 10, bot + 1); bogie(c, x1 - 60, bot + 1);
@@ -338,7 +339,7 @@ function plane(tail: string): Scene {
   const B = (x: number) => x > nose ? cy + Math.sqrt(Math.max(0, 1 - ((x - nose) / 26) ** 2)) * half
     : x < 74 ? cy + half - (74 - x) * 0.36 : cy + half;
   const WHITE = SILVER;
-  const TAIL: Ramp = { shine: '#A9D2FF', hi: '#6FB2FF', base: tail, low: '#1F5FB4', edge: '#123A70' };
+  const TAIL: Ramp = { shine: '#D8C8FF', hi: '#BFA3FF', base: tail, low: '#6C47C9', edge: '#3D2680' };
   const GREY: Ramp = { shine: '#D7DBDF', hi: '#B6BCC3', base: '#8E959E', low: '#666D77', edge: '#3A3F47' };
   // Fin: leading edge (front, right) swept up and back; near-vertical trailing edge.
   const finTop = (x: number) => (x <= 38 ? 30 : 30 + (x - 38) * (36 / 28));

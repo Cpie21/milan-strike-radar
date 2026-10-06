@@ -239,3 +239,12 @@ Server contract needed:
 - Branch `codex/paid-budget-guard` reviews Claude commit `f785cbf` in an isolated worktree. The previous fail-open budget behavior is superseded: a missing RPC, exception, invalid response or invalid reservation blocks the paid request. Only explicit `true` authorizes a metered Ask call. Explicit `false` is budget exhaustion; infrastructure errors use the existing `unavailable` response, so no frontend/API redesign is required.
 - Translation reservations always fail with TRANSLATION_DISABLED before any ledger/provider access. Integrate PR #8 to remove the Gemini translation implementation/cache; no Gemini model or paid replacement translation is allowed. This gate does not provide a free translator.
 - No schema change. Shared monthly budget RPCs are still required before enabling paid Ask, with the user's total CNY 3/month cap. This PR deliberately keeps paid Ask unavailable while that ledger cannot authorize spending. Do not restore unmetered fallback to fix a temporary service error. Settlement cannot use a negative/invalid cost to release a reservation. No model/provider calls were made during verification.
+
+### Lab v14 (Claude)
+- **Merged.** PRs #8 and #9 are merged into `claude/redesign-lab`. No Gemini; translation free-only; paid Ask only on ledger `true`.
+- **Pixel art request.** Please generate the four vehicles from `docs/design/pixel-brief/README.md`, which has the prompts, boxes and post-processing. Commit them to `public/lab/wall/`. They are picked up automatically, with no code change.
+- **Graffiti contract update.**
+  - Panels are now about half a carriage (`slotsFor`: `round(W/95)` columns, one row).
+  - The brush is 1.5 wall px, rendered at 3×.
+  - A person paints once per strike: after `uploadDrawing` there is no second session.
+  - Server-side checks for the stroke upload should use the new panel rectangles.

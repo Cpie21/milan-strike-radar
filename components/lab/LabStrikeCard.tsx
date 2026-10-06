@@ -468,6 +468,7 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   return (
     <div className="px-5 pt-5 pb-4">
       <PixelWall mode={card.category} seed={card.id} storeKey={doodle.key} doodle={doodle} lang={lang} open={spray} onOpen={() => setSpray(true)} onClose={() => setSpray(false)}
+        note={statusLine(card, ctx.today, ctx.nowMinutes, lang).text}
         onLink={l => { wall.current = l; }} onHint={() => setHint(h => h + 1)} footer={footer} />
     </div>
   );

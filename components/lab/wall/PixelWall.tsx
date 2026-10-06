@@ -1,30 +1,33 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowCounterClockwise, Check } from '@phosphor-icons/react';
 import { tx, type Lang, type Mode } from '../../../lib/lab/model';
 import { colourFor, LIMITS, loadDrawing, myColour, paintLeft, PAINT, strokeCost, uploadDrawing, type Stroke } from '../graffitiStore';
 import { C, EASE, FILLED, MODE_COLOR, TONAL, TYPE } from '../theme';
-import { boxBlur, ledText, PH, PW, sceneFor } from './pixelScene';
+import { boxBlur, PH, PW, sceneFor } from './pixelScene';
 import { assignSlot, slotsFor, type Slot } from './slots';
-import { drawSprite, rng, SPRITE_KINDS, spriteSize, type SpriteKind } from './sprites';
+import { paintTag, tagsFor } from './tags';
 
-// The wall, in pixels. The vehicle is parked (it is a strike), everyone's
-// marks are on it, and the button below hands you one can of paint in your
-// own colour and one panel of the body (see slots.ts). Picking up the can
-// zooms into your panel; paint lands only there, as hard pixels with a
-// dithered edge; hold still and it drips; when the can is empty you are done.
+// The wall. The vehicle is a pixel scene (parked: it is a strike); the
+// paint on it is real spray paint, drawn at three times the scene's
+// resolution with soft edges, overspray and drips, and lit by the vehicle
+// (seams, glass and shadow show through, its shine lies over the paint).
+// Others' pieces are already on it; the button below hands you one can in
+// your own colour and one panel of the body (slots.ts). Picking up the can
+// zooms into your panel; when the can is empty, or you say done, that's it.
 
 type Phase = 'idle' | 'spray';
 type Doodle = { count: number; loaded: boolean; marked: boolean; spraying: boolean };
 export type WallLink = { anticipate: (on: boolean) => void };
 
-const BRUSH = 1; // a one-pixel nozzle: zoomed into a panel, that is detail
+const K = 3; // paint resolution over the pixel scene
+const DW = PW * K, DH = PH * K;
+const BRUSH = 1.5; // wall pixels: a can's line, not a pen's
 // The gauge's arc: the left third of a circle around the fingertip.
 const ARC = (() => { const r = 38, a0 = (215 * Math.PI) / 180, a1 = (145 * Math.PI) / 180; return `M ${r * Math.cos(a0)} ${r * Math.sin(a0)} A ${r} ${r} 0 0 0 ${r * Math.cos(a1)} ${r * Math.sin(a1)}`; })();
-
-type PixelTag = { kind: SpriteKind; x: number; y: number; flip: boolean; color: string; seed: string; scale: number };
+const ART: Record<Mode, string> = { SUBWAY: 'metro', TRAIN: 'train', BUS: 'bus', AIRPORT: 'plane' };
 
 function deviceId() {
   try { return localStorage.getItem('lab_device_id') || 'anon'; } catch { return 'anon'; }
@@ -34,66 +37,58 @@ function deviceId() {
 // claims (AI_HANDOFF: graffiti slots), the others are simulated as having
 // taken the first panels in centre-out order, as they would have.
 function mySlot(slots: Slot[], storeKey: string, others: number): Slot {
-  const key = `graffiti_slot_${storeKey}`;
+  const key = `graffiti_slot2_${storeKey}`;
   try {
     const kept = Number(localStorage.getItem(key));
     if (localStorage.getItem(key) !== null && slots[kept]) return slots[kept];
   } catch { /* storage blocked */ }
-  const taken = new Map(slots.slice(0, Math.min(others, slots.length)).map((s, k) => [s.i, k]));
+  const taken = new Map(slots.slice(0, Math.min(others, slots.length - 1)).map((s, k) => [s.i, k]));
   const slot = assignSlot(slots, taken, deviceId());
   try { localStorage.setItem(key, String(slot.i)); } catch { /* storage blocked */ }
   return slot;
 }
 
-// Others' marks, one stencil per panel, centre-out. Past capacity, a newer
-// mark replaces the oldest, as a buffed wall gets painted again.
-function placeTags(slots: Slot[], mine: Slot | null, seed: string, count: number): PixelTag[] {
-  const rand = rng(seed);
-  const free = slots.filter(s => s.i !== mine?.i);
-  return Array.from({ length: Math.min(count, free.length) }, (_, k) => {
-    const slot = free[k];
-    const kind = SPRITE_KINDS[Math.floor(rand() * SPRITE_KINDS.length)];
-    const [w0, h0] = spriteSize(kind);
-    // As big as the panel comfortably holds
-    const scale = Math.max(1, Math.min(1.8, (slot.w * 0.72) / w0, (slot.h * 0.78) / h0));
-    const w = w0 * scale, h = h0 * scale;
-    return {
-      kind, flip: rand() < 0.5, color: colourFor(`${seed}|${k}`), seed: `${seed}|${k}`, scale,
-      x: slot.x + slot.w / 2 + (rand() - 0.5) * Math.max(0, slot.w - w - 2) * 0.7,
-      y: slot.y + slot.h / 2 + (rand() - 0.5) * Math.max(0, slot.h - h - 2) * 0.7,
-    };
-  });
+// Drawn art for the vehicle (docs/design/pixel-brief), when it exists.
+function useArt(mode: Mode) {
+  const [art, setArt] = useState<{ veh: HTMLImageElement | null; mask: HTMLImageElement | null }>({ veh: null, mask: null });
+  useEffect(() => {
+    let alive = true;
+    const load = (src: string) => new Promise<HTMLImageElement | null>(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+    Promise.all([load(`/lab/wall/${ART[mode]}.png`), load(`/lab/wall/${ART[mode]}-mask.png`)]).then(([veh, mask]) => { if (alive && (veh || mask)) setArt({ veh, mask }); });
+    return () => { alive = false; };
+  }, [mode]);
+  return art;
 }
 
-// A spray stamp: a solid core and a dithered fringe, in whole pixels.
-function stamp(g: CanvasRenderingContext2D, x: number, y: number, w: number, rand: () => number) {
-  const R = Math.ceil(w + 1.5);
-  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
-    const d = Math.hypot(dx, dy);
-    if (d <= w * 0.8 || (d <= w + 1.3 && rand() < (w < 1.2 ? 0.07 : 0.28))) g.fillRect(Math.round(x + dx), Math.round(y + dy), 1, 1);
-  }
-}
-function paintStroke(g: CanvasRenderingContext2D, s: Stroke, index: number) {
-  g.fillStyle = s.c;
+// A stroke as a can lays it: a solid core, a soft overspray halo, round ends.
+function paintStroke(g: CanvasRenderingContext2D, s: Stroke) {
+  g.save();
+  g.strokeStyle = s.c; g.fillStyle = s.c; g.lineCap = 'round'; g.lineJoin = 'round';
   if (s.d) {
     const [x, y, , y2] = s.p;
-    g.fillRect(Math.round(x), Math.round(y), 1, Math.max(1, Math.round((y2 ?? y) - y)));
-    g.fillRect(Math.round(x) - 1, Math.round(y2 ?? y), 3, 2);
+    const end = (y2 ?? y) * K;
+    g.lineWidth = K * 0.7;
+    g.beginPath(); g.moveTo(x * K, y * K); g.lineTo(x * K, end); g.stroke();
+    g.beginPath(); g.ellipse(x * K, end + K * 0.3, K * 0.55, K * 0.7, 0, 0, Math.PI * 2); g.fill();
+    g.restore();
     return;
   }
-  const rand = rng(`${index}|${s.p.length}|${s.p[0]}`);
-  for (let i = 0; i < s.p.length; i += 2) {
-    const x = s.p[i], y = s.p[i + 1];
-    if (i === 0) { stamp(g, x, y, s.w, rand); continue; }
-    const px = s.p[i - 2], py = s.p[i - 1];
-    const steps = Math.max(1, Math.ceil(Math.hypot(x - px, y - py) / 0.8));
-    for (let k = 1; k <= steps; k++) stamp(g, px + ((x - px) * k) / steps, py + ((y - py) * k) / steps, s.w, rand);
+  const path = new Path2D();
+  path.moveTo(s.p[0] * K, s.p[1] * K);
+  if (s.p.length === 2) path.lineTo(s.p[0] * K + 0.01, s.p[1] * K);
+  for (let i = 2; i < s.p.length; i += 2) {
+    const mx = ((s.p[i - 2] + s.p[i]) / 2) * K, my = ((s.p[i - 1] + s.p[i + 1]) / 2) * K;
+    path.quadraticCurveTo(s.p[i - 2] * K, s.p[i - 1] * K, mx, my);
   }
+  path.lineTo(s.p[s.p.length - 2] * K, s.p[s.p.length - 1] * K);
+  g.globalAlpha = 0.35; g.shadowColor = s.c; g.shadowBlur = K * 2.4; g.lineWidth = s.w * K * 1.5; g.stroke(path);
+  g.globalAlpha = 1; g.shadowBlur = K * 0.8; g.lineWidth = s.w * K; g.stroke(path);
+  g.restore();
 }
 
-export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, onOpen, onClose, onLink, onHint, footer }: {
+export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, onOpen, onClose, onLink, onHint, footer, note }: {
   mode: Mode; seed: string; storeKey: string; doodle: Doodle; lang: Lang; open: boolean; onOpen: () => void; onClose: () => void;
-  onLink?: (link: WallLink | null) => void; onHint?: () => void; footer?: React.ReactNode;
+  onLink?: (link: WallLink | null) => void; onHint?: () => void; footer?: React.ReactNode; note?: string;
 }) {
   const reduce = useReducedMotion();
   const color = MODE_COLOR[mode];
@@ -107,9 +102,11 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
   const spraying = phase === 'spray';
   const strokes = spraying ? draft ?? saved : saved;
   const left = paintLeft(strokes);
+  const done = saved.length > 0; // one can per strike: once it's up, it's up
   const others = Math.max(doodle.count - (doodle.marked ? 1 : 0), 0);
   const scene = useMemo(() => sceneFor(mode, color.main), [mode, color.main]);
   const slots = useMemo(() => slotsFor(scene.body), [scene]);
+  const art = useArt(mode);
   const [slot, setSlot] = useState<Slot | null>(null);
   // Claimed once the count is known, so the simulated claims are right.
   useEffect(() => {
@@ -117,7 +114,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     const t = setTimeout(() => setSlot(mySlot(slots, storeKey, others)), 0);
     return () => clearTimeout(t);
   }, [slots, storeKey, others, doodle.loaded]);
-  const tags = useMemo(() => placeTags(slots, slot, seed, others), [slots, slot, seed, others]);
+  const tags = useMemo(() => tagsFor(seed, others, scene.body, K), [seed, others, scene]);
 
   const live = useRef({ strokes, left, spraying, mine, slot, onChange: (s: Stroke[]) => setDraft(s), onEmpty: () => {} });
   const ext = useRef({ onHint, onLink, marked: doodle.marked });
@@ -128,11 +125,11 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
 
   useEffect(() => { const t = setTimeout(() => { setSaved(loadDrawing(storeKey) ?? []); setMine(myColour()); }, 0); return () => clearTimeout(t); }, [storeKey]);
   useEffect(() => {
-    if (open && doodle.marked && phase === 'idle') { const t = setTimeout(() => setPhase('spray'), 0); return () => clearTimeout(t); }
-  }, [open, doodle.marked, phase]);
+    if (open && doodle.marked && !done && phase === 'idle') { const t = setTimeout(() => setPhase('spray'), 0); return () => clearTimeout(t); }
+  }, [open, doodle.marked, done, phase]);
 
   const finish = async (list = draft) => {
-    if (list) {
+    if (list?.length) {
       setSaving(true);
       await uploadDrawing(storeKey, list);
       setSaved(list);
@@ -158,7 +155,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     const view = canvas.current;
     const ctx = view?.getContext('2d');
     if (!view || !ctx) return;
-    const make = () => { const c = document.createElement('canvas'); c.width = PW; c.height = PH; return [c, c.getContext('2d', { willReadFrequently: true })!] as const; };
+    const make = (w = PW, h = PH) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d', { willReadFrequently: true })!] as const; };
     const [bg, bctx] = make();
     scene.background(bctx);
     const [nb, nctx] = make();
@@ -166,102 +163,78 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     boxBlur(nctx, 2);
     bctx.drawImage(nb, 0, 0);
     const [veh, vctx] = make();
-    scene.vehicle(vctx);
+    if (art.veh) vctx.drawImage(art.veh, 0, 0, PW, PH); else scene.vehicle(vctx);
     const [mask, mctx] = make();
     scene.mask(mctx);
-    const maskData = mctx.getImageData(0, 0, PW, PH).data;
-    const onBody = (x: number, y: number) => x >= 0 && y >= 0 && x < PW && y < PH && maskData[(Math.floor(y) * PW + Math.floor(x)) * 4 + 3] > 0;
+    if (art.mask) { mctx.clearRect(0, 0, PW, PH); mctx.drawImage(art.mask, 0, 0, PW, PH); }
+    else if (art.veh) { mctx.globalCompositeOperation = 'destination-in'; mctx.drawImage(art.veh, 0, 0, PW, PH); mctx.globalCompositeOperation = 'source-over'; }
     const [fg, fctx] = make();
     scene.foreground(fctx);
-    // Both edges fade into the card, so the scene has no hard sides.
-    const [edges, ectx] = make();
-    const fade = ectx.createLinearGradient(0, 0, PW, 0);
-    fade.addColorStop(0, 'rgba(14,15,18,1)'); fade.addColorStop(0.07, 'rgba(14,15,18,0)'); fade.addColorStop(0.93, 'rgba(14,15,18,0)'); fade.addColorStop(1, 'rgba(14,15,18,1)');
-    ectx.fillStyle = fade; ectx.fillRect(0, 0, PW, PH);
-    // How lit the body is at each pixel, so paint can sit *on* it: seams,
-    // window frames and door edges darken the paint over them, glass makes
-    // it duskier. Mid silver maps to ~white, so bright paint stays bright.
+    // How lit the body is at each point, so paint sits *on* it: seams, frames
+    // and glass darken the paint over them. Smoothed when scaled up.
     const [light, lctx] = make();
-    {
-      const v = vctx.getImageData(0, 0, PW, PH);
-      const out = lctx.createImageData(PW, PH);
-      for (let i = 0; i < v.data.length; i += 4) {
-        const l = (v.data[i] * 0.3 + v.data[i + 1] * 0.59 + v.data[i + 2] * 0.11) / 255;
-        const k = Math.min(255, Math.round(255 * Math.min(1, 0.35 + l * 1.25)));
-        out.data[i] = out.data[i + 1] = out.data[i + 2] = k; out.data[i + 3] = 255;
-      }
-      lctx.putImageData(out, 0, 0);
-    }
-    // The body's own highlights (the roof's shine, lamp streaks): laid back
-    // over the paint so it sits on curved, lit metal and keeps its gloss.
     const [gloss, glctx] = make();
     {
       const v = vctx.getImageData(0, 0, PW, PH);
-      const out = glctx.createImageData(PW, PH);
+      const lo = lctx.createImageData(PW, PH), go = glctx.createImageData(PW, PH);
       for (let i = 0; i < v.data.length; i += 4) {
         const l = (v.data[i] * 0.3 + v.data[i + 1] * 0.59 + v.data[i + 2] * 0.11) / 255;
-        if (l > 0.7) { out.data[i] = 255; out.data[i + 1] = 246; out.data[i + 2] = 228; out.data[i + 3] = Math.round(((l - 0.7) / 0.3) * 110); }
+        const k = Math.min(255, Math.round(255 * Math.min(1, 0.38 + l * 1.2)));
+        lo.data[i] = lo.data[i + 1] = lo.data[i + 2] = k; lo.data[i + 3] = 255;
+        if (l > 0.7) { go.data[i] = 255; go.data[i + 1] = 246; go.data[i + 2] = 228; go.data[i + 3] = Math.round(((l - 0.7) / 0.3) * 90); }
       }
-      glctx.putImageData(out, 0, 0);
+      lctx.putImageData(lo, 0, 0); glctx.putImageData(go, 0, 0);
     }
-    const [graf, gctx] = make();
-    const [tagLayer, tctx] = make();
-    const [strokeLayer, sctx] = make();
-    const [paintAlpha, pactx] = make();
+    // High-res layers: the scene scaled up in hard pixels, the paint in soft.
+    const up = (src: HTMLCanvasElement, smooth: boolean) => { const [c, g] = make(DW, DH); g.imageSmoothingEnabled = smooth; g.drawImage(src, 0, 0, DW, DH); return c; };
+    const bgHi = up(bg, false), vehHi = up(veh, false), fgHi = up(fg, false), maskHi = up(mask, false), lightHi = up(light, true), glossHi = up(gloss, true);
+    // Grain: paint on metal is never flat; a faint mottle shows the surface.
+    const [grain, grctx] = make(DW, DH);
+    {
+      const img = grctx.createImageData(DW, DH);
+      for (let i = 0; i < img.data.length; i += 4) { const v = 225 + Math.floor(Math.random() * 30); img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+      grctx.putImageData(img, 0, 0);
+    }
+    // Others' pieces, painted once
+    const [tagsHi, tgctx] = make(DW, DH);
+    tags.forEach(t => paintTag(tgctx, t));
+    const [paint, pctx] = make(DW, DH);
+    const [alpha, actx] = make(DW, DH);
+    const maskData = mctx.getImageData(0, 0, PW, PH).data;
+    const onBody = (x: number, y: number) => x >= 0 && y >= 0 && x < PW && y < PH && maskData[(Math.floor(y) * PW + Math.floor(x)) * 4 + 3] > 0;
 
     const redraw = (list: Stroke[]) => {
-      // Others' pieces (each has its own outline, shine and drips)
-      tctx.clearRect(0, 0, PW, PH);
+      pctx.clearRect(0, 0, DW, DH);
+      pctx.drawImage(tagsHi, 0, 0);
       const own = live.current.slot;
-      tags.forEach(t => drawSprite(tctx, t.kind, t.x, t.y, t.color, t.flip, t.seed, t.scale));
-      // Marked but not yet painted: a fist in your colour holds your panel.
-      if (own && ext.current.marked && !list.length) drawSprite(tctx, 'fist', own.x + own.w / 2, own.y + own.h / 2, live.current.mine, false, 'mine', Math.max(1, Math.min(1.6, (own.h * 0.7) / 24)));
-      // Your strokes, inside your panel, with a dark keyline so they read
-      sctx.clearRect(0, 0, PW, PH);
-      sctx.save();
-      if (own) { sctx.beginPath(); sctx.rect(own.x, own.y, own.w, own.h); sctx.clip(); }
-      list.forEach((s, i) => paintStroke(sctx, s, i));
-      sctx.restore();
-      const painted = sctx.getImageData(0, 0, PW, PH);
-      const a = painted.data;
-      const line: number[] = [];
-      for (let y = 1; y < PH - 1; y++) for (let x = 1; x < PW - 1; x++) {
-        const i = (y * PW + x) * 4;
-        if (a[i + 3] > 0 || !onBody(x, y)) continue;
-        if (a[i + 3 - 4] > 0 || a[i + 3 + 4] > 0 || a[i + 3 - PW * 4] > 0 || a[i + 3 + PW * 4] > 0) line.push(i);
-      }
-      line.forEach(i => { a[i] = 18; a[i + 1] = 19; a[i + 2] = 23; a[i + 3] = 200; });
-      sctx.putImageData(painted, 0, 0);
-      gctx.clearRect(0, 0, PW, PH);
-      gctx.globalAlpha = 0.92; // others' pieces a little weathered; yours fresh
-      gctx.drawImage(tagLayer, 0, 0);
-      gctx.globalAlpha = 1;
-      gctx.drawImage(strokeLayer, 0, 0);
-      gctx.globalCompositeOperation = 'destination-in';
-      gctx.drawImage(mask, 0, 0);
-      gctx.globalCompositeOperation = 'source-over';
-      // Paint takes the body's light: multiply, then keep only painted pixels.
-      pactx.clearRect(0, 0, PW, PH);
-      pactx.drawImage(graf, 0, 0);
-      gctx.globalCompositeOperation = 'multiply';
-      gctx.drawImage(light, 0, 0);
-      gctx.globalCompositeOperation = 'destination-in';
-      gctx.drawImage(paintAlpha, 0, 0);
-      gctx.globalCompositeOperation = 'source-atop';
-      gctx.drawImage(gloss, 0, 0);
-      gctx.globalCompositeOperation = 'source-over';
+      pctx.save();
+      if (own) { pctx.beginPath(); pctx.rect(own.x * K, own.y * K, own.w * K, own.h * K); pctx.clip(); }
+      list.forEach(s => paintStroke(pctx, s));
+      pctx.restore();
+      pctx.globalCompositeOperation = 'destination-in';
+      pctx.drawImage(maskHi, 0, 0);
+      // lit by the vehicle, mottled by its surface, then its shine on top
+      actx.clearRect(0, 0, DW, DH); actx.drawImage(paint, 0, 0);
+      pctx.globalCompositeOperation = 'multiply';
+      pctx.drawImage(lightHi, 0, 0);
+      pctx.drawImage(grain, 0, 0);
+      pctx.globalCompositeOperation = 'destination-in';
+      pctx.drawImage(alpha, 0, 0);
+      pctx.globalCompositeOperation = 'source-atop';
+      pctx.drawImage(glossHi, 0, 0);
+      pctx.globalCompositeOperation = 'source-over';
     };
     layers.current = { redraw };
     redraw(live.current.strokes);
 
-    // Ambient life, nothing that drives away: the strike sign, dust in the light.
+    // Ambient life, nothing that drives away: dust in the light.
     const dust = Array.from({ length: 14 }, () => ({ x: Math.random() * PW, y: Math.random() * 100, v: 0.02 + Math.random() * 0.05 }));
     const puffs: { x: number; y: number; vx: number; vy: number; life: number; c: string }[] = [];
     let anticipate = false;
     let t = 0;
     let nextHint = 2.5;
     let pointer: { x: number; y: number } | null = null;
-    const ring = { x: 0, y: 0, until: 0 };
+    const ring = { until: 0 };
 
     // Spraying
     let current: Stroke | null = null;
@@ -287,7 +260,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
           stroke.p = [x, y, x, y + len + 1];
           redraw(liveList());
         }, 90);
-      }, 380);
+      }, 420);
       drip = d;
     };
     let screen = { x: 0, y: 0 };
@@ -319,14 +292,14 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       const total = live.current.strokes.reduce((n, s) => n + s.p.length / 2, 0);
       if (total + current.p.length / 2 >= LIMITS.points) return;
       const [lx, ly] = current.p.slice(-2);
-      if (Math.hypot(x - lx, y - ly) < 0.8) return;
+      if (Math.hypot(x - lx, y - ly) < 0.6) return;
       if (spent + strokeCost({ ...current, p: [...current.p, x, y] }) >= live.current.left) { live.current.onEmpty(); return; }
       stopDrip();
       current.p.push(x, y);
       armDrip(x, y);
       redraw(liveList());
     };
-    const up = () => {
+    const lift = () => {
       pointer = null;
       if (!current && !drip) return;
       const d = drip;
@@ -337,8 +310,8 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     };
     view.addEventListener('pointerdown', down);
     view.addEventListener('pointermove', move);
-    view.addEventListener('pointerup', up);
-    view.addEventListener('pointercancel', up);
+    view.addEventListener('pointerup', lift);
+    view.addEventListener('pointercancel', lift);
     ext.current.onLink?.({ anticipate: on => { anticipate = on; } });
 
     let visible = true;
@@ -346,7 +319,6 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     io.observe(view);
     let raf = 0;
     let last = performance.now();
-    const signText = ' !  !  !  ';
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw);
       if (!visible || now - last < 33) return;
@@ -354,39 +326,24 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       last = now;
       t += dt;
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(bg, 0, 0);
-      // The sign: amber dots scrolling, or "!!!" while you press the button
-      const s = scene.sign;
-      ctx.fillStyle = '#060606'; ctx.fillRect(s.x - 2, s.y - 2, s.w + 4, 11);
-      ctx.fillStyle = '#2B2D32'; ctx.fillRect(s.x - 2, s.y - 3, s.w + 4, 1);
-      const offset = reduce ? 0 : Math.floor(t * 14) % (signText.length * 6);
-      if (anticipate) ledText(ctx, '!!!', s.x + s.w / 2 - 9, s.y, '#FFB12E', '#24170A');
-      else {
-        ledText(ctx, ' '.repeat(Math.ceil(s.w / 6) + 1), s.x, s.y, '#FFB12E', '#24170A', { x: s.x, w: s.w });
-        ledText(ctx, signText + signText, s.x - offset, s.y, '#FFB12E', undefined, { x: s.x, w: s.w });
-      }
-      ctx.drawImage(veh, 0, 0);
-      ctx.drawImage(graf, 0, 0);
-      // Spraying: everything but your panel steps back, and the panel's edge
-      // marches, so you know where your paint will land.
+      ctx.drawImage(bgHi, 0, 0);
+      ctx.drawImage(vehHi, 0, 0);
+      ctx.drawImage(paint, 0, 0);
+      // Headlights flash while you touch the button
+      if (anticipate && Math.floor(t * 8) % 2 === 0) scene.lamps.forEach(([lx, ly]) => { ctx.fillStyle = '#FFF4D0'; ctx.fillRect((lx - 2) * K, (ly - 1) * K, 5 * K, 3 * K); });
+      ctx.drawImage(fgHi, 0, 0);
+      // Spraying: everything but your panel steps back; the panel's edge marches.
       const own = live.current.slot;
       if (live.current.spraying && own) {
+        const [x, y, w, h] = [own.x * K, own.y * K, own.w * K, own.h * K];
         ctx.fillStyle = 'rgba(8,9,11,0.55)';
-        ctx.fillRect(0, 0, PW, own.y); ctx.fillRect(0, own.y + own.h, PW, PH - own.y - own.h);
-        ctx.fillRect(0, own.y, own.x, own.h); ctx.fillRect(own.x + own.w, own.y, PW - own.x - own.w, own.h);
-        const march = reduce ? 0 : Math.floor(t * 8);
-        const edge: [number, number][] = [];
-        for (let x = own.x - 1; x <= own.x + own.w; x++) edge.push([x, own.y - 1]);
-        for (let y = own.y; y <= own.y + own.h; y++) edge.push([own.x + own.w, y]);
-        for (let x = own.x + own.w - 1; x >= own.x - 1; x--) edge.push([x, own.y + own.h]);
-        for (let y = own.y + own.h - 1; y >= own.y; y--) edge.push([own.x - 1, y]);
-        edge.forEach(([x, y], k) => { ctx.fillStyle = (k + march) % 4 < 2 ? live.current.mine : 'rgba(255,255,255,0.15)'; ctx.fillRect(x, y, 1, 1); });
+        ctx.fillRect(0, 0, DW, y); ctx.fillRect(0, y + h, DW, DH - y - h); ctx.fillRect(0, y, x, h); ctx.fillRect(x + w, y, DW - x - w, h);
+        ctx.save();
+        ctx.setLineDash([K * 2, K * 2]); ctx.lineDashOffset = reduce ? 0 : -t * K * 8;
+        ctx.strokeStyle = live.current.mine; ctx.lineWidth = K * 0.6; ctx.strokeRect(x - K * 0.5, y - K * 0.5, w + K, h + K);
+        ctx.restore();
       }
-      // Headlights flash while you touch the button
-      if (anticipate && Math.floor(t * 8) % 2 === 0) scene.lamps.forEach(([lx, ly]) => { ctx.fillStyle = '#FFF4D0'; ctx.fillRect(lx - 2, ly - 1, 5, 3); });
-      ctx.drawImage(fg, 0, 0);
-      // Dust
-      if (!reduce) dust.forEach(d => { d.y += d.v; d.x += Math.sin(t + d.y) * 0.03; if (d.y > 104) { d.y = 0; d.x = Math.random() * PW; } ctx.fillStyle = 'rgba(255,220,170,0.35)'; ctx.fillRect(Math.round(d.x), Math.round(d.y), 1, 1); });
+      if (!reduce) dust.forEach(d => { d.y += d.v; d.x += Math.sin(t + d.y) * 0.03; if (d.y > 104) { d.y = 0; d.x = Math.random() * PW; } ctx.fillStyle = 'rgba(255,220,170,0.35)'; ctx.fillRect(Math.round(d.x) * K, Math.round(d.y) * K, K, K); });
       // An unspoken invitation: a puff from where the button is
       if (!reduce && !ext.current.marked && !live.current.spraying && t > nextHint) {
         nextHint = t + 7;
@@ -396,14 +353,12 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
         for (let i = 0; i < 26; i++) puffs.push({ x: PW - 30 + Math.random() * 6, y: PH - 4, vx: (tx0 - PW + 30) * (0.9 + Math.random() * 0.3), vy: (ty0 - PH) * (0.9 + Math.random() * 0.3), life: 0.55 + Math.random() * 0.2, c });
         ext.current.onHint?.();
       }
-      // While spraying: mist at the nozzle.
       if (live.current.spraying && pointer) {
         ring.until = t + 0.9;
         if (current) for (let i = 0; i < 2; i++) puffs.push({ x: pointer.x + (Math.random() - 0.5) * 2, y: pointer.y + (Math.random() - 0.5) * 2, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, life: 0.15, c: live.current.mine });
       }
-      // The paint gauge: a thick arc to the left of your finger, like a
-      // stamina bar in a game, out from under the thumb. It drains as you
-      // spray, flashes when nearly empty, fades shortly after you lift.
+      // The paint gauge: a thick arc to the left of the finger, like a game's
+      // stamina bar, out from under the thumb.
       const g = gauge.current;
       if (g) {
         const on = live.current.spraying && t < ring.until;
@@ -416,13 +371,19 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
           if (fill) { fill.style.strokeDasharray = `${level} 1`; fill.style.stroke = low ? (Math.floor(t * 6) % 2 ? '#FF5C5C' : '#FF9A9A') : live.current.mine; }
         }
       }
+      ctx.imageSmoothingEnabled = true;
       for (let i = puffs.length - 1; i >= 0; i--) {
         const p = puffs[i];
         p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt;
         if (p.life <= 0) { puffs.splice(i, 1); continue; }
-        ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, p.life * 3); ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); ctx.globalAlpha = 1;
+        ctx.fillStyle = p.c; ctx.globalAlpha = Math.min(1, p.life * 3) * 0.8;
+        ctx.beginPath(); ctx.arc(p.x * K, p.y * K, K * 0.6, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
       }
-      ctx.drawImage(edges, 0, 0);
+      // Both sides fade into the card
+      const fade = ctx.createLinearGradient(0, 0, DW, 0);
+      fade.addColorStop(0, 'rgba(14,15,18,1)'); fade.addColorStop(0.07, 'rgba(14,15,18,0)'); fade.addColorStop(0.93, 'rgba(14,15,18,0)'); fade.addColorStop(1, 'rgba(14,15,18,1)');
+      ctx.fillStyle = fade; ctx.fillRect(0, 0, DW, DH);
     };
     raf = requestAnimationFrame(draw);
 
@@ -432,34 +393,46 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       stopDrip(false);
       view.removeEventListener('pointerdown', down);
       view.removeEventListener('pointermove', move);
-      view.removeEventListener('pointerup', up);
-      view.removeEventListener('pointercancel', up);
+      view.removeEventListener('pointerup', lift);
+      view.removeEventListener('pointercancel', lift);
       ext.current.onLink?.(null);
       layers.current = null;
     };
-  }, [scene, tags, seed, mode, reduce]);
+  }, [scene, tags, seed, mode, reduce, art]);
 
-  useEffect(() => { layers.current?.redraw(strokes); }, [strokes, tags, doodle.marked, mine, slot]);
+  useEffect(() => { layers.current?.redraw(strokes); }, [strokes, tags, mine, slot]);
   useEffect(() => { if (canvas.current) canvas.current.style.touchAction = spraying ? 'none' : 'pan-y'; }, [spraying]);
 
-  const pct = Math.round((left / PAINT) * 100);
   // Zoom so your panel fills most of the frame, kept inside the scene.
   const zoom = (() => {
     if (!spraying || !slot) return { x: '0%', y: '0%', scale: 1 };
-    const s = Math.max(2, Math.min(4, Math.min(PW / slot.w, PH / slot.h) * 0.7));
+    const s = Math.max(1.3, Math.min(3, Math.min(PW / slot.w, PH / slot.h) * 0.85));
     const fx = (slot.x + slot.w / 2) / PW, fy = (slot.y + slot.h / 2) / PH;
     const clamp = (v: number) => Math.min(0, Math.max(1 - s, v));
     return { x: `${clamp(0.5 - fx * s) * 100}%`, y: `${clamp(0.5 - fy * s) * 100}%`, scale: s };
   })();
   const caption = !doodle.loaded ? null
     : spraying ? (empty || left <= 0.5 ? tx(lang, '这罐漆用完了', 'This can is empty') : tx(lang, '这块车身归你：喷几笔，把火气留在车上', 'This panel is yours: spray, and leave your anger on the train'))
-      : doodle.marked ? tx(lang, `你的涂鸦和 ${others} 人的一起留在车上`, `Your mark is on it, with ${others} others`) : null;
+      : done ? tx(lang, `你的涂鸦已经留在车上了，和 ${others} 人的一起`, `Your piece is on the train, with ${others} others`) : null;
+  // The station sign carries the wall's news, readable, in the sign's amber.
+  const sign = scene.sign;
+  const signLines = [
+    doodle.loaded ? tx(lang, `已有 ${doodle.count} 人在车上涂鸦`, `${doodle.count} people sprayed this`) : '',
+    note ?? '',
+  ].filter(Boolean);
 
   return (
     <div className="relative overflow-hidden rounded-[20px]" style={{ background: '#0E0F12' }}>
       <div className="relative overflow-hidden" style={{ aspectRatio: `${PW} / ${PH}` }}>
-        <motion.canvas ref={canvas} width={PW} height={PH} className="block w-full" initial={false} animate={zoom} transition={reduce ? { duration: 0 } : { duration: 0.55, ease: EASE }}
-          style={{ aspectRatio: `${PW} / ${PH}`, imageRendering: 'pixelated', cursor: spraying ? 'crosshair' : 'default', transformOrigin: '0 0' }} />
+        <motion.canvas ref={canvas} width={DW} height={DH} className="block w-full" initial={false} animate={zoom} transition={reduce ? { duration: 0 } : { duration: 0.55, ease: EASE }}
+          style={{ aspectRatio: `${PW} / ${PH}`, cursor: spraying ? 'crosshair' : 'default', transformOrigin: '0 0' }} />
+        <AnimatePresence>
+          {!spraying && signLines.length > 0 && (
+            <motion.div key="sign" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute" style={{ left: `${(Math.max(16, Math.min(sign.x, PW - 150)) / PW) * 100}%`, top: `${(Math.max(2, sign.y - 4) / PH) * 100}%`, width: `${(134 / PW) * 100}%` }}>
+              <LedSign lines={signLines} />
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* Zoomed in, the frame fades out on every side, as the scene's own sides do */}
         <motion.span aria-hidden className="absolute inset-0 pointer-events-none" initial={false} animate={{ opacity: spraying ? 1 : 0 }} transition={{ duration: 0.4 }}
           style={{ background: 'linear-gradient(180deg, #0E0F12 0%, rgba(14,15,18,0) 16%, rgba(14,15,18,0) 84%, #0E0F12 100%), linear-gradient(90deg, #0E0F12 0%, rgba(14,15,18,0) 10%, rgba(14,15,18,0) 90%, #0E0F12 100%)' }} />
@@ -471,18 +444,12 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
           </svg>
         </div>
       </div>
-      {doodle.loaded && !spraying && (
-        <span className={`absolute left-3 top-3 h-7 pl-2 pr-2.5 rounded-full flex items-center gap-1.5 tabular-nums ${TYPE.caption}`} style={{ background: 'rgba(10,11,13,0.6)', color: C.text, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}>
-          <span className="flex">{['#FF4FA3', '#38D9F5', '#FFD93D'].map(c => <i key={c} className="w-[6px] h-[6px] -mr-[1px]" style={{ background: c }} />)}</span>
-          {tx(lang, `已有 ${doodle.count} 人在车上涂鸦`, `Sprayed by ${doodle.count} people`)}
-        </span>
-      )}
-      {(caption || (!spraying && doodle.marked && left > 0.5)) && (
+      {(caption || (!spraying && doodle.marked && !done)) && (
         <div className="px-4 pt-2 pb-1 flex items-center justify-center gap-2 text-center">
           {caption && <p className={TYPE.label} style={{ color: empty ? color.main : C.text2 }}>{caption}</p>}
-          {!spraying && doodle.marked && left > 0.5 && (
+          {!spraying && doodle.marked && !done && (
             <button onClick={onOpen} className={`shrink-0 h-7 px-2.5 rounded-full ${TYPE.caption} font-semibold`} style={{ background: C.surface3, color: '#FFFFFF' }}>
-              {saved.length ? tx(lang, `继续喷 · 剩 ${pct}%`, `Spray more · ${pct}%`) : tx(lang, '拿起喷罐', 'Pick up the can')}
+              {tx(lang, '拿起喷罐', 'Pick up the can')}
             </button>
           )}
         </div>
@@ -496,11 +463,42 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
               <ArrowCounterClockwise size={17} weight="bold" />{tx(lang, '撤销一笔', 'Undo')}
             </motion.button>
             <motion.button whileTap={{ scale: 0.97 }} onClick={() => finish()} disabled={saving} className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 disabled:opacity-60 ${TYPE.action}`} style={FILLED(color.deep)}>
-              <Check size={17} weight="bold" />{saving ? tx(lang, '保存中…', 'Saving…') : tx(lang, `喷好了 · 余漆 ${pct}%`, `Done · ${pct}% left`)}
+              <Check size={17} weight="bold" />{saving ? tx(lang, '保存中…', 'Saving…') : tx(lang, '喷好了', 'Done')}
             </motion.button>
           </div>
         ) : footer}
       </div>
+    </div>
+  );
+}
+
+// A platform LED board: amber text on black, a faint dot screen over it,
+// one message at a time; one that is too long scrolls through, as they do.
+function LedSign({ lines }: { lines: string[] }) {
+  const [i, setI] = useState(0);
+  const reduce = useReducedMotion();
+  const box = useRef<HTMLDivElement>(null);
+  const [over, setOver] = useState(0);
+  useEffect(() => {
+    if (lines.length < 2) return;
+    const t = setInterval(() => setI(k => (k + 1) % lines.length), 4200);
+    return () => clearInterval(t);
+  }, [lines.length]);
+  const text = lines[i % lines.length];
+  useEffect(() => {
+    const t = setTimeout(() => { const p = box.current?.querySelector('p'); setOver(p && box.current ? Math.max(0, p.scrollWidth - box.current.clientWidth + 12) : 0); }, 400);
+    return () => clearTimeout(t);
+  }, [text]);
+  return (
+    <div ref={box} className="relative overflow-hidden rounded-[3px] px-1.5 py-[3px]" style={{ background: '#060606', boxShadow: '0 0 0 1.5px #2B2D32, 0 2px 6px rgba(0,0,0,0.6)' }}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.p key={text} initial={{ y: reduce ? 0 : '100%', opacity: 0 }} animate={{ y: 0, opacity: 1, x: over && !reduce ? [0, 0, -over, -over] : 0 }} exit={{ y: reduce ? 0 : '-100%', opacity: 0 }}
+          transition={{ duration: 0.35, ease: EASE, x: { duration: 3.4, times: [0, 0.25, 0.85, 1], ease: 'linear' } }}
+          className={`whitespace-nowrap text-[11px] font-semibold leading-[15px] tracking-[0.04em] ${over ? 'inline-block' : 'text-center'}`} style={{ color: '#FFB12E', textShadow: '0 0 6px rgba(255,150,30,0.55)' }}>
+          {text}
+        </motion.p>
+      </AnimatePresence>
+      <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle, transparent 0.6px, rgba(6,6,6,0.55) 1px) 0 0 / 2.5px 2.5px' }} />
     </div>
   );
 }

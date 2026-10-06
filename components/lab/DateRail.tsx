@@ -10,6 +10,7 @@ const TILE_W = 54;
 const PAST_W = 34;
 const GAP = 8;
 const PEEK = 56; // how much of the past strip shows at the left edge
+const MONTH_SEP = 10; // extra room before a new month
 
 // Every column says the same three things on the same three lines:
 //   weekday · date · what strikes (signage badges, or nothing).
@@ -26,6 +27,11 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
   const days = tiles.filter((t): t is Extract<RailTile, { kind: 'day' }> => t.kind === 'day');
   const past = days.filter(t => t.date < today);
   const future = days.filter(t => t.date >= today);
+  const pastMonths = past.reduce<(typeof past)[]>((groups, t) => {
+    const last = groups[groups.length - 1];
+    if (last && last[0].date.slice(0, 7) === t.date.slice(0, 7)) last.push(t); else groups.push([t]);
+    return groups;
+  }, []);
 
   // First paint: the selected day (today, unless a link says otherwise)
   // sits at the left with the edge of the past showing. Later selections
@@ -55,11 +61,22 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
   return (
     <motion.div ref={ref} layoutScroll onScroll={onScroll}
       className="relative flex items-end overflow-x-auto px-4 pt-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ gap: GAP }}>
+      {/* The past: one sunken strip, still split and labelled by month */}
       {past.length > 0 && (
         <div className="shrink-0 flex flex-col mr-1">
-          <span className="h-[18px] pl-2 text-[11.5px] font-medium" style={{ color: C.text3 }}>{lang === 'en' ? 'Past' : '过去'}</span>
+          <div className="h-[18px] flex px-1">
+            {pastMonths.map((g, k) => (
+              <span key={g[0].date} className="text-[11.5px] font-semibold whitespace-nowrap overflow-visible" style={{ width: g.length * PAST_W + (k ? MONTH_SEP : 0), paddingLeft: k ? MONTH_SEP + 2 : 4, color: C.text3 }}>
+                {monthLabel(g[0].date, lang)}{k === pastMonths.length - 1 ? ` · ${lang === 'en' ? 'past' : '过去'}` : ''}
+              </span>
+            ))}
+          </div>
           <div className="h-[76px] flex px-1 rounded-[22px]" style={{ background: 'rgba(0,0,0,0.35)', boxShadow: `inset 0 1px 3px rgba(0,0,0,0.6), inset 0 0 0 1px ${C.line}` }}>
-            {past.map(tile => <Day key={tile.date} tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} past />)}
+            {pastMonths.map((g, k) => (
+              <div key={g[0].date} className="flex" style={{ paddingLeft: k ? MONTH_SEP : 0, borderLeft: k ? `1px solid ${C.lineStrong}` : 'none', marginLeft: k ? 0 : 0 }}>
+                {g.map(tile => <Day key={tile.date} tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} past />)}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -72,8 +89,10 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
         // Strong where you are, weak on the day it continues into.
         const focus = tile.date === selected || (bridge !== null && after?.date === selected) || (fromPrev !== null && before?.date === selected);
         return (
-          <div key={tile.date} data-month={tile.date} className="shrink-0 flex flex-col" style={{ width: TILE_W }}>
-            <span className="h-[18px] pl-1 text-[11.5px] font-medium whitespace-nowrap" style={{ color: C.text3 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
+          <div key={tile.date} data-month={tile.date} className="relative shrink-0 flex flex-col" style={{ width: TILE_W, marginLeft: tile.monthStart && i > 0 ? MONTH_SEP : 0 }}>
+            {/* A new month: its name in full strength, and a rule before it */}
+            {tile.monthStart && i > 0 && <i aria-hidden className="absolute top-[3px] bottom-[2px] w-px" style={{ left: -(MONTH_SEP + GAP) / 2 - 0.5, background: C.lineStrong }} />}
+            <span className="h-[18px] pl-1 text-[11.5px] whitespace-nowrap" style={{ color: tile.monthStart ? C.text2 : C.text3, fontWeight: tile.monthStart ? 650 : 500 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
             <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} />
           </div>
         );
@@ -94,35 +113,38 @@ function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromP
   const modes = strikeModes(tile);
   const isToday = tile.date === today;
   const ring = selected ? '#FFFFFF' : C.surface;
-  const reduce = useReducedMotion();
-  // An overnight strike: a thick bar in the mode's colour runs from this
-  // day's badge to the next day's, under the badges, like a multi-day event
-  // in a calendar. Solid when one of the two days is selected, faint else.
-  const join = bridge ?? fromPrev;
+  // An overnight strike: one capsule in the mode's tint holds the badge on
+  // either side and runs between them, as a multi-day event does in a
+  // calendar. The joined mode sits at the inner end of each badge row, so
+  // the capsule goes badge to badge; each day draws its half, meeting in the
+  // gap, the same weight on both sides.
+  const ordered = [...modes].sort((a, b) => (a === fromPrev ? -1 : b === fromPrev ? 1 : 0)).sort((a, b) => (a === bridge ? 1 : b === bridge ? -1 : 0));
+  const rowW = 18 + (Math.min(3, ordered.length) - 1) * 14;
+  // Opaque, so it reads the same over the white selected day and the dark one.
+  const tint = (m: Mode) => (focus ? MODE_COLOR[m].deep : `color-mix(in srgb, ${MODE_COLOR[m].main} 34%, ${C.surface2})`);
   return (
     <motion.button data-date={tile.date} whileTap={{ scale: 0.94 }} onClick={() => onSelect(tile.date)} aria-pressed={selected}
-      animate={{ scale: selected && !past ? 1.06 : 1 }} transition={reduce ? { duration: 0 } : SPRING}
       aria-label={`${tile.date}${modes.length ? '' : lang === 'en' ? ', no strikes' : '，无罢工'}`}
       className="relative h-[76px] flex flex-col items-center pt-[9px] shrink-0"
       style={{ width: past ? PAST_W : '100%', borderRadius: past ? 16 : 22, background: past ? 'transparent' : C.surface }}>
       {selected && (
-        <motion.span layoutId="rail-selection" transition={SPRING} className="absolute inset-0 bg-white" style={{ borderRadius: past ? 16 : 22, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }} />
+        // a touch larger than the tile, without moving what's on it
+        <motion.span layoutId="rail-selection" transition={SPRING} className={`absolute bg-white ${past ? 'inset-0' : '-inset-[3px]'}`} style={{ borderRadius: past ? 16 : 25, boxShadow: '0 8px 24px rgba(0,0,0,0.35)' }} />
       )}
       <span className="relative h-[15px] text-[11.5px] font-medium leading-[15px] whitespace-nowrap" style={{ color: selected ? 'rgba(10,11,13,0.55)' : isToday ? C.text : C.text3 }}>
         {isToday ? (lang === 'en' ? 'Today' : '今天') : past ? weekday(tile.date, lang).replace('周', '').slice(0, lang === 'en' ? 2 : 1) : weekday(tile.date, lang)}
       </span>
       <span className="relative mt-[2px] font-semibold tabular-nums leading-[26px]" style={{ fontSize: past ? 17 : 23, color: selected ? C.ink : past ? C.text3 : C.text, fontFamily: NUM }}>{Number(tile.date.slice(8))}</span>
-      {!past && join && (
-        <span aria-hidden className="absolute bottom-[12px] h-[12px]" style={{
-          left: fromPrev ? -GAP - 1 : '50%', right: bridge ? -GAP - 1 : '50%',
-          borderRadius: `${fromPrev ? 0 : 6}px ${bridge ? 0 : 6}px ${bridge ? 0 : 6}px ${fromPrev ? 0 : 6}px`,
-          background: MODE_COLOR[join].main, opacity: focus ? 0.95 : 0.35,
-        }} />
+      {!past && bridge && (
+        <span aria-hidden className="absolute bottom-[6px] h-[24px] rounded-l-full" style={{ left: `calc(50% + ${rowW / 2 - 21}px)`, right: -GAP / 2, background: tint(bridge) }} />
+      )}
+      {!past && fromPrev && (
+        <span aria-hidden className="absolute bottom-[6px] h-[24px] rounded-r-full" style={{ left: -GAP / 2, right: `calc(50% + ${rowW / 2 - 21}px)`, background: tint(fromPrev) }} />
       )}
       <span className="relative mt-auto mb-[9px] h-[18px] flex items-center">
         {past
           ? modes.length > 0 && <i className="w-[5px] h-[5px] rounded-full" style={{ background: selected ? 'rgba(10,11,13,0.45)' : C.text3 }} />
-          : modes.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
+          : ordered.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
       </span>
     </motion.button>
   );
