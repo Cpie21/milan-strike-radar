@@ -21,6 +21,7 @@ const expected=(r)=>{
  if(/POSTE AIR CARGO/.test(p))return projection(['NATIONAL'],['AIRPORT'],[['00:00','24:00']],'CARGO');
  if(/ARRIVA UDINE/.test(p))return projection(['UNKNOWN'],['BUS'],[['15:00','24:00']]);
  if(/AIR CAMPANIA/.test(p))return projection(['NAPOLI'],['BUS'],[['08:00','16:00']]);
+ if(/START\s+ROMAGNA/.test(p))return projection(['UNKNOWN'],['BUS'],[]);
  if(/CUSTOMER OPERATIONS/.test(p))return projection(['BOLOGNA'],['TRAIN'],[['00:00','23:59']],'RAIL_CUSTOMER_SERVICE');
  if(/ENAV APT BARI/.test(p))return projection(['BARI'],['AIRPORT'],[['13:00','17:00']]);
  if(p==='PERSONALE SOC. ENAV')return projection(['NATIONAL'],['AIRPORT'],[['13:00','17:00']],'NATIONAL_AVIATION');
