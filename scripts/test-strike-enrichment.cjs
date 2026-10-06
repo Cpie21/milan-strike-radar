@@ -78,6 +78,14 @@ test('operator announcement outranks media, but the media disagreement remains v
   const updated=applyTimingEvidence(record(),[notice(),official]);
   assert.equal(updated.display_time,'09:00 - 15:00');assert.equal(updated.timing_evidence.confidence,'official');assert.equal(updated.timing_evidence.conflicts.length,1);
 });
+test('dated operator operational timing outranks a shorter regulator proclamation but retains its conflict',()=>{
+ const operator=notice({source:{...source('https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx'),authority:'official'}});
+ const regulator=notice({timing:'ATM Milano 8.45-15.00',source:{...source('https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380241'),authority:'official'}});
+ for(const notices of [[operator,regulator],[regulator,operator]]){const updated=applyTimingEvidence(record(),notices);assert.deepEqual(updated.timing_evidence.windows,expected);assert.equal(updated.timing_evidence.confidence,'official');assert.equal(updated.timing_evidence.fields.timing.url,operator.source.url);assert.ok(updated.timing_evidence.conflicts.some(c=>c.url===regulator.source.url));assert.ok(updated.timing_evidence.sources.some(s=>s.url===regulator.source.url));}
+ assert.deepEqual(applyTimingEvidence(record(),[regulator]).timing_evidence.windows,[{start:'08:45',end:'15:00',end_kind:'clock'}]);
+ const disagreeing=notice({timing:'ATM Milano 9.00-15.00',source:{...source('https://www.atm.it/it/AtmNews/second.aspx'),authority:'official'}});
+ assert.equal(applyTimingEvidence(record(),[operator,disagreeing,regulator]).timing_evidence.confidence,'conflict');
+});
 test('journey aggregation preserves symbolic endpoints and underlying distinct notices', () => {
   const a=applyTimingEvidence(record(),[notice()]);
   const b=applyTimingEvidence(record({source_key:'other'}),[notice()]);

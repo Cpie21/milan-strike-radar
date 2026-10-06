@@ -422,7 +422,13 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   const candidates=[...perDocument.values()];
   if (!candidates.length) return result;
   const officials = candidates.filter(c => c.notice.source.authority === 'official');
-  const pool = officials.length ? officials : candidates;
+  // A dated operator notice describes actual service availability; regulator
+  // entries describe the proclaimed action. Preserve that distinction when a
+  // regulator lists one union's shorter window within a combined operator day.
+  // Matching date/operator/geography checks already ran above. Do not vote
+  // away disagreements between two operator documents of equal authority.
+  const operators = officials.filter(c => Boolean(sourceOperatorNames(c.notice.source.url)));
+  const pool = operators.length ? operators : officials.length ? officials : candidates;
   const groups = new Map<string, typeof candidates>();
   pool.forEach(c => { const key = timeKey(c.windows); groups.set(key, [...(groups.get(key) || []), c]); });
   // A conflict at the same authority cannot be resolved by vote or article order.
