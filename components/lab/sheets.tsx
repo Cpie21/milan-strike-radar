@@ -6,8 +6,7 @@ import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/re
 import { submitFeedback } from '../../app/actions';
 import { buildLabWidgetScript } from '../../lib/lab/widgetScript';
 import { LedFace } from './Led';
-import { axisPos, MODES, modeName, relativeDay, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
-import { Bar } from './LabStrikeCard';
+import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
 import { Button, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C, MODE_COLOR } from './theme';
 import { track } from './track';
@@ -181,46 +180,33 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
   const [state, setState] = useState<'calm' | 'strike' | 'many'>('calm');
   const strike = state === 'strike', many = state === 'many';
   // Example days: one strike, the metro, 08:45–15:00 and 18:00–end
-  // (guaranteed 15:00–18:00); on the busy day a rail strike runs too.
-  const x = (m: number) => `${axisPos(m) * 100}%`;
-  const NOW = 630;
-  const example = {
-    status: 'CONFIRMED', category: 'SUBWAY', indirect: false,
-    windows: [{ start: '08:45', end: '15:00', end_kind: 'time' }, { start: '18:00', end: null, end_kind: 'end_of_service' }],
-    guarantees: [{ start: '15:00', end: '18:00', end_kind: 'time' }],
-  } as unknown as ModeCard;
+  // (guaranteed 15:00–18:00); the busy day has all four modes, each on its
+  // own, two to a line.
+  const metro: [number, number][] = [[525, 900], [1080, 1500]];
   const week = [6, 7, 8, 9, 10, 11, 12];
   const wd = lang === 'en' ? ['T', 'W', 'T', 'F', 'S', 'S', 'M'] : ['二', '三', '四', '五', '六', '日', '一'];
-  const rows: [Mode[], number[][], number[][], string][] = [
-    [['SUBWAY', 'BUS'], [[525, 900], [1080, 1440]], [[900, 1080]], tx(lang, '至 15:00', 'until 15:00')],
-    [['TRAIN'], [[300, 1260]], [], tx(lang, '至 21:00', 'until 21:00')],
+  const four: [Mode, [number, number][], [number, number][], string][] = [
+    ['SUBWAY', metro, [[900, 1080]], tx(lang, '至 15:00', 'to 15:00')],
+    ['BUS', metro, [[900, 1080]], tx(lang, '至 15:00', 'to 15:00')],
+    ['TRAIN', [[300, 1260]], [], tx(lang, '至 21:00', 'to 21:00')],
+    ['AIRPORT', [], [], tx(lang, '待公布', 'pending')],
   ];
   const band = strike || many ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)';
   return (
     <div className="mt-3 mb-1 flex flex-col items-center gap-3">
       <div className="w-full max-w-[340px] aspect-[2.14/1] rounded-[22px] pl-[14px] pr-4 py-[14px] flex flex-col overflow-hidden" style={{ background: band, boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
-        {/* top band: the assistant's face and what it says */}
+        {/* top band: the assistant's face and what it says (smaller face when four modes need the room) */}
         <div className="flex items-center gap-2.5">
-          <LedFace mood={strike || many ? 'alert' : 'happy'} size={22} cols={17} />
+          <LedFace mood={strike || many ? 'alert' : 'happy'} size={many ? 19 : 22} cols={17} />
           <div className="min-w-0 flex-1">
-            {strike ? (
-              // a chip row, as signage: the modes' badges, what it is, where
-              <p className="flex items-center gap-[3px] text-[12.5px] font-semibold">
-                <ModeBadge mode="SUBWAY" size={16} />
-                <span className="ml-[3px]" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '今天罢工', 'Strike today')}</span>
-                <span className="ml-auto text-[11.5px]" style={{ color: C.text3 }}>{cityName}</span>
-              </p>
-            ) : (
-              <p className="text-[11.5px] font-semibold truncate" style={{ color: C.text3 }}>{state === 'calm' ? `${cityName} · ${tx(lang, '周二', 'Tue')}` : cityName}</p>
-            )}
-            <p className={`${strike ? 'text-[17px] mt-[3px]' : 'text-[19px] truncate'} leading-[1.2] font-bold tabular-nums`} style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif', color: C.text }}>
-              {state === 'calm' ? tx(lang, '今天没有罢工', 'No strikes today') : strike ? <>08:45–15:00<br />{tx(lang, '18:00–运营结束', '18:00–end of service')}</> : tx(lang, '今天 2 项罢工', '2 strikes today')}
+            <p className="text-[11.5px] font-semibold truncate" style={{ color: C.text3 }}>{state === 'calm' ? `${cityName} · ${tx(lang, '周二', 'Tue')}` : cityName}</p>
+            <p className={`${many ? 'text-[18px]' : 'text-[19px]'} leading-[1.2] font-bold truncate`} style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif', color: C.text }}>
+              {state === 'calm' ? tx(lang, '今天没有罢工', 'No strikes today') : strike ? tx(lang, '今天地铁罢工', 'Metro strike today') : tx(lang, '今天 4 项罢工', '4 strikes today')}
             </p>
           </div>
         </div>
-        {!many && <div className="flex-1" />}
-        {/* the day's picture, full width */}
         {state === 'calm' && <>
+          <div className="flex-1" />
           <p className="flex items-center gap-1 text-[11.5px]" style={{ color: C.text2 }}><ModeBadge mode="SUBWAY" size={14} /><span className="ml-1">{tx(lang, '下一次 · 10月9日 周五 · 3 天后', 'Next · Fri 9 Oct · in 3 days')}</span></p>
           <div className="mt-2 flex justify-between">
             {week.map((d, i) => (
@@ -231,30 +217,28 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
             ))}
           </div>
         </>}
-        {/* the same bar the card draws */}
-        {strike && <div className="flex"><Bar card={example} now={axisPos(NOW)} lang={lang} /></div>}
+        {/* one strike: its line (hours and state), then its lane */}
+        {strike && <>
+          <div className="flex-1" />
+          <p className="flex items-center gap-1.5 text-[12px] font-semibold tabular-nums">
+            <ModeBadge mode="SUBWAY" size={15} />
+            <span style={{ color: C.text }}>{tx(lang, '08:45–15:00 · 18:00–运营结束', '08:45–15:00 · 18:00–end of service')}</span>
+            <span className="ml-auto" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '至 15:00', 'until 15:00')}</span>
+          </p>
+          <div className="mt-[9px]"><Lanes rows={[['SUBWAY', metro, [[900, 1080]]]]} lane={10} gap={0} /></div>
+          <div className="flex-1" />
+        </>}
+        {/* three or four modes: each on its own, two to a line, a thin lane each */}
         {many && <>
-          <div className="mt-2.5 flex flex-col gap-1">
-            {rows.map(([modes, , , label]) => (
-              <p key={modes.join()} className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: C.text2 }}>
-                <span className="flex gap-[2px]">{modes.map(m => <ModeBadge key={m} mode={m} size={15} />)}</span>{modes.map(m => modeName(m, lang)).join(' · ')}
-                <span className="ml-auto tabular-nums" style={{ color: MODE_COLOR[modes[0]].main }}>{label}</span>
+          <div className="mt-2 grid grid-cols-2 gap-x-[14px] gap-y-[3px]">
+            {four.map(([mode, , , label]) => (
+              <p key={mode} className="flex items-center gap-[5px] h-4 text-[12px] font-semibold tabular-nums">
+                <ModeBadge mode={mode} size={15} /><span style={{ color: C.text2 }}>{modeName(mode, lang)}</span>
+                <span className="ml-auto" style={{ color: mode === 'AIRPORT' ? C.text : MODE_COLOR[mode].main }}>{label}</span>
               </p>
             ))}
           </div>
-          <div className="mt-2 relative">
-            {rows.map(([modes, ws, gs], k) => (
-              <div key={k} className="relative h-[7px] mb-[6px]">
-                <i className="absolute inset-0 rounded-full" style={{ background: '#2A2D33' }} />
-                {ws.map(([a, b]) => <i key={a} className="absolute top-0 h-full rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: MODE_COLOR[modes[0]].main }} />)}
-                {gs.map(([a, b]) => <i key={a} className="absolute top-0 h-full rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: C.run }} />)}
-              </div>
-            ))}
-            <i className="absolute -top-[2px] w-[2px] rounded-full bg-white" style={{ left: x(NOW), height: rows.length * 13 }} />
-            <div className="relative h-[11px] text-[9px] tabular-nums" style={{ color: C.text3 }}>
-              {([['06', 360], ['12', 720], ['18', 1080], ['24', 1440]] as const).map(([t, m]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m) }}>{t}</span>)}
-            </div>
-          </div>
+          <div className="mt-[7px]"><Lanes rows={four.map(([m, ws, gs]) => [m, ws, gs])} lane={5} gap={4} /></div>
         </>}
       </div>
       <div className="flex p-[3px] rounded-full" style={{ background: C.surface2 }}>
@@ -263,6 +247,29 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
             {v === 'calm' ? tx(lang, '平日', 'Calm') : v === 'strike' ? tx(lang, '罢工日', 'Strike') : tx(lang, '多项罢工', 'Several')}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// The widget's day: a lane per strike on one axis (05:00 → 25:00, as the
+// script draws it), one "now" line through them all.
+const PREVIEW_NOW = 630;
+const laneX = (m: number) => `${Math.max(0, Math.min(1, (m - 300) / 1200)) * 100}%`;
+function Lanes({ rows, lane, gap }: { rows: [Mode, [number, number][], [number, number][]][]; lane: number; gap: number }) {
+  const x = laneX;
+  return (
+    <div className="relative">
+      {rows.map(([mode, ws, gs], k) => (
+        <div key={k} className="relative" style={{ height: lane, marginBottom: gap }}>
+          <i className="absolute inset-0 rounded-full" style={{ background: '#2A2D33' }} />
+          {ws.map(([a, b]) => <i key={a} className="absolute top-0 h-full rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: MODE_COLOR[mode].main }} />)}
+          {gs.map(([a, b]) => <i key={a} className="absolute top-0 h-full rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: C.run }} />)}
+        </div>
+      ))}
+      <i className="absolute -top-[2px] w-[2px] rounded-full bg-white" style={{ left: x(PREVIEW_NOW), height: rows.length * (lane + gap) - gap + 4 }} />
+      <div className="relative h-[11px] text-[9px] tabular-nums" style={{ color: C.text3 }}>
+        {([['06', 360], ['12', 720], ['18', 1080], ['24', 1440]] as const).map(([t, m]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m) }}>{t}</span>)}
       </div>
     </div>
   );
