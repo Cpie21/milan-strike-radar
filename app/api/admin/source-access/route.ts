@@ -31,7 +31,12 @@ export async function GET(request: Request) {
         return { source, url, status: 'READABLE', bytes: Buffer.byteLength(html), elapsedMs: Date.now() - start };
       }
       const signal = AbortSignal.timeout(12000);
-      const response = source === 'CGSSE' ? await fetchCgsse(url, signal) : await fetch(url, { signal, redirect: 'manual', cache: 'no-store', headers: { 'User-Agent': SOURCE_USER_AGENT, Accept: 'text/html,application/pdf' } });
+      let response = source === 'CGSSE' ? await fetchCgsse(url, signal) : await fetch(url, { signal, redirect: 'manual', cache: 'no-store', headers: { 'User-Agent': SOURCE_USER_AGENT, Accept: 'text/html,application/pdf' } });
+      let identity:'PRODUCT'|'NODE_RUNTIME'='PRODUCT';
+      if(response.status===403 && ['BRESCIA','VENEZIA'].includes(source)) {
+        await response.body?.cancel();identity='NODE_RUNTIME';
+        response=await fetch(url,{signal,redirect:'manual',cache:'no-store',headers:{Accept:'text/html,application/pdf'}});
+      }
       const reader = response.ok ? response.body?.getReader() : undefined;
       let bytes = 0;
       if (response.ok && reader) {
@@ -42,7 +47,7 @@ export async function GET(request: Request) {
           if (bytes > 2_000_000) { await reader.cancel(); throw new Error('Response size limit'); }
         }
       } else await response.body?.cancel();
-      return { source, url, status: response.ok && bytes > 0 ? 'READABLE' : 'HTTP_ERROR', http: response.status, bytes, elapsedMs: Date.now() - start };
+      return { source, url, status: response.ok && bytes > 0 ? 'READABLE' : 'HTTP_ERROR', http: response.status, identity, bytes, elapsedMs: Date.now() - start };
     } catch (error) {
       const name = error instanceof Error ? error.name : '';
       const code = (error as { cause?: { code?: string } })?.cause?.code;

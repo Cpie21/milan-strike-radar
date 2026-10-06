@@ -75,7 +75,13 @@ async function fetchHtml(input: string, deadline: number): Promise<string> {
     const remaining = deadline - Date.now();
     if (remaining < 100) throw new Error('External discovery budget exhausted');
     const signal=AbortSignal.timeout(Math.min(10_000,remaining));
-    const response = ['cgsse.it','www.cgsse.it'].includes(new URL(url).hostname)?await fetchCgsse(url,signal):await fetch(url, { cache: 'no-store', redirect: 'manual', signal, headers: { 'User-Agent': SOURCE_USER_AGENT, 'Accept':'text/html,application/xhtml+xml,application/pdf' } });
+    let response = ['cgsse.it','www.cgsse.it'].includes(new URL(url).hostname)?await fetchCgsse(url,signal):await fetch(url, { cache: 'no-store', redirect: 'manual', signal, headers: { 'User-Agent': SOURCE_USER_AGENT, 'Accept':'text/html,application/xhtml+xml,application/pdf' } });
+    // A single compatibility check with the real Node runtime's default
+    // identity; never impersonate a browser/crawler or follow a CAPTCHA host.
+    if(response.status===403 && ['www.bresciamobilita.it','www.veneziaairport.it'].includes(new URL(url).hostname)) {
+      await response.body?.cancel();
+      response=await fetch(url,{cache:'no-store',redirect:'manual',signal,headers:{Accept:'text/html,application/xhtml+xml,application/pdf'}});
+    }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
       if (!location) throw new Error('Missing source redirect location');

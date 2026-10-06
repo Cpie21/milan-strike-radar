@@ -1,0 +1,2939 @@
+{
+  "checkedAt": "2026-10-06T14:45:08.249Z",
+  "runId": "bc73223d-3eb5-4529-8edd-f7031000b16a",
+  "records": [
+    {
+      "id": "22cb03cd-9ee3-46a9-8c06-96d750db9989",
+      "date": "2026-10-08",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "scopeType": "RAIL_SECURITY",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-10"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "b48f3571-53dc-42e9-9b05-846b13819801",
+      "date": "2026-10-08",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "scopeType": "RAIL_SECURITY",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-10"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "1af36117-2a5f-49dc-aca5-a0346233b902",
+      "date": "2026-10-08",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "scopeType": "RAIL_SECURITY",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-10"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "bde68652-299f-4e6e-9d3a-2c771b98b059",
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "region": "MILANO",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-11"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://www.atm.it/it/AtmNews/AtmInforma/Pagine/default.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/default2.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380241",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "lineScope": {
+        "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "value": {
+          "kind": "ALL_OPERATOR_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202026.pdf",
+        "value": [
+          {
+            "end": "08:45",
+            "start": null,
+            "end_kind": "clock"
+          },
+          {
+            "end": "18:00",
+            "start": "15:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "PARTIAL",
+      "unknownTiming": false
+    },
+    {
+      "id": "edc65463-aa23-41fe-bf56-74b568c5fbb0",
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-11"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://www.atm.it/it/AtmNews/AtmInforma/Pagine/default.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/default2.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380241",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "lineScope": {
+        "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "value": {
+          "kind": "ALL_OPERATOR_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202026.pdf",
+        "value": [
+          {
+            "end": "08:45",
+            "start": null,
+            "end_kind": "clock"
+          },
+          {
+            "end": "18:00",
+            "start": "15:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "PARTIAL",
+      "unknownTiming": false
+    },
+    {
+      "id": "5f0cc431-b99e-412c-ac04-a14844d81ebb",
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "region": "MILANO",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-11"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://www.atm.it/it/AtmNews/AtmInforma/Pagine/default.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/default2.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "lineScope": {
+        "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "value": {
+          "kind": "ALL_OPERATOR_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202026.pdf",
+        "value": [
+          {
+            "end": "08:45",
+            "start": null,
+            "end_kind": "clock"
+          },
+          {
+            "end": "18:00",
+            "start": "15:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "PARTIAL",
+      "unknownTiming": false
+    },
+    {
+      "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-11"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://www.atm.it/it/AtmNews/AtmInforma/Pagine/default.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/default2.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "lineScope": {
+        "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "value": {
+          "kind": "ALL_OPERATOR_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202026.pdf",
+        "value": [
+          {
+            "end": "08:45",
+            "start": null,
+            "end_kind": "clock"
+          },
+          {
+            "end": "18:00",
+            "start": "15:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "PARTIAL",
+      "unknownTiming": false
+    },
+    {
+      "id": "d01dbc03-9f95-4ab7-9ad3-ab6c5ec228da",
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOC. START  ROMAGNA DEI BACINI DI FORLI'-CESENA, RAVENNA E RIMINI",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-11"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.startromagna.it/infobus/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.startromagna.it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.startromagna.it/news/sciopero-9-ottobre-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "START_ROMAGNA"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": true
+    },
+    {
+      "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+      "date": "2026-10-10",
+      "provider": "PERSONALE SOC. GEST SERVIZIO TRANVIA DI FIRENZE",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-12"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://www.gestramvia.it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/15-settembre-sciopero-aziendale-di-4-ore-indetto-da-cobas/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+        "value": {
+          "kind": "SPECIFIC_LINES",
+          "gtfsFeedId": "GTFS_GEST",
+          "operatorIds": [
+            "GEST_FIRENZE"
+          ],
+          "networkNames": [],
+          "routeAliases": [
+            {
+              "feedId": "GTFS_GEST",
+              "source": "https://www.firenzetramvia.it/linee/t1",
+              "routeId": "1606821564",
+              "validTo": "2026-12-30",
+              "operator": "GEST_FIRENZE",
+              "validFrom": "2026-08-10",
+              "verifiedAt": "2026-10-06",
+              "catalogName": "T1.3",
+              "officialName": "T1",
+              "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+            }
+          ],
+          "routeValidation": "VERIFIED",
+          "affectedRouteIds": [
+            "1606821564",
+            "1272089682"
+          ],
+          "excludedRouteIds": [],
+          "affectedLineNames": [
+            "T1",
+            "T2"
+          ],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "guaranteeSource": "OFFICIAL_STRIKE_NOTICE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+        "value": [
+          {
+            "end": "09:30",
+            "start": "06:30",
+            "end_kind": "clock"
+          },
+          {
+            "end": "20:00",
+            "start": "17:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "OFFICIAL",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "linesStatus": "RESOLVED",
+      "unknownTiming": false
+    },
+    {
+      "id": "85cd2036-95c8-493c-9a82-48cc856af206",
+      "date": "2026-10-12",
+      "provider": "PERSONALE SOC AMTAB DI BARI",
+      "region": "BARI",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-14"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://www.amtab.it/it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.amtab.it/it/140-news-chatbot/3528-sciopero-aziendale-di-4-ore-del-personale-amtab-3",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "12:29",
+          "start": "08:30",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "AMTAB_BARI"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "OFFICIAL_STRIKE_NOTICE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.amtab.it/it/140-news-chatbot/3528-sciopero-aziendale-di-4-ore-del-personale-amtab-3",
+        "value": [
+          {
+            "end": "08:29",
+            "start": "05:30",
+            "end_kind": "clock"
+          },
+          {
+            "end": "15:29",
+            "start": "12:30",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "OFFICIAL",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "3b056a2c-392e-49fd-8c4e-6ac021c84d87",
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-16"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.at-bus.it/it/viaggia/avvisi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.at-bus.it/it/scopri/novita",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/15-settembre-sciopero-aziendale-di-4-ore-indetto-da-cobas/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": true
+    },
+    {
+      "id": "fd88c237-1c29-49ee-a89b-5ec6762ba014",
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "region": "FIRENZE",
+      "category": "TRAIN",
+      "scopeType": "RAIL_GENERAL",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-16"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "17:00",
+          "start": "09:01",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "d13441c1-45c7-4ade-8672-7ce0fd539100",
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "region": "PISA",
+      "category": "TRAIN",
+      "scopeType": "RAIL_GENERAL",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-16"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "17:00",
+          "start": "09:01",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "cbce5237-b04d-4611-a6da-ebd47c28c9b5",
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "region": "PISA",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-16"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.at-bus.it/it/viaggia/avvisi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.at-bus.it/it/scopri/novita",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": true
+    },
+    {
+      "id": "d6e75359-2c40-4dcd-b57d-652016fde9fc",
+      "date": "2026-10-15",
+      "provider": "PERSONALE SOC. ATAF DI FOGGIA",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-17"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.ataf.fg.it/?page_id=1083",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "ATAF_FOGGIA"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "3ea595cd-7f2c-42ac-ada7-63e636e6cf4a",
+      "date": "2026-10-16",
+      "provider": "PERSONALE SOC. ARRIVA ITALIA UNITA' PRODUTTIVA DI BERGAMO",
+      "region": "BERGAMO",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-18"
+      },
+      "noticeDiscovery": {
+        "status": "MATCHED",
+        "sources": [
+          {
+            "url": "https://bergamo.arriva.it/notice-category/avvisi-di-servizio/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://bergamo.arriva.it/notice/sciopero-di-24-ore-del-16-10-2026-arriva-italia/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "05:59",
+          "start": null,
+          "end_kind": "clock"
+        },
+        {
+          "end": "12:29",
+          "start": "08:31",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "16:01",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "lineScope": {
+        "url": "https://bergamo.arriva.it/notice/sciopero-di-24-ore-del-16-10-2026-arriva-italia/",
+        "value": {
+          "kind": "ALL_OPERATOR_LINES",
+          "operatorIds": [
+            "ARRIVA_BERGAMO"
+          ],
+          "networkNames": [
+            "BERGAMO TRASPORTI SUD",
+            "BERGAMO TRASPORTI EST",
+            "BERGAMO TRASPORTI OVEST"
+          ],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "HIGH"
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://arriva.it/app/uploads/sites/7/2026/04/BERGAMO-Carta-della-mobilita-2026.pdf",
+        "value": [
+          {
+            "end": "08:30",
+            "start": "06:00",
+            "end_kind": "clock"
+          },
+          {
+            "end": "16:00",
+            "start": "12:30",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "NOT_CONFIGURED",
+      "unknownTiming": false
+    },
+    {
+      "id": "c31349db-90fe-4c02-9071-1ca4ae0d1aea",
+      "date": "2026-10-16",
+      "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+      "region": "FIRENZE",
+      "category": "AIRPORT",
+      "scopeType": "MIXED_AIRPORT_SERVICES",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-18"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.toscana-aeroporti.com/it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.toscana-aeroporti.com/it/news/sciopero-nazionale-generale-di-24-ore-del-giorno-3-ottobre-2025",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.toscana-aeroporti.com/it/news/sciopero-nazionale-generale-di-24-ore-del-giorno-20-giugno-2025",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "2c933134-acb8-4c9b-8ff8-fb92fd3aa377",
+      "date": "2026-10-16",
+      "provider": "PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI",
+      "region": "NAPOLI",
+      "category": "TRAIN",
+      "scopeType": "RAIL_CREW",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-18"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/dati-adesioni-scioperi/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/eav-informa-revoca-sciopero-del-giorno-12-giugno-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/servizio-autolinee/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/servizio-autolinee-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linee-vesuviane/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-vesuviane-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linee-flegree/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-flegree-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linee-suburbane/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-suburbane-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linea-metropolitana-piscinola-aversa/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linea-metropolitana-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/servizio-autolinee-sciopero-aziendale-di-4-ore-del-13-aprile-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-vesuviane-avviso-di-sciopero-aziendale-lunedi-13-aprile-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-flegree-avviso-di-sciopero-di-4-ore-del-13-aprile-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/page/2/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/page/3/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/page/18/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-funivia-del-faito/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linea-metropolitana-piscinola-aversa/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linee-flegree/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linee-suburbane/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linee-vesuviane/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-servizio-autolinee/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "23:40",
+          "start": "19:40",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "EAV_NAPOLI"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "aebcb913-1e90-4e40-b62a-b2008a886de1",
+      "date": "2026-10-16",
+      "provider": "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "scopeType": "AIRLINE_CREW",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-18"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "23:59",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "57209d4a-9e0a-4b14-b5a4-662eedb09b68",
+      "date": "2026-10-16",
+      "provider": "PERSONALE NAVIGANTE TECNICO DELLA SOC. POSTE AIR CARGO",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "scopeType": "CARGO",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-18"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "d5abcc67-3665-4d92-8e71-fc67e8f306c7",
+      "date": "2026-10-16",
+      "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+      "region": "PISA",
+      "category": "AIRPORT",
+      "scopeType": "MIXED_AIRPORT_SERVICES",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-18"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.toscana-aeroporti.com/it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.toscana-aeroporti.com/it/news/sciopero-nazionale-generale-di-24-ore-del-giorno-3-ottobre-2025",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.toscana-aeroporti.com/it/news/sciopero-nazionale-generale-di-24-ore-del-giorno-20-giugno-2025",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "b960e728-4bf6-4a0c-bd73-f1cf83ea8f3f",
+      "date": "2026-10-20",
+      "provider": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-22"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.arrivaudine.it/notice/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-10-settembre-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-19-giugno-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-lunedi-13-aprile/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-13-marzo-2026/",
+            "status": "DEFERRED",
+            "lastAttemptedAt": "2026-10-06T14:32:02.084Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-9-ore-per-il-giorno-13-febbraio-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-19-gennaio-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-20-giugno-2025-2/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-6-ore-per-il-giorno-14-novembre-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-24-ottobre-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/sciopero-generale-nazionale-per-il-settore-del-trasporto-pubblico-locale-del-3-ottobre-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-20-giugno-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-24-febbraio-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-venerdi-13-dicembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-per-il-giorno-29-novembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-8-novembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-2-ore-per-il-giorno-3-ottobre-2024/",
+            "status": "DEFERRED",
+            "lastAttemptedAt": "2026-10-06T14:32:02.084Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-5-ottobre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-venerdi-20-settembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-8-ore-per-il-giorno-9-settembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-18-luglio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-7-luglio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-27-maggio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-lunedi-6-maggio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-per-il-giorno-17-febbraio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "15:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "ARRIVA_UDINE"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "8148105e-f4a0-410b-bed9-af0878a70c27",
+      "date": "2026-10-28",
+      "provider": "PERSONALE SOC. AIR CAMPANIA DI NAPOLI",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-30"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://aircampania.it/archivio-news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "16:00",
+          "start": "08:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "AIR_CAMPANIA"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244",
+        "value": [
+          {
+            "end": "08:00",
+            "start": "06:00",
+            "end_kind": "clock"
+          },
+          {
+            "end": "15:00",
+            "start": "13:00",
+            "end_kind": "clock"
+          },
+          {
+            "end": "19:00",
+            "start": "17:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "b8bb2f09-8e85-403d-b40c-d9f9e7bd1569",
+      "date": "2026-10-29",
+      "provider": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+      "region": "BOLOGNA",
+      "category": "TRAIN",
+      "scopeType": "RAIL_CUSTOMER_SERVICE",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-07-31"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.trenitalia.com/it/informazioni/treni-garantiti-incasodisciopero.html",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "23:59",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "TRENITALIA"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "76fa9aa0-66f6-4f2c-bcd1-9913f316d059",
+      "date": "2026-11-06",
+      "provider": "PERSONALE SOC. ENAV APT BARI",
+      "region": "BARI",
+      "category": "AIRPORT",
+      "scopeType": "AIRPORT",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-08-08"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381112",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://cgsse.it/calendario-scioperi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:43:52.068Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/en/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/app/uploads/2026/09/Comunicazione-Sciopero-ENAV-del-30-settembre-2026-13-17.pdf",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "17:00",
+          "start": "13:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti",
+        "value": [
+          {
+            "end": "10:00",
+            "start": "07:00",
+            "end_kind": "clock"
+          },
+          {
+            "end": "21:00",
+            "start": "18:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "STANDARD_RULE",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "ee481683-e21f-4954-ba6b-881d1584924d",
+      "date": "2026-11-21",
+      "provider": "PERSONALE SOC. ENAV",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "scopeType": "NATIONAL_AVIATION",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-08-23"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://cgsse.it/calendario-scioperi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:43:52.068Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/en/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/app/uploads/2026/09/Comunicazione-Sciopero-ENAV-del-30-settembre-2026-13-17.pdf",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "17:00",
+          "start": "13:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti",
+        "value": [
+          {
+            "end": "10:00",
+            "start": "07:00",
+            "end_kind": "clock"
+          },
+          {
+            "end": "21:00",
+            "start": "18:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "STANDARD_RULE",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "ffaabbfd-b5f1-4f1a-bcad-d69667d0d6fc",
+      "date": "2026-11-22",
+      "provider": "PERSONALE SOC. ENAV AEROPORTO DI MILANO MALPENSA",
+      "region": "MILANO",
+      "category": "AIRPORT",
+      "scopeType": "AIRPORT",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-08-24"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.milanomalpensa-airport.com/it/assistenza/news",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://cgsse.it/calendario-scioperi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:43:52.068Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/en/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.enac.gov.it/app/uploads/2026/09/Comunicazione-Sciopero-ENAV-del-30-settembre-2026-13-17.pdf",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "00:01",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "guaranteeEvidenceWindows": {
+        "url": "https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti",
+        "value": [
+          {
+            "end": "10:00",
+            "start": "07:00",
+            "end_kind": "clock"
+          },
+          {
+            "end": "21:00",
+            "start": "18:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "STANDARD_RULE",
+        "confidence": "MEDIUM"
+      },
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "3d264a22-79bb-4117-a712-51a3b8a90483",
+      "date": "2026-11-22",
+      "provider": "PERSONALE SOC. SICURITALIA IVRI AEROPORTO MARCO POLO DI VENEZIA",
+      "region": "VENEZIA",
+      "category": "AIRPORT",
+      "scopeType": "AIRPORT",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-08-24"
+      },
+      "noticeDiscovery": {
+        "status": "UNAVAILABLE",
+        "sources": [
+          {
+            "url": "https://www.veneziaairport.it/it_it/news",
+            "status": "FAILED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "23:59",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": false
+    },
+    {
+      "id": "43510dd3-15aa-4ae6-b74d-d0d067f2aa52",
+      "date": "2026-12-03",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "scopeType": "RAIL_GENERAL",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-09-04"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "24:00",
+          "start": "21:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "192358c8-69e0-4ceb-8a49-7e06ceece0a6",
+      "date": "2026-12-04",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "region": "NATIONAL",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-09-05"
+      },
+      "noticeDiscovery": {
+        "status": "PARTIAL",
+        "sources": [
+          {
+            "url": "https://www.atm.it/it/AtmNews/AtmInforma/Pagine/default.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/default2.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atac.roma.it/tempo-reale",
+            "status": "FAILED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://romamobilita.it/infomobilita/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://romamobilita.it/news-eventi/comunicati/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.gtt.to.it/cms/avvisi-e-informazioni-di-servizio",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.anm.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://aircampania.it/archivio-news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.at-bus.it/it/viaggia/avvisi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.at-bus.it/it/scopri/novita",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.tper.it/news",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://actv.avmspa.it/it/news",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.amt.genova.it/amt/area-stampa/comunicati-stampa/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.amat.pa.it/notizie/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.amts.ct.it/avvisi-news",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.circumetnea.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.amtab.it/it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atv.verona.it/news-sul-servizio",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.fsbusitalia.it/it/veneto/news-veneto.html",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.triestetrasporti.it/it/avvisi-infomobilita",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.ctmcagliari.it/comunicati/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://bergamo.arriva.it/notice-category/avvisi-di-servizio/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.atb.bergamo.it/avvisi",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.bresciamobilita.it/news",
+            "status": "FAILED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.atmmessinaspa.it/comunicati.php",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.fsbusitalia.it/it/umbria/news-umbria.html",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          },
+          {
+            "url": "https://www.ataf.fg.it/?page_id=1083",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.startromagna.it/infobus/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.startromagna.it/news/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.gestramvia.it/15-settembre-sciopero-aziendale-di-4-ore-indetto-da-cobas/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.amtab.it/it/140-news-chatbot/3528-sciopero-aziendale-di-4-ore-del-personale-amtab-3",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-10-settembre-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-19-giugno-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-lunedi-13-aprile/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-13-marzo-2026/",
+            "status": "DEFERRED",
+            "lastAttemptedAt": "2026-10-06T14:32:02.084Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-9-ore-per-il-giorno-13-febbraio-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-19-gennaio-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-20-giugno-2025-2/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-6-ore-per-il-giorno-14-novembre-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-24-ottobre-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/sciopero-generale-nazionale-per-il-settore-del-trasporto-pubblico-locale-del-3-ottobre-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-20-giugno-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-24-febbraio-2025/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-venerdi-13-dicembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-per-il-giorno-29-novembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-8-novembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-2-ore-per-il-giorno-3-ottobre-2024/",
+            "status": "DEFERRED",
+            "lastAttemptedAt": "2026-10-06T14:32:02.084Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-il-giorno-5-ottobre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-venerdi-20-settembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-8-ore-per-il-giorno-9-settembre-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-18-luglio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-7-luglio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-4-ore-per-il-giorno-27-maggio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-di-24-ore-per-lunedi-6-maggio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.arrivaudine.it/notice/avviso-di-sciopero-per-il-giorno-17-febbraio-2024/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/dati-adesioni-scioperi/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/eav-informa-revoca-sciopero-del-giorno-12-giugno-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/servizio-autolinee/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/servizio-autolinee-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linee-vesuviane/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-vesuviane-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linee-flegree/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-flegree-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linee-suburbane/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-suburbane-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/category/sciopero/linea-metropolitana-piscinola-aversa/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linea-metropolitana-avviso-di-sciopero-aziendale-di-24-h-dalle-ore-1931-di-sabato-9-alle-ore-1930-di-domenica-10-maggio-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/servizio-autolinee-sciopero-aziendale-di-4-ore-del-13-aprile-2026/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-vesuviane-avviso-di-sciopero-aziendale-lunedi-13-aprile-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/linee-flegree-avviso-di-sciopero-di-4-ore-del-13-aprile-2026/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/page/2/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/page/3/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/page/18/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-funivia-del-faito/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linea-metropolitana-piscinola-aversa/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linee-flegree/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linee-suburbane/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-linee-vesuviane/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          },
+          {
+            "url": "https://www.eavsrl.it/avvisi-di-sciopero/scioperi-servizio-autolinee/",
+            "status": "DEFERRED",
+            "firstDiscoveredAt": "2026-10-06T14:32:02.084Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": true
+    },
+    {
+      "id": "60b6780f-c45c-4611-811d-7434dae98c4b",
+      "date": "2026-12-04",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "scopeType": "NATIONAL_AVIATION",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-09-05"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "NOT_APPLICABLE",
+      "unknownTiming": true
+    },
+    {
+      "id": "f6e8500c-0c27-487a-82b4-b50e8e785550",
+      "date": "2026-12-04",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "scopeType": "RAIL_GENERAL",
+      "followUp": {
+        "notice": "PRIMARY_ONLY",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-09-05"
+      },
+      "noticeDiscovery": {
+        "status": "NOT_CHECKED",
+        "sources": [],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "21:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "6c8ff135-8809-47ea-9105-dd4bc31b491f",
+      "date": "2026-12-16",
+      "provider": "PERSONALE SOC. ANM DI NAPOLI",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-09-17"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.anm.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "15:00",
+          "start": "11:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "ANM_NAPOLI"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    },
+    {
+      "id": "0578cf0a-b5fc-4140-9417-8c347a8a36bd",
+      "date": "2026-12-16",
+      "provider": "PERSONALE SOC. ANM DI NAPOLI",
+      "region": "NAPOLI",
+      "category": "SUBWAY",
+      "scopeType": "UNKNOWN",
+      "followUp": {
+        "notice": "SCHEDULED",
+        "primary": "SCHEDULED",
+        "checkedAt": "2026-10-06T14:44:27.403Z",
+        "frequency": "DAILY",
+        "noticeEligibleFrom": "2026-09-17"
+      },
+      "noticeDiscovery": {
+        "status": "NO_MATCH",
+        "sources": [
+          {
+            "url": "https://www.anm.it/",
+            "status": "FETCHED",
+            "lastAttemptedAt": "2026-10-06T14:43:52.068Z",
+            "firstDiscoveredAt": "2026-10-06T13:34:10.726Z"
+          }
+        ],
+        "checkedAt": "2026-10-06T14:43:52.068Z"
+      },
+      "operationalWindows": [
+        {
+          "end": "15:00",
+          "start": "11:00",
+          "end_kind": "clock"
+        }
+      ],
+      "lineScope": {
+        "value": {
+          "kind": "UNKNOWN",
+          "operatorIds": [
+            "ANM_NAPOLI"
+          ],
+          "networkNames": [],
+          "routeValidation": "NOT_REQUESTED",
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "affectedLineNames": [],
+          "excludedLineNames": []
+        },
+        "method": "CODE",
+        "source": "UNKNOWN",
+        "confidence": "UNKNOWN"
+      },
+      "guaranteeSource": "UNKNOWN",
+      "linesStatus": "SCOPE_UNCONFIRMED",
+      "unknownTiming": false
+    }
+  ],
+  "noticePlans": {
+    "PRIMARY_ONLY": 9,
+    "SCHEDULED": 25
+  }
+}
