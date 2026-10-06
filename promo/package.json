@@ -5,13 +5,14 @@
   "scripts": {
     "studio": "remotion studio",
     "record": "node recorder/shots.mjs zh && node recorder/shots.mjs en",
-    "audio": "node audio/render-film3.mjs",
-    "render:zh": "remotion render Film3-zh out/film3-zh.mp4",
-    "render:en": "remotion render Film3-en out/film3-en.mp4"
+    "audio": "node audio/render-film4.mjs",
+    "render:zh": "remotion render Film4-zh out/film4-zh.mp4",
+    "render:en": "remotion render Film4-en out/film4-en.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.533",
     "@remotion/google-fonts": "^4.0.533",
+    "@remotion/motion-blur": "^4.0.533",
     "@types/react": "^19.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

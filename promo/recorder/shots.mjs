@@ -46,7 +46,9 @@ if (want('ask')) {
 // 2. the day: from a calm today to the strike on the 9th
 if (want('day')) {
   await setup();
-  await b.go(`${B}/?date=2026-10-06`);
+  // start from today, whatever day it is when recording
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date());
+  await b.go(`${B}/?date=${today}`);
   await record(b, `${OUT}/day`, 110, async f => {
     if (f === 10) await b.ev(`document.querySelector('[data-date="2026-10-09"]').click(); 1`);
     if (f > 50) await b.ev(`window.scrollBy(0, ${Math.round(6 * Math.min(1, (f - 50) / 12) * Math.max(0, Math.min(1, (104 - f) / 12)))}); 1`);

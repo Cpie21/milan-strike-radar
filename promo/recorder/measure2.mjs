@@ -1,0 +1,33 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { open } from './rec.mjs';
+const B = 'http://localhost:3001';
+const out = {};
+const R = sel => `(()=>{const e=${sel}; if(!e) return null; const b=e.getBoundingClientRect(); return [Math.round(b.left),Math.round(b.top),Math.round(b.width),Math.round(b.height)]})()`;
+for (const lang of ['zh', 'en']) {
+  const ask = JSON.parse(readFileSync(new URL(`ask-${lang}.json`, import.meta.url), 'utf8'));
+  const b = await open(9358);
+  await b.go(`${B}/`, 1500);
+  await b.ev(`localStorage.clear(); sessionStorage.clear(); localStorage.setItem('italy_strike_language', ${JSON.stringify(lang)}); localStorage.setItem('italy_strike_city','/'); sessionStorage.setItem('lab_ask_cache', ${JSON.stringify(JSON.stringify({ [ask.key]: ask.entry }))}); 1`);
+  await b.go(`${B}/?date=2026-10-09`);
+  const m = {};
+  m.form = await b.ev(R(`document.querySelector('form')`));
+  m.face = await b.ev(R(`document.querySelector('form [role=img]') || document.querySelector('form canvas')`));
+  await b.ev(`document.querySelector('form input, form textarea').focus(); 1`);
+  await b.send('Input.insertText', { text: ask.q });
+  await b.ev(`document.querySelector('form').requestSubmit(); 1`);
+  for (let i = 0; i < 90; i++) await b.tick(33);
+  m.verdict = await b.ev(R(`[...document.querySelectorAll('[data-vaul-drawer] p')].find(p=>/很可能|Likely/.test(p.textContent))?.closest('.relative.rounded-\\\\[20px\\\\]') || [...document.querySelectorAll('[data-vaul-drawer] p')].find(p=>/很可能|Likely/.test(p.textContent))?.parentElement`));
+  m.bar = await b.ev(R(`document.querySelector('[data-vaul-drawer] .h-\\\\[8px\\\\]')`));
+  m.hours = await b.ev(R(`[...document.querySelectorAll('[data-vaul-drawer] p')].find(p=>/罢工时段|Strike hours/.test(p.textContent))`));
+  await b.go(`${B}/?date=${new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date())}`);
+  await b.ev(`document.querySelector('[data-date="2026-10-09"]').click(); 1`);
+  for (let i = 0; i < 40; i++) await b.tick(33);
+  m.rail9 = await b.ev(R(`document.querySelector('[data-date="2026-10-09"]')`));
+  m.hero = await b.ev(R(`[...document.querySelectorAll('span')].find(s=>s.textContent==='08:45')?.closest('.w-full')`));
+  m.guarantee = await b.ev(R(`[...document.querySelectorAll('dt')].find(d=>/保障|Guaranteed/.test(d.textContent))?.parentElement`));
+  out[lang] = m;
+  b.close();
+}
+writeFileSync(new URL('../src/rects.json', import.meta.url), JSON.stringify(out, null, 1));
+console.log(JSON.stringify(out));
+process.exit(0);

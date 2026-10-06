@@ -15,7 +15,7 @@ const CITIES: [string, string, number, number][] = [['MILANO', '米兰', 45.46, 
   ['VERONA', '维罗纳', 45.44, 10.99], ['PADOVA', '帕多瓦', 45.41, 11.88], ['TRIESTE', '的里雅斯特', 45.65, 13.78], ['CAGLIARI', '卡利亚里', 39.22, 9.12], ['BERGAMO', '贝加莫', 45.7, 9.67], ['BRESCIA', '布雷西亚', 45.54, 10.21],
   ['PISA', '比萨', 43.72, 10.4], ['MESSINA', '墨西拿', 38.19, 15.55], ['PERUGIA', '佩鲁贾', 43.11, 12.39]];
 const LABELLED = new Set(['MILANO', 'ROMA', 'NAPOLI', 'TORINO', 'VENEZIA', 'FIRENZE', 'PALERMO', 'BARI', 'CAGLIARI']);
-const S = 104, OX = 70, OY = 330;
+const S = 92, OX = 96, OY = 290; // inside the platforms' safe area
 const proj = (lon: number, lat: number): [number, number] => [OX + (lon - 6.5) * 0.743 * S, OY + (47.2 - lat) * S];
 const inside = (pt: [number, number], poly: [number, number][]) => {
   let c = false;
@@ -27,23 +27,23 @@ const inside = (pt: [number, number], poly: [number, number][]) => {
 };
 const POLYS = [MAINLAND, SICILY, SARDINIA].map(p => p.map(([lo, la]) => proj(lo, la)));
 export const ITALY_LEN = 156;
-export function Italy({ f, lang }: { f: number; lang: Lang }) {
+export function Italy({ f, lang, start = 34, step = 3.2, len = ITALY_LEN }: { f: number; lang: Lang; start?: number; step?: number; len?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const { width, height } = useVideoConfig();
   const P = 15;
   useLayoutEffect(() => {
     const g = ref.current!.getContext('2d')!;
     g.clearRect(0, 0, width, height);
-    for (let y = OY - 20; y < OY + 1150; y += P) for (let x = 20; x < width - 20; x += P) {
+    for (let y = OY - 20; y < OY + 1000; y += P) for (let x = 20; x < width - 20; x += P) {
       const inIt = POLYS.some(p => inside([x, y], p));
       if (!inIt) continue;
       // the land lights top to bottom, like a board coming on
-      const a = interpolate(f, [(y - OY) / 1150 * 30, (y - OY) / 1150 * 30 + 10], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+      const a = interpolate(f, [(y - OY) / 1000 * start * 0.8, (y - OY) / 1000 * start * 0.8 + 8], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
       g.fillStyle = `rgba(255,170,70,${(0.3 + 0.12 * hash(x * 3 + y)) * a})`;
       g.beginPath(); g.arc(x, y, 3.8, 0, Math.PI * 2); g.fill();
     }
     CITIES.forEach(([, , la, lo], i) => {
-      const a = interpolate(f, [34 + i * 3.2, 40 + i * 3.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+      const a = interpolate(f, [start + i * step, start + 6 + i * step], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
       if (a <= 0) return;
       const [x, y] = proj(lo, la);
       g.shadowColor = 'rgba(255,150,30,1)'; g.shadowBlur = 24 * a;
@@ -51,21 +51,21 @@ export function Italy({ f, lang }: { f: number; lang: Lang }) {
       g.shadowBlur = 0;
     });
   });
-  const shown = Math.min(20, Math.max(0, Math.floor((f - 34) / 3.2) + 1));
-  const out = interpolate(f, [ITALY_LEN - 12, ITALY_LEN], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const shown = Math.min(20, Math.max(0, Math.floor((f - start) / step) + 1));
+  const out = interpolate(f, [len - 6, len], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#000', opacity: out }}>
       <canvas ref={ref} width={width} height={height} style={{ position: 'absolute', inset: 0 }} />
       {CITIES.map(([it, zh, la, lo], i) => {
         if (!LABELLED.has(it)) return null;
-        const a = interpolate(f, [38 + i * 3.2, 46 + i * 3.2], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+        const a = interpolate(f, [start + 4 + i * step, start + 12 + i * step], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
         const [x, y] = proj(lo, la);
         const left = ['TORINO', 'CAGLIARI', 'GENOVA'].includes(it);
         return <div key={it} style={{ position: 'absolute', top: y - 17, ...(left ? { right: width - x + 18, textAlign: 'right' } : { left: x + 18 }), fontFamily: MONO, fontSize: 30, color: INK, opacity: a, whiteSpace: 'nowrap' }}>
           {lang === 'zh' ? zh : it.charAt(0) + it.slice(1).toLowerCase()}
         </div>;
       })}
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 1560, textAlign: 'center', opacity: interpolate(f, [36, 46], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) }) }}>
+      <div style={{ position: 'absolute', left: 80, right: 140, top: 1290, textAlign: 'center', opacity: interpolate(f, [start + 2, start + 12], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) }) }}>
         <div style={{ fontFamily: SANS, fontSize: 64, fontWeight: 600, color: INK }}><span style={{ color: AMBER, fontVariantNumeric: 'tabular-nums' }}>{shown}</span>{lang === 'zh' ? ' 个城市' : shown === 1 ? ' city' : ' cities'}</div>
         <div style={{ fontFamily: MONO, fontSize: 30, marginTop: 14, color: DIM }}>{lang === 'zh' ? '地铁 · 公交 · 火车 · 机场' : 'metro · bus · train · airport'}</div>
       </div>
