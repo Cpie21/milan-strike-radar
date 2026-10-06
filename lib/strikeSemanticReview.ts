@@ -100,7 +100,7 @@ export async function checkJevPrice(fetcher:typeof fetch=fetch) {
   const endpoints=json.data?.endpoints;
   if(!Array.isArray(endpoints)||!endpoints.length||endpoints.some(e=>e.pricing?.prompt==null || e.pricing?.completion==null || !Number.isFinite(Number(e.pricing?.prompt)) || Number(e.pricing.prompt)<0 || Number(e.pricing.prompt)>PRICE_CEILING || Number(e.pricing?.completion)!==0 || Number(e.pricing?.request || 0)>0)) throw new Error('Jev price exceeds allowed rate');
 }
-export async function reviewStrikeSemantics(records:StrikeRecord[],rawRows:RawStrikeRow[],db:SupabaseClient,warnings:string[],now=new Date(),dependencies:{price?:()=>Promise<void>;decide?:typeof decide;enabled?:boolean}={}) {
+export async function reviewStrikeSemantics(records:StrikeRecord[],rawRows:RawStrikeRow[],db:SupabaseClient,warnings:string[],now=new Date(),dependencies:{price?:()=>Promise<void>;decide?:typeof decide;enabled?:boolean;deadline?:number}={}) {
   const stats={called:0,cached:0,flagged:0,needsReview:0,inconclusive:0,failed:0,skipped:0,budgetExhausted:false};
   if(!(dependencies.enabled ?? process.env.STRIKE_SEMANTIC_QA==='1') || !(process.env.STRIKE_REVIEW_API_KEY || process.env.OPENROUTER_API_KEY) && !dependencies.decide) return {records,stats,enabled:false};
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
@@ -117,7 +117,7 @@ export async function reviewStrikeSemantics(records:StrikeRecord[],rawRows:RawSt
   }
   const replacements=new Map<string,StrikeRecord[]>();
   let priceChecked=false;
-  const deadline=Date.now()+55000;
+  const deadline=Math.min(Date.now()+55000,dependencies.deadline??Infinity);
   for(const [key,group] of [...groups].sort((a,b)=>(a[1][0]?.date || '').localeCompare(b[1][0]?.date || ''))) {
     const raw=rawByKey.get(key) || group[0]?.raw_payload;if(!raw)continue;
     const input=reviewInput(raw,group);

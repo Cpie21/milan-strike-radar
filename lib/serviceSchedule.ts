@@ -1,3 +1,4 @@
+import { canonicalLineAlias, type GestAliasVerification } from './canonicalLineAlias';
 import type { LineScope } from './lineScope';
 import type { FieldEvidence } from './strikeScope';
 
@@ -12,7 +13,7 @@ export type ServiceSchedule = {
 };
 export type RouteDay={id:string;name:string;firstDeparture:ServiceClock;lastDeparture:ServiceClock;lastArrival:ServiceClock};
 export type RouteService={routeId:string;serviceId:string;trips:number;complete:boolean;first:number;lastDeparture:number;lastArrival:number};
-export type ScheduleIndex={operator:string;source:string;checkedAt:string;contentHash:string;validFrom:string|null;validTo:string|null;timezone:string;modeValidTo?:Record<string,string>;routes:{id:string;name:string;type:number}[];calendar:Record<string,string>[];exceptions:Record<string,string>[];services:RouteService[]};
+export type ScheduleIndex={aliasVerification?:GestAliasVerification;identityEndpoints?:string[];feedId?:string;operator:string;source:string;checkedAt:string;contentHash:string;validFrom:string|null;validTo:string|null;timezone:string;modeValidTo?:Record<string,string>;routes:{id:string;name:string;type:number;longName?:string}[];calendar:Record<string,string>[];exceptions:Record<string,string>[];services:RouteService[]};
 
 export function serviceClock(seconds:number):ServiceClock {
   if(!Number.isSafeInteger(seconds)||seconds<0||seconds>=259200)throw new Error('Invalid service clock');
@@ -35,7 +36,7 @@ export function scheduleForScope(index:ScheduleIndex,date:string,category:string
   if(scope.kind!=='SPECIFIC_LINES'&&index.routes.some(r=>![0,1,2,3,4,5,6,7,11,12].includes(r.type)))return {...empty,reason:'UNSUPPORTED_GTFS_ROUTE_TYPE'};
   const candidates=index.routes.filter(r=>modes(category).includes(r.type));
   if(!candidates.length)return {...empty,reason:'MODE_NOT_IN_FEED'};
-  const named=(names:string[])=>names.map(name=>candidates.filter(r=>r.name.toUpperCase()===name.toUpperCase() || index.operator==='ATM_MILANO'&&category==='SUBWAY'&&/^M[1-5]$/i.test(name)&&r.id===name.toUpperCase()&&'M'+r.name===name.toUpperCase()));
+  const named=(names:string[])=>names.map(name=>candidates.filter(r=>r.name.toUpperCase()===name.toUpperCase() || canonicalLineAlias(r,{...index,date,category})?.officialName===name.toUpperCase() || index.operator==='ATM_MILANO'&&category==='SUBWAY'&&/^M[1-5]$/i.test(name)&&r.id===name.toUpperCase()&&'M'+r.name===name.toUpperCase()));
   const names=scope.kind==='SPECIFIC_LINES'?scope.affectedLineNames:scope.kind==='ALL_EXCEPT'?scope.excludedLineNames:[];
   const matches=named(names);
   if(matches.some(m=>m.length!==1)||scope.kind==='SPECIFIC_LINES'&&!names.length||scope.kind==='ALL_EXCEPT'&&!names.length)return {...empty,status:'PARTIAL',reason:'LINE_IDENTITY_INCOMPLETE'};

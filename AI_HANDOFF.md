@@ -362,3 +362,32 @@ Server contract needed:
 - Lab Ask client: sends the refine token only when answering a clarify, retries fresh on 400 (expired hold), counts locally only answered questions, once per held question; renders `out_of_scope.coverage`.
 - Wall: client body boxes and centre-first slot order equal `lib/graffiti.ts`; no UI copy promises public visibility before approval.
 - The two old proposed migrations (`20261006090000_ask_feedback.sql`, `20261007090000_lab_graffiti.sql`) are still in the tree; do not apply them — removal pending owner confirmation.
+
+
+## GEST canonical identity (Codex)
+
+- PR on `codex/gest-line-alias`, based on shared-services production. Claude 44fc534/53bd28d inspected; no changes to Ask date parsing or lab/frontend files. GEST's October 10 public T1 maps to publisher T1.3 only after verifying the same Villa Costanza–Careggi service in official municipal description and actual GTFS trips.
+- Shared alias resolver applies to notice route IDs, public candidate membership and dated timetable line selection/exclusions. Bound to GEST_FIRENZE / GTFS_GEST / exact regional source / BUS+tram type 0 / exact raw short+long name / one unambiguous route and August 10–December 30, 2026 within published dates. Re-review on expiry/name/source conflict; no global fuzzy matching or hardcoded route IDs.
+- Additive JSON/API `routeAliases` in lineScope, declaredScope.value and potentialLines entries retains raw/public identity, source, dynamic IDs, effective dates and verification date. Raw membership/timetable labels are preserved. No schema migration, new model or cron; monthly paid cap/free translation/no-Gemini unchanged. Public T1 line query now receives a concrete routeId. Neither alias nor published timetable confirms service actually runs during a strike.
+- Full implementation/evidence: docs/2026-10-gest-canonical-line-alias.md. 256 regressions pass; release verification to be recorded after normal production sync. Claude can merge this PR into their own branch; no UI change required to keep existing public T1 label.
+
+- Release integration: production was verified to already serve Claude 44fc534. The fix is therefore cherry-picked into owned branch codex/gest-line-alias-release based on that exact production commit, preserving all deployed lab/UI and explicit Ask-date changes. Earlier backend-only build was superseded; 44fc534 was restored before releasing the integrated fix.
+
+## GEST production receipt — 2026-10-06 (PR #14)
+
+- Runtime 985e773 is READY at www.theitalystrike.com, deployment dpl_GPJBYVzqFgt9TR5WKxsKnm1CLhuG. Based on deployed Claude 44fc534, preserving lab/UI/Ask changes. PR #13 is superseded/closed; review #14 on codex/gest-line-alias-release. Documentation/audit-only commits after the runtime do not require redeploying.
+- Normal manual sync b8f263da-559a-415f-bdfb-6f3cf58df79d succeeded, 73 fetched / 58 upserted. Stored GEST scope is VERIFIED: T1→1606821564 and T2→1272089682. Public names T1/T2, guarantees 06:30–09:30 and 17:00–20:00, raw membership T1.3 and source identity are retained. Selected-line APIs each return only the corresponding named line and correct ID; /lab returns 200.
+- 280 integrated regressions, type check, focused lint and build passed. After sync, all 20 city page/API/calendar checks +20 accuracy regressions and 88 concrete-line checks passed, plus GEST all/T1/T2 and preserved lab checks. Receipts: docs/verification/2026-10-gest-alias-{database,http,cities,lines,deployment,sync,status}.json.
+- Existing QA during normal sync made 11 calls /16 cache hits; no new AI parsing stage. October shared ledger .027329 USD, disabled=false, cap .20 unchanged. Daily cron still 0 5 * * * UTC. No paid translation/Gemini/new hosting. Eight unresolved timings and 25 warnings remain; this identity correction is not a claim of complete realtime or operator access.
+
+## Final production data / refresh audit (2026-10-06)
+
+Branch `codex/final-data-refresh-audit` builds on released GEST identity code + Claude `44fc534`, preserving the live lab. Full external MIT-to-DB and reverse audit: 29 announcements, 33 active future records, all 33 traced; four unresolved operational timings and two unsupported known cities. See `docs/2026-10-06-final-data-refresh-audit.md` and its receipts for the actual scope.
+
+Backend changes: daily/weekly cache bucket keys, current guarantee-document index discovery, live official+same-GTFS terminal proof to renew the GEST alias beyond 2026, primary table validation, bounded optional enrichment, exact free-only translation endpoint. No schema migration or paid model stage. `aliasVerification` is additive internal membership/schedule metadata. `/api/sync-status` adds `data_quality` and run `warning_count`; health success alone must not be presented as all facts verified. Existing Jev/Ask budget cap and impacted-user counters are untouched.
+
+Polling is daily at configured 05:00 UTC (historically ~05:10), not hourly. Rome live alerts are request-driven only; other cities must not be labelled live when NOT_CONFIGURED. Guarantee profiles can expire/change and become unknown; ATAC currently blocks automatic charter access, which is explicitly recorded. Official facts remain above inference.
+
+Claude frontend handoff: mounted `/lab` currently ticks its clock but does not re-fetch data. Backend cache invalidation updates NEW requests; add an appropriate on-focus/periodic data refresh in your pending UI work if an indefinitely open page should update itself. Keep declared/potential lines separate from observed operation, use new lineImpact/evidence fields, and retain the source block. Your uncommitted frontend changes were inspected but neither overwritten nor deployed by this backend release.
+
+Production audit receipts: 33/33 records rechecked after sync `d7878546-6669-47bf-917e-1ce8de63eec3`, 65 city/API/calendar/lab/root checks passed, 289 tests passed. GEST renewal proof persisted VERIFIED. The health-only follow-up is `6a386d9`; keep it as well as `819265c` in your next deployment. Source warnings remain PARTIAL (including ATAC block and expired Milan surface timetable); do not fabricate last-trip clocks from those sources. No optional stage was skipped in this verified run; Jev made zero new calls.

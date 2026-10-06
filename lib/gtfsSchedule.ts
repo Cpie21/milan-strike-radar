@@ -1,3 +1,6 @@
+import * as cheerio from 'cheerio';
+import { verifyGestAlias } from './gestAliasRefresh';
+import { GEST_ALIAS_SOURCE } from './canonicalLineAlias';
 import { createInflateRaw } from 'node:zlib';
 import { Readable } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
@@ -15,7 +18,7 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   const size=archive.readUInt32LE(end+12),offset=archive.readUInt32LE(end+16);
   if(!size||size>1_000_000||offset+size!==end)throw new Error('Invalid schedule directory');
   const entries=new Map<string,{method:number;packed:number;unpacked:number;start:number;crc:number}>();
-  const wanted=new Set(['agency.txt','routes.txt','calendar.txt','calendar_dates.txt','feed_info.txt','trips.txt','stop_times.txt','frequencies.txt']);
+  const wanted=new Set(['agency.txt','routes.txt','calendar.txt','calendar_dates.txt','feed_info.txt','trips.txt','stop_times.txt','frequencies.txt',...(feedId==='GTFS_GEST'?['stops.txt']:[])]);
   for(let i=offset;i<offset+size;) {
     if(i+46>offset+size||archive.readUInt32LE(i)!==0x02014b50)throw new Error('Invalid schedule member');
     const flags=archive.readUInt16LE(i+8),method=archive.readUInt16LE(i+10),crc=archive.readUInt32LE(i+16),packed=archive.readUInt32LE(i+20),unpacked=archive.readUInt32LE(i+24),ns=archive.readUInt16LE(i+28),extra=archive.readUInt16LE(i+30),comment=archive.readUInt16LE(i+32),local=archive.readUInt32LE(i+42);
@@ -78,7 +81,7 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   const feed=GTFS_FEEDS[feedId],allowed=new Set(small.filter(r=>feed.agency.test(r.agency_name)&&r.agency_timezone==='Europe/Rome').map(r=>r.agency_id||''));
   if(!allowed.size)throw new Error('Schedule agency/timezone not verified');
   const routes:ScheduleIndex['routes']=[];
-  await csv('routes.txt',r=>{if(allowed.has(r.agency_id||'')||!r.agency_id&&small.length===1)routes.push({id:r.route_id,name:r.route_short_name,type:Number(r.route_type)});});
+  await csv('routes.txt',r=>{if(allowed.has(r.agency_id||'')||!r.agency_id&&small.length===1)routes.push({id:r.route_id,name:r.route_short_name,longName:r.route_long_name,type:Number(r.route_type)});});
   if(!routes.length||routes.some(r=>!r.id||!Number.isInteger(r.type))||new Set(routes.map(r=>r.id)).size!==routes.length)throw new Error('Invalid schedule routes');
   const routeIds=new Set(routes.map(r=>r.id)),calendar:Record<string,string>[]=[],exceptions:Record<string,string>[]=[],info:Record<string,string>[]=[];
   await csv('calendar.txt',r=>calendar.push(r));await csv('calendar_dates.txt',r=>exceptions.push(r));await csv('feed_info.txt',r=>info.push(r));
@@ -89,12 +92,17 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   exceptions.splice(0,exceptions.length,...uniqueExceptions.values());
   const knownServices=new Set([...calendar,...exceptions].map(c=>c.service_id));
   type Trip={routeId:string;serviceId:string;first:number;end:number;seq:number;endSeq:number;seen:boolean;bad:boolean;frequency:boolean};
+  const stops=new Map<string,string>(),edges=new Map<string,{first:number;last:number;a:string;b:string}>();
+  if(feedId==='GTFS_GEST')await csv('stops.txt',r=>stops.set(r.stop_id,r.stop_name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()));
+  const aliasRoute=routes.find(r=>r.name==='T1.3'&&r.type===0);
+  let identityBad=false;
   const trips=new Map<string,Trip>();
   await csv('trips.txt',r=>{if(!routeIds.has(r.route_id))return;if(!r.trip_id||trips.has(r.trip_id)||!knownServices.has(r.service_id)||trips.size>=800000)throw new Error('Invalid/oversize schedule trips');trips.set(r.trip_id,{routeId:r.route_id,serviceId:r.service_id,first:Infinity,end:-1,seq:Infinity,endSeq:-1,seen:false,bad:false,frequency:false});});
   await csv('frequencies.txt',r=>{const t=trips.get(r.trip_id);if(t)t.frequency=true;}); // Frequency service has no exact final trip: refuse a fake clock.
   await csv('stop_times.txt',r=>{
     const t=trips.get(r.trip_id);if(!t)return;
     const seq=Number(r.stop_sequence);if(!Number.isSafeInteger(seq)||seq<0){t.bad=true;return;}
+    if(feedId==='GTFS_GEST'&&t.routeId===aliasRoute?.id){const name=stops.get(r.stop_id);if(!name)identityBad=true;else{const e=edges.get(r.trip_id)||{first:seq,last:seq,a:name,b:name};if(seq<e.first){e.first=seq;e.a=name;}if(seq>e.last){e.last=seq;e.b=name;}edges.set(r.trip_id,e);}}
     const arrival=gtfsSeconds(r.arrival_time),departure=gtfsSeconds(r.departure_time);
     // Missing interior interpolated times are permitted. Missing passenger terminal times are not.
     if(r.pickup_type!=='1'&&seq<t.seq){t.seq=seq;t.first=departure??Infinity;}
@@ -110,10 +118,15 @@ export async function scheduleFromArchive(feedId:FeedId,archive:Buffer,deadline=
   const from=calendar.map(c=>iso(c.start_date)).concat(exceptions.filter(c=>c.exception_type==='1').map(c=>iso(c.date))).sort();
   const to=calendar.map(c=>iso(c.end_date)).concat(exceptions.filter(c=>c.exception_type==='1').map(c=>iso(c.date))).sort();
   const declaredFrom=iso(info[0]?.feed_start_date),declaredTo=iso(info[0]?.feed_end_date);
-  return {operator:feed.operator,source:feed.url,checkedAt:new Date().toISOString(),contentHash:hash,timezone:'Europe/Rome',validFrom:declaredFrom||from[0]||null,validTo:declaredTo||to.at(-1)||null,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(iso(info[0]?.surface_end_date)?{BUS:iso(info[0].surface_end_date)}:{}),...(iso(info[0]?.mm_end_date)?{SUBWAY:iso(info[0].mm_end_date)}:{})}}:{}),routes,calendar,exceptions,services:[...groups.values()].map(g=>({...g,first:Number.isFinite(g.first)?g.first:0}))};
+  return {...(feedId==='GTFS_GEST'?{identityEndpoints:identityBad||edges.size!==[...trips.values()].filter(t=>t.routeId===aliasRoute?.id).length?[]:[...new Set([...edges.values()].map(e=>e.a+'|'+e.b))]}:{}),feedId,operator:feed.operator,source:feed.url,checkedAt:new Date().toISOString(),contentHash:hash,timezone:'Europe/Rome',validFrom:declaredFrom||from[0]||null,validTo:declaredTo||to.at(-1)||null,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(iso(info[0]?.surface_end_date)?{BUS:iso(info[0].surface_end_date)}:{}),...(iso(info[0]?.mm_end_date)?{SUBWAY:iso(info[0].mm_end_date)}:{})}}:{}),routes,calendar,exceptions,services:[...groups.values()].map(g=>({...g,first:Number.isFinite(g.first)?g.first:0}))};
 }
 export async function loadScheduleIndex(id:FeedId,deadline=Date.now()+45000) {
   const url=await resolveGtfsSource(id,deadline);
   const {bytes}=await transitBytes(url,64_000_000,deadline);
-  return {...await scheduleFromArchive(id,bytes,deadline),source:url};
+  const index={...await scheduleFromArchive(id,bytes,deadline),source:url};
+  if(id==='GTFS_GEST'){
+    index.aliasVerification={status:'UNAVAILABLE',source:GEST_ALIAS_SOURCE,catalogSource:url,checkedAt:index.checkedAt,validFrom:index.validFrom,validTo:index.validTo,endpoints:index.identityEndpoints||[]};
+    try{const html=(await transitBytes(GEST_ALIAS_SOURCE,1_000_000,deadline)).bytes.toString('utf8');index.aliasVerification=verifyGestAlias({...index,feedId:id,routes:index.routes.map(r=>({...r,operator:index.operator}))},cheerio.load(html)('body').text(),index.identityEndpoints||[]);}catch{/* No extension without primary evidence. */}
+  }
+  return index;
 }
