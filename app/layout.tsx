@@ -17,7 +17,10 @@ export const metadata: Metadata = {
   description: "Italy Strike Query - Real-time strike information for Italy",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // Not translucent: since iOS 26 the system lays a Liquid Glass blur over
+    // the top ~40pt of a home-screen app that draws under its status bar.
+    // With an opaque bar the page starts below it and nothing is blurred.
+    statusBarStyle: "black",
     title: "罢工查询",
   },
   icons: {

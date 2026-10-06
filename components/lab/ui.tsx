@@ -126,8 +126,9 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
       const drawer = scroller.closest('[data-vaul-drawer]') as HTMLElement | null;
       const content = scroller.firstElementChild as HTMLElement | null;
       if (!drawer || !content) return;
-      const end = (scroller.querySelector('[data-sheet-fit]') as HTMLElement | null) ?? content;
-      const h = Math.max(240, end.getBoundingClientRect().bottom - drawer.getBoundingClientRect().top + scroller.scrollTop + 20);
+      // the marked end, else the page in view (a carousel of pages), else all of it
+      const end = (scroller.querySelector('[data-sheet-fit]') ?? scroller.querySelector('[data-sheet-page]') ?? content) as HTMLElement;
+      const h = Math.max(240, end.getBoundingClientRect().bottom - drawer.getBoundingClientRect().top + scroller.scrollTop + 36);
       // vaul offsets a px detent from the window's height, not the drawer's
       setFitPx(Math.round(Math.min(window.innerHeight, h + window.innerHeight - drawer.offsetHeight)));
     };
@@ -136,7 +137,7 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
     const later = () => { clearTimeout(timer); timer = setTimeout(measure, 140); };
     measure();
     const mo = new MutationObserver(later);
-    mo.observe(scroller, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+    mo.observe(scroller, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'data-sheet-fit', 'data-sheet-page'] });
     window.addEventListener('resize', later);
     return () => { clearTimeout(timer); mo.disconnect(); window.removeEventListener('resize', later); };
   }, [fit, open, scroller]);
@@ -157,8 +158,8 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
       <Drawer.Overlay className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.55)' }} />
       <Drawer.Content aria-describedby={undefined} className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] flex flex-col outline-none"
         style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, height: detents ? '94dvh' : undefined, maxHeight: '94dvh', boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)`}}>
-        {detents ? <div className="pt-2 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div> : <div className="h-2" />}
-        <div className="flex items-center justify-between gap-3 px-5 pt-2 pb-3 select-none">
+        {detents ? <div className="pt-2 pb-1.5 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div> : <div className="h-2" />}
+        <div className="flex items-center justify-between gap-3 px-5 pt-3 pb-3 select-none">
           {header ?? <Drawer.Title className="text-[18px] font-semibold tracking-tight">{title}</Drawer.Title>}
           {header && <Drawer.Title className="sr-only">{title}</Drawer.Title>}
           <button onClick={onClose} aria-label="关闭 / Close" className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
