@@ -66,10 +66,15 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   // One soft light in the first mode's colour, centred just under the top
   // edge so it rises out of the dark bar; a second mode only tints one
   // side faintly, so two colours never mix into a muddy middle.
-  const glow = glowModes.length
-    ? [`radial-gradient(115% 62% at 50% 6%, ${MODE_COLOR[glowModes[0]].main}2E, transparent 72%)`,
-       ...(glowModes[1] ? [`radial-gradient(55% 40% at 88% 18%, ${MODE_COLOR[glowModes[1]].main}1C, transparent 75%)`] : [])].join(', ')
-    : 'radial-gradient(115% 62% at 50% 6%, rgba(255,255,255,0.05), transparent 72%)';
+  // The very top is one even colour (tint) that the browser's bar takes
+  // too, washing down into the glow, so bar and page meet with no line.
+  const tint = edgeTint(glowModes[0]);
+  const glow = [`linear-gradient(180deg, ${tint} 0px, ${tint}00 200px)`,
+    ...(glowModes.length
+      ? [`radial-gradient(115% 62% at 50% 16%, ${MODE_COLOR[glowModes[0]].main}2E, transparent 72%)`,
+         ...(glowModes[1] ? [`radial-gradient(55% 40% at 88% 24%, ${MODE_COLOR[glowModes[1]].main}1C, transparent 75%)`] : [])]
+      : ['radial-gradient(115% 62% at 50% 16%, rgba(255,255,255,0.05), transparent 72%)'])].join(', ');
+  useEffect(() => { document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', tint)); }, [tint]);
 
   useEffect(() => {
     const tick = () => setNow(romeMinutes());
@@ -149,8 +154,13 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
       </AnimatePresence>
       {/* The top: the glow runs right up under the status bar, where iOS
           blurs it softly in the Home Screen app; the header row starts below
-          that blur (.lab-header, app/layout.tsx). */}
-      <div>
+          that blur (.lab-header, app/layout.tsx). In the browser, Safari 26
+          colours its bar from a fixed full-width box with a plain
+          background-color at the edge: this strip, in the page's top colour,
+          so bar and page join without a line (hidden in the app, where the
+          blur is wanted). */}
+      <div aria-hidden className="lab-edge fixed inset-x-0 top-0 h-[10px] z-[30]" style={{ backgroundColor: tint, transition: 'background-color 0.5s ease' }} />
+      <div className="relative">
         <header className="lab-header mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4">
           <div className="justify-self-start flex p-[3px] rounded-full" style={{ background: C.surface2 }} role="group" aria-label="语言 / Language">
             {(['zh', 'en'] as Lang[]).map(l => (
@@ -310,6 +320,14 @@ function WidgetGlyph() {
       <rect x="14" y="14" width="7" height="7" rx="2.4" fill="currentColor" stroke="none" />
     </svg>
   );
+}
+
+// The page's top colour: the background, warmed a little toward the first
+// striking mode's colour.
+function edgeTint(mode?: Mode) {
+  if (!mode) return '#0A0B0D';
+  const n = parseInt(MODE_COLOR[mode].main.slice(1), 16), base = [10, 11, 13];
+  return `#${[n >> 16, (n >> 8) & 255, n & 255].map((v, i) => Math.round(base[i] + (v - base[i]) * 0.1).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function Tool({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {

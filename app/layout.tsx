@@ -61,7 +61,7 @@ export default function RootLayout({
           // the Home Screen app (display-mode standalone, where iOS 26 blurs
           // ~110px and reports a zero inset) it starts just below the blur.
           + '.lab-header{padding-top:max(14px,calc(env(safe-area-inset-top) + 14px))}'
-          + '@media (display-mode: standalone){.lab-header{padding-top:max(108px,calc(env(safe-area-inset-top) + 50px))}}'}</style>
+          + '@media (display-mode: standalone){.lab-header{padding-top:max(108px,calc(env(safe-area-inset-top) + 50px))}.lab-edge{display:none}}'}</style>
         <CSPostHogProvider>
           {children}
         </CSPostHogProvider>
