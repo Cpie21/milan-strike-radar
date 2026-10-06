@@ -136,9 +136,14 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         <motion.div key={glow} aria-hidden className="absolute inset-x-0 top-0 h-[460px] pointer-events-none" style={{ background: glow }}
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
       </AnimatePresence>
-      {/* The header row on a dark wash, from the bar's colour down to clear */}
-      <div className="relative z-[1]" style={{ background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bg}F0 38%, ${C.bg}00 100%)` }}>
-        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-5" style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}>
+      {/* Three layers at the top: the glow (above), a wash in the page's
+          colour fading down into it, and the header on a solid bar. The bar
+          is one flat colour and sticks to the edge: iOS 26 lays its Liquid
+          Glass blur over whatever sits under the status bar unless a fixed or
+          sticky full-width box paints that edge in a single colour. */}
+      <div className="sticky top-0 z-[40]">
+      <div style={{ background: C.bg }}>
+        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-2.5" style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}>
           <div className="justify-self-start flex p-[3px] rounded-full" style={{ background: C.surface2 }} role="group" aria-label="语言 / Language">
             {(['zh', 'en'] as Lang[]).map(l => (
               <button key={l} onClick={() => changeLang(l)} aria-pressed={lang === l} className="relative h-7 w-9 rounded-full text-[12.5px] font-semibold" style={{ color: lang === l ? C.text : C.text3 }}>
@@ -156,11 +161,13 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           </button>
         </header>
       </div>
+      <div aria-hidden className="absolute inset-x-0 top-full h-7 pointer-events-none" style={{ background: `linear-gradient(180deg, ${C.bg}, ${C.bg}00)` }} />
+      </div>
       <div className="relative">
       <div className="relative mx-auto max-w-[520px] pb-[120px]">
 
         {/* Title left, the way out to the full calendar right, on one baseline */}
-        <div className="flex items-end justify-between gap-3 pl-5 pr-4 pt-2 mb-3">
+        <div className="flex items-end justify-between gap-3 pl-5 pr-4 pt-5 mb-3">
           <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
           <button onClick={() => setSheet('month')} className={`mb-0.5 h-[34px] pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: C.surface2, color: C.text }}>
             <CalendarDots size={16} weight="bold" />{tx(lang, '全部日期', 'All dates')}
