@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "scripts": {
     "studio": "remotion studio",
-    "render:zh": "remotion render Promo-zh out/promo-zh.mp4",
-    "render:en": "remotion render Promo-en out/promo-en.mp4"
+    "record": "node recorder/shots.mjs zh && node recorder/shots.mjs en",
+    "audio": "node audio/render-film.mjs",
+    "render:zh": "remotion render Film-zh out/film-zh.mp4",
+    "render:en": "remotion render Film-en out/film-en.mp4"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.533",
