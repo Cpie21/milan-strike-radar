@@ -146,11 +146,6 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
   const pill = live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
     : isToday && !pending ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
       : { text: `${relativeDay(card.date, ctx.today, lang)}${pending ? '' : ` · ${overnight ? tx(lang, '跨夜', 'Overnight') : hoursText(card, lang)}`}`, color: C.text2, bg: C.surface3, dot: false };
-  const sub = (text: string) => <span className="text-[16px] font-semibold ml-1" style={{ color: C.text3, fontFamily: SANS }}>{text}</span>;
-  // Words beside big digits: centred on the digits (not sitting on their
-  // baseline), a step larger than body text, a weight lighter than the
-  // digits, so "08:45 – 运营结束" reads as one balanced line.
-  const word = (text: string) => <span className="text-[28px] leading-none font-medium tracking-[0.02em]" style={{ fontFamily: SANS }}>{text}</span>;
 
   return (
     <motion.article id={`card-${card.id}`} className="relative overflow-hidden"
@@ -173,20 +168,13 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           {pending ? (
             <p className={TYPE.page} style={{ color: C.text2, fontFamily: SANS }}>{tx(lang, '时段待公布', 'Hours to be announced')}</p>
           ) : overnight ? (
-            <p className={TYPE.display}>
-              {(prev ? prev : card).windows.find(w => w.end_kind === 'end_of_service' || (w.end && w.end >= '23:59'))?.start ?? '00:00'}
-              {sub(day((prev ?? card).date, lang))}
-              <span className="mx-2" style={{ color: C.text3 }}>→</span>
-              {(next ? next : card).windows.find(w => w.start === null || w.start <= '00:01')?.end ?? '24:00'}
-              {sub(day((next ?? card).date, lang))}
-            </p>
+            <Journey lang={lang}
+              start={(prev ? prev : card).windows.find(w => w.end_kind === 'end_of_service' || (w.end && w.end >= '23:59'))?.start ?? '00:00'}
+              end={(next ? next : card).windows.find(w => w.start === null || w.start <= '00:01')?.end ?? '24:00'}
+              startDay={day((prev ?? card).date, lang)} endDay={day((next ?? card).date, lang)} />
           ) : span && (
             <>
-              <p className={`${TYPE.display} flex items-center justify-center`}>
-                {span.start ?? word(tx(lang, '运营开始', 'Start'))}
-                <span className="mx-2.5" style={{ color: C.text3 }}>–</span>
-                {span.end ?? word(tx(lang, '运营结束', 'end of service'))}
-              </p>
+              <Journey lang={lang} start={span.start} end={span.end} />
               {/* The notice says "end of service"; a timetable time is only a reference beside it */}
               {span.end === null && card.scheduledEnd && (
                 <a href={card.scheduledEnd.source} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
@@ -243,6 +231,30 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
       <Actions card={card} ctx={ctx} />
       <Evidence card={card} ctx={ctx} />
     </motion.article>
+  );
+}
+
+// ── When: a boarding-pass line ──────────────────────────────────────────
+// Start and end each under a small label, joined by a drawn line rather
+// than a dash glyph, so the centre is set by layout, not by a font. Words
+// in place of a clock ("运营结束") are sized so the characters stand as
+// tall as the digits, a weight lighter, and so sit level with them.
+
+function Journey({ start, end, lang, startDay, endDay }: { start: string | null; end: string | null; lang: Lang; startDay?: string; endDay?: string }) {
+  const value = (v: string | null, fallback: [string, string]) => v
+    ? <span className="text-[40px] font-semibold tabular-nums tracking-[-0.005em]" style={{ fontFamily: NUM, lineHeight: '44px' }}>{v}</span>
+    : <span className="text-[29px] font-medium tracking-[0.04em]" style={{ fontFamily: SANS, lineHeight: '44px' }}>{tx(lang, ...fallback)}</span>;
+  const label = (text: string) => <span className="text-[11.5px] font-medium leading-4" style={{ color: C.text3 }}>{text}</span>;
+  return (
+    <div className="w-full flex items-end justify-center gap-3">
+      <span className="flex flex-col items-start">{label(startDay ? tx(lang, `${startDay} 开始`, `Starts ${startDay}`) : tx(lang, '开始', 'Starts'))}{value(start, ['运营开始', 'Start of service'])}</span>
+      <span aria-hidden className="relative h-[44px] flex-1 max-w-[72px] min-w-[28px] flex items-center">
+        <i className="absolute left-0 w-[6px] h-[6px] rounded-full" style={{ background: C.text3 }} />
+        <i className="absolute left-[6px] right-[4px] h-[2px] rounded-full" style={{ background: `linear-gradient(90deg, ${C.text3}, ${C.lineStrong})` }} />
+        <i className="absolute right-0 w-[7px] h-[7px] rotate-45" style={{ borderTop: `2px solid ${C.text3}`, borderRight: `2px solid ${C.text3}` }} />
+      </span>
+      <span className="flex flex-col items-end">{label(endDay ? tx(lang, `${endDay} 结束`, `Ends ${endDay}`) : tx(lang, '结束', 'Ends'))}{value(end, ['运营结束', 'End of service'])}</span>
+    </div>
   );
 }
 

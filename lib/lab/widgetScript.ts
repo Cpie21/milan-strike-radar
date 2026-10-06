@@ -7,9 +7,9 @@
 // concerned), and the right side is what it is telling you.
 // Top band: the face and its line. Bottom: the day's picture, full width.
 //   Calm – "今天没有罢工", the next strike, the coming week.
-//   One strike – the mode, the state now ("罢工时段内" over "至 15:00"),
-//     the day as one track (strike hours in the mode's colour, guaranteed
-//     hours green, a white dot for now), the guaranteed hours in words.
+//   One strike – the strike's hours as the headline, the day as a lit
+//     groove (strike hours in the mode's colour, guaranteed hours green and
+//     labelled right under themselves, a needle marked "现在").
 //   Several – one line per strike (badges, which, its own state), then a
 //     single day chart: a thin lane per strike on one time axis with one
 //     "now" line, so overlaps and gaps read at once.
@@ -24,13 +24,13 @@ export type LabWidgetOptions = { origin: string; region: string; types: string[]
 const LABELS = {
   zh: {
     modes: { SUBWAY: '地铁', BUS: '公交', TRAIN: '火车', AIRPORT: '机场' },
-    calm: '今天没有罢工', next: '下一次', later: '再往后一周', over: '已过', today: '今天', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
+    calm: '今天没有罢工', next: '下一次', later: '再往后一周', over: '已过', today: '今天', now: '现在', start: '运营开始', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
     past: '今天的罢工时段已过', end: '运营结束', pending: '时段待公布', guaranteed: '保障',
     error: '暂时无法更新', weekday: ['日', '一', '二', '三', '四', '五', '六'], week: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
   },
   en: {
     modes: { SUBWAY: 'Metro', BUS: 'Bus', TRAIN: 'Train', AIRPORT: 'Airport' },
-    calm: 'No strikes today', next: 'Next', later: 'The week after', over: 'Over', today: 'today', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
+    calm: 'No strikes today', next: 'Next', later: 'The week after', over: 'Over', today: 'today', now: 'now', start: 'start of service', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
     past: 'Today’s strike hours are over', end: 'end of service', pending: 'Hours pending', guaranteed: 'Guaranteed',
     error: 'Can’t update right now', weekday: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], week: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
@@ -155,25 +155,32 @@ function label(parent, s, size, color, weight) {
 }
 // The day as a track, 05:00 → end of service (slim: one row of several)
 function track(items, now, width, slim) {
-  const h = slim ? 14 : 30, y = slim ? 7 : 8, dc = new DrawContext();
+  if (slim) return lanes([{ modes: [items[0].category], items }], now, width);
+  // The day as a lit groove: strike hours in the mode's colour, guaranteed
+  // hours green with their own label right under them, a needle for now.
+  const h = 46, y = 18, th = 12, dc = new DrawContext();
   dc.size = new Size(width, h); dc.opaque = false; dc.respectScreenScale = true;
   const x = m => Math.max(0, Math.min(1, (m - 300) / 1200)) * width;
-  const bar = (a, b, color, th) => { const p = new Path(); p.addRoundedRect(new Rect(x(a), y - th / 2, Math.max(th, x(b) - x(a)), th), th / 2, th / 2); dc.addPath(p); dc.setFillColor(c(color)); dc.fillPath(); };
-  const th = slim ? 6 : 8;
-  bar(300, 1500, COL.track, slim ? 3 : 4);
-  items.forEach(item => {
-    windowsOf(item).forEach(w => { const [a, b] = spanOf(w); bar(a, b, COL.main[item.category], th); });
-    guaranteesOf(item).forEach(g => bar(mins(g.start), mins(g.end), COL.run, th));
+  const pill = (a, b, t, color, alpha) => { const p = new Path(); p.addRoundedRect(new Rect(a, y - t / 2, Math.max(t, b - a), t), t / 2, t / 2); dc.addPath(p); dc.setFillColor(c(color, alpha)); dc.fillPath(); };
+  const seg = (a, b, color) => { pill(x(a), x(b), th, color); pill(x(a) + 2, x(b) - 2, th * 0.34, "#FFFFFF", 0.22); };
+  pill(-1, width + 1, th + 4, "#0A0B0D"); pill(0, width, th, "#22252B"); // the groove
+  items.forEach(item => windowsOf(item).forEach(w => { const [a, b] = spanOf(w); seg(a, b, COL.main[item.category]); }));
+  const gs = items.flatMap(guaranteesOf).filter((g, i, all) => all.findIndex(o => o.start === g.start && o.end === g.end) === i);
+  gs.forEach(g => seg(mins(g.start), mins(g.end), COL.run));
+  // labels for the guaranteed stretches, centred under each
+  dc.setFont(Font.semiboldSystemFont(10)); dc.setTextColor(c(COL.run));
+  gs.forEach(g => {
+    const mid = (x(mins(g.start)) + x(mins(g.end))) / 2, text = T.guaranteed + " " + g.start + "–" + g.end;
+    const w = text.length * 5.6;
+    dc.drawText(text, new Point(Math.max(0, Math.min(width - w, mid - w / 2)), y + th / 2 + 4));
   });
-  const nx = x(now < 300 ? now + 1440 : now), rr = slim ? 5 : 7;
-  dc.setFillColor(c(COL.bg)); dc.fillEllipse(new Rect(nx - rr, y - rr, rr * 2, rr * 2));
-  dc.setFillColor(c("#FFFFFF")); dc.fillEllipse(new Rect(nx - rr * 0.64, y - rr * 0.64, rr * 1.28, rr * 1.28));
-  if (slim) return dc.getImage();
-  // the edges that matter, under the track
-  const edges = [...new Set(items.flatMap(windowsOf).flatMap(w => [w.start, w.end]).filter(Boolean))].sort().slice(0, 4);
-  dc.setFont(Font.mediumSystemFont(9.5)); dc.setTextColor(c(COL.text3));
-  let last = -99;
-  edges.forEach(t => { const px = x(mins(t)); if (px - last < 34) return; last = px; dc.drawText(t, new Point(Math.max(0, Math.min(width - 28, px - 13)), y + 9)); });
+  // now: a needle through the groove with its word above
+  const nx = x(now < 300 ? now + 1440 : now);
+  dc.setFillColor(c("#FFFFFF")); dc.fillRect(new Rect(nx - 1, y - th / 2 - 4, 2, th + 8));
+  dc.setFillColor(c(COL.bg)); dc.fillEllipse(new Rect(nx - 5.5, y - 5.5, 11, 11));
+  dc.setFillColor(c("#FFFFFF")); dc.fillEllipse(new Rect(nx - 3.5, y - 3.5, 7, 7));
+  dc.setFont(Font.semiboldSystemFont(9.5)); dc.setTextColor(c("#FFFFFF"));
+  dc.drawText(T.now, new Point(Math.max(0, Math.min(width - 22, nx - 10)), 0));
   return dc.getImage();
 }
 // Several strikes on one axis: a thin lane each, one "now" line through all
@@ -269,15 +276,16 @@ try {
     } else label(r, T.none, 11.5, COL.text2);
     if (!small) { widget.addSpacer(6); week(widget, byDate, today, 7, today); }
   } else if (groups.length === 1 || small) {
-    const g = groups[0], st = todayState(groups.flatMap(x => x.items), now);
-    eyebrow(names(groups.flatMap(x => x.modes)) + " · " + CITY);
-    const big = st.kind === "inside" ? T.inside + " · " + T.until + " " + st.until : st.kind === "later" ? fromText(st.from) : st.kind === "past" ? T.past : T.pending;
-    label(say, big, small ? 17 : 19, st.kind === "inside" ? COL.main[g.modes[0]] : COL.text, "bold");
+    // The strike's own hours are the headline; where "now" falls is the
+    // needle's job, not the headline's.
+    const g = groups[0];
+    eyebrow(names(groups.flatMap(x => x.modes)) + " · " + CITY + " · " + T.today);
+    const wins = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end));
+    const hours = wins.join(wins.length === 2 ? "\\n" : "  "); // two windows read best stacked
+    const hl = label(say, hours || T.pending, small ? 16 : 18, COL.text, "bold"); hl.lineLimit = 2;
     if (!small) {
       widget.addSpacer();
-      const tr = widget.addImage(track(g.items, now, 296)); tr.imageSize = new Size(296, 30);
-      const gs = g.items.flatMap(guaranteesOf).filter((x, i, all) => all.findIndex(o => o.start === x.start && o.end === x.end) === i);
-      if (gs.length) label(widget, T.guaranteed + " " + gs.map(x => x.start + "–" + x.end).join(" · "), 11, COL.run, "semibold");
+      const tr = widget.addImage(track(g.items, now, 296)); tr.imageSize = new Size(296, 46);
     }
   } else {
     // several strikes: what the assistant says, the list, then one shared day

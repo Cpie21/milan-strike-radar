@@ -194,10 +194,10 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
           <LedFace mood={strike || many ? 'alert' : 'happy'} size={22} cols={17} />
           <div className="min-w-0">
             <p className="text-[11.5px] font-semibold truncate" style={{ color: C.text3 }}>
-              {state === 'calm' ? `${cityName} · ${tx(lang, '周二', 'Tue')}` : strike ? `${tx(lang, '地铁', 'Metro')} · ${cityName}` : cityName}
+              {state === 'calm' ? `${cityName} · ${tx(lang, '周二', 'Tue')}` : strike ? `${tx(lang, '地铁', 'Metro')} · ${cityName} · ${tx(lang, '今天', 'today')}` : cityName}
             </p>
-            <p className="text-[19px] leading-[1.2] font-bold truncate" style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif', color: strike ? MODE_COLOR.SUBWAY.main : C.text }}>
-              {state === 'calm' ? tx(lang, '今天没有罢工', 'No strikes today') : strike ? tx(lang, '罢工时段内 · 至 15:00', 'In strike hours · until 15:00') : tx(lang, '今天 2 项罢工', '2 strikes today')}
+            <p className={`${strike ? 'text-[17px]' : 'text-[19px]'} leading-[1.2] font-bold tabular-nums ${strike ? '' : 'truncate'}`} style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif', color: C.text }}>
+              {state === 'calm' ? tx(lang, '今天没有罢工', 'No strikes today') : strike ? <>08:45–15:00<br />{tx(lang, '18:00–运营结束', '18:00–end of service')}</> : tx(lang, '今天 2 项罢工', '2 strikes today')}
             </p>
           </div>
         </div>
@@ -214,17 +214,22 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
             ))}
           </div>
         </>}
-        {strike && <>
-          <div className="relative h-[8px]">
-            <i className="absolute inset-x-0 top-[2px] h-[4px] rounded-full" style={{ background: '#2A2D33' }} />
-            {seg(525, 900, MODE_COLOR.SUBWAY.main)}{seg(900, 1080, C.run)}{seg(1080, 1500, MODE_COLOR.SUBWAY.main)}
-            <i className="absolute -top-[3px] w-[14px] h-[14px] -ml-[7px] rounded-full flex items-center justify-center" style={{ left: x(NOW), background: '#0E0F12' }}><i className="w-[9px] h-[9px] rounded-full bg-white" /></i>
+        {strike && (
+          // the day as a lit groove; "now" is the needle's job
+          <div className="relative">
+            <span className="block text-[9.5px] font-semibold h-[12px] relative"><span className="absolute -translate-x-1/2 text-white" style={{ left: x(NOW) }}>{tx(lang, '现在', 'now')}</span></span>
+            <div className="relative h-[12px] rounded-full" style={{ background: '#22252B', boxShadow: '0 0 0 2px #0A0B0D' }}>
+              {([[525, 900, MODE_COLOR.SUBWAY.main], [900, 1080, C.run], [1080, 1500, MODE_COLOR.SUBWAY.main]] as [number, number, string][]).map(([a2, b2, col]) => (
+                <i key={a2} className="absolute top-0 h-[12px] rounded-full overflow-hidden" style={{ left: x(a2), width: `calc(${x(b2)} - ${x(a2)})`, background: col }}>
+                  <i className="absolute left-[2px] right-[2px] top-[2px] h-[4px] rounded-full" style={{ background: 'rgba(255,255,255,0.22)' }} />
+                </i>
+              ))}
+              <i className="absolute -top-[4px] w-[2px] h-[20px] -ml-[1px] bg-white rounded-full" style={{ left: x(NOW) }} />
+              <i className="absolute top-[0.5px] w-[11px] h-[11px] -ml-[5.5px] rounded-full flex items-center justify-center" style={{ left: x(NOW), background: '#0E0F12' }}><i className="w-[7px] h-[7px] rounded-full bg-white" /></i>
+            </div>
+            <span className="relative block h-[14px] mt-[3px] text-[10px] font-semibold tabular-nums"><span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(990), color: C.run }}>{tx(lang, '保障 15:00–18:00', 'Guaranteed 15:00–18:00')}</span></span>
           </div>
-          <div className="relative h-[13px] mt-[2px] text-[9.5px] tabular-nums" style={{ color: C.text3 }}>
-            {[[525, '08:45'], [900, '15:00'], [1080, '18:00']].map(([m, t]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m as number) }}>{t}</span>)}
-          </div>
-          <p className="text-[11px] font-semibold" style={{ color: C.run }}>{tx(lang, '保障 15:00–18:00', 'Guaranteed 15:00–18:00')}</p>
-        </>}
+        )}
         {many && <>
           <div className="flex flex-col gap-1">
             {rows.map(([modes, , , label, kind]) => (
