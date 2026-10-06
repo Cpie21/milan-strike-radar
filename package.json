@@ -11,7 +11,7 @@
     "test:database": "node --test scripts/test-strike-database.cjs",
     "test:enrichment": "node --test scripts/test-strike-enrichment.cjs",
     "test:presentation": "node --test scripts/test-strike-presentation.cjs",
-    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs scripts/test-transit-scope.cjs scripts/test-service-schedule.cjs scripts/test-line-impact.cjs scripts/test-route-membership.cjs",
+    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs scripts/test-transit-scope.cjs scripts/test-service-schedule.cjs scripts/test-line-impact.cjs scripts/test-route-membership.cjs scripts/test-ask.cjs scripts/test-shared-backend.cjs",
     "review:queue": "node scripts/print-semantic-review-queue.cjs"
   },
   "dependencies": {
