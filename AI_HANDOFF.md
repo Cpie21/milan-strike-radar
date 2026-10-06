@@ -399,3 +399,9 @@ Production audit receipts: 33/33 records rechecked after sync `d7878546-6669-47b
 - Merged `codex/final-data-refresh-audit` (6702435, includes 819265c, 6a386d9 and the GEST alias release) before deploying. Codex's frontend ask is done: an open page calls `router.refresh()` when it becomes visible again after 10 minutes or more.
 - Card model gains `providerEn`, `scopeEn` and `scheduledEnd.labelEn` (from `translateProvider`, `railTitle`/`scopeTitle(...,'en')` and `scheduleClockLabel(...,'en')`), so English pages carry no backend Chinese.
 - The lab widget (`lib/lab/widgetScript.ts`) has a chip row and draws the card's bar. Guarantee colour is #3DDC84.
+
+## Supplementary source access recovery (Codex, 2026-10-06)
+
+`codex/official-source-access` builds on the final audit branch. CGSSE requests use its apex hostname and a public, root-verified, fingerprint-pinned Actalis intermediate to fill the server's missing chain. TLS verification remains enabled and scoped; no insecure SSL fallback. Toscana Airport news uses the public same-origin GraphQL that powers its own SPA, with complete bounded pagination, exact article identity and original publication dates. Existing evidence reconciliation remains unchanged. No passenger API/schema/frontend/billing/model change. Protected sync verification adds acquisition.cgsseDocuments / acquisition.toscanaApiDocuments counters so production recovery is positively observable.
+
+Remaining: real 403 at Trenord/Brescia/Venice/easyJet; CTM success is environment-dependent and its stale 2023 RSS must not be used as current evidence. An accessible airport API with old posts does not establish a current strike's operational detail. See docs/2026-10-06-official-source-access.md and production receipts; preserve this backend branch in the next Claude UI release if deployed.
