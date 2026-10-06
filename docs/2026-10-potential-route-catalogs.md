@@ -46,3 +46,9 @@ No additional scheduler or model stage. Existing daily cron (`0 5 * * *` UTC) re
 ## Verification
 
 225 backend regressions pass, including ownership vs timetable expiry, stale/obsolete sources, agency/city/mode/network fences, TEB/ATB boundaries, source failure isolation, leading-zero exceptions, specific-line narrowing, per-line overnight references, ignored Range and bounded ZIP64 sizes, directory section isolation, TPER version matching and fresh deduplication. TypeScript, focused lint and production build pass. Production deployment/synchronization and read-only stored-data/API receipts are recorded in the subsequent release handoff; this source audit alone is not production verification.
+
+## Production release receipt
+
+Runtime `ce241b2` was published to `www.theitalystrike.com`, deployment `dpl_4KMcbFKuEUH59YfsbkU8BYzMBaT2`, and sync `8860e4d4-e7bb-479d-aeae-46c5b10a4a9e` succeeded (76 fetched / 58 upserted). All 39 future active rows persist current line-impact data. Five relevant directory adapters were needed; eight record memberships verified. ATM has five metro and 161 surface potential line names, including 90/91. Only five current records have enumerated potential lists (four ATM announcements and GEST); source availability alone does not expand staff-only or unknown scopes.
+
+Production verification passes all 20 city page/API/calendar checks, 20 previous scope/timing regressions and 88 new line-impact HTTP checks. Stored evidence preserves separate M1/M2 planned endpoints and keeps expired BUS clocks unresolved. Files: `docs/verification/2026-10-potential-route-production-{evidence,http,city-checks}.json`. Existing Jev made two new reviews with 25 cached; October shared ledger USD 0.007763 under the unchanged atomic USD 0.20 cap. Eight timing uncertainties and blocked external notice sources remain; no claim of 100% coverage or actual normal operation.
