@@ -34,4 +34,4 @@ No claim is made that every city/operator supplies GTFS, real-time alerts, per-l
 
 ## Validation
 
-288 integrated tests passed, including eight new refresh/renewal/failure/free-translation tests. TypeScript, focused lint and production build passed. Fresh official GEST archive + municipal description returned VERIFIED; live ATM/GTT/Trenitalia/Arriva/Air Campania documents matched their registered rules. ATAC failure is recorded, not claimed as verified. Post-release production receipts are stored alongside this report.
+289 integrated tests passed, including nine new refresh/renewal/failure/free-translation tests. TypeScript, focused lint and production build passed. Fresh official GEST archive + municipal description returned VERIFIED; live ATM/GTT/Trenitalia/Arriva/Air Campania documents matched their registered rules. ATAC failure is recorded, not claimed as verified. Post-release production receipts are stored alongside this report.

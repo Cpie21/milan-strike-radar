@@ -53,3 +53,9 @@ test('translation cannot use a paid endpoint or redirect even with an environmen
  process.env.DEEPL_API_KEY='dummy';global.fetch=async (u,o)=>{calls++;assert.equal(u,'https://api-free.deepl.com/v2/translate');assert.equal(o.redirect,'error');return Response.json({translations:[{text:'free result'}]});};
  try {for(const u of ['https://api.deepl.com/v2/translate','https://openrouter.ai/api/v1/chat/completions','https://api-free.deepl.com/v2/translate?paid=true']){process.env.DEEPL_API_URL=u;assert.equal(await translateText('original'),'original');}assert.equal(calls,0);delete process.env.DEEPL_API_URL;assert.equal(await translateText('original'),'free result');assert.equal(calls,1);}finally{global.fetch=before;if(key===undefined)delete process.env.DEEPL_API_KEY;else process.env.DEEPL_API_KEY=key;if(url===undefined)delete process.env.DEEPL_API_URL;else process.env.DEEPL_API_URL=url;}
 });
+
+test('in-progress synchronization preserves completed warning quality; failures never look clean',()=>{
+ const {syncDataQuality}=require('../lib/syncHealth.ts');
+ const running={status:'running',warning_count:0,unknown_timing:null},previous={status:'success',warning_count:25,unknown_timing:8};
+ assert.equal(syncDataQuality(true,running,previous),'PARTIAL');assert.equal(syncDataQuality(false,running,previous),'UNAVAILABLE');assert.equal(syncDataQuality(true,{...previous,warning_count:0,unknown_timing:0},null),'NO_RECORDED_ISSUES');assert.equal(syncDataQuality(true,running,null),'PARTIAL');
+});

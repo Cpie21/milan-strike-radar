@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { serverDatabase } from '../../../lib/strikeQuery';
-import { syncHealth } from '../../../lib/syncHealth';
+import { syncHealth, syncDataQuality } from '../../../lib/syncHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +16,8 @@ export async function GET() {
     const lastSuccess = success.data?.completed_at;
     const health = syncHealth(latest.data, lastSuccess);
     const compact=(run: typeof latest.data)=>{if(!run)return null;const {warnings,...rest}=run;return {...rest,warning_count:Array.isArray(warnings)?warnings.length:0};};
-    const last=compact(latest.data);
-    return NextResponse.json({ ...health, data_quality:!health.healthy?'UNAVAILABLE':last?.warning_count||last?.unknown_timing?'PARTIAL':'NO_RECORDED_ISSUES', latest: last, last_success: compact(success.data) }, { status: health.healthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
+    const last=compact(latest.data),lastCompleted=compact(success.data);
+    return NextResponse.json({ ...health, data_quality:syncDataQuality(health.healthy,last,lastCompleted), latest: last, last_success: lastCompleted }, { status: health.healthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ healthy: false, error: 'Synchronization status unavailable' }, { status: 503 });
   }
