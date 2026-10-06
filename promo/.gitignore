@@ -1,2 +1,5 @@
 node_modules
 out
+public/rec
+public/audio
+recorder/ask-*.ndjson

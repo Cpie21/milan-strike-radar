@@ -16,5 +16,8 @@
     "remotion": "^4.0.533",
     "tone": "^15.1.22",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "timeweb": "^0.3.2"
   }
 }

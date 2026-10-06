@@ -255,7 +255,9 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
 function Journey({ start, end, lang, startDay, endDay }: { start: string | null; end: string | null; lang: Lang; startDay?: string; endDay?: string }) {
   const value = (v: string | null, fallback: [string, string]) => v
     ? <span className="text-[40px] font-semibold tabular-nums tracking-[-0.005em]" style={{ fontFamily: NUM, lineHeight: '44px' }}>{v}</span>
-    : <span className="text-[29px] font-medium tracking-[0.04em]" style={{ fontFamily: SANS, lineHeight: '44px' }}>{tx(lang, ...fallback)}</span>;
+    // words in place of a time: as tall as the digits, never wrapping
+    // (English is longer, so a touch smaller)
+    : <span className={`${lang === 'en' ? 'text-[23px] tracking-[-0.01em]' : 'text-[29px] tracking-[0.04em]'} font-medium whitespace-nowrap`} style={{ fontFamily: SANS, lineHeight: '44px' }}>{tx(lang, ...fallback)}</span>;
   const label = (text: string) => <span className="text-[11.5px] font-medium leading-4" style={{ color: C.text3 }}>{text}</span>;
   return (
     <div className="w-full flex items-end justify-center gap-3">
