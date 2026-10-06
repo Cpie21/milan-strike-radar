@@ -23,6 +23,7 @@ import { holdWalls } from './wall/PixelWall';
 
 type City = { tag: string; zh: string; en: string; path: string };
 export type CityStatus = Record<string, { today: Mode[]; next: string | null; nextModes: Mode[] }>;
+export const CITY_KEY = 'italy_strike_city';
 type SheetName = 'city' | 'calendar' | 'widget' | 'home' | 'support' | 'month' | null;
 const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -114,6 +115,12 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     else router.push(`${path}?date=${date}`);
   };
   const changeLang = (l: Lang) => { setLang(l); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, l); } catch { /* ignore */ } };
+
+  // Your city: remembered when you open a city's page yourself (or pick it
+  // in the city list), so the next visit to the bare address (a Home Screen
+  // icon, a typed URL) opens it (LabRoute). A link to a day someone shared
+  // (?date=…) shows that city without changing yours.
+  useEffect(() => { try { if (!window.location.search) localStorage.setItem(CITY_KEY, city.path); } catch { /* storage blocked */ } }, [city.path]);
 
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
   const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });

@@ -37,6 +37,13 @@ function deviceId() {
   try { return localStorage.getItem('lab_device_id') || 'anon'; } catch { return 'anon'; }
 }
 
+// How many old pieces a wall starts with, the same on every device.
+function seededCount(mode: Mode, seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return mode === 'AIRPORT' ? 3 + (h % 2) : 9 + (h % 4);
+}
+
 // Your panel for this strike: claimed once, then kept. Until the server holds
 // claims (AI_HANDOFF: graffiti slots), the others are simulated as having
 // taken the first panels in centre-out order, as they would have.
@@ -205,21 +212,11 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
   }, [slots, storeKey, others, doodle.loaded]);
   // The shared wall: everyone's real pieces, when the server keeps them.
   const [wall, setWall] = useState<{ available: boolean; pieces: Piece[] }>({ available: false, pieces: [] });
-  useEffect(() => {
-    let alive = true;
-    const t = setTimeout(async () => {
-      const w = await loadWall(storeKey);
-      if (!alive) return;
-      setWall(w);
-      const own = w.pieces.find(p => p.mine);
-      if (own) { setMine(own.colour); if (slots[own.slot]) setSlot(slots[own.slot]); if (own.strokes.length) setSaved(own.strokes); }
-    }, 0);
-    return () => { alive = false; clearTimeout(t); };
-  }, [storeKey, slots]);
   const pieces = useMemo(() => wall.pieces.filter(p => !p.mine && p.strokes.length), [wall]);
-  // Generated marks stand for the people the counter knows but whose
-  // pieces the wall doesn't hold (before the shared wall, that's everyone).
-  const tags = useMemo(() => tagsFor(seed, Math.max(0, others - pieces.length), scene.body, K), [seed, others, pieces.length, scene]);
+  // A wall is never bare: it starts with its own seeded set of old pieces,
+  // the same for everyone (more on buses, trains and metros, a couple on a
+  // plane), and real pieces take their place as people spray.
+  const tags = useMemo(() => tagsFor(seed, Math.max(0, seededCount(mode, seed) - pieces.length), scene.body, K), [seed, mode, pieces.length, scene]);
 
   const live = useRef({ strokes, left, spraying, mine, slot, pieces, onChange: (s: Stroke[]) => setDraft(s), onEmpty: () => {} });
   const ext = useRef({ onHint, onLink, marked: doodle.marked });
@@ -227,6 +224,29 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     live.current = { strokes, left, spraying, mine, slot, pieces, onChange: s => setDraft(s), onEmpty: () => { setEmpty(true); setTimeout(() => setEmpty(false), 1600); } };
     ext.current = { onHint, onLink, marked: doodle.marked };
   });
+
+  // Shared by everyone: loaded on arrival, then refreshed every 30 seconds
+  // while the wall is on screen, so other people's pieces turn up.
+  const wallSig = useRef('');
+  useEffect(() => {
+    let alive = true, inView = true;
+    const io = new IntersectionObserver(([en]) => { inView = en.isIntersecting; });
+    if (canvas.current) io.observe(canvas.current);
+    const load = async (first: boolean) => {
+      if (!first && (document.visibilityState !== 'visible' || !inView || live.current.spraying)) return;
+      const w = await loadWall(storeKey);
+      if (!alive) return;
+      const sig = JSON.stringify(w.pieces.map(p => [p.slot, p.claimed_at, p.strokes.length]));
+      if (!first && sig === wallSig.current) return;
+      wallSig.current = sig;
+      setWall(w);
+      const own = w.pieces.find(p => p.mine);
+      if (first && own) { setMine(own.colour); if (slots[own.slot]) setSlot(slots[own.slot]); if (own.strokes.length) setSaved(own.strokes); }
+    };
+    const t = setTimeout(() => load(true), 0);
+    const every = setInterval(() => load(false), 30_000);
+    return () => { alive = false; clearTimeout(t); clearInterval(every); io.disconnect(); };
+  }, [storeKey, slots]);
 
   useEffect(() => { const t = setTimeout(() => { setSaved(loadDrawing(storeKey) ?? []); setMine(myColour()); }, 0); return () => clearTimeout(t); }, [storeKey]);
   useEffect(() => {

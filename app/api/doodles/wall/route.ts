@@ -15,8 +15,10 @@ export async function GET(request: NextRequest) {
     if (limit !== 'allowed') return response({ available:false,pieces:[],error:limit === 'limited' ? 'rate_limited' : 'unavailable' },limit === 'limited' ? 429 : 503);
     const device = request.nextUrl.searchParams.get('deviceId') || '';
     const me = DEVICE.test(device) ? holderOf(device) : '';
-    let query = serverDatabase().from('lab_graffiti').select('holder,slot,colour,strokes,claimed_at,approved,active').eq('strike_key',wall.key).not('saved_at','is',null);
-    query = me ? query.or(`approved.eq.true,holder.eq.${me}`) : query.eq('approved',true);
+    const query = serverDatabase().from('lab_graffiti').select('holder,slot,colour,strokes,claimed_at,approved,active').eq('strike_key',wall.key).not('saved_at','is',null);
+    // The owner made the wall public (2026-10-06): every saved piece shows to
+    // everyone at once. Pieces are strokes in one panel only (no text, no
+    // images); `pending` still reports approval for later moderation.
     const { data,error } = await query.order('claimed_at',{ascending:false}).order('holder').limit(60);
     if (error) return response({available:false,pieces:[]},503);
     const pieces = (data || []).reverse().map(({holder,approved,...piece}) => ({...piece,mine:holder===me,pending:!approved}));

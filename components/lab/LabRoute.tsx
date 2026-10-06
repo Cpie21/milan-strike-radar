@@ -173,6 +173,11 @@ export default async function LabRoute({ tag }: { tag: string }) {
   const lastDate = cards.reduce((last, c) => (c.date > last ? c.date : last), addDaysIso(today, 14));
 
   return (
+    <>
+    {/* The bare address opens your city: read before anything paints. A
+        link to a day (?date=…) or a choice of Milan in the city list keeps
+        Milan. Key shared with LabApp (CITY_KEY). */}
+    {city.tag === 'MILANO' && <script dangerouslySetInnerHTML={{ __html: "try{var c=localStorage.getItem('italy_strike_city');if(c&&c!=='/'&&c.charAt(0)==='/'&&location.pathname==='/'&&!location.search)location.replace(c)}catch(e){}" }} />}
     <LabApp
       city={{ tag: city.tag, zh: city.zh, en: city.en, path: cityPath(city.tag) }}
       cities={CITIES.map(c => ({ tag: c.tag, zh: c.zh, en: c.en, path: cityPath(c.tag) }))}
@@ -186,5 +191,6 @@ export default async function LabRoute({ tag }: { tag: string }) {
       cityStatus={cityStatus}
       translations={translations}
     />
+    </>
   );
 }

@@ -632,7 +632,7 @@ function ShareAnswer({ ask: a }: { ask: AskState }) {
   if (result?.kind !== 'result') return null;
   const share = async () => {
     const day = result.range.from;
-    const url = `${window.location.origin}${window.location.pathname}?city=${a.region}&date=${day}`;
+    const url = `${window.location.origin}${window.location.pathname}?date=${day}`;
     const head = verdict ? (verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]) : '';
     const text = tx(lang, `我问：${asked}\n答：${head}（${dayLabel(day, lang)}）`, `Q: ${asked}\nA: ${head} (${dayLabel(day, lang)})`);
     if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ text, url }); } catch { /* dismissed */ } return; }

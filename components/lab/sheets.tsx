@@ -78,7 +78,7 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
       <div className="flex flex-col gap-2 pb-2">
         {list.map(city => (
           <a key={city.tag} href={city.path} aria-busy={going === city.tag}
-            onClick={e => { if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
+            onClick={e => { try { localStorage.setItem('italy_strike_city', city.path); } catch { /* storage blocked */ } if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
             className="relative overflow-hidden flex items-center justify-between gap-3 h-[64px] px-4 rounded-[16px] active:scale-[0.99] transition-transform"
             style={{ background: city.tag === current || going === city.tag ? '#272A30' : '#1E2025', opacity: going && going !== city.tag ? 0.5 : 1 }}>
             {going === city.tag && <motion.span aria-hidden className="absolute inset-y-0 left-0 w-1/3" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} animate={{ x: ['-100%', '300%'] }} transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }} />}
