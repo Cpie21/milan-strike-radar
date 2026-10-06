@@ -14,7 +14,7 @@ import type { StrikeRecord } from './strikeSync';
 // never become fabricated successful verification.
 const cachedProfile=unstable_cache(async(url:string)=>({text:await fetchProfileDocument(url),fetchedAt:new Date().toISOString()}),['operator-guarantee-doc-v1'],{revalidate:604800});
 const cachedCatalog=unstable_cache((id:FeedId)=>loadRouteCatalog(id),['gtfs-route-catalog-v2'],{revalidate:86400});
-const cachedSchedule=unstable_cache((id:FeedId)=>loadScheduleIndex(id),['gtfs-service-schedule-v1'],{revalidate:86400});
+const cachedSchedule=unstable_cache((id:FeedId)=>loadScheduleIndex(id),['gtfs-service-schedule-v2'],{revalidate:86400});
 export async function enrichTransitScope(records:StrikeRecord[],warnings:string[],now=new Date()) {
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
   const profiles=await refreshGuaranteeProfiles(now,warnings,cachedProfile);

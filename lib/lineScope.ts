@@ -1,3 +1,4 @@
+import type { LineAliasEvidence } from './canonicalLineAlias';
 import { officialOperatorIds } from './operatorAdapters';
 import type { FieldEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
@@ -14,6 +15,7 @@ export type LineScope = {
   affectedRouteIds:string[];
   excludedRouteIds:string[];
   gtfsFeedId?:string;
+  routeAliases?:LineAliasEvidence[];
   routeValidation:'NOT_REQUESTED'|'VERIFIED'|'PARTIAL'|'UNAVAILABLE'|'OUT_OF_VALIDITY'|'AMBIGUOUS';
 };
 export const unknownLineScope=():LineScope=>({kind:'UNKNOWN',operatorIds:[],networkNames:[],affectedLineNames:[],excludedLineNames:[],affectedRouteIds:[],excludedRouteIds:[],routeValidation:'NOT_REQUESTED'});

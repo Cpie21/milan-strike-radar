@@ -1,3 +1,4 @@
+import { canonicalRouteName, type AliasContext } from './canonicalLineAlias';
 import type { RouteCatalog } from './officialTransitData';
 import type { FieldEvidence } from './strikeScope';
 import { validServiceDate } from './serviceSchedule';
@@ -13,7 +14,9 @@ export type RouteMembership = {
   coverage:'PUBLISHED_CATALOG_ONLY';actualOperationConfirmed:false;
 };
 export const routeTypesFor=(category:string)=>category==='BUS'?[0,3,11]:category==='SUBWAY'?[1]:category==='TRAIN'?[2]:[];
-export function routeDisplayName(route:CatalogRoute,operator:string,category:string) {
+export function routeDisplayName(route:CatalogRoute,operator:string,category:string,context?:AliasContext) {
+  const canonical=context?canonicalRouteName(route,context):route.name;
+  if(canonical!==route.name)return canonical;
   return operator==='ATM_MILANO'&&category==='SUBWAY'&&/^M[1-5]$/.test(route.id)&&route.name===route.id.slice(1)?route.id:route.name || route.longName || route.id;
 }
 export function emptyMembership(operator:string,date:string,category:string,city:string,status:RouteMembership['status']):RouteMembership {

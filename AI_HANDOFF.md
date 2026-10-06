@@ -362,3 +362,13 @@ Server contract needed:
 - Lab Ask client: sends the refine token only when answering a clarify, retries fresh on 400 (expired hold), counts locally only answered questions, once per held question; renders `out_of_scope.coverage`.
 - Wall: client body boxes and centre-first slot order equal `lib/graffiti.ts`; no UI copy promises public visibility before approval.
 - The two old proposed migrations (`20261006090000_ask_feedback.sql`, `20261007090000_lab_graffiti.sql`) are still in the tree; do not apply them — removal pending owner confirmation.
+
+
+## GEST canonical identity (Codex)
+
+- PR on `codex/gest-line-alias`, based on shared-services production. Claude 44fc534/53bd28d inspected; no changes to Ask date parsing or lab/frontend files. GEST's October 10 public T1 maps to publisher T1.3 only after verifying the same Villa Costanza–Careggi service in official municipal description and actual GTFS trips.
+- Shared alias resolver applies to notice route IDs, public candidate membership and dated timetable line selection/exclusions. Bound to GEST_FIRENZE / GTFS_GEST / exact regional source / BUS+tram type 0 / exact raw short+long name / one unambiguous route and August 10–December 30, 2026 within published dates. Re-review on expiry/name/source conflict; no global fuzzy matching or hardcoded route IDs.
+- Additive JSON/API `routeAliases` in lineScope, declaredScope.value and potentialLines entries retains raw/public identity, source, dynamic IDs, effective dates and verification date. Raw membership/timetable labels are preserved. No schema migration, new model or cron; monthly paid cap/free translation/no-Gemini unchanged. Public T1 line query now receives a concrete routeId. Neither alias nor published timetable confirms service actually runs during a strike.
+- Full implementation/evidence: docs/2026-10-gest-canonical-line-alias.md. 256 regressions pass; release verification to be recorded after normal production sync. Claude can merge this PR into their own branch; no UI change required to keep existing public T1 label.
+
+- Release integration: production was verified to already serve Claude 44fc534. The fix is therefore cherry-picked into owned branch codex/gest-line-alias-release based on that exact production commit, preserving all deployed lab/UI and explicit Ask-date changes. Earlier backend-only build was superseded; 44fc534 was restored before releasing the integrated fix.
