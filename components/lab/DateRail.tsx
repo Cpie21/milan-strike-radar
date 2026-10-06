@@ -44,11 +44,16 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
     const el = strip?.querySelector<HTMLElement>(`[data-date="${selected}"]`);
     if (!strip || !el) return;
     const x = el.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft;
-    const left = x - PEEK;
-    const visible = x >= strip.scrollLeft + 8 && x + el.offsetWidth <= strip.scrollLeft + strip.clientWidth - 16;
     browsing.current = false;
-    if (!placed.current) strip.scrollLeft = left;
-    else if (!visible) strip.scrollTo({ left, behavior: reduce ? 'auto' : 'smooth' });
+    if (!placed.current) strip.scrollLeft = x - PEEK;
+    else {
+      // The same either way: scroll only as far as it takes to keep a
+      // neighbour in view on that side (stepping right used to fling the
+      // day to the far left; stepping left barely moved).
+      const vx = x - strip.scrollLeft, w = el.offsetWidth;
+      const left = vx < PEEK ? x - PEEK : vx + w > strip.clientWidth - PEEK ? x + w - strip.clientWidth + PEEK : null;
+      if (left !== null) strip.scrollTo({ left, behavior: reduce ? 'auto' : 'smooth' });
+    }
     placed.current = true;
   }, [selected, tiles.length, reduce]);
 

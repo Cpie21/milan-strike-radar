@@ -180,8 +180,8 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
 function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
   const [state, setState] = useState<'calm' | 'strike' | 'many'>('calm');
   const strike = state === 'strike', many = state === 'many';
-  // Example days: metro and bus strike 08:45–15:00 and 18:00–end (guaranteed
-  // 15:00–18:00); on the busy day a rail strike runs until 21:00 as well.
+  // Example days: one strike, the metro, 08:45–15:00 and 18:00–end
+  // (guaranteed 15:00–18:00); on the busy day a rail strike runs too.
   const x = (m: number) => `${axisPos(m) * 100}%`;
   const NOW = 630;
   const example = {
@@ -206,7 +206,7 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
             {strike ? (
               // a chip row, as signage: the modes' badges, what it is, where
               <p className="flex items-center gap-[3px] text-[12.5px] font-semibold">
-                <ModeBadge mode="SUBWAY" size={16} /><ModeBadge mode="BUS" size={16} />
+                <ModeBadge mode="SUBWAY" size={16} />
                 <span className="ml-[3px]" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '今天罢工', 'Strike today')}</span>
                 <span className="ml-auto text-[11.5px]" style={{ color: C.text3 }}>{cityName}</span>
               </p>

@@ -9,7 +9,7 @@ import { EyeLife, type Expr } from './eyes';
 //   LedBoard – a board hanging from a rail at the top of the calm-day
 //              module. It wakes up when it first appears, then lives: its
 //              eyes look around, a tram goes by and it gives a thumbs-up, it
-//              shows the time, a heartbeat, a coffee in the morning, sleeps
+//              shows the time, a coffee in the morning, sleeps
 //              at night.
 //   LedFace  – the compact face in its bezel: in the bar and the answer.
 // The eyes are living shapes (eyes.ts) drawn into the dots every frame;
@@ -66,11 +66,6 @@ const CUP = [
 ];
 const ZED = bitmap(['####', '..#.', '.#..', '####']);
 const track = (w: number): Cols => Array.from({ length: w }, (_, x) => (x % 3 === 2 ? 0 : 1 << 8));
-const ECG = [5, 5, 5, 5, 4, 4, 5, 5, 6, 2, 0, 8, 6, 5, 5, 5, 4, 3, 3, 4, 5, 5, 5, 5];
-function pulse(beats: number, lead: number): Cols {
-  const rows = [...Array(lead).fill(5), ...Array.from({ length: beats * ECG.length }, (_, i) => ECG[i % ECG.length]), ...Array(lead).fill(5)];
-  return rows.map((r, i) => { const p = rows[i - 1] ?? r; let c = 0; for (let y = Math.min(p, r); y <= Math.max(p, r); y++) c |= 1 << y; return c; });
-}
 const noise = (w: number, d: number): Cols => Array.from({ length: w }, () => { let c = 0; for (let y = 0; y < ROWS; y++) if (Math.random() < d) c |= 1 << y; return c; });
 
 // 5×7 font, for the clock only: digits read the same in every language.
@@ -323,7 +318,7 @@ export function LedBoard({ mood = 'idle', pitch = 4.4, nudge, attend = false }: 
       eyes.look(0.8, -0.2, 500); await wait(600);
       eyes.look(0, 0, 0);
     }
-    const scenes = [tram, clock, heartbeat, tram, morning];
+    const scenes = [tram, clock, tram, morning];
     for (let i = 0; ; i++) {
       show([], 0, 'fade'); eyes.show(true);
       await wait(jitter(9000));
@@ -350,10 +345,6 @@ export function LedBoard({ mood = 'idle', pitch = 4.4, nudge, attend = false }: 
   const clock = (show: Show, wait: Wait) => pictureThen(show, wait, async () => {
     const cols = digits(romeClock());
     show(cols, Math.floor((width.current - cols.length) / 2)); await wait(3000);
-  });
-  const heartbeat = (show: Show, wait: Wait) => pictureThen(show, wait, async () => {
-    const w = width.current, tape = pulse(2, w);
-    for (let k = 0; k <= tape.length - w; k += 1) { show(tape.slice(k, k + w), 0, 'fade'); await wait(24); }
   });
   const morning = async (show: Show, wait: Wait) => {
     const h = romeHour();

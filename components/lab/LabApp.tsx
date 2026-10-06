@@ -56,19 +56,15 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const jumpModes = [...new Set(active.map(c => c.category))];
   const next = nextEventDate(byDate, selected);
   const name = lang === 'en' ? city.en : city.zh;
-  // The top of the page takes the colours of the modes striking that day; a
-  // calm day stays neutral, so colour itself means "something is on".
-  // The header is one flat band in exactly the colour Safari gives its bars
-  // (theme-color is a single colour), so page and browser meet without a
-  // seam; the glow blooms below it, its colours parting only further down.
+  // The page glow takes the colours of the modes striking that day, from the
+  // top; a calm day stays neutral, so colour itself means "something is on".
+  // Safari paints its bars in one colour (theme-color, the page's own dark,
+  // app/layout.tsx), so the header row sits on a dark wash that fades down
+  // into the glow: the top edge always matches the bar above it.
   const glowModes = jumpModes.slice(0, 2);
-  const band = bandColour(glowModes);
-  const blobs = glowModes.length
-    ? glowModes.map((m, i, all) => `radial-gradient(${all.length > 1 ? '62% 230px' : '90% 250px'} at ${all.length > 1 ? (i ? '82%' : '18%') : '50%'} 70px, ${MODE_COLOR[m].main}30, transparent 70%)`).join(', ')
-    : 'radial-gradient(90% 240px at 50% 60px, rgba(255,255,255,0.045), transparent 70%)';
-  useEffect(() => {
-    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', band));
-  }, [band]);
+  const glow = glowModes.length
+    ? glowModes.map((m, i, all) => `radial-gradient(${all.length > 1 ? '70%' : '110%'} 70% at ${all.length > 1 ? (i ? '85%' : '15%') : '50%'} -5%, ${MODE_COLOR[m].main}38, transparent 72%)`).join(', ')
+    : 'radial-gradient(110% 70% at 50% -5%, rgba(255,255,255,0.06), transparent 72%)';
 
   useEffect(() => {
     const tick = () => setNow(romeMinutes());
@@ -136,9 +132,13 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   return (
     <LayoutGroup>
     <main className="relative min-h-[100dvh]" style={{ background: C.bg, color: C.text, fontFamily: SANS, WebkitFontSmoothing: 'antialiased' }}>
-      {/* The band: one flat colour, continuous with Safari's bar */}
-      <div className="relative z-[1]" style={{ background: band, transition: 'background-color 0.5s ease' }}>
-        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-3" style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}>
+      <AnimatePresence initial={false}>
+        <motion.div key={glow} aria-hidden className="absolute inset-x-0 top-0 h-[460px] pointer-events-none" style={{ background: glow }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
+      </AnimatePresence>
+      {/* The header row on a dark wash, from the bar's colour down to clear */}
+      <div className="relative z-[1]" style={{ background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bg}F0 38%, ${C.bg}00 100%)` }}>
+        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-5" style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}>
           <div className="justify-self-start flex p-[3px] rounded-full" style={{ background: C.surface2 }} role="group" aria-label="语言 / Language">
             {(['zh', 'en'] as Lang[]).map(l => (
               <button key={l} onClick={() => changeLang(l)} aria-pressed={lang === l} className="relative h-7 w-9 rounded-full text-[12.5px] font-semibold" style={{ color: lang === l ? C.text : C.text3 }}>
@@ -157,18 +157,10 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         </header>
       </div>
       <div className="relative">
-      {/* The glow: the band's colour washing down evenly, and each striking
-          mode's light opening up beneath it */}
-      <div aria-hidden className="absolute inset-x-0 top-0 h-[420px] pointer-events-none" style={{ background: `linear-gradient(180deg, ${band} 0px, ${band}00 300px)`, transition: 'background 0.5s ease' }} />
-      <AnimatePresence initial={false}>
-        <motion.div key={blobs} aria-hidden className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
-          style={{ background: blobs, WebkitMaskImage: 'linear-gradient(180deg, transparent 0px, #000 90px, #000 55%, transparent 100%)', maskImage: 'linear-gradient(180deg, transparent 0px, #000 90px, #000 55%, transparent 100%)' }}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
-      </AnimatePresence>
       <div className="relative mx-auto max-w-[520px] pb-[120px]">
 
         {/* Title left, the way out to the full calendar right, on one baseline */}
-        <div className="flex items-end justify-between gap-3 pl-5 pr-4 pt-4 mb-3">
+        <div className="flex items-end justify-between gap-3 pl-5 pr-4 pt-2 mb-3">
           <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
           <button onClick={() => setSheet('month')} className={`mb-0.5 h-[34px] pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: C.surface2, color: C.text }}>
             <CalendarDots size={16} weight="bold" />{tx(lang, '全部日期', 'All dates')}
@@ -284,13 +276,6 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     </main>
     </LayoutGroup>
   );
-}
-
-function bandColour(modes: Mode[]) {
-  if (!modes.length) return '#0A0B0D';
-  const rgb = (hex: string) => { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
-  const avg = modes.map(m => rgb(MODE_COLOR[m].main)).reduce((a, c) => a.map((v, i) => v + c[i] / modes.length), [0, 0, 0]);
-  return `#${avg.map((v, i) => Math.round([10, 11, 13][i] + (v - [10, 11, 13][i]) * 0.16).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function Tool({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
