@@ -13,9 +13,6 @@ export { fetchAndFilter, fetchRecentRows, transformRows, upsertToSupabase };
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
-// The same verified adapters can read CGSSE/Toscana/CTM from this EU region;
-// US production egress timed out or was refused. Keep the daily schedule.
-export const preferredRegion = 'fra1';
 
 export async function GET(request: Request): Promise<NextResponse> {
   const secret = process.env.CRON_SECRET;

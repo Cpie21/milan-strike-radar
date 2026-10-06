@@ -5,7 +5,6 @@ import { fetchToscanaNotice } from '../../../../lib/toscanaAirportNotices';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 40;
-export const preferredRegion = 'fra1';
 
 // Fixed public sources only. This read-only diagnostic never touches the DB or AI.
 const sources = [
