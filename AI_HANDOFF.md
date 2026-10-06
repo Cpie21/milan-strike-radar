@@ -1,5 +1,11 @@
 # AI handoff
 
+## Regulator detail adoption follow-up (Codex)
+
+`codex/regulator-detail-fields` builds on Claude's `11b9969`. CGSSE readable Drupal detail pages were falling through the generic article parser: company labels merged into values and generic heading became geography, so October 16 easyJet failed matching despite access200. Parse the single labelled detail row with explicit event date, union, provider, geography and status; fail closed on malformed/duplicate views. Preserve existing date/operator/union/location fences. Equal clock windows now compare canonical values, avoiding false conflicts from DB JSON key order. CTM polls both comunicati and notizie. No schema/API/UI change or new AI stage. 313 tests/typecheck pass; actual detail fixture retained. See `docs/2026-10-06-source-detail-recheck.md` for checked scope and remaining gaps: Trenord generic rules/guaranteed-train list are real but NOT yet integrated, and old Toscana articles cannot enrich a 2026 strike. Access success is not passenger-detail adoption.
+
+PR #20: runtime e91aaff / deployment dpl_2iQ5y57e7cTxSvszUF47k4PZ1JQv is live, preserves committed UI11b9969. Successful normal sync73a628de adopted CGSSE on nine active rows (formerly five), including easyJet381220 verified in DB and public API. Core windows unchanged; 34 future active / five unresolved timings. Normal Jev stage called7/cached21, existing ledger .029125 USD within the unchanged .20 ceiling. Integrate this PR before your next UI release to retain the parser fix; receipts linked in the recheck document.
+
 Shared state between Claude and Codex. Keep it short: decisions, contracts and open cross-module issues. History belongs in commits, PRs and `docs/archive/`.
 
 ## Working model

@@ -10,6 +10,32 @@ const source = (url = 'https://sciopero.net/123-event/') => ({ url, name:'Report
 const notice = (override = {}) => ({ date:'2026-10-09', provider:'Atm Milano, Net', territory:'Milano, Monza', unions:'Confial Trasporti', sector:'Trasporto Pubblico Locale', timing:'Atm Milano e Net Trezzo dalle 8.45 alle 15.00 e dalle 18.00 a fine servizio, Net Monza dalle 9.00 alle 11.50 e dalle 14.50 a fine servizio', status:'CONFERMATO', source:source(), ...override });
 const expected = [{ start:'08:45', end:'15:00', end_kind:'clock' },{ start:'18:00', end:null, end_kind:'end_of_service' }];
 const gestFixture=fs.readFileSync(require('node:path').join(__dirname,'fixtures/gest-official-heading.html'),'utf8');
+const cgsseFixture=fs.readFileSync(require('node:path').join(__dirname,'fixtures/cgsse-easyjet-2026-10-detail.html'),'utf8');
+const cgsseUrl='https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381220';
+const easyJetRecord=()=>record({date:'2026-10-16',region:'NATIONAL',category:'AIRPORT',strike_windows:[{start:'00:00',end:'23:59'}],raw_payload:{provider:'PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED',unions:'USB LAVORO PRIVATO',sector:'Aereo',modalita:'24 ORE: DALLE 00.00 ALLE 23.59'}});
+test('live regulator detail separates company, union and geography and adopts matching official evidence',()=>{
+ const notices=parseExternalNotices(cgsseFixture,cgsseUrl,['2026-10-16']);
+ assert.equal(notices.length,1);const n=notices[0];
+ assert.equal(n.territory,'Nazionale');assert.equal(n.unions,'Usb Lavoro Privato');assert.equal(n.sector,'Trasporto aereo');
+ assert.equal(n.timing,'dalle ore 00.00 alle ore 23.59');assert.equal(n.status,'Attivo');
+ assert.equal(matchesNotice(n,easyJetRecord()),true);
+ const updated=applyTimingEvidence(easyJetRecord(),notices);
+ assert.ok(updated.timing_evidence.sources.some(s=>s.url===cgsseUrl&&s.authority==='official'));
+ assert.deepEqual(updated.strike_windows,[{start:'00:00',end:'23:59'}]);
+ assert.deepEqual(updated.timing_evidence.conflicts,[]);
+ const fromDatabase={...easyJetRecord(),strike_windows:[{end:'23:59',start:'00:00'}]};
+ assert.deepEqual(applyTimingEvidence(fromDatabase,notices).timing_evidence.conflicts,[]);
+ assert.equal(matchesNotice({...n,unions:'AL-COBAS'},easyJetRecord()),false);
+ assert.equal(matchesNotice({...n,territory:'Venezia',provider:'SICURITALIA IVRI'},easyJetRecord()),false);
+});
+test('regulator ignores proclamation dates, unrelated decisions, revocations and malformed detail views',()=>{
+ assert.deepEqual(parseExternalNotices(cgsseFixture,cgsseUrl,['2026-09-14']),[]);
+ const revoked=cgsseFixture.replace('Attivo</span>','Revocato</span>');
+ assert.equal(matchesNotice(parseExternalNotices(revoked,cgsseUrl,['2026-10-16'])[0],easyJetRecord()),false);
+ for(const html of [cgsseFixture.replace('dettaglio-section','changed-section'),cgsseFixture+cgsseFixture,cgsseFixture.replace('EASYJET AIRLINE LIMITED',''),cgsseFixture.replace('Attivo</span>','Unknown</span>')])assert.deepEqual(parseExternalNotices(html,cgsseUrl,['2026-10-16']),[]);
+ const other='<section id="intervento-section"><h2>Delibere</h2><p>16/10/2026 Roma ATAC USB dalle 8.30 alle 17.00</p></section>';
+ assert.equal(parseExternalNotices(cgsseFixture+other,cgsseUrl,['2026-10-16'])[0].timing,'dalle ore 00.00 alle ore 23.59');
+});
 const gestUrl='https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/';
 const gestRecord=()=>record({date:'2026-10-10',region:'FIRENZE',category:'BUS',affected_lines:[],raw_payload:{provider:'PERSONALE SOC. GEST SERVIZIO TRANVIA DI FIRENZE',unions:'OSP COBAS LAVORO PRIVATO',sector:'Trasporto pubblico locale',modalita:'24 ORE'}});
 test('GEST visible publication date, Divi content and heading-only guarantees preserve current lines',()=>{
