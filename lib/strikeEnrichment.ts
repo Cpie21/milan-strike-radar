@@ -1,3 +1,5 @@
+import { fetchCgsse } from './cgsseTls';
+import { fetchToscanaNotice } from './toscanaAirportNotices';
 import { noticeRootsForRecord, officialOperatorIds } from './operatorAdapters';
 import { createHash } from 'node:crypto';
 import * as cheerio from 'cheerio';
@@ -63,12 +65,14 @@ export function allowedSourceUrl(input: string) {
 }
 
 async function fetchHtml(input: string, deadline: number): Promise<string> {
+  if(new URL(input).hostname==='www.toscana-aeroporti.com' && /^\/it\/news\//.test(new URL(input).pathname))return fetchToscanaNotice(input,deadline);
   let url = input;
   for (let redirect = 0; redirect < 4; redirect++) {
     if (!allowedSourceUrl(url)) throw new Error('Source URL is outside approved hosts');
     const remaining = deadline - Date.now();
     if (remaining < 100) throw new Error('External discovery budget exhausted');
-    const response = await fetch(url, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(Math.min(10_000, remaining)), headers: { 'User-Agent': 'ItalyStrike/1.0 (+https://www.theitalystrike.com)' } });
+    const signal=AbortSignal.timeout(Math.min(10_000,remaining));
+    const response = ['cgsse.it','www.cgsse.it'].includes(new URL(url).hostname)?await fetchCgsse(url,signal):await fetch(url, { cache: 'no-store', redirect: 'manual', signal, headers: { 'User-Agent': 'ItalyStrike/1.0 (+https://www.theitalystrike.com)', 'Accept':'text/html,application/xhtml+xml,application/pdf' } });
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
       if (!location) throw new Error('Missing source redirect location');

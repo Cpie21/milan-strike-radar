@@ -13,7 +13,7 @@
     "test:presentation": "node --test scripts/test-strike-presentation.cjs",
     "test:ask": "node --test scripts/test-ask.cjs",
     "test:lab": "node --test scripts/test-lab.cjs",
-    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs scripts/test-transit-scope.cjs scripts/test-service-schedule.cjs scripts/test-ask.cjs scripts/test-lab.cjs scripts/test-ai-budget.cjs scripts/test-line-impact.cjs scripts/test-route-membership.cjs scripts/test-shared-backend.cjs scripts/test-canonical-line-alias.cjs scripts/test-refresh-audit.cjs",
+    "test": "node --test scripts/test-strike-sync.cjs scripts/test-strike-enrichment.cjs scripts/test-strike-presentation.cjs scripts/test-strike-database.cjs scripts/test-strike-scope.cjs scripts/test-strike-semantic.cjs scripts/test-transit-scope.cjs scripts/test-service-schedule.cjs scripts/test-ask.cjs scripts/test-lab.cjs scripts/test-ai-budget.cjs scripts/test-line-impact.cjs scripts/test-route-membership.cjs scripts/test-shared-backend.cjs scripts/test-canonical-line-alias.cjs scripts/test-refresh-audit.cjs scripts/test-source-access.cjs",
     "review:queue": "node scripts/print-semantic-review-queue.cjs"
   },
   "dependencies": {
