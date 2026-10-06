@@ -1,9 +1,12 @@
-import { CITY_STRIKE_SOURCES, NATIONAL_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES } from './strikeSources';
+import { CITY_STRIKE_SOURCES, SUPPLEMENTAL_OPERATOR_SOURCES, NATIONAL_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES } from './strikeSources';
 import type { StrikeRecord } from './strikeSync';
 
 // Source capabilities are independent: an official notice does not imply a
 // timetable or a live feed exists. City membership is never operator evidence.
 const adapterIds = {
+  'ATAF Foggia':'ATAF_FOGGIA',
+  'Arriva Udine':'ARRIVA_UDINE',
+  'Start Romagna':'START_ROMAGNA',
   'ATM Milano':'ATM_MILANO',
   'ATAC':'ATAC_ROMA',
   'GTT':'GTT_TORINO',
@@ -30,7 +33,7 @@ const adapterIds = {
   'Busitalia Umbria':'BUSITALIA_UMBRIA',
 } as const;
 export type OperatorId = typeof adapterIds[keyof typeof adapterIds] | 'TRENITALIA_REGIONALE' | 'TRENITALIA' | 'TRENORD' | 'ATAF_FOGGIA' | 'ARRIVA_UDINE';
-export const operatorAdapters = CITY_STRIKE_SOURCES.map(source=>{
+export const operatorAdapters = [...CITY_STRIKE_SOURCES,...SUPPLEMENTAL_OPERATOR_SOURCES].map(source=>{
   const id=adapterIds[source.name as keyof typeof adapterIds];
   if(!id)throw new Error('Official operator source lacks an identity: '+source.name);
   return {...source,id};
@@ -46,11 +49,12 @@ export function identifyOperatorIds(record:Pick<StrikeRecord,'region'|'category'
   }
   if(/\bATAF\b/i.test(text)&&/foggia/i.test([text,record.raw_payload?.province].join(' ')))found.push('ATAF_FOGGIA');
   if(/\bArriva\b/i.test(text)&&/udine/i.test([text,record.raw_payload?.province].join(' ')))found.push('ARRIVA_UDINE');
+  if(/\bstart\s+romagna\b/i.test(text))found.push('START_ROMAGNA');
   return [...new Set(found)];
 }
 export function officialOperatorIds(url:string,region:string):OperatorId[] {
   let host:string;try{host=new URL(url).hostname;}catch{return [];}
-  return operatorAdapters.filter(a=>a.cities.includes(region)&&a.urls.some(root=>new URL(root).hostname===host)).map(a=>a.id);
+  return operatorAdapters.filter(a=>(a.cities.includes(region)||region==='UNKNOWN'&&!a.cities.length)&&a.urls.some(root=>new URL(root).hostname===host)).map(a=>a.id);
 }
 export function noticeRootsForRecord(record:Pick<StrikeRecord,'region'|'category'|'provider'|'raw_payload'>) {
   const operatorIds=identifyOperatorIds(record);
