@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import CityPage from '../../components/CityPage';
+import LabRoute from '../../components/lab/LabRoute';
 import { resolveCity } from '../../lib/cities';
 
 export const revalidate = 3600;
@@ -8,5 +8,5 @@ export default async function Page({ params }: { params: Promise<{ region: strin
   const { region } = await params;
   const city = resolveCity(region);
   if (!city) notFound();
-  return <CityPage tag={city.tag} />;
+  return <LabRoute tag={city.tag} />;
 }

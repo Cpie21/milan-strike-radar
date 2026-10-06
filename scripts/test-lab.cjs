@@ -165,6 +165,17 @@ test('the lab widget script never claims a line is stopped and keeps end of serv
   }
 });
 
+test('the lab widget draws the day like the card: chip row, green guarantees, no "now" word', () => {
+  const { buildLabWidgetScript } = require('../lib/lab/widgetScript.ts');
+  for (const lang of ['zh', 'en']) {
+    const code = buildLabWidgetScript({ origin: 'https://x.test', region: 'MILANO', types: ['SUBWAY'], cityName: 'M', path: '/milan', lang });
+    assert.match(code, lang === 'zh' ? /今天罢工/ : /Strike today/);
+    assert.match(code, /run: "#3DDC84"/); // the page's guarantee green, not the old ivory
+    assert.doesNotMatch(code, /drawText\(T\.now/); // "now" is a line, not a word
+    assert.match(code, /T\.last/); // an open end says last service, as the card does
+  }
+});
+
 
 test('lab translation cannot make a paid request even when an OpenRouter key exists', async () => {
   const savedFetch = global.fetch;

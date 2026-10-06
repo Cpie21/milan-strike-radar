@@ -1,7 +1,7 @@
-import CityPage from '../../components/CityPage';
+import LabRoute from '../../components/lab/LabRoute';
 
 export const revalidate = 3600;
 
 export default function Page() {
-  return <CityPage tag="ROMA" />;
+  return <LabRoute tag="ROMA" />;
 }

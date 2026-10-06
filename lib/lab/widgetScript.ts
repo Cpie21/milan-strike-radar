@@ -7,12 +7,13 @@
 // concerned), and the right side is what it is telling you.
 // Top band: the face and its line. Bottom: the day's picture, full width.
 //   Calm – "今天没有罢工", the next strike, the coming week.
-//   One strike – the strike's hours as the headline, the day as a lit
-//     groove (strike hours in the mode's colour, guaranteed hours green and
-//     labelled right under themselves, a needle marked "现在").
+//   One strike – a chip row (the modes' signage badges, "今天罢工", the
+//     city), the strike's hours as the headline, and the day drawn exactly
+//     as the page's card draws it: strike hours in the mode's colour,
+//     guaranteed hours green, times under the edges, a thin "now" line.
 //   Several – one line per strike (badges, which, its own state), then a
-//     single day chart: a thin lane per strike on one time axis with one
-//     "now" line, so overlaps and gaps read at once.
+//     single day chart: a lane per strike on one time axis with one "now"
+//     line, so overlaps and gaps read at once.
 // Modes with identical hours count as one strike. It never says a line
 // "is stopped": planned hours are planned hours; an open end is "运营结束".
 //
@@ -24,13 +25,13 @@ export type LabWidgetOptions = { origin: string; region: string; types: string[]
 const LABELS = {
   zh: {
     modes: { SUBWAY: '地铁', BUS: '公交', TRAIN: '火车', AIRPORT: '机场' },
-    calm: '今天没有罢工', next: '下一次', later: '再往后一周', over: '已过', today: '今天', now: '现在', start: '运营开始', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
+    calm: '今天没有罢工', thisWeek: '这一周', strikeToday: '今天罢工', last: '末班车', next: '下一次', later: '再往后一周', over: '已过', today: '今天', now: '现在', start: '运营开始', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
     past: '今天的罢工时段已过', end: '运营结束', pending: '时段待公布', guaranteed: '保障',
     error: '暂时无法更新', weekday: ['日', '一', '二', '三', '四', '五', '六'], week: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
   },
   en: {
     modes: { SUBWAY: 'Metro', BUS: 'Bus', TRAIN: 'Train', AIRPORT: 'Airport' },
-    calm: 'No strikes today', next: 'Next', later: 'The week after', over: 'Over', today: 'today', now: 'now', start: 'start of service', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
+    calm: 'No strikes today', thisWeek: 'This week', strikeToday: 'Strike today', last: 'Last service', next: 'Next', later: 'The week after', over: 'Over', today: 'today', now: 'now', start: 'start of service', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
     past: 'Today’s strike hours are over', end: 'end of service', pending: 'Hours pending', guaranteed: 'Guaranteed',
     error: 'Can’t update right now', weekday: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], week: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
@@ -59,7 +60,7 @@ ${fns}
 
 const COL = {
   bg: "#0E0F12", surface: "#1A1C21", text: "#F5F6F7", text2: "#A9AEB7", text3: "#6E737C",
-  run: "#EDE6D3", ok: "#4AD9A7", amber: "#FFB12E", amberOff: "#2A1E0C", track: "#2A2D33",
+  run: "#3DDC84", ok: "#3DDC84", amber: "#FFB12E", amberOff: "#2A1E0C", track: "#2A2D33",
   mode: { SUBWAY: "#D52B20", BUS: "#BF5700", TRAIN: "#2559C9", AIRPORT: "#7650DB" },
   main: { SUBWAY: "#FF5147", BUS: "#FF8F1F", TRAIN: "#5B93FF", AIRPORT: "#B08CFF" },
 };
@@ -153,39 +154,75 @@ function label(parent, s, size, color, weight) {
   t.textColor = c(color); t.lineLimit = 1; t.minimumScaleFactor = 0.7;
   return t;
 }
-// The day as a track, 05:00 → end of service (slim: one row of several)
-function track(items, now, width, slim) {
-  if (slim) return lanes([{ modes: [items[0].category], items }], now, width);
-  // The day as a lit groove: strike hours in the mode's colour, guaranteed
-  // hours green with their own label right under them, a needle for now.
-  const h = 46, y = 18, th = 12, dc = new DrawContext();
+// The day as the page's card draws it, 05:00 → end of service: an 8pt bar,
+// strike hours in the mode's colour (an open end fades out), guaranteed
+// hours green, hour ticks, the times under the edges, a thin "now" line.
+function track(items, color, now, width, bare) {
+  const h = bare ? 20 : 36, y = 6, th = 8, dc = new DrawContext();
   dc.size = new Size(width, h); dc.opaque = false; dc.respectScreenScale = true;
-  const x = m => Math.max(0, Math.min(1, (m - 300) / 1200)) * width;
-  const pill = (a, b, t, color, alpha) => { const p = new Path(); p.addRoundedRect(new Rect(a, y - t / 2, Math.max(t, b - a), t), t / 2, t / 2); dc.addPath(p); dc.setFillColor(c(color, alpha)); dc.fillPath(); };
-  const seg = (a, b, color) => { pill(x(a), x(b), th, color); pill(x(a) + 2, x(b) - 2, th * 0.34, "#FFFFFF", 0.22); };
-  pill(-1, width + 1, th + 4, "#0A0B0D"); pill(0, width, th, "#22252B"); // the groove
-  items.forEach(item => windowsOf(item).forEach(w => { const [a, b] = spanOf(w); seg(a, b, COL.main[item.category]); }));
+  const pos = m => Math.max(0, Math.min(1, (m - 300) / 1140));
+  const x = m => pos(m) * width;
+  const pill = (a, b, fill, alpha) => { const p = new Path(); p.addRoundedRect(new Rect(a, y, Math.max(th, b - a), th), th / 2, th / 2); dc.addPath(p); dc.setFillColor(c(fill, alpha)); dc.fillPath(); };
+  pill(0, width, "#FFFFFF", 0.07);
+  const wins = items.flatMap(windowsOf);
   const gs = items.flatMap(guaranteesOf).filter((g, i, all) => all.findIndex(o => o.start === g.start && o.end === g.end) === i);
-  gs.forEach(g => seg(mins(g.start), mins(g.end), COL.run));
-  // labels for the guaranteed stretches, centred under each
-  dc.setFont(Font.semiboldSystemFont(10)); dc.setTextColor(c(COL.run));
-  gs.forEach(g => {
-    const mid = (x(mins(g.start)) + x(mins(g.end))) / 2, text = T.guaranteed + " " + g.start + "–" + g.end;
-    const w = text.length * 5.6;
-    dc.drawText(text, new Point(Math.max(0, Math.min(width - w, mid - w / 2)), y + th / 2 + 4));
+  const openEnd = wins.some(w => w.end === null);
+  // strike hours with the guaranteed hours cut out of them
+  const cuts = gs.map(g => [mins(g.start), mins(g.end)]).sort((a, b) => a[0] - b[0]);
+  wins.forEach(w => {
+    let [a, b] = spanOf(w); const parts = [];
+    cuts.forEach(([ga, gb]) => { if (gb <= a || ga >= b) return; if (ga > a) parts.push([a, ga]); a = Math.max(a, gb); });
+    if (b > a) parts.push([a, b]);
+    parts.forEach(([pa, pb]) => {
+      const L = x(pa) + (pa > 300 ? 1 : 0), R = x(pb) - (pb < 1440 ? 1 : 0);
+      if (pb >= 1440 && openEnd) { // fades out toward the last service, as on the card
+        // whole-point slices, so no seams show between them
+        const fadeFrom = Math.round(L + (R - L) * 0.72), end = Math.round(R);
+        pill(L, fadeFrom + th, color);
+        for (let px = fadeFrom + th / 2; px < end; px++) { dc.setFillColor(c(color, 1 - ((px - fadeFrom) / (end - fadeFrom)) * 0.75)); dc.fillRect(new Rect(px, y, 1, th)); }
+      } else pill(L, R, color);
+    });
   });
-  // now: a needle through the groove with its word above
-  const nx = x(now < 300 ? now + 1440 : now);
-  dc.setFillColor(c("#FFFFFF")); dc.fillRect(new Rect(nx - 1, y - th / 2 - 4, 2, th + 8));
-  dc.setFillColor(c(COL.bg)); dc.fillEllipse(new Rect(nx - 5.5, y - 5.5, 11, 11));
-  dc.setFillColor(c("#FFFFFF")); dc.fillEllipse(new Rect(nx - 3.5, y - 3.5, 7, 7));
-  dc.setFont(Font.semiboldSystemFont(9.5)); dc.setTextColor(c("#FFFFFF"));
-  dc.drawText(T.now, new Point(Math.max(0, Math.min(width - 22, nx - 10)), 0));
+  cuts.forEach(([a, b]) => pill(x(a) + 1, x(b) - 1, COL.run));
+  if (bare) return nowLine(dc, now, x, y, th, width);
+  // hour ticks
+  dc.setFillColor(c("#FFFFFF", 0.14));
+  [6, 9, 12, 15, 18, 21].forEach(hr => dc.fillRect(new Rect(x(hr * 60) - 0.5, y + th + 2, 1, 3)));
+  // the times at the edges; a guarantee edge wins over a strike edge a minute off it
+  let edges = [];
+  wins.forEach(w => { if (w.start) edges.push({ t: w.start, ok: false }); if (w.end) edges.push({ t: w.end, ok: false }); });
+  gs.forEach(g => { edges.push({ t: g.start, ok: true }); if (g.end) edges.push({ t: g.end, ok: true }); });
+  edges = edges.map(e => ({ ...e, p: pos(mins(e.t)) })).filter(e => e.p > 0.001 && e.p < 0.999)
+    .filter((e, _, all) => e.ok || !all.some(o => o.ok && Math.abs(mins(o.t) - mins(e.t)) <= 2))
+    .sort((a, b) => a.p - b.p)
+    .filter((e, i, all) => all.findIndex(o => o.t === e.t) === i)
+    .filter((e, i, all) => i === 0 || e.p - all[i - 1].p > 0.14)
+    .filter(e => !openEnd || e.p < 0.8);
+  dc.setFont(Font.mediumSystemFont(10.5));
+  const ty = y + th + 7;
+  edges.forEach(e => {
+    const ex = e.p * width;
+    dc.setTextColor(c(e.ok ? COL.run : COL.text2));
+    if (e.p < 0.06) { dc.setTextAlignedLeft(); dc.drawTextInRect(e.t, new Rect(ex, ty, 40, 14)); }
+    else if (e.p > 0.94) { dc.setTextAlignedRight(); dc.drawTextInRect(e.t, new Rect(ex - 40, ty, 40, 14)); }
+    else { dc.setTextAlignedCenter(); dc.drawTextInRect(e.t, new Rect(ex - 20, ty, 40, 14)); }
+  });
+  if (openEnd) { dc.setTextColor(c(COL.text3)); dc.setTextAlignedRight(); dc.drawTextInRect(T.last, new Rect(width - 80, ty, 80, 14)); }
+  return nowLine(dc, now, x, y, th, width);
+}
+// now: a thin white line through the bar, ringed so it reads on any fill
+function nowLine(dc, now, x, y, th, width) {
+  const m = now < 300 ? now + 1440 : now;
+  if (m >= 300 && m <= 1440) {
+    const nx = Math.max(1, Math.min(width - 1, x(m)));
+    const ring = new Path(); ring.addRoundedRect(new Rect(nx - 3, 0, 6, th + 12), 3, 3); dc.addPath(ring); dc.setFillColor(c(COL.bg)); dc.fillPath();
+    const line = new Path(); line.addRoundedRect(new Rect(nx - 1, 2, 2, th + 8), 1, 1); dc.addPath(line); dc.setFillColor(c("#FFFFFF")); dc.fillPath();
+  }
   return dc.getImage();
 }
 // Several strikes on one axis: a thin lane each, one "now" line through all
 function lanes(groups, now, width) {
-  const lane = 5, gap = 4, top = 2, h = top + groups.length * (lane + gap) + 12, dc = new DrawContext();
+  const lane = 7, gap = 6, top = 2, h = top + groups.length * (lane + gap) + 12, dc = new DrawContext();
   dc.size = new Size(width, h); dc.opaque = false; dc.respectScreenScale = true;
   const x = m => Math.max(0, Math.min(1, (m - 300) / 1200)) * width;
   const bar = (a, b, y, color) => { const p = new Path(); p.addRoundedRect(new Rect(x(a), y, Math.max(lane, x(b) - x(a)), lane), lane / 2, lane / 2); dc.addPath(p); dc.setFillColor(c(color)); dc.fillPath(); };
@@ -211,13 +248,13 @@ function week(parent, byDate, from, n, today) {
     const d = addDays(from, i), items = byDate[d] || [];
     if (i) row.addSpacer();
     const col = row.addStack(); col.layoutVertically(); col.centerAlignContent();
-    const wd = col.addText(T.weekday[dow(d)]); wd.font = Font.mediumSystemFont(9.5); wd.textColor = c(d === today ? COL.text2 : COL.text3);
-    col.addSpacer(3);
-    const dot = col.addStack(); dot.size = new Size(22, 22); dot.cornerRadius = 11; dot.centerAlignContent();
+    const wd = col.addText(T.weekday[dow(d)]); wd.font = Font.mediumSystemFont(10); wd.textColor = c(d === today ? COL.text2 : COL.text3);
+    col.addSpacer(5);
+    const dot = col.addStack(); dot.size = new Size(30, 30); dot.cornerRadius = 15; dot.centerAlignContent();
     const modes = [...new Set(items.map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
     dot.backgroundColor = modes.length ? c(COL.mode[modes[0]]) : c(COL.surface);
     if (d === today) { dot.borderWidth = 1.5; dot.borderColor = c("#FFFFFF", 0.85); }
-    const num = dot.addText(String(Number(d.slice(8)))); num.font = Font.semiboldSystemFont(10); num.textColor = c(modes.length ? "#FFFFFF" : COL.text2);
+    const num = dot.addText(String(Number(d.slice(8)))); num.font = Font.semiboldSystemFont(12.5); num.textColor = c(modes.length ? "#FFFFFF" : COL.text2);
   }
 }
 function background(w, mode) {
@@ -274,24 +311,29 @@ try {
       r.addSpacer(5);
       label(r, (small ? "" : T.next + " · ") + dateText(t.getUTCMonth() + 1, t.getUTCDate(), T.week[t.getUTCDay()]) + " · " + inDays(daysBetween(today, nextDate)), 11.5, COL.text2);
     } else label(r, T.none, 11.5, COL.text2);
-    if (!small) { widget.addSpacer(6); week(widget, byDate, today, 7, today); }
+    if (!small) { widget.addSpacer(8); week(widget, byDate, today, 7, today); }
   } else if (groups.length === 1 || small) {
     // The strike's own hours are the headline; where "now" falls is the
     // needle's job, not the headline's.
-    const g = groups[0];
-    eyebrow(names(groups.flatMap(x => x.modes)) + " · " + CITY + " · " + T.today);
+    const g = groups[0], color = COL.main[g.modes[0]];
+    // a chip row, as signage: the modes' badges, what it is, where
+    const chips = say.addStack(); chips.layoutHorizontally(); chips.centerAlignContent();
+    g.modes.slice(0, 3).forEach((m, i) => { if (i) chips.addSpacer(3); badge(chips, m, small ? 15 : 16); });
+    chips.addSpacer(6);
+    label(chips, T.strikeToday, small ? 12 : 12.5, color, "semibold");
+    if (!small) { chips.addSpacer(); label(chips, CITY, 11.5, COL.text3, "semibold"); }
+    say.addSpacer(small ? 4 : 3);
     const wins = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end));
     const hours = wins.join(wins.length === 2 ? "\\n" : "  "); // two windows read best stacked
     const hl = label(say, hours || T.pending, small ? 16 : 18, COL.text, "bold"); hl.lineLimit = 2;
-    if (!small) {
-      widget.addSpacer();
-      const tr = widget.addImage(track(g.items, now, 296)); tr.imageSize = new Size(296, 46);
-    }
+    widget.addSpacer();
+    if (small) { const tr = widget.addImage(track(g.items, color, now, 130, true)); tr.imageSize = new Size(130, 20); }
+    else { const tr = widget.addImage(track(g.items, color, now, 308)); tr.imageSize = new Size(308, 36); }
   } else {
     // several strikes: what the assistant says, the list, then one shared day
     eyebrow(CITY);
     label(say, manyText(groups.length), 19, COL.text, "bold");
-    widget.addSpacer();
+    widget.addSpacer(10);
     const shown = family === "large" ? groups : groups.slice(0, 2);
     shown.forEach((g, i) => {
       if (i) widget.addSpacer(3);
@@ -302,10 +344,13 @@ try {
       const st = todayState(g.items, now);
       label(r, shortState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
     });
-    widget.addSpacer(5);
-    const ln = widget.addImage(lanes(shown, now, 296)); ln.imageSize = new Size(296, 2 + shown.length * 9 + 12);
+    widget.addSpacer(7);
+    const ln = widget.addImage(lanes(shown, now, 308)); ln.imageSize = new Size(308, 2 + shown.length * 13 + 12);
+    widget.addSpacer();
   }
   if (family === "large") {
+    // on a strike day the medium part has no week: show this one first
+    if (strike) { widget.addSpacer(16); label(widget, T.thisWeek, 11, COL.text3, "semibold"); widget.addSpacer(4); week(widget, byDate, today, 7, today); }
     widget.addSpacer(16);
     label(widget, T.later, 11, COL.text3, "semibold");
     widget.addSpacer(4);

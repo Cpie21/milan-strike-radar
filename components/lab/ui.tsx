@@ -110,17 +110,44 @@ function useContentGestures(node: HTMLDivElement | null, on: boolean, full: bool
   }, [node, on]);
 }
 
-export function Sheet({ open, onClose, title, children, tall = false, large = false, header, expand = false }: {
+export function Sheet({ open, onClose, title, children, tall = false, large = false, header, expand = false, fit = false }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; header?: ReactNode;
   expand?: boolean; // content that needs room asks for full height itself
+  // The first detent is the content's own height, down to the element marked
+  // data-sheet-fit (or all of it), so the sheet shows exactly what matters.
+  fit?: boolean;
 }) {
-  const detents = tall || large ? [MEDIUM, 1] : undefined;
-  const [snap, setSnap] = useState<number | string | null>(large ? 1 : MEDIUM);
-  useEffect(() => { if (open) { const t = setTimeout(() => setSnap(large ? 1 : MEDIUM), 0); return () => clearTimeout(t); } }, [open, large]);
-  useEffect(() => { if (open && expand && detents) { const t = setTimeout(() => setSnap(1), 0); return () => clearTimeout(t); } }, [open, expand]); // eslint-disable-line react-hooks/exhaustive-deps
-  const full = !detents || snap === 1;
   // A callback ref: the drawer mounts its content after this renders.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+  const [fitPx, setFitPx] = useState<number | null>(null);
+  useEffect(() => {
+    if (!fit || !open || !scroller) return;
+    const measure = () => {
+      const drawer = scroller.closest('[data-vaul-drawer]') as HTMLElement | null;
+      const content = scroller.firstElementChild as HTMLElement | null;
+      if (!drawer || !content) return;
+      const end = (scroller.querySelector('[data-sheet-fit]') as HTMLElement | null) ?? content;
+      const h = Math.max(240, end.getBoundingClientRect().bottom - drawer.getBoundingClientRect().top + scroller.scrollTop + 20);
+      // vaul offsets a px detent from the window's height, not the drawer's
+      setFitPx(Math.round(Math.min(window.innerHeight, h + window.innerHeight - drawer.offsetHeight)));
+    };
+    // Content animates in (heights, offsets): measure once it has settled.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const later = () => { clearTimeout(timer); timer = setTimeout(measure, 140); };
+    measure();
+    const mo = new MutationObserver(later);
+    mo.observe(scroller, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+    window.addEventListener('resize', later);
+    return () => { clearTimeout(timer); mo.disconnect(); window.removeEventListener('resize', later); };
+  }, [fit, open, scroller]);
+  const low: number | string = fit && fitPx ? `${fitPx}px` : MEDIUM;
+  const detents = tall || large ? [low, 1] : undefined;
+  const [snap, setSnap] = useState<number | string | null>(large ? 1 : MEDIUM);
+  useEffect(() => { if (open) { const t = setTimeout(() => setSnap(large ? 1 : low), 0); return () => clearTimeout(t); } }, [open, large]); // eslint-disable-line react-hooks/exhaustive-deps
+  // the fitted height follows the content, unless the sheet is fully up
+  useEffect(() => { if (open && fit) { const t = setTimeout(() => setSnap(s => (s === 1 ? 1 : low)), 0); return () => clearTimeout(t); } }, [low]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open && expand && detents) { const t = setTimeout(() => setSnap(1), 0); return () => clearTimeout(t); } }, [open, expand]); // eslint-disable-line react-hooks/exhaustive-deps
+  const full = !detents || snap === 1;
   useContentGestures(scroller, !!detents && open, full, {
     expand: () => setSnap(1),
     collapse: onClose,
@@ -134,7 +161,7 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
         <div className="flex items-center justify-between gap-3 px-5 pt-2 pb-3 select-none">
           {header ?? <Drawer.Title className="text-[18px] font-semibold tracking-tight">{title}</Drawer.Title>}
           {header && <Drawer.Title className="sr-only">{title}</Drawer.Title>}
-          <button onClick={onClose} aria-label="关闭" className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
+          <button onClick={onClose} aria-label="关闭 / Close" className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
             <X size={14} weight="bold" color={C.text2} />
           </button>
         </div>
@@ -148,7 +175,7 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
   if (!detents) return <Drawer.Root open={open} onOpenChange={change}>{body}</Drawer.Root>;
   return (
     <Drawer.Root open={open} onOpenChange={change} snapPoints={detents} activeSnapPoint={snap} fadeFromIndex={0}
-      setActiveSnapPoint={next => { if (snap === 1 && next === MEDIUM) { onClose(); return; } setSnap(next); }}>
+      setActiveSnapPoint={next => { if (snap === 1 && next === low) { onClose(); return; } setSnap(next); }}>
       {body}
     </Drawer.Root>
   );

@@ -178,7 +178,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
               {/* The notice says "end of service"; a timetable time is only a reference beside it */}
               {span.end === null && card.scheduledEnd && (
                 <a href={card.scheduledEnd.source} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
-                  {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.label}`)}
+                  {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.labelEn ?? card.scheduledEnd.label}`)}
                 </a>
               )}
               {/* Guaranteed gaps have their own row below; plain gaps say so here */}
@@ -301,8 +301,8 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
     : <span style={{ color: C.text3 }}>{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '待公布', 'Not yet published') : tx(lang, '无', 'None')}</span>;
   const rows: [React.ReactNode, React.ReactNode, string][] = [
     [guaranteeLabel, guaranteeValue, 'guarantee'],
-    [tx(lang, '罢工人员', 'Who'), say(card.provider), 'who'],
-    ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), say(card.scope), 'type'] as [React.ReactNode, React.ReactNode, string]] : []),
+    [tx(lang, '罢工人员', 'Who'), lang === 'en' && card.providerEn ? card.providerEn : say(card.provider), 'who'],
+    ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), lang === 'en' && card.scopeEn ? card.scopeEn : say(card.scope), 'type'] as [React.ReactNode, React.ReactNode, string]] : []),
     ...(card.category === 'AIRPORT' && scopeNote.length ? [[tx(lang, '影响范围', 'Scope'), scopeNote.join(tx(lang, '；', '; ')), 'scope'] as [React.ReactNode, React.ReactNode, string]] : []),
     // Lines from a whole-operator notice may be hit, not certainly: the label says so.
     ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : !named.length && possible.length && !(card.lineScope === 'SPECIFIC_LINES' && card.lines.length) ? tx(lang, '可能受影响', 'May be affected') : tx(lang, '受影响线路', 'Affected lines'), lines, 'lines'] as [React.ReactNode, React.ReactNode, string]] : []),

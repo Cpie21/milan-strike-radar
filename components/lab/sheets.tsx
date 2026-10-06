@@ -6,7 +6,8 @@ import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/re
 import { submitFeedback } from '../../app/actions';
 import { buildLabWidgetScript } from '../../lib/lab/widgetScript';
 import { LedFace } from './Led';
-import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../lib/lab/model';
+import { axisPos, MODES, modeName, relativeDay, tx, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
+import { Bar } from './LabStrikeCard';
 import { Button, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C, MODE_COLOR } from './theme';
 import { track } from './track';
@@ -45,14 +46,16 @@ function ModeToggles({ value, onChange, lang }: { value: Set<Mode>; onChange: (v
   );
 }
 
+// A numbered step: the number and title on one line, then what to do at
+// the sheet's full width, so every control lines up with both edges.
 function Step({ n, title, children }: { n: number; title: string; children?: React.ReactNode }) {
   return (
-    <div className="flex gap-3 py-3">
-      <span className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[13px] font-semibold tabular-nums" style={{ background: '#272A30' }}>{n}</span>
-      <div className="flex-1 min-w-0">
+    <div className="py-3">
+      <div className="flex items-center gap-3">
+        <span className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[13px] font-semibold tabular-nums" style={{ background: '#272A30' }}>{n}</span>
         <p className="text-[15px] font-medium leading-6">{title}</p>
-        {children && <div className="mt-2.5">{children}</div>}
       </div>
+      {children && <div className="mt-3">{children}</div>}
     </div>
   );
 }
@@ -75,14 +78,15 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
       </label>
       <div className="flex flex-col gap-2 pb-2">
         {list.map(city => (
-          <a key={city.tag} href={`/lab?city=${city.tag}`} aria-busy={going === city.tag}
+          <a key={city.tag} href={city.path} aria-busy={going === city.tag}
             onClick={e => { if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
             className="relative overflow-hidden flex items-center justify-between gap-3 h-[64px] px-4 rounded-[16px] active:scale-[0.99] transition-transform"
             style={{ background: city.tag === current || going === city.tag ? '#272A30' : '#1E2025', opacity: going && going !== city.tag ? 0.5 : 1 }}>
             {going === city.tag && <motion.span aria-hidden className="absolute inset-y-0 left-0 w-1/3" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} animate={{ x: ['-100%', '300%'] }} transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }} />}
             <span>
               <span className="text-[17px] font-semibold">{base.lang === 'en' ? city.en : city.zh}</span>
-              <span className="ml-2 text-[13px]" style={{ color: C.text3 }}>{base.lang === 'en' ? city.zh : city.en}</span>
+              {/* the local name beside it: Italian in English, English in Chinese */}
+              {(() => { const local = base.lang === 'en' ? city.tag.charAt(0) + city.tag.slice(1).toLowerCase() : city.en; return local !== (base.lang === 'en' ? city.en : city.zh) && <span className="ml-2 text-[13px]" style={{ color: C.text3 }}>{local}</span>; })()}
             </span>
             {going === city.tag
               ? <span className="relative flex items-center gap-2 text-[13px] font-semibold" style={{ color: C.text2 }}><motion.span className="w-4 h-4 rounded-full border-2" style={{ borderColor: 'rgba(255,255,255,0.25)', borderTopColor: '#FFFFFF' }} animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }} />{tx(base.lang, '正在打开…', 'Opening…')}</span>
@@ -171,85 +175,84 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
   );
 }
 
-// What the widget looks like, calm and on a strike day: the same face.
+// What the widget looks like (lib/lab/widgetScript.ts), calm, on a strike
+// day and on a busy one: the same face, the same pieces, the same sizes.
 function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
   const [state, setState] = useState<'calm' | 'strike' | 'many'>('calm');
   const strike = state === 'strike', many = state === 'many';
-  // Example days: the metro strikes 08:45–15:00 and 18:00–end (guaranteed
-  // 15:00–18:00); on the busy day a rail strike runs 21:00–24:00 too.
-  const x = (m: number) => `${Math.max(0, Math.min(1, (m - 300) / 1200)) * 100}%`;
+  // Example days: metro and bus strike 08:45–15:00 and 18:00–end (guaranteed
+  // 15:00–18:00); on the busy day a rail strike runs until 21:00 as well.
+  const x = (m: number) => `${axisPos(m) * 100}%`;
   const NOW = 630;
-  const seg = (a: number, b: number, color: string, h = 8) => <i key={`${a}${color}`} className="absolute top-0 rounded-full" style={{ height: h, left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: color }} />;
+  const example = {
+    status: 'CONFIRMED', category: 'SUBWAY', indirect: false,
+    windows: [{ start: '08:45', end: '15:00', end_kind: 'time' }, { start: '18:00', end: null, end_kind: 'end_of_service' }],
+    guarantees: [{ start: '15:00', end: '18:00', end_kind: 'time' }],
+  } as unknown as ModeCard;
   const week = [6, 7, 8, 9, 10, 11, 12];
   const wd = lang === 'en' ? ['T', 'W', 'T', 'F', 'S', 'S', 'M'] : ['二', '三', '四', '五', '六', '日', '一'];
-  const rows: [Mode[], number[][], number[][], string, 'now' | 'later'][] = [
-    [['SUBWAY'], [[525, 900], [1080, 1500]], [[900, 1080]], tx(lang, '至 15:00', 'until 15:00'), 'now'],
-    [['TRAIN'], [[1260, 1500]], [], tx(lang, '21:00 起罢工', 'from 21:00'), 'later'],
+  const rows: [Mode[], number[][], number[][], string][] = [
+    [['SUBWAY', 'BUS'], [[525, 900], [1080, 1440]], [[900, 1080]], tx(lang, '至 15:00', 'until 15:00')],
+    [['TRAIN'], [[300, 1260]], [], tx(lang, '至 21:00', 'until 21:00')],
   ];
+  const band = strike || many ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)';
   return (
     <div className="mt-3 mb-1 flex flex-col items-center gap-3">
-      <div className="w-full max-w-[340px] aspect-[2.12/1] rounded-[22px] px-4 py-3.5 flex flex-col overflow-hidden" style={{ background: strike || many ? `linear-gradient(180deg, ${MODE_COLOR.SUBWAY.main}33, #0E0F12 65%)` : 'linear-gradient(180deg, #16181D, #0E0F12 65%)', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
+      <div className="w-full max-w-[340px] aspect-[2.14/1] rounded-[22px] pl-[14px] pr-4 py-[14px] flex flex-col overflow-hidden" style={{ background: band, boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 14px 30px rgba(0,0,0,0.45)' }}>
         {/* top band: the assistant's face and what it says */}
         <div className="flex items-center gap-2.5">
           <LedFace mood={strike || many ? 'alert' : 'happy'} size={22} cols={17} />
-          <div className="min-w-0">
-            <p className="text-[11.5px] font-semibold truncate" style={{ color: C.text3 }}>
-              {state === 'calm' ? `${cityName} · ${tx(lang, '周二', 'Tue')}` : strike ? `${tx(lang, '地铁', 'Metro')} · ${cityName} · ${tx(lang, '今天', 'today')}` : cityName}
-            </p>
-            <p className={`${strike ? 'text-[17px]' : 'text-[19px]'} leading-[1.2] font-bold tabular-nums ${strike ? '' : 'truncate'}`} style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif', color: C.text }}>
+          <div className="min-w-0 flex-1">
+            {strike ? (
+              // a chip row, as signage: the modes' badges, what it is, where
+              <p className="flex items-center gap-[3px] text-[12.5px] font-semibold">
+                <ModeBadge mode="SUBWAY" size={16} /><ModeBadge mode="BUS" size={16} />
+                <span className="ml-[3px]" style={{ color: MODE_COLOR.SUBWAY.main }}>{tx(lang, '今天罢工', 'Strike today')}</span>
+                <span className="ml-auto text-[11.5px]" style={{ color: C.text3 }}>{cityName}</span>
+              </p>
+            ) : (
+              <p className="text-[11.5px] font-semibold truncate" style={{ color: C.text3 }}>{state === 'calm' ? `${cityName} · ${tx(lang, '周二', 'Tue')}` : cityName}</p>
+            )}
+            <p className={`${strike ? 'text-[17px] mt-[3px]' : 'text-[19px] truncate'} leading-[1.2] font-bold tabular-nums`} style={{ fontFamily: 'ui-rounded, -apple-system, sans-serif', color: C.text }}>
               {state === 'calm' ? tx(lang, '今天没有罢工', 'No strikes today') : strike ? <>08:45–15:00<br />{tx(lang, '18:00–运营结束', '18:00–end of service')}</> : tx(lang, '今天 2 项罢工', '2 strikes today')}
             </p>
           </div>
         </div>
-        <div className="flex-1" />
+        {!many && <div className="flex-1" />}
         {/* the day's picture, full width */}
         {state === 'calm' && <>
           <p className="flex items-center gap-1 text-[11.5px]" style={{ color: C.text2 }}><ModeBadge mode="SUBWAY" size={14} /><span className="ml-1">{tx(lang, '下一次 · 10月9日 周五 · 3 天后', 'Next · Fri 9 Oct · in 3 days')}</span></p>
-          <div className="mt-1.5 flex justify-between">
+          <div className="mt-2 flex justify-between">
             {week.map((d, i) => (
-              <span key={d} className="flex flex-col items-center gap-[2px]">
-                <span className="text-[9px] font-medium" style={{ color: i ? C.text3 : C.text2 }}>{wd[i]}</span>
-                <span className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[10px] font-semibold tabular-nums" style={{ background: d === 9 ? MODE_COLOR.SUBWAY.deep : '#1A1C21', color: d === 9 ? '#FFFFFF' : C.text2, boxShadow: i ? 'none' : 'inset 0 0 0 1.5px rgba(255,255,255,0.85)' }}>{d}</span>
+              <span key={d} className="flex flex-col items-center gap-[4px]">
+                <span className="text-[10px] font-medium" style={{ color: i ? C.text3 : C.text2 }}>{wd[i]}</span>
+                <span className="w-[28px] h-[28px] rounded-full flex items-center justify-center text-[12px] font-semibold tabular-nums" style={{ background: d === 9 ? MODE_COLOR.SUBWAY.deep : '#1A1C21', color: d === 9 ? '#FFFFFF' : C.text2, boxShadow: i ? 'none' : 'inset 0 0 0 1.5px rgba(255,255,255,0.85)' }}>{d}</span>
               </span>
             ))}
           </div>
         </>}
-        {strike && (
-          // the day as a lit groove; "now" is the needle's job
-          <div className="relative">
-            <span className="block text-[9.5px] font-semibold h-[12px] relative"><span className="absolute -translate-x-1/2 text-white" style={{ left: x(NOW) }}>{tx(lang, '现在', 'now')}</span></span>
-            <div className="relative h-[12px] rounded-full" style={{ background: '#22252B', boxShadow: '0 0 0 2px #0A0B0D' }}>
-              {([[525, 900, MODE_COLOR.SUBWAY.main], [900, 1080, C.run], [1080, 1500, MODE_COLOR.SUBWAY.main]] as [number, number, string][]).map(([a2, b2, col]) => (
-                <i key={a2} className="absolute top-0 h-[12px] rounded-full overflow-hidden" style={{ left: x(a2), width: `calc(${x(b2)} - ${x(a2)})`, background: col }}>
-                  <i className="absolute left-[2px] right-[2px] top-[2px] h-[4px] rounded-full" style={{ background: 'rgba(255,255,255,0.22)' }} />
-                </i>
-              ))}
-              <i className="absolute -top-[4px] w-[2px] h-[20px] -ml-[1px] bg-white rounded-full" style={{ left: x(NOW) }} />
-              <i className="absolute top-[0.5px] w-[11px] h-[11px] -ml-[5.5px] rounded-full flex items-center justify-center" style={{ left: x(NOW), background: '#0E0F12' }}><i className="w-[7px] h-[7px] rounded-full bg-white" /></i>
-            </div>
-            <span className="relative block h-[14px] mt-[3px] text-[10px] font-semibold tabular-nums"><span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: x(990), color: C.run }}>{tx(lang, '保障 15:00–18:00', 'Guaranteed 15:00–18:00')}</span></span>
-          </div>
-        )}
+        {/* the same bar the card draws */}
+        {strike && <div className="flex"><Bar card={example} now={axisPos(NOW)} lang={lang} /></div>}
         {many && <>
-          <div className="flex flex-col gap-1">
-            {rows.map(([modes, , , label, kind]) => (
+          <div className="mt-2.5 flex flex-col gap-1">
+            {rows.map(([modes, , , label]) => (
               <p key={modes.join()} className="flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: C.text2 }}>
-                {modes.map(m => <ModeBadge key={m} mode={m} size={15} />)}{modes.map(m => modeName(m, lang)).join(' · ')}
-                <span className="ml-auto tabular-nums" style={{ color: kind === 'now' ? MODE_COLOR[modes[0]].main : C.text }}>{label}</span>
+                <span className="flex gap-[2px]">{modes.map(m => <ModeBadge key={m} mode={m} size={15} />)}</span>{modes.map(m => modeName(m, lang)).join(' · ')}
+                <span className="ml-auto tabular-nums" style={{ color: MODE_COLOR[modes[0]].main }}>{label}</span>
               </p>
             ))}
           </div>
-          <div className="mt-1.5 relative">
+          <div className="mt-2 relative">
             {rows.map(([modes, ws, gs], k) => (
-              <div key={k} className="relative h-[5px] mb-[4px]">
+              <div key={k} className="relative h-[7px] mb-[6px]">
                 <i className="absolute inset-0 rounded-full" style={{ background: '#2A2D33' }} />
-                {ws.map(([a, b]) => seg(a, b, MODE_COLOR[modes[0]].main, 5))}
-                {gs.map(([a, b]) => seg(a, b, C.run, 5))}
+                {ws.map(([a, b]) => <i key={a} className="absolute top-0 h-full rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: MODE_COLOR[modes[0]].main }} />)}
+                {gs.map(([a, b]) => <i key={a} className="absolute top-0 h-full rounded-full" style={{ left: x(a), width: `calc(${x(b)} - ${x(a)})`, background: C.run }} />)}
               </div>
             ))}
-            <i className="absolute -top-[1px] w-[2px] rounded-full bg-white" style={{ left: x(NOW), height: rows.length * 9 + 1 }} />
-            <div className="relative h-[10px] text-[9px] tabular-nums" style={{ color: C.text3 }}>
-              {[['06', 360], ['12', 720], ['18', 1080], ['24', 1440]].map(([t, m]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m as number) }}>{t}</span>)}
+            <i className="absolute -top-[2px] w-[2px] rounded-full bg-white" style={{ left: x(NOW), height: rows.length * 13 }} />
+            <div className="relative h-[11px] text-[9px] tabular-nums" style={{ color: C.text3 }}>
+              {([['06', 360], ['12', 720], ['18', 1080], ['24', 1440]] as const).map(([t, m]) => <span key={t} className="absolute -translate-x-1/2" style={{ left: x(m) }}>{t}</span>)}
             </div>
           </div>
         </>}
@@ -272,7 +275,7 @@ function Shot({ src }: { src: string }) {
   const [loaded, setLoaded] = useState(false);
   const ratio = SHOT_RATIO[src.includes('widget') ? 'widget' : 'tutorial'];
   return (
-    <div className="relative w-full max-w-[260px] rounded-[14px] overflow-hidden" style={{ aspectRatio: ratio, background: C.surface2, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
+    <div className="relative w-full max-w-[300px] mx-auto rounded-[14px] overflow-hidden" style={{ aspectRatio: ratio, background: C.surface2, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
       {!loaded && <motion.span aria-hidden className="absolute inset-y-0 w-1/2" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent)' }} animate={{ x: ['-100%', '220%'] }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" onLoad={() => setLoaded(true)} ref={el => { if (el?.complete && el.naturalWidth && !loaded) setLoaded(true); }}
@@ -307,7 +310,7 @@ export function HomeScreenSheet(base: Base) {
       {!safari && (
         <div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(245,181,68,0.13)' }}>
           <p className="text-[14px] font-medium" style={{ color: C.pend }}>{tx(base.lang, '需要在 Safari 中操作', 'This works in Safari')}</p>
-          <button onClick={async () => { await navigator.clipboard?.writeText(window.location.href.replace('/lab', '')); setCopied(true); }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
+          <button onClick={async () => { await navigator.clipboard?.writeText(window.location.origin + window.location.pathname); setCopied(true); }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
             {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}{copied ? tx(base.lang, '已复制，去 Safari 粘贴', 'Copied — paste in Safari') : tx(base.lang, '复制链接', 'Copy link')}
           </button>
         </div>
