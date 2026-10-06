@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { ArrowsClockwise, CalendarDots, CaretDown, CaretRight, CheckCircle, DeviceMobile, MapPin, SquaresFour } from '@phosphor-icons/react';
+import { CalendarDots, CalendarPlus, CaretDown, CaretRight, CheckCircle, MapPin, PlusSquare } from '@phosphor-icons/react';
 import {
   buildRail, continuesOvernight, dayLabel, daysBetween, isActive, modeName, nextEventDate, sortCards, tx,
   type Lang, type Mode, type ModeCard,
@@ -231,9 +231,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           {/* Tools: one line each says enough */}
           {/* These follow the content above as it grows and shrinks, gliding, never jumping */}
           <motion.div layout="position" transition={SPRING} className="grid grid-cols-3 gap-2.5 mt-3">
-            <Tool icon={<DeviceMobile size={19} weight="fill" />} label={tx(lang, '添加到桌面', 'Home Screen')} onClick={() => setSheet('home')} />
-            <Tool icon={<SquaresFour size={19} weight="fill" />} label={tx(lang, '添加小组件', 'Widget')} onClick={() => setSheet('widget')} />
-            <Tool icon={<ArrowsClockwise size={19} weight="bold" />} label={tx(lang, '同步日历', 'Calendar')} onClick={() => setSheet('calendar')} />
+            {/* iOS's own "Add to Home Screen" glyph; a widget stack (one wide,
+                two small) rather than four equal squares; a calendar to add to */}
+            <Tool icon={<PlusSquare size={20} weight="bold" />} label={tx(lang, '添加到桌面', 'Home Screen')} onClick={() => setSheet('home')} />
+            <Tool icon={<WidgetGlyph />} label={tx(lang, '添加小组件', 'Widget')} onClick={() => setSheet('widget')} />
+            <Tool icon={<CalendarPlus size={20} weight="bold" />} label={tx(lang, '同步日历', 'Calendar')} onClick={() => setSheet('calendar')} />
           </motion.div>
 
           <motion.section layout="position" transition={SPRING} className="mt-3 flex items-center gap-3 px-5 py-4" style={{ background: C.surface, borderRadius: R.card }}>
@@ -275,6 +277,16 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
       </AnimatePresence>
     </main>
     </LayoutGroup>
+  );
+}
+
+function WidgetGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <rect x="3" y="3" width="18" height="8" rx="2.6" />
+      <rect x="3" y="14" width="8" height="7" rx="2.4" />
+      <rect x="14" y="14" width="7" height="7" rx="2.4" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
 
