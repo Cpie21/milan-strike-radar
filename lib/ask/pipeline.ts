@@ -545,4 +545,3 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   });
   return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, checked: { cities: cityTags, modes: [...wanted] }, lastSync, cost, unchecked };
 }
-

@@ -43,8 +43,8 @@ export function validateAnswers(value: unknown, questions: Record<string, Questi
 }
 
 export async function decide(state: unknown, questions: Record<string, Question>, timeoutMs = 8000): Promise<DecisionResult> {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error('OPENROUTER_API_KEY is not configured');
+  const key = process.env.STRIKE_REVIEW_API_KEY || process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error('Jev API key is not configured');
   const reservation = await reserveAiBudget('ask', `ask:${randomUUID()}`, 2000);
   if (!reservation.ok) throw new AiBudgetError(reservation.reason);
   const started = Date.now();

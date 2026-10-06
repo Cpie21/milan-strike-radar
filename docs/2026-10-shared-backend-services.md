@@ -20,7 +20,7 @@ Saved drawings default approved=false. The owner can see the pending piece; othe
 
 ## Migration and Claude integration
 
-20261006080621_shared_backend_services replaces Claude's two *unapplied* ask_feedback/lab_graffiti proposals. Do not apply those old migrations after merging this PR. All new tables have RLS and service-only grants; all seven functions revoke PUBLIC/anon/authenticated execute and use SECURITY INVOKER with empty search_path.
+20261006081821_shared_backend_services replaces Claude's two *unapplied* ask_feedback/lab_graffiti proposals. Do not apply those old migrations after merging this PR. All new tables have RLS and service-only grants; all seven functions revoke PUBLIC/anon/authenticated execute and use SECURITY INVOKER with empty search_path.
 
 Merge aiBudget.ts, Ask route and Ask jev.ts together: Claude's old .018 whole-question reservation is deliberately not supported by the per-call RPC. Its old CAS fallback must be removed. Tokens are issued only for clarification, and frontend cached/local daily counters must follow server outcomes. Wall claims may return wall_busy; saves return approvalPending. Canvas changes require coordinated geometry changes.
 

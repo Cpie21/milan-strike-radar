@@ -28,8 +28,8 @@ test('service database: atomic budgets, original-month settlement, shared limits
  const db=new PGlite();const q=async(sql,args=[])=> (await db.query(sql,args)).rows;const one=async(sql,args=[])=>(await q(sql,args))[0];
  try{
   await db.exec('create role anon;create role authenticated;create role service_role bypassrls;grant usage on schema public to service_role;');
-  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261004215721_strike_semantic_review_budget.sql'),'utf8'));
-  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261006080621_shared_backend_services.sql'),'utf8'));
+  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261004221157_strike_semantic_review_budget.sql'),'utf8'));
+  await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261006081821_shared_backend_services.sql'),'utf8'));
   const reserve=(key,n=2000,purpose='ask')=>one('select reserve_ai_budget($1,$2,$3) ok',[purpose,key,n]).then(r=>r.ok);
   const settle=(key,n)=>one('select settle_ai_budget($1,$2) ok',[key,n]).then(r=>r.ok);
   const month=(await one("select date_trunc('month',now() at time zone 'UTC')::date::text m")).m;
@@ -93,23 +93,24 @@ test('service database: atomic budgets, original-month settlement, shared limits
  }finally{await db.close();}
 });
 test('every Jev call fails closed on budget failure and settles known usage including malformed decisions',async()=>{
- const queryModule=require('../lib/strikeQuery');const priorDb=queryModule.serverDatabase,priorFetch=global.fetch,priorKey=process.env.OPENROUTER_API_KEY;
+ const queryModule=require('../lib/strikeQuery');const priorDb=queryModule.serverDatabase,priorFetch=global.fetch,priorKey=process.env.OPENROUTER_API_KEY,priorReviewKey=process.env.STRIKE_REVIEW_API_KEY;
  const {decide}=require('../lib/ask/jev');let paid=0,allowed=false,dbFailed=false,cost=.0002,malformed=false;const settlements=[];
  queryModule.serverDatabase=()=>({rpc:async(name,args)=>{
   if(name==='reserve_ai_budget')return dbFailed?{error:{code:'PGRST202'}}:{data:allowed,error:null};
   settlements.push(args);return {data:true,error:null};
  }});
- process.env.OPENROUTER_API_KEY='mock-never-transmitted';
+ process.env.OPENROUTER_API_KEY='mock-never-transmitted';delete process.env.STRIKE_REVIEW_API_KEY;
  const questions={relevant:{type:'noul',instructions:'Relevant?'}};
  global.fetch=async(url,options)=>{paid++;const request=JSON.parse(options.body);assert.equal(request.model,'typesafe/jev-1.13');return Response.json({answers:{relevant:{type:'noul',noul:malformed?1.2:.8}},usage:cost===null?{}:{cost}});};
  try{
   await assert.rejects(decide({},questions),e=>e.reason==='BUDGET_EXHAUSTED');assert.equal(paid,0);
   dbFailed=true;await assert.rejects(decide({},questions),e=>e.reason==='UNAVAILABLE');assert.equal(paid,0);
   dbFailed=false;allowed=true;assert.equal((await decide({},questions)).cost,.0002);assert.equal(settlements[0].actual_micro_usd,200);
+  delete process.env.OPENROUTER_API_KEY;process.env.STRIKE_REVIEW_API_KEY='mock-existing-key';
   cost=null;await decide({},questions);assert.equal(settlements.length,1);
   cost=.0003;malformed=true;await assert.rejects(decide({},questions),/Invalid probability/);assert.equal(settlements.length,2);assert.equal(settlements[1].actual_micro_usd,300);
   const {reserveAiBudget}=require('../lib/aiBudget');assert.equal((await reserveAiBudget('translate','disabled-test',100)).reason,'TRANSLATION_DISABLED');
- }finally{queryModule.serverDatabase=priorDb;global.fetch=priorFetch;if(priorKey===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=priorKey;}
+ }finally{queryModule.serverDatabase=priorDb;global.fetch=priorFetch;if(priorKey===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=priorKey;if(priorReviewKey===undefined)delete process.env.STRIKE_REVIEW_API_KEY;else process.env.STRIKE_REVIEW_API_KEY=priorReviewKey;}
 });
 test('API routes reject malformed/oversized payloads before touching the database and report failures truthfully',async()=>{
  const {NextRequest}=require('next/server');const queryModule=require('../lib/strikeQuery');const priorDb=queryModule.serverDatabase,priorSecret=process.env.FEEDBACK_RATE_LIMIT_SECRET;

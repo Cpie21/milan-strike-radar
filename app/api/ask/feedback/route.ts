@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // Good/bad ratings on Ask answers, kept as an evaluation set: the question,
 // how it was read and what was shown, so a bad case can be replayed.
 // Stored as structured JSON in `ask_feedback` (migration
-// 20261006080621_shared_backend_services.sql). A failed write is reported as a failure
+// 20261006081821_shared_backend_services.sql). A failed write is reported as a failure
 // so the client can let the user retry; nothing is claimed as saved.
 
 const MAX_BYTES = 32_000;
