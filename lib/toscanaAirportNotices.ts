@@ -1,3 +1,4 @@
+import { SOURCE_USER_AGENT } from './sourceRequest';
 import * as cheerio from 'cheerio';
 const origin='https://www.toscana-aeroporti.com';
 const endpoint=origin+'/console/graphql';
@@ -25,7 +26,7 @@ export async function fetchToscanaNotice(input:string,deadline:number,fetcher=fe
   if(u.origin!==origin||u.username||u.password||u.search||!u.pathname.startsWith('/it/news/')||u.pathname.slice('/it/news/'.length).replace(/\/$/,'')&&!validSlug(u.pathname.slice('/it/news/'.length).replace(/\/$/,'')))throw new Error('Unapproved airport notice URL');
   async function post(query:string,variables:object) {
     const remaining=deadline-Date.now();if(remaining<100)throw new Error('Airport discovery budget exhausted');
-    const response=await fetcher(endpoint,{method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(Math.min(10000,remaining)),headers:{'Content-Type':'application/json','User-Agent':'ItalyStrike/1.0 (+https://www.theitalystrike.com)'},body:JSON.stringify({query,variables})});
+    const response=await fetcher(endpoint,{method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(Math.min(10000,remaining)),headers:{'Content-Type':'application/json','User-Agent':SOURCE_USER_AGENT},body:JSON.stringify({query,variables})});
     if(!response.ok||!response.headers.get('content-type')?.includes('json')){await response.body?.cancel();throw new Error('Official airport API unavailable');}
     const reader=response.body?.getReader();if(!reader)throw new Error('Missing airport API body');const chunks:Uint8Array[]=[];let size=0;
     for(;;){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>2_000_000||Date.now()>deadline){await reader.cancel();throw new Error('Airport API size/time limit');}chunks.push(r.value);}

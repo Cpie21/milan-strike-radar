@@ -1,3 +1,4 @@
+import { SOURCE_USER_AGENT } from './sourceRequest';
 import { request } from 'node:https';
 import { rootCertificates } from 'node:tls';
 // Public Actalis OV G3 intermediate, obtained over a verified Actalis TLS
@@ -55,7 +56,7 @@ export function canonicalCgsseUrl(input:string) {
 export function fetchCgsse(input:string,signal:AbortSignal):Promise<Response> {
   const url=canonicalCgsseUrl(input);
   return new Promise((resolve,reject)=>{
-    const req=request(url,{method:'GET',signal,ca:[...rootCertificates,ACTALIS_OV_G3],rejectUnauthorized:true,headers:{'User-Agent':'ItalyStrike/1.0 (+https://www.theitalystrike.com)','Accept':'text/html,application/xhtml+xml,application/pdf'}},response=>{
+    const req=request(url,{method:'GET',signal,ca:[...rootCertificates,ACTALIS_OV_G3],rejectUnauthorized:true,headers:{'User-Agent':SOURCE_USER_AGENT,'Accept':'text/html,application/xhtml+xml,application/pdf'}},response=>{
       const parts:Buffer[]=[];let size=0;
       response.on('data',(part:Buffer)=>{size+=part.length;if(size>2_000_000){req.destroy(new Error('Regulator document exceeds size bound'));return;}parts.push(part);});
       response.on('error',reject);

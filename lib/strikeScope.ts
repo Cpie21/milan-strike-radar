@@ -10,7 +10,8 @@ export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLIN
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
 export type FieldEvidence<T> = { value: T; confidence: 'HIGH' | 'MEDIUM' | 'UNKNOWN' | 'CONFLICT'; source: 'MIT' | 'OPERATOR_OFFICIAL' | 'STANDARD_RULE' | 'REPORTED' | 'UNKNOWN'; url?: string; excerpt?: string; method?: 'OFFICIAL' | 'CODE' | 'JEV' };
 export type ScopeEvidence = {
-  noticeDiscovery?: { checkedAt:string; status:'MATCHED'|'PARTIAL'|'UNAVAILABLE'|'NO_MATCH'|'NOT_CHECKED'; sources:{url:string;status:'FETCHED'|'FAILED'|'DEFERRED'}[] };
+  followUp?: { checkedAt:string; frequency:'DAILY'; primary:'SCHEDULED'|'HISTORICAL'; notice:'SCHEDULED'|'PRIMARY_ONLY'|'WAITING_FOR_HORIZON'|'PRIMARY_STATUS_ONLY'|'HISTORICAL'; noticeEligibleFrom:string };
+  noticeDiscovery?: { checkedAt:string; status:'MATCHED'|'PARTIAL'|'UNAVAILABLE'|'NO_MATCH'|'NOT_CHECKED'; sources:{url:string;status:'FETCHED'|'FAILED'|'DEFERRED';firstDiscoveredAt?:string;lastAttemptedAt?:string}[] };
   lineImpact?: import('./lineImpact').DeclaredLineImpact;
   protectedFlightExceptions?: FieldEvidence<{airportName:string;direction:'TO_FROM';kind:'GUARANTEED_FLIGHTS'}[]>;
   location: FieldEvidence<string>;

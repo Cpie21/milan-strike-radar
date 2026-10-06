@@ -1,3 +1,4 @@
+import { SOURCE_USER_AGENT } from '../../../../lib/sourceRequest';
 import { NextResponse } from 'next/server';
 import { fetchCgsse } from '../../../../lib/cgsseTls';
 import { fetchToscanaNotice } from '../../../../lib/toscanaAirportNotices';
@@ -11,10 +12,10 @@ const sources = [
   ['CGSSE', 'https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381401'],
   ['TOSCANA_AEROPORTI', 'https://www.toscana-aeroporti.com/it/news/'],
   ['CTM', 'https://www.ctmcagliari.it/comunicati/'],
-  ['BRESCIA', 'https://www.bresciamobilita.it/'],
+  ['BRESCIA', 'https://www.bresciamobilita.it/news'],
   ['TRENORD', 'https://www.trenord.it/news/trenord-informa/avvisi/'],
-  ['VENEZIA', 'https://www.veneziaairport.it/it_it/news.html'],
-  ['EASYJET', 'https://www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio'],
+  ['VENEZIA', 'https://www.veneziaairport.it/it_it/news'],
+  ['EASYJET', 'https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information'],
 ] as const;
 
 export async function GET(request: Request) {
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
         return { source, url, status: 'READABLE', bytes: Buffer.byteLength(html), elapsedMs: Date.now() - start };
       }
       const signal = AbortSignal.timeout(12000);
-      const response = source === 'CGSSE' ? await fetchCgsse(url, signal) : await fetch(url, { signal, redirect: 'manual', cache: 'no-store', headers: { 'User-Agent': 'ItalyStrike/1.0 (+https://www.theitalystrike.com)', Accept: 'text/html,application/pdf' } });
+      const response = source === 'CGSSE' ? await fetchCgsse(url, signal) : await fetch(url, { signal, redirect: 'manual', cache: 'no-store', headers: { 'User-Agent': SOURCE_USER_AGENT, Accept: 'text/html,application/pdf' } });
       const reader = response.ok ? response.body?.getReader() : undefined;
       let bytes = 0;
       if (response.ok && reader) {
