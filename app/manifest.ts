@@ -7,8 +7,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Milan Strike Radar - Real-time strike information for Milan',
     start_url: '/',
     display: 'standalone',
-    background_color: '#E5ECF3',
-    theme_color: '#5b748d',
+    // the page's own dark: the launch screen and the bars match it
+    background_color: '#0A0B0D',
+    theme_color: '#0A0B0D',
     icons: [
       {
         src: '/icon-v4.png?v=4',

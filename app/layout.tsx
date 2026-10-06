@@ -57,10 +57,6 @@ export default function RootLayout({
         className={`${jetBrainsMono.variable} ${num.variable} antialiased`}
       >
         <style>{'html,body{background:#0A0B0D;color-scheme:dark;overscroll-behavior-y:none}'}</style>
-        {/* Wherever the page still runs under the status bar, one solid strip
-            there: WebKit leaves the edge unblurred when a fixed full-width box
-            paints it in a single colour. */}
-        <div aria-hidden style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 'env(safe-area-inset-top)', background: '#0A0B0D', zIndex: 80, pointerEvents: 'none' }} />
         <CSPostHogProvider>
           {children}
         </CSPostHogProvider>
