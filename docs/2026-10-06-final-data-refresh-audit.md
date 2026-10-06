@@ -35,3 +35,9 @@ No claim is made that every city/operator supplies GTFS, real-time alerts, per-l
 ## Validation
 
 289 integrated tests passed, including nine new refresh/renewal/failure/free-translation tests. TypeScript, focused lint and production build passed. Fresh official GEST archive + municipal description returned VERIFIED; live ATM/GTT/Trenitalia/Arriva/Air Campania documents matched their registered rules. ATAC failure is recorded, not claimed as verified. Post-release production receipts are stored alongside this report.
+
+## Production result
+
+Runtime `819265c` completed production sync `d7878546-6669-47bf-917e-1ce8de63eec3`: 73 raw projections fetched, 58 upserted (includes recent history), 143 supplementary URLs checked, 26 warnings. All 33 future active records still pass the independent full matrix; four future operational timings are unknown (the sync's eight unknown timings also include past records). GEST T1/T2 route validation and renewed alias proof are VERIFIED in the DB, with official protected windows intact. All enrichment stages ran; no optional stage was deferred in this run. Jev: zero calls, 27 cache hits, 17 inconclusive results. Monthly ledger read: USD 0.027572, paid calls enabled; shared USD 0.20 hard cap unchanged.
+
+65 production checks passed: all 20 city strike APIs, calendars and pages, both public GEST line queries, health, lab and root. Health correctly reports PARTIAL because secondary fetch failures, unresolved timings and out-of-validity Milan surface timetables remain. We do not convert an expired timetable into a fabricated numerical last service. The final health-only follow-up also preserves completed warning quality while another run is in progress.

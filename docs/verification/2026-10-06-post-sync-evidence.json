@@ -1,0 +1,115 @@
+{
+  "run": {
+    "id": "d7878546-6669-47bf-917e-1ce8de63eec3",
+    "started_at": "2026-10-06T12:21:55.32531+00:00",
+    "completed_at": "2026-10-06T12:24:01.844204+00:00",
+    "status": "success",
+    "fetched": 73,
+    "upserted": 58,
+    "unknown_timing": 8,
+    "warnings": [
+      "Supplement unavailable: www.ctmcagliari.it/comunicati/: HTTP 403",
+      "Supplement unavailable: www.bresciamobilita.it/: HTTP 403",
+      "Supplement unavailable: www.toscana-aeroporti.com/it/news/: HTTP 403",
+      "Supplement unavailable: www.veneziaairport.it/it_it/news.html: HTTP 403",
+      "Supplement unavailable: www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio: HTTP 403",
+      "Supplement unavailable: www.trenord.it/news/trenord-informa/avvisi/: HTTP 403",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381401: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380241: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380322: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381220: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381296: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381112: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Timing conflict requires review: 2026-10-09 MILANO BUS AL-COBAS",
+      "Timing conflict requires review: 2026-10-09 MILANO SUBWAY AL-COBAS",
+      "Timing conflict requires review: 2026-10-12 BARI BUS OST FILT-CGIL/FIT-CISL/UILT-UIL/UGL AUTOFERRO",
+      "Operational timing unresolved: 2026-10-14 FIRENZE BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-10-14 PISA BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-12-04 NATIONAL AIRPORT SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-12-04 NATIONAL BUS SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE ASPP SOC. ENAV - SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE SOC. ENAV STRUTTURA PROCUREMENT SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-10-03 GENOVA BUS PERSONALE SOC. AMT DI GENOVA",
+      "Operational timing unresolved: 2026-10-03 GENOVA SUBWAY PERSONALE SOC. AMT DI GENOVA",
+      "Operator guarantee source unavailable: ATAC_ROMA",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09"
+    ]
+  },
+  "gest": {
+    "lineScope": {
+      "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+      "value": {
+        "kind": "SPECIFIC_LINES",
+        "gtfsFeedId": "GTFS_GEST",
+        "operatorIds": [
+          "GEST_FIRENZE"
+        ],
+        "networkNames": [],
+        "routeAliases": [
+          {
+            "feedId": "GTFS_GEST",
+            "source": "https://www.firenzetramvia.it/linee/t1",
+            "routeId": "1606821564",
+            "validTo": "2026-12-30",
+            "operator": "GEST_FIRENZE",
+            "validFrom": "2026-08-10",
+            "verifiedAt": "2026-10-06",
+            "catalogName": "T1.3",
+            "officialName": "T1",
+            "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+          }
+        ],
+        "routeValidation": "VERIFIED",
+        "affectedRouteIds": [
+          "1606821564",
+          "1272089682"
+        ],
+        "excludedRouteIds": [],
+        "affectedLineNames": [
+          "T1",
+          "T2"
+        ],
+        "excludedLineNames": []
+      },
+      "method": "CODE",
+      "source": "OPERATOR_OFFICIAL",
+      "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p",
+      "confidence": "HIGH"
+    },
+    "aliasVerification": {
+      "source": "https://www.firenzetramvia.it/linee/t1",
+      "status": "VERIFIED",
+      "validTo": "2026-12-30",
+      "checkedAt": "2026-10-06T12:23:55.851Z",
+      "endpoints": [
+        "careggi ospedale|villa costanza",
+        "de andre|careggi ospedale",
+        "unita|villa costanza",
+        "villa costanza|careggi ospedale",
+        "villa costanza|unita"
+      ],
+      "validFrom": "2026-08-10",
+      "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+    },
+    "guarantees": {
+      "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+      "value": [
+        {
+          "end": "09:30",
+          "start": "06:30",
+          "end_kind": "clock"
+        },
+        {
+          "end": "20:00",
+          "start": "17:00",
+          "end_kind": "clock"
+        }
+      ],
+      "method": "OFFICIAL",
+      "source": "OPERATOR_OFFICIAL",
+      "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  Fasce garantite 6.30-9.30 e 17.00-20.00  Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. Fasce garantite 6.30-9.30 e 17.00-20.00  La regolarità del servizio dipenderà dalle adesioni allo sciopero. Fasce garantite 6.30-9.30 e 17.00-20.00  La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Fasce garantite 6.30-9.30 e 17.00-20.00  Le MOTIVAZIONI: Fasce garantite 6.30-9.30 e 17.00-20.00  ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. Fasce garantite 6.30-9.30 e 17.00-20.00  ● Relazi",
+      "confidence": "HIGH"
+    }
+  }
+}
