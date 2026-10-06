@@ -1,0 +1,40 @@
+{
+  "checkedAt": "2026-10-06T12:24:02.145Z",
+  "httpStatus": 200,
+  "result": {
+    "success": true,
+    "runId": "d7878546-6669-47bf-917e-1ce8de63eec3",
+    "fetched": 73,
+    "upserted": 58,
+    "unknownTiming": 8,
+    "retired": 0,
+    "enriched": 4,
+    "sourcesChecked": 143,
+    "conflicts": 3,
+    "transit": {
+      "profilesApplied": 6,
+      "routeCatalogs": 1,
+      "serviceSchedules": 2,
+      "scheduleFeeds": 1,
+      "membershipCatalogs": 5,
+      "membershipProjections": 8
+    },
+    "semantic": {
+      "called": 0,
+      "cached": 27,
+      "flagged": 0,
+      "needsReview": 0,
+      "inconclusive": 17,
+      "failed": 0,
+      "skipped": 0,
+      "budgetExhausted": false
+    },
+    "semanticEnabled": true,
+    "verification": {
+      "operatorOfficial": 7,
+      "reported": 3,
+      "mitOnly": 21
+    },
+    "warningCount": 26
+  }
+}

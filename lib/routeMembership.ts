@@ -1,4 +1,4 @@
-import { canonicalRouteName, type AliasContext } from './canonicalLineAlias';
+import { canonicalRouteName, type AliasContext, type GestAliasVerification } from './canonicalLineAlias';
 import type { RouteCatalog } from './officialTransitData';
 import type { FieldEvidence } from './strikeScope';
 import { validServiceDate } from './serviceSchedule';
@@ -8,7 +8,7 @@ export type NetworkCatalog = Omit<RouteCatalog,'feedId'|'routes'> & {feedId:stri
 export type RouteMembership = {
   status:'CURRENT_CATALOG'|'STALE'|'UNAVAILABLE'|'NOT_CONFIGURED'|'MODE_NOT_COVERED'|'NETWORK_UNVERIFIED'|'NOT_APPLICABLE';
   operator:string;date:string;category:string;city:string;feedId:string|null;source:string|null;checkedAt:string|null;contentHash:string|null;
-  routes:CatalogRoute[];
+  aliasVerification?:GestAliasVerification;routes:CatalogRoute[];
   // Publisher service dates constrain timetables, not operator ownership.
   publishedSchedule:{validFrom:string|null;validTo:string|null;modeValidTo?:Record<string,string>};
   coverage:'PUBLISHED_CATALOG_ONLY';actualOperationConfirmed:false;
@@ -24,7 +24,7 @@ export function emptyMembership(operator:string,date:string,category:string,city
 }
 /** A freshly retrieved official directory verifies ownership, never planned/actual departures. */
 export function projectRouteMembership(catalog:NetworkCatalog,date:string,category:string,city:string,operator:string,networks:string[]=[],now=new Date()):RouteMembership {
-  const base={...emptyMembership(operator,date,category,city,'UNAVAILABLE'),feedId:catalog.feedId,source:catalog.source,checkedAt:catalog.checkedAt,contentHash:catalog.contentHash,publishedSchedule:{validFrom:catalog.validFrom,validTo:catalog.validTo,...(catalog.modeValidTo?{modeValidTo:catalog.modeValidTo}:{})}};
+  const base={...(catalog.aliasVerification?{aliasVerification:catalog.aliasVerification}:{}),...emptyMembership(operator,date,category,city,'UNAVAILABLE'),feedId:catalog.feedId,source:catalog.source,checkedAt:catalog.checkedAt,contentHash:catalog.contentHash,publishedSchedule:{validFrom:catalog.validFrom,validTo:catalog.validTo,...(catalog.modeValidTo?{modeValidTo:catalog.modeValidTo}:{})}};
   if(!validServiceDate(date)||catalog.operator!==operator||!catalog.cities.includes(city))return base;
   const age=now.getTime()-Date.parse(catalog.checkedAt);
   // An archive re-fetched today can still contain obsolete service information.

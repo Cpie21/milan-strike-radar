@@ -446,8 +446,7 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   return result;
 }
 
-export async function enrichStrikeTiming(records: StrikeRecord[], warnings: string[], now = new Date()) {
-  const deadline = Date.now() + 160_000;
+export async function enrichStrikeTiming(records: StrikeRecord[], warnings: string[], now = new Date(),deadline = Date.now() + 160_000) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(now);
   const horizon = new Date(now.getTime() + 90 * 86400000).toISOString().slice(0, 10);
   const targets = records.filter(r => r.status !== 'CANCELLED' && r.date >= today && r.date <= horizon && r.raw_payload);

@@ -1,4 +1,4 @@
-import { canonicalLineAlias } from './canonicalLineAlias';
+import { canonicalLineAlias, type GestAliasVerification } from './canonicalLineAlias';
 import type { LineScope } from './lineScope';
 import type { FieldEvidence } from './strikeScope';
 
@@ -13,7 +13,7 @@ export type ServiceSchedule = {
 };
 export type RouteDay={id:string;name:string;firstDeparture:ServiceClock;lastDeparture:ServiceClock;lastArrival:ServiceClock};
 export type RouteService={routeId:string;serviceId:string;trips:number;complete:boolean;first:number;lastDeparture:number;lastArrival:number};
-export type ScheduleIndex={feedId?:string;operator:string;source:string;checkedAt:string;contentHash:string;validFrom:string|null;validTo:string|null;timezone:string;modeValidTo?:Record<string,string>;routes:{id:string;name:string;type:number;longName?:string}[];calendar:Record<string,string>[];exceptions:Record<string,string>[];services:RouteService[]};
+export type ScheduleIndex={aliasVerification?:GestAliasVerification;identityEndpoints?:string[];feedId?:string;operator:string;source:string;checkedAt:string;contentHash:string;validFrom:string|null;validTo:string|null;timezone:string;modeValidTo?:Record<string,string>;routes:{id:string;name:string;type:number;longName?:string}[];calendar:Record<string,string>[];exceptions:Record<string,string>[];services:RouteService[]};
 
 export function serviceClock(seconds:number):ServiceClock {
   if(!Number.isSafeInteger(seconds)||seconds<0||seconds>=259200)throw new Error('Invalid service clock');
