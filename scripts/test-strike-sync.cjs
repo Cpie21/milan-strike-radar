@@ -259,7 +259,7 @@ test('unknown multi-day timings stay unknown on every date', async () => {
 
 test('invalid official dates stop reconciliation instead of silently normalizing', async () => {
   const values = [...row]; values[1] = '31/02/2026';
-  await assert.rejects(transformRows(parseStrikeHtml(table([values]))), /Invalid official date span/);
+  assert.throws(()=>parseStrikeHtml(table([values])), /MIT strike row malformed/);
 });
 
 test('unknown cards preserve their label and retired records stay hidden', () => {

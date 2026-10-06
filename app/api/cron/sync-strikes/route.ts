@@ -1,3 +1,4 @@
+import { optionalSyncStage } from '../../../../lib/syncStageBudget';
 import { attachLineImpacts } from '../../../../lib/lineImpact';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
@@ -21,6 +22,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   if (secret && request.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const optionalDeadline=Date.now()+250000; // reserve at least 50s for database writes/log closure
   let runId: string | undefined;
   try {
     const db = serverDatabase();
@@ -35,21 +37,21 @@ export async function GET(request: Request): Promise<NextResponse> {
     // Processing an empty valid table is successful, unlike a missing/error table.
     let records: StrikeRecord[] = rawRows.length ? (await transformRows(rawRows)).map(record => ({ ...record, last_seen_at: run.started_at })) : [];
     const warnings: string[] = [];
-    const enrichment = await enrichStrikeTiming(records, warnings).catch(error => {
-      warnings.push(`External timing discovery failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    const enrichment = await optionalSyncStage('operator notices',optionalDeadline,100000,warnings,()=>enrichStrikeTiming(records,warnings,new Date(),Math.min(Date.now()+90000,optionalDeadline)),()=>{
+
       records=records.map(r=>r.timing_evidence?.fields?{...r,timing_evidence:{...r.timing_evidence,fields:{...r.timing_evidence.fields,noticeDiscovery:{checkedAt:new Date().toISOString(),status:'UNAVAILABLE' as const,sources:[]}}}}:r);
       return { records, enriched: 0, sourcesChecked: 0, conflicts: 0 };
     });
     records = enrichment.records;
-    const transit = await enrichTransitScope(records,warnings).catch(()=>{
+    const transit = await optionalSyncStage('guarantees and route validation',optionalDeadline,45000,warnings,()=>enrichTransitScope(records,warnings),()=>{
       warnings.push('Operator guarantee / route enrichment unavailable');
       return {records,profilesApplied:0,routeCatalogs:0};
     });
     records = transit.records;
-    const semantic = await reviewStrikeSemantics(records,rawRows,db,warnings).catch(()=>({records,stats:{failed:1},enabled:false}));
+    const semantic = await optionalSyncStage('semantic QA',optionalDeadline,40000,warnings,()=>reviewStrikeSemantics(records,rawRows,db,warnings,new Date(),{deadline:Math.min(Date.now()+30000,optionalDeadline)}),()=>({records,stats:{failed:1},enabled:false}));
     records=semantic.records;
-    const schedules=await enrichScheduledServiceTimes(records,warnings).catch(()=>{warnings.push('Scheduled service enrichment unavailable');return {records,complete:0,feeds:0};});
-    const memberships=await enrichPotentialRouteCatalogs(schedules.records,warnings).catch(()=>{warnings.push('Route membership enrichment unavailable');return {records:schedules.records,catalogs:0,projected:0};});
+    const schedules=await optionalSyncStage('scheduled times',optionalDeadline,105000,warnings,()=>enrichScheduledServiceTimes(records,warnings),()=>({records,complete:0,feeds:0}));
+    const memberships=await optionalSyncStage('route membership',optionalDeadline,85000,warnings,()=>enrichPotentialRouteCatalogs(schedules.records,warnings),()=>({records:schedules.records,catalogs:0,projected:0}));
     records=attachLineImpacts(memberships.records);
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
     const unknownTiming = records.filter(record => record.status !== 'CANCELLED' && !record.strike_windows.length && !record.timing_evidence?.windows.length).length;

@@ -1,10 +1,12 @@
 import { inflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import type { LineScope } from './lineScope';
+import { gestEndpointPairs, verifyGestAlias } from './gestAliasRefresh';
+import { GEST_ALIAS_SOURCE, type GestAliasVerification } from './canonicalLineAlias';
 import { canonicalLineAlias } from './canonicalLineAlias';
 import * as cheerio from 'cheerio';
 
-const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it','dati.toscana.it','www.amtabservizio.it','www.amt.genova.it','www.ctmcagliari.it','www.amts.ct.it','www.wimob.it','actv.avmspa.it','solweb.tper.it','www.dati.lombardia.it','www.atb.bergamo.it','www.eavsrl.it','bergamo.arriva.it','www.bresciamobilita.it','www.triestetrasporti.it','www.amat.pa.it','www.atv.verona.it']);
+const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it','dati.toscana.it','www.amtabservizio.it','www.amt.genova.it','www.ctmcagliari.it','www.amts.ct.it','www.wimob.it','actv.avmspa.it','solweb.tper.it','www.dati.lombardia.it','www.atb.bergamo.it','www.eavsrl.it','bergamo.arriva.it','www.bresciamobilita.it','www.triestetrasporti.it','www.amat.pa.it','www.atv.verona.it','www.firenzetramvia.it']);
 export async function transitBytes(url:string,maxBytes:number,deadline:number,headers:Record<string,string>={},method='GET',fullArchiveFallback=false) {
   const u=new URL(url);
   if(u.protocol!=='https:' || !HOSTS.has(u.hostname) || u.username || u.password || u.port) throw new Error('Unapproved transit source');
@@ -47,7 +49,7 @@ export const GTFS_FEEDS={
   GTFS_TPER:{url:'https://solweb.tper.it/web/tools/open-data/open-data.aspx',operator:'TPER_BOLOGNA',agency:/\bTPER\b/i},
 } as const;
 export type FeedId=keyof typeof GTFS_FEEDS;
-export type RouteCatalog={feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;modeValidTo?:Partial<Record<'BUS'|'SUBWAY',string>>;routes:{id:string;name:string;type:number;operator:string;longName?:string;cities?:string[]}[]};
+export type RouteCatalog={aliasVerification?:GestAliasVerification;feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;modeValidTo?:Partial<Record<'BUS'|'SUBWAY',string>>;routes:{id:string;name:string;type:number;operator:string;longName?:string;cities?:string[]}[]};
 
 export function parseCsv(text:string):Record<string,string>[] {
   const rows:string[][]=[];let row:string[]=[],field='',quoted=false;
@@ -128,7 +130,7 @@ export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):
   const directorySize=tail.readUInt32LE(pos+12),offset=tail.readUInt32LE(pos+16);
   if(!directorySize||directorySize>1_000_000||offset+directorySize>size)throw new Error('Invalid GTFS directory');
   const directory=await range(offset,offset+directorySize-1);
-  const wanted=new Set(['routes.txt','agency.txt','calendar.txt','calendar_dates.txt','feed_info.txt']);
+  const wanted=new Set(['routes.txt','agency.txt','calendar.txt','calendar_dates.txt','feed_info.txt',...(feedId==='GTFS_GEST'?['stops.txt','trips.txt','stop_times.txt']:[])]);
   const files:Record<string,string>={};
   for(let i=0;i<directory.length;) {
     if(i+46>directory.length||directory.readUInt32LE(i)!==0x02014b50)throw new Error('Invalid ZIP member');
@@ -138,16 +140,26 @@ export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):
     if(packed===0xffffffff||unpacked===0xffffffff){const sizes=zip64MemberSizes(directory.subarray(i+46+nameSize,i+46+nameSize+extra),packed,unpacked);packed=sizes.packed;unpacked=sizes.unpacked;}
     const name=directory.subarray(i+46,i+46+nameSize).toString('utf8');i+=46+nameSize+extra+comment;
     if(!wanted.has(name))continue;
-    if(files[name]!==undefined||packed>2_000_000||unpacked>4_000_000||flags&1||(!packed&&unpacked!==0)||![0,8].includes(method))throw new Error('Unsupported GTFS CSV member: '+name+'/'+method+'/'+packed+'/'+unpacked);
+    const maxSize=feedId==='GTFS_GEST'&&name==='stop_times.txt'?12_000_000:4_000_000;
+    if(files[name]!==undefined||packed>2_000_000||unpacked>maxSize||flags&1||(!packed&&unpacked!==0)||![0,8].includes(method))throw new Error('Unsupported GTFS CSV member: '+name+'/'+method+'/'+packed+'/'+unpacked);
     const h=await range(local,local+29);
     if(h.readUInt32LE(0)!==0x04034b50)throw new Error('Invalid ZIP local member');
     const start=local+30+h.readUInt16LE(26)+h.readUInt16LE(28);
     const content=packed?await range(start,start+packed-1):Buffer.alloc(0);
-    const raw=method===8&&packed?inflateRawSync(content,{maxOutputLength:4_000_000}):content;
+    const raw=method===8&&packed?inflateRawSync(content,{maxOutputLength:maxSize}):content;
     if(raw.length!==unpacked)throw new Error('Invalid GTFS CSV length');
     files[name]=raw.toString('utf8');
   }
-  return {...catalogFromFiles(feedId,files),source:url};
+  const catalog={...catalogFromFiles(feedId,files),source:url};
+  if(feedId==='GTFS_GEST'){
+    const unavailable:GestAliasVerification={status:'UNAVAILABLE',source:GEST_ALIAS_SOURCE,catalogSource:url,checkedAt:catalog.checkedAt,validFrom:catalog.validFrom,validTo:catalog.validTo,endpoints:[]};
+    catalog.aliasVerification=unavailable;
+    try {
+      const route=catalog.routes.find(r=>r.name==='T1.3'&&r.type===0);
+      if(route){const pairs=gestEndpointPairs(route.id,parseCsv(files['trips.txt']||''),parseCsv(files['stops.txt']||''),parseCsv(files['stop_times.txt']||''));const html=(await transitBytes(GEST_ALIAS_SOURCE,1_000_000,deadline)).bytes.toString('utf8');catalog.aliasVerification=verifyGestAlias(catalog,cheerio.load(html)('body').text(),pairs);}
+    }catch{/* Keep raw membership; an unavailable alias is never auto-renewed. */}
+  }
+  return catalog;
 }
 
 export function validateLineRoutes(scope:LineScope,catalog:RouteCatalog,date:string,category:string):LineScope {

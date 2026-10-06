@@ -1,0 +1,633 @@
+{
+  "checkedAt": "2026-10-06T12:00:46.759Z",
+  "officialAnnouncements": 29,
+  "activeRecords": 33,
+  "activeAnnouncements": 21,
+  "reverseTraces": 33,
+  "unknownTiming": 4,
+  "unsupportedCity": 2,
+  "scheduledRuns": [
+    {
+      "started_at": "2026-10-06T05:10:31.516877+00:00",
+      "completed_at": "2026-10-06T05:12:06.287951+00:00",
+      "status": "success"
+    },
+    {
+      "started_at": "2026-10-05T05:10:32.001157+00:00",
+      "completed_at": "2026-10-05T05:11:29.107634+00:00",
+      "status": "success"
+    },
+    {
+      "started_at": "2026-10-04T05:10:31.667901+00:00",
+      "completed_at": "2026-10-04T05:10:35.173+00:00",
+      "status": "success"
+    }
+  ],
+  "matrix": [
+    {
+      "date": "2026-10-08",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "union": "OSR SLM FAST CONFSAL/ORSA TRASPORTI",
+      "city": "CATANIA",
+      "mode": "TRAIN",
+      "subtype": "RAIL_SECURITY",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-08",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "union": "OSR SLM FAST CONFSAL/ORSA TRASPORTI",
+      "city": "MESSINA",
+      "mode": "TRAIN",
+      "subtype": "RAIL_SECURITY",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-08",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "union": "OSR SLM FAST CONFSAL/ORSA TRASPORTI",
+      "city": "PALERMO",
+      "mode": "TRAIN",
+      "subtype": "RAIL_SECURITY",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "union": "AL-COBAS",
+      "city": "MILANO",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "08:45",
+          "15:00"
+        ],
+        [
+          "18:00",
+          null
+        ]
+      ],
+      "lineScope": "ALL_OPERATOR_LINES",
+      "guaranteeSource": "OPERATOR_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "union": "AL-COBAS",
+      "city": "MILANO",
+      "mode": "SUBWAY",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "08:45",
+          "15:00"
+        ],
+        [
+          "18:00",
+          null
+        ]
+      ],
+      "lineScope": "ALL_OPERATOR_LINES",
+      "guaranteeSource": "OPERATOR_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "union": "CONFIAL TRASPORTI",
+      "city": "MILANO",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "08:45",
+          "15:00"
+        ],
+        [
+          "18:00",
+          null
+        ]
+      ],
+      "lineScope": "ALL_OPERATOR_LINES",
+      "guaranteeSource": "OPERATOR_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-09",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "union": "CONFIAL TRASPORTI",
+      "city": "MILANO",
+      "mode": "SUBWAY",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "08:45",
+          "15:00"
+        ],
+        [
+          "18:00",
+          null
+        ]
+      ],
+      "lineScope": "ALL_OPERATOR_LINES",
+      "guaranteeSource": "OPERATOR_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-09",
+      "provider": "FERMO SERVIZIO TRASPORTO MERCI C/TERZI IMPRSE ADERENTI A FEDRALOG REGIONE CALABRIA",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-10",
+      "provider": "PERSONALE SOC. GEST SERVIZIO TRANVIA DI FIRENZE",
+      "union": "OSP COBAS LAVORO PRIVATO",
+      "city": "FIRENZE",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "SPECIFIC_LINES",
+      "guaranteeSource": "OFFICIAL_STRIKE_NOTICE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-12",
+      "provider": "PERSONALE SOC AMTAB DI BARI",
+      "union": "OST FILT-CGIL/FIT-CISL/UILT-UIL/UGL AUTOFERRO",
+      "city": "BARI",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "08:30",
+          "12:29"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "OFFICIAL_STRIKE_NOTICE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-13",
+      "provider": "PERSONALE SOC. SBB CARGO ITALIA",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "union": "OSR CGIL",
+      "city": "FIRENZE",
+      "mode": "TRAIN",
+      "subtype": "RAIL_GENERAL",
+      "windows": [
+        [
+          "09:01",
+          "17:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "union": "OSR CGIL",
+      "city": "PISA",
+      "mode": "TRAIN",
+      "subtype": "RAIL_GENERAL",
+      "windows": [
+        [
+          "09:01",
+          "17:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "union": "OSR CGIL",
+      "city": "FIRENZE",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-14",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "union": "OSR CGIL",
+      "city": "PISA",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-15",
+      "provider": "PERSONALE SOC. ATAF DI FOGGIA",
+      "union": "OST FILT-CGIL/FAISA-CISAL",
+      "city": "UNKNOWN",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-15",
+      "provider": "PERSONALE SOC. DB CARGO ITALIA REGIONE LOMBARDIA",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-15",
+      "provider": "LAVORATORI SISTEMA PORTUALE DEL MAR TIRRENO CENTRALE ( IMPRESE EX ART. 16, 17, 18 L. 84/94, ADSP E SOCIETA'  AL TERMINAL PASSEGGERI ( ART. 36 C.N. ))",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED",
+      "union": "USB LAVORO PRIVATO",
+      "city": "NATIONAL",
+      "mode": "AIRPORT",
+      "subtype": "AIRLINE_CREW",
+      "windows": [
+        [
+          "00:00",
+          "23:59"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI",
+      "union": "OSR FAISA-CONFAIL",
+      "city": "NAPOLI",
+      "mode": "TRAIN",
+      "subtype": "RAIL_CREW",
+      "windows": [
+        [
+          "19:40",
+          "23:40"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "PERSONALE SOC. ARRIVA ITALIA UNITA' PRODUTTIVA DI BERGAMO",
+      "union": "OSP FILT-CGIL/FIT-CISL/UILT-UIL/FAISA-CISAL + RSU",
+      "city": "BERGAMO",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          null,
+          "05:59"
+        ],
+        [
+          "08:31",
+          "12:29"
+        ],
+        [
+          "16:01",
+          null
+        ]
+      ],
+      "lineScope": "ALL_OPERATOR_LINES",
+      "guaranteeSource": "OPERATOR_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "FERMO SERVIZI AUTOTRASPORTO MERCI C/TERZI REGIONE SICILIA",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+      "union": "OSR USB LAVORO PRIVATO",
+      "city": "FIRENZE",
+      "mode": "AIRPORT",
+      "subtype": "MIXED_AIRPORT_SERVICES",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+      "union": "OSR USB LAVORO PRIVATO",
+      "city": "PISA",
+      "mode": "AIRPORT",
+      "subtype": "MIXED_AIRPORT_SERVICES",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "PERSONALE NAVIGANTE TECNICO DELLA SOC. POSTE AIR CARGO",
+      "union": "FILT-CGIL/FIT-CISL//UILT-UIL/ANPAC/ANP",
+      "city": "NATIONAL",
+      "mode": "AIRPORT",
+      "subtype": "CARGO",
+      "windows": [
+        [
+          "00:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-16",
+      "provider": "FERMO SERVIZIO TRASPORTO MERCI C/TERZI IMPRESE ADERENTI A FEDRALOG REGIONE CALABRIA",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-20",
+      "provider": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+      "union": "ASI-AU ASSOCIAZIONE SINDACALE INDIPENDENTE",
+      "city": "UNKNOWN",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "15:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-27",
+      "provider": "PERSONALE SOC. GSA ADDETTO ALLA SORVEGLIANZA  ANTINCENDIO AUTOSTRADA A1 TRATTA INCISA-SASSO MARCONI",
+      "disposition": "OUTSIDE_PRODUCT_MODES"
+    },
+    {
+      "date": "2026-10-28",
+      "provider": "PERSONALE SOC. AIR CAMPANIA DI NAPOLI",
+      "union": "OSR FILT-CGIL/FIT-CISL/UILT-UIL/UGL/FAISA-CISAL",
+      "city": "NAPOLI",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "08:00",
+          "16:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "OPERATOR_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-29",
+      "provider": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+      "union": "OSR FILT-CGIL/FIT-CISL/UILT-UIL/ORSA FERROVIE",
+      "city": "BOLOGNA",
+      "mode": "TRAIN",
+      "subtype": "RAIL_CUSTOMER_SERVICE",
+      "windows": [
+        [
+          "00:00",
+          "23:59"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-10-30",
+      "provider": "SCIOPERO GENERALE PERSONALE DIPENDENTE PUBBLICO E PRIVATO",
+      "disposition": "TRANSPORT_EXPLICITLY_EXCLUDED"
+    },
+    {
+      "date": "2026-11-06",
+      "provider": "PERSONALE SOC. ENAV APT BARI",
+      "union": "RSA FAST-CONFSAL-AV",
+      "city": "BARI",
+      "mode": "AIRPORT",
+      "subtype": "AIRPORT",
+      "windows": [
+        [
+          "13:00",
+          "17:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-11-21",
+      "provider": "PERSONALE SOC. ENAV",
+      "union": "FILT-CGIL/UGL-TA",
+      "city": "NATIONAL",
+      "mode": "AIRPORT",
+      "subtype": "NATIONAL_AVIATION",
+      "windows": [
+        [
+          "13:00",
+          "17:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-11-22",
+      "provider": "PERSONALE SOC. ENAV AEROPORTO DI MILANO MALPENSA",
+      "union": "RSA FAST-CONFSAL-AV",
+      "city": "MILANO",
+      "mode": "AIRPORT",
+      "subtype": "AIRPORT",
+      "windows": [
+        [
+          "00:01",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-11-22",
+      "provider": "PERSONALE SOC. SICURITALIA IVRI AEROPORTO MARCO POLO DI VENEZIA",
+      "union": "OST FISASCAT-CISL",
+      "city": "VENEZIA",
+      "mode": "AIRPORT",
+      "subtype": "AIRPORT",
+      "windows": [
+        [
+          "00:00",
+          "23:59"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "STANDARD_RULE",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-12-03",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "union": "CUB/ADL VARESE/SGB/CIB-UNICOBAS/SBM/SGC/SI-COBAS",
+      "city": "NATIONAL",
+      "mode": "TRAIN",
+      "subtype": "RAIL_GENERAL",
+      "windows": [
+        [
+          "21:00",
+          "24:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-12-04",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "union": "CUB/ADL VARESE/SGB/CIB-UNICOBAS/SBM/SGC/SI-COBAS",
+      "city": "NATIONAL",
+      "mode": "TRAIN",
+      "subtype": "RAIL_GENERAL",
+      "windows": [
+        [
+          "00:00",
+          "21:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-12-04",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "union": "CUB/ADL VARESE/SGB/CIB-UNICOBAS/SBM/SGC/SI-COBAS",
+      "city": "NATIONAL",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-12-04",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "union": "CUB/ADL VARESE/SGB/CIB-UNICOBAS/SBM/SGC/SI-COBAS",
+      "city": "NATIONAL",
+      "mode": "AIRPORT",
+      "subtype": "NATIONAL_AVIATION",
+      "windows": [],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-12-16",
+      "provider": "PERSONALE SOC. ANM DI NAPOLI",
+      "union": "OSR FILT-CGIL/FIT-CISL/UILT-UIL/UGL-FNA/FAISA-CISAL",
+      "city": "NAPOLI",
+      "mode": "BUS",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "11:00",
+          "15:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    },
+    {
+      "date": "2026-12-16",
+      "provider": "PERSONALE SOC. ANM DI NAPOLI",
+      "union": "OSR FILT-CGIL/FIT-CISL/UILT-UIL/UGL-FNA/FAISA-CISAL",
+      "city": "NAPOLI",
+      "mode": "SUBWAY",
+      "subtype": "UNKNOWN",
+      "windows": [
+        [
+          "11:00",
+          "15:00"
+        ]
+      ],
+      "lineScope": "UNKNOWN",
+      "guaranteeSource": "UNKNOWN",
+      "disposition": "MATCHED"
+    }
+  ]
+}

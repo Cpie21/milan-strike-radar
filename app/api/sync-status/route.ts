@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const db = serverDatabase();
-    const fields = 'started_at,completed_at,status,fetched,upserted,unknown_timing';
+    const fields = 'started_at,completed_at,status,fetched,upserted,unknown_timing,warnings';
     const [latest, success] = await Promise.all([
       db.from('strike_sync_runs').select(fields).order('started_at', { ascending: false }).limit(1).maybeSingle(),
       db.from('strike_sync_runs').select(fields).eq('status', 'success').order('completed_at', { ascending: false }).limit(1).maybeSingle(),
@@ -15,7 +15,9 @@ export async function GET() {
     if (latest.error || success.error) throw new Error('Sync status unavailable');
     const lastSuccess = success.data?.completed_at;
     const health = syncHealth(latest.data, lastSuccess);
-    return NextResponse.json({ ...health, latest: latest.data, last_success: success.data }, { status: health.healthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
+    const compact=(run: typeof latest.data)=>{if(!run)return null;const {warnings,...rest}=run;return {...rest,warning_count:Array.isArray(warnings)?warnings.length:0};};
+    const last=compact(latest.data);
+    return NextResponse.json({ ...health, data_quality:!health.healthy?'UNAVAILABLE':last?.warning_count||last?.unknown_timing?'PARTIAL':'NO_RECORDED_ISSUES', latest: last, last_success: compact(success.data) }, { status: health.healthy ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ healthy: false, error: 'Synchronization status unavailable' }, { status: 503 });
   }

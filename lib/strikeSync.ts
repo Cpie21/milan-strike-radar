@@ -177,6 +177,7 @@ export function parseStrikeHtml(html: string): RawStrikeRow[] {
   const rows: RawStrikeRow[] = [];
   let headerIndex: Record<string, number> = {};
   let foundStrikeTable = false;
+  let activeTable:unknown;
 
   $('table tr').each((_, tr) => {
     const ths = $(tr).find('th');
@@ -187,17 +188,18 @@ export function parseStrikeHtml(html: string): RawStrikeRow[] {
         if (header) headerIndex[header] = index;
       });
       if (['inizio', 'fine', 'categoria', 'settore', 'modalita', 'regione', 'provincia'].every((key) => headerIndex[key] !== undefined)) {
-        foundStrikeTable = true;
+        foundStrikeTable = true;activeTable=$(tr).closest('table').get(0);
       }
       return;
     }
 
+    if($(tr).closest('table').get(0)!==activeTable)return;
     const cells = $(tr).find('td');
     if (cells.length < 5) return;
 
     const texts = cells.map((__, td) => $(td).text().trim()).get();
     const dateCol = texts.findIndex((text) => /^\d{2}\/\d{2}\/\d{4}/.test(text));
-    if (dateCol === -1) return;
+    if (dateCol === -1) {if(cells.length>5)throw new Error('MIT strike row date missing or changed');return;}
 
     const getByHeader = (key: string, fallbackIdx?: number) => {
       const index = headerIndex[key];
@@ -223,6 +225,8 @@ export function parseStrikeHtml(html: string): RawStrikeRow[] {
       province: getByHeader('provincia', dateCol + 10).trim(),
     };
 
+    const valid=(value:string)=>{const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);if(!m)return false;const iso=m[3]+'-'+m[2]+'-'+m[1],d=new Date(iso+'T12:00:00Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso;};
+    if(!valid(raw.date)||!valid(raw.endDate)||!raw.provider||!raw.sector||new Date(raw.endDate.split('/').reverse().join('-'))<new Date(raw.date.split('/').reverse().join('-')))throw new Error('MIT strike row malformed; refusing incomplete reconciliation');
     if (!isTransportRelevantRow(raw)) return;
     const regionTags = classifyRegionTags({
       regionText: raw.region, provinceText: raw.province, sectorText: raw.sector,
@@ -419,24 +423,26 @@ function shouldTreatAsPending(row: RawStrikeRow, category: StrikeRecord['categor
   return !hasConcreteTime || !hasPassengerImpactSignal;
 }
 
-async function translateText(text: string): Promise<string> {
+export async function translateText(text: string): Promise<string> {
   if (!text.trim()) return text;
   const apiKey = process.env.DEEPL_API_KEY;
   if (!apiKey) return text;
 
   try {
     const url = process.env.DEEPL_API_URL || 'https://api-free.deepl.com/v2/translate';
+    // An environment override must never silently switch to paid translation.
+    if(url!=='https://api-free.deepl.com/v2/translate')return text;
     const params = new URLSearchParams();
     params.append('auth_key', apiKey);
     params.append('text', text);
     params.append('target_lang', 'ZH');
 
-    const response = await fetch(url, { method: 'POST', body: params, signal: AbortSignal.timeout(10_000) });
+    const response = await fetch(url, { method: 'POST', body: params, redirect:'error', signal: AbortSignal.timeout(4000) });
     if (!response.ok) throw new Error(`DeepL translate failed: ${response.status}`);
     const json = await response.json();
     return json?.translations?.[0]?.text || text;
-  } catch (error) {
-    console.error('Translation failed for', text, error);
+  } catch {
+    console.error('Free translation unavailable; keeping original wording');
     return text;
   }
 }
@@ -526,8 +532,9 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
   rawRows = [...new Map(rawRows.map(row => [`${row.sourceKey || JSON.stringify(row)}|${row.region}`, row])).values()];
   // Memoize translation work per run and bound concurrency as city coverage grows.
   const translations = new Map<string, Promise<string>>();
+  const translationDeadline=Date.now()+12000;
   const translate = (text: string) => {
-    if (!translations.has(text)) translations.set(text, translateText(text));
+    if (!translations.has(text)) translations.set(text, Date.now()<translationDeadline?translateText(text):Promise.resolve(text));
     return translations.get(text)!;
   };
   const rawRecordGroups: StrikeRecord[][] = [];
