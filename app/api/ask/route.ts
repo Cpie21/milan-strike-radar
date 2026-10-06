@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
       try {
         const budget = await reserveAiBudget('ask', `ask:${refineToken(ip, query).slice(0, 16)}:${Date.now()}`, ASK_RESERVE_MICRO_USD);
-        if (!budget.ok) { send({ type: 'error', error: 'budget' }); return; }
+        if (!budget.ok) { send({ type: 'error', error: budget.reason==='BUDGET_EXHAUSTED' ? 'budget' : 'unavailable' }); return; }
         const result = await runAsk(query, city, hints, send);
         await settleAiBudget(budget, 'cost' in result ? (result as { cost: number }).cost : null);
         if (!refining) countAnswer(ip);

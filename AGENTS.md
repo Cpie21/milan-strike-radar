@@ -25,3 +25,5 @@ Backend, data logic and engineering: sync, enrichment, timing evidence, APIs, sc
 
 - `npm test` runs all regression suites; `npx tsc --noEmit` must pass.
 - Secrets live in `.env.local` (gitignored) and Vercel; never commit them.
+
+- All Gemini models are forbidden; translation must be free. Paid calls require a successful shared budget reservation; never fall back to unmetered spending.
