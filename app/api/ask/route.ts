@@ -1,98 +1,61 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveCity } from '../../../lib/cities';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { isIsoDate } from '../../../lib/romeDate';
 import { runAsk, type Hints } from '../../../lib/ask/pipeline';
-import { reserveAiBudget, settleAiBudget } from '../../../lib/aiBudget';
-
-// A refinement (picking a date or mode after a clarify) continues the same
-// question and doesn't count against the daily allowance, but only with the
-// token the server issued for that question: a header alone proves nothing.
-const SECRET = process.env.ASK_REFINE_SECRET || process.env.FEEDBACK_RATE_LIMIT_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'dev';
-const refineToken = (ip: string, query: string) => createHmac('sha256', SECRET).update(`${ip}|${query}|${new Date().toISOString().slice(0, 10)}`).digest('base64url');
-const validRefine = (token: unknown, ip: string, query: string) => {
-  if (typeof token !== 'string') return false;
-  const a = Buffer.from(token), b = Buffer.from(refineToken(ip, query));
-  return a.length === b.length && timingSafeEqual(a, b);
-};
-// One understanding call plus up to eight judgements; a ceiling per question.
-const ASK_RESERVE_MICRO_USD = 9 * 2000;
-
+import { AiBudgetError } from '../../../lib/aiBudget';
+import { BodyError, objectRecord, privateHash, readBoundedJson, requestIdentity, sharedLimit } from '../../../lib/apiGuard';
+import { serverDatabase } from '../../../lib/strikeQuery';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-const MAX_QUERY = 200;
-const WINDOW_MS = 60_000;
-const LIMIT = 8;
-// Best effort per instance; a shared store is needed for a hard global limit.
-const hits = new Map<string, number[]>();
-
-// Daily cap per IP, matching the UI's allowance with slack for shared
-// networks. Also per instance; the shared AI budget (AI_HANDOFF) is the
-// real ceiling.
-const DAILY_LIMIT = 12;
-const daily = new Map<string, { day: string; count: number }>();
-// Only answered questions count: a failure or a refusal never uses one up.
-function usedToday(ip: string) {
-  const entry = daily.get(ip);
-  return entry && entry.day === new Date().toISOString().slice(0, 10) ? entry.count : 0;
-}
-function countAnswer(ip: string) {
-  const day = new Date().toISOString().slice(0, 10);
-  daily.set(ip, { day, count: usedToday(ip) + 1 });
-  if (daily.size > 20000) daily.clear();
-}
-
-function rateLimited(ip: string) {
-  const now = Date.now();
-  const recent = (hits.get(ip) || []).filter(t => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 5000) hits.clear();
-  return recent.length > LIMIT;
-}
-
+const MODES = new Set(['TRAIN', 'SUBWAY', 'BUS', 'AIRPORT']);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local';
-  if (rateLimited(ip)) return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-
-  let body: { query?: unknown; city?: unknown; hints?: Hints; refineToken?: unknown };
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
+    const body = await readBoundedJson(request, 8000);
+    const query = typeof body.query === 'string' ? body.query.trim() : '';
+    if (!query || query.length > 200) return NextResponse.json({ error: 'invalid_query' }, { status: 400 });
+    const city = resolveCity(typeof body.city === 'string' ? body.city : 'MILANO')?.tag;
+    if (!city) return NextResponse.json({ error: 'unsupported_city' }, { status: 400 });
+    if (body.hints !== undefined && !objectRecord(body.hints)) return NextResponse.json({ error: 'invalid_hints' }, { status: 400 });
+    const raw = objectRecord(body.hints) ? body.hints : {};
+    if ((raw.date !== undefined && (typeof raw.date !== 'string' || !isIsoDate(raw.date))) ||
+        (raw.range !== undefined && raw.range !== 'week' && raw.range !== 'upcoming') ||
+        (raw.modes !== undefined && (!Array.isArray(raw.modes) || raw.modes.length > 4 || raw.modes.some(m => typeof m !== 'string' || !MODES.has(m))))) {
+      return NextResponse.json({ error: 'invalid_hints' }, { status: 400 });
+    }
+    const hints = raw as Hints;
+    const subject = requestIdentity(request);
+    const limit = await sharedLimit('ask', subject);
+    if (limit !== 'allowed') return NextResponse.json({ error: limit === 'limited' ? 'rate_limited' : 'unavailable' }, { status: limit === 'limited' ? 429 : 503 });
+    if (body.refineToken !== undefined && body.refineToken !== null && (typeof body.refineToken !== 'string' || !UUID.test(body.refineToken))) return NextResponse.json({ error: 'invalid_refinement' }, { status: 400 });
+    const requestId = randomUUID(); const db = serverDatabase();
+    const { data: admission, error } = await db.rpc('acquire_ask_session', {
+      subject_hash: subject, query_hash: privateHash('ask-query', `${city}|${query}`), request_id: requestId, refine_id: body.refineToken ?? null,
+    });
+    if (error || !objectRecord(admission)) return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+    if (admission.error || typeof admission.id !== 'string') return NextResponse.json({ error: admission.error || 'unavailable' }, { status: admission.error === 'daily_limit' ? 429 : 400 });
+    const sessionId = admission.id;
+    const encoder = new TextEncoder(); let disconnected = false;
+    const stream = new ReadableStream({
+      cancel() { disconnected = true; },
+      async start(controller) {
+        const send = (value: unknown) => { if (!disconnected) controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`)); };
+        try {
+          const result = await runAsk(query, city, hints, send);
+          const outcome = result.kind === 'clarify' ? 'clarify' : result.kind === 'out_of_scope' ? 'released' : 'answered';
+          const finalized = await db.rpc('finish_ask_session', { session_id: sessionId, request_id: requestId, outcome });
+          if (finalized.error || finalized.data !== true) throw new Error('Question session unavailable');
+          send({ type: 'final', result, ...(result.kind === 'clarify' ? { refineToken: sessionId } : {}) });
+        } catch (error) {
+          send({ type: 'error', error: error instanceof AiBudgetError && error.reason === 'BUDGET_EXHAUSTED' ? 'budget' : 'unavailable' });
+          await db.rpc('finish_ask_session', { session_id: sessionId, request_id: requestId, outcome: 'released' });
+        } finally { if (!disconnected) controller.close(); }
+      },
+    });
+    return new Response(stream, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof BodyError ? error.code : 'unavailable' }, { status: error instanceof BodyError ? error.status : 503 });
   }
-  const query = typeof body.query === 'string' ? body.query.trim() : '';
-  if (!query || query.length > MAX_QUERY) return NextResponse.json({ error: 'invalid_query' }, { status: 400 });
-  const refining = validRefine(body.refineToken, ip, query);
-  if (!refining && usedToday(ip) >= DAILY_LIMIT) return NextResponse.json({ error: 'daily_limit' }, { status: 429 });
-  const city = resolveCity(typeof body.city === 'string' ? body.city : 'MILANO')?.tag;
-  if (!city) return NextResponse.json({ error: 'unsupported_city' }, { status: 400 });
-  const hints: Hints = {
-    date: typeof body.hints?.date === 'string' ? body.hints.date : undefined,
-    range: body.hints?.range === 'week' || body.hints?.range === 'upcoming' ? body.hints.range : undefined,
-    modes: Array.isArray(body.hints?.modes) ? body.hints.modes.slice(0, 4) : undefined,
-  };
-
-  // NDJSON: one line per finished stage, then the final result.
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`));
-      try {
-        const budget = await reserveAiBudget('ask', `ask:${refineToken(ip, query).slice(0, 16)}:${Date.now()}`, ASK_RESERVE_MICRO_USD);
-        if (!budget.ok) { send({ type: 'error', error: budget.reason==='BUDGET_EXHAUSTED' ? 'budget' : 'unavailable' }); return; }
-        const result = await runAsk(query, city, hints, send);
-        await settleAiBudget(budget, 'cost' in result ? (result as { cost: number }).cost : null);
-        if (!refining) countAnswer(ip);
-        send({ type: 'final', result, refineToken: refineToken(ip, query) });
-      } catch (error) {
-        console.error('[ask] failed:', error instanceof Error ? error.message : error);
-        send({ type: 'error', error: 'unavailable' });
-      } finally {
-        controller.close();
-      }
-    },
-  });
-  return new Response(stream, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store' } });
 }

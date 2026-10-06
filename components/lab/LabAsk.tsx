@@ -87,7 +87,10 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   const [error, setError] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
   const [focused, setFocused] = useState(false);
+  // The server issues a token only with a clarify; answering it continues
+  // that held question. Anything else is a new question that counts.
   const token = useRef<string | null>(null);
+  const counted = useRef(true);
   const abort = useRef<AbortController | null>(null);
   const [used, setUsed] = useState(0);
   useEffect(() => { const t = setTimeout(() => setUsed(readQuota(today)), 0); return () => clearTimeout(t); }, [today]);
@@ -121,16 +124,20 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
       (document.activeElement as HTMLElement | null)?.blur();
       return;
     }
-    // Refining an answer (picking a date or mode) is part of the same question.
-    const fresh = q !== asked || !Object.keys(next).length;
-    if (fresh && readQuota(today) >= DAILY_QUESTIONS) { setAsked(q); setOpen(true); setResult(null); setStages([]); setError('daily'); return; }
+    // Answering a clarification continues the held question; anything else
+    // is a new one, as the server counts it.
+    const sent = q === asked && Object.keys(next).length ? token.current : null;
+    if (!sent && readQuota(today) >= DAILY_QUESTIONS) { setAsked(q); setOpen(true); setResult(null); setStages([]); setError('daily'); return; }
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
     setAsked(q); setHints(next); setOpen(true); setBusy(true); setStages([]); setResult(null); setError(null); setTrace(false);
     (document.activeElement as HTMLElement | null)?.blur();
     try {
-      const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q, city: region, hints: next, refineToken: fresh ? undefined : token.current }), signal: controller.signal });
+      const post = (refineToken: string | null) => fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q, city: region, hints: next, refineToken }), signal: controller.signal });
+      let res = await post(sent);
+      // a held clarification expires after a while: ask afresh
+      if (sent && res.status === 400) { token.current = null; res = await post(null); }
       if (!res.ok || !res.body) {
         const reason = res.status === 429 ? ((await res.json().catch(() => ({}))).error === 'daily_limit' ? 'daily' : 'rate') : 'down';
         setError(reason); setBusy(false); return;
@@ -149,13 +156,16 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
           const event = JSON.parse(line);
           if (event.type === 'stage') { seen.push(event); setStages(prev => [...prev, event]); }
           else if (event.type === 'final') {
-            token.current = event.refineToken ?? null;
-            // A question is used up only when it is answered.
-            if (fresh) {
+            const answered = event.result.kind === 'result' || event.result.kind === 'navigate';
+            if (event.result.kind === 'clarify') { token.current = event.refineToken ?? null; counted.current = false; }
+            else token.current = null;
+            // A question is used up only when it is answered, and once.
+            if (answered && (!sent || !counted.current)) {
               const count = readQuota(today) + 1;
               try { localStorage.setItem(QUOTA_KEY, JSON.stringify({ date: today, used: count })); } catch { /* ignore */ }
               setUsed(count);
             }
+            if (answered) counted.current = true;
             setResult(event.result);
             if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result });
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
@@ -392,10 +402,12 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 
       {result?.kind === 'out_of_scope' && (
         <div className="mt-4">
-          <p className="text-[16px] font-semibold">{result.place
+          <p className="text-[16px] font-semibold">{result.coverage
+            ? tx(lang, `我只能查今天到 ${dayLabel(result.coverage.to, lang)} 之间的罢工`, `I can only look from today to ${dayLabel(result.coverage.to, lang)}`)
+            : result.place
             ? tx(lang, `暂时不覆盖「${result.place}」，目前只有 20 个城市的数据`, `“${result.place}” isn't covered yet — only 20 cities for now`)
             : tx(lang, '我只能回答意大利交通罢工的问题', 'I can only answer questions about Italian transport strikes')}</p>
-          {!result.place && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
+          {!result.place && !result.coverage && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
         </div>
       )}
 

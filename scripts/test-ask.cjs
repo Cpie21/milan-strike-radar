@@ -99,3 +99,8 @@ test('everyday travel, trips abroad and parts of the day are read, not guessed s
   assert.equal(parseQuery('flight to Munich', SUNDAY).abroad.country, 'DE');
   assert.equal(parseQuery('a nice day in Milan', SUNDAY).abroad, null);
 });
+
+test('invalid ISO months are rejected rather than throwing while parsing a question',()=>{
+  assert.equal(parseScope('2026-13-40 subway','2026-10-06'),null);
+  assert.equal(parseScope('2026-02-31 subway','2026-10-06'),null);
+});

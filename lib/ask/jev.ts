@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+import { objectRecord } from '../apiGuard';
+import { AiBudgetError, reserveAiBudget, settleAiBudget } from '../aiBudget';
 // Minimal client for the Jev decision model via OpenRouter. Jev answers typed
 // questions about a state with calibrated probabilities and never writes text.
 
@@ -14,9 +17,36 @@ export type Answer = NoulAnswer | ChoiceAnswer;
 
 export type DecisionResult = { answers: Record<string, Answer>; cost: number; ms: number };
 
+export function validateAnswers(value: unknown, questions: Record<string, Question>): Record<string, Answer> {
+  if (!objectRecord(value)) throw new Error('Invalid decisions');
+  const probability = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1;
+  const out: Record<string, Answer> = {};
+  for (const [key, question] of Object.entries(questions)) {
+    const a = value[key];
+    if (!objectRecord(a) || a.type !== question.type) throw new Error('Invalid decision type');
+    if (question.type === 'noul') {
+      if (!probability(a.noul)) throw new Error('Invalid probability');
+      out[key] = { type: 'noul', noul: a.noul };
+    } else {
+      if (typeof a.choice !== 'string' || !Object.prototype.hasOwnProperty.call(question.criteria, a.choice) || !probability(a.confidence) || !objectRecord(a.probabilities)) throw new Error('Invalid choice');
+      const probabilities: Record<string, number> = {};
+      for (const choice of Object.keys(question.criteria)) {
+        const p = a.probabilities[choice];
+        if (!probability(p)) throw new Error('Invalid choice probability');
+        probabilities[choice] = p;
+      }
+      if (Math.abs(Object.values(probabilities).reduce((sum,p) => sum+p,0)-1)>0.02) throw new Error('Invalid distribution');
+      out[key] = { type: 'choice', choice: a.choice, confidence: a.confidence, probabilities };
+    }
+  }
+  return out;
+}
+
 export async function decide(state: unknown, questions: Record<string, Question>, timeoutMs = 8000): Promise<DecisionResult> {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) throw new Error('OPENROUTER_API_KEY is not configured');
+  const key = process.env.STRIKE_REVIEW_API_KEY || process.env.OPENROUTER_API_KEY;
+  if (!key) throw new Error('Jev API key is not configured');
+  const reservation = await reserveAiBudget('ask', `ask:${randomUUID()}`, 2000);
+  if (!reservation.ok) throw new AiBudgetError(reservation.reason);
   const started = Date.now();
   const response = await fetch(ENDPOINT, {
     method: 'POST',
@@ -27,8 +57,11 @@ export async function decide(state: unknown, questions: Record<string, Question>
   });
   if (!response.ok) throw new Error(`Jev returned HTTP ${response.status}`);
   const json = await response.json();
-  if (!json?.answers) throw new Error('Jev response has no answers');
-  return { answers: json.answers, cost: Number(json.usage?.cost) || 0, ms: Date.now() - started };
+  const rawCost = json?.usage?.cost;
+  const actualCost = typeof rawCost === 'number' && Number.isFinite(rawCost) && rawCost >= 0 ? rawCost : null;
+  await settleAiBudget(reservation, actualCost);
+  const answers = validateAnswers(json?.answers, questions);
+  return { answers, cost: actualCost ?? 0, ms: Date.now() - started };
 }
 
 export function noul(result: DecisionResult | null, key: string): number | null {

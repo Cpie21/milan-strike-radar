@@ -6,7 +6,7 @@ export function romeTodayIso(now = new Date()) {
 }
 
 export function isIsoDate(value: string | null | undefined): value is string {
-  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T12:00:00Z`));
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value;
 }
 
 export function dateFromIso(iso: string) {

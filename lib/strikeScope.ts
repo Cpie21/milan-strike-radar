@@ -25,6 +25,7 @@ export type ScopeEvidence = {
   affectedLines: FieldEvidence<string[] | 'ALL_LINES' | 'UNKNOWN'>;
   lineScope?: FieldEvidence<import('./lineScope').LineScope>;
   routeCatalog?: FieldEvidence<Omit<import('./officialTransitData').RouteCatalog,'routes'>>;
+  routeMembership?: FieldEvidence<import('./routeMembership').RouteMembership>;
   affectedAirports: FieldEvidence<string[]>;
   affectedOperators: FieldEvidence<string[]>;
   timing: FieldEvidence<unknown>;

@@ -1,0 +1,3483 @@
+{
+  "checkedAt": "2026-10-06T07:53:06.336Z",
+  "deployment": {
+    "id": "dpl_4KMcbFKuEUH59YfsbkU8BYzMBaT2",
+    "url": "milan-strike-radar-lybeu803h-zourongcheng554-2935s-projects.vercel.app",
+    "state": "READY",
+    "commit": "ce241b2ff1a6b011254b11a79d9a7de895ba3f3e",
+    "alias": "www.theitalystrike.com",
+    "crons": [
+      {
+        "path": "/api/cron/sync-strikes",
+        "schedule": "0 5 * * *"
+      }
+    ]
+  },
+  "sync": {
+    "success": true,
+    "runId": "8860e4d4-e7bb-479d-aeae-46c5b10a4a9e",
+    "fetched": 76,
+    "upserted": 58,
+    "unknownTiming": 8,
+    "retired": 0,
+    "enriched": 4,
+    "sourcesChecked": 145,
+    "conflicts": 3,
+    "transit": {
+      "profilesApplied": 6,
+      "routeCatalogs": 1,
+      "serviceSchedules": 2,
+      "scheduleFeeds": 1,
+      "membershipCatalogs": 5,
+      "membershipProjections": 8
+    },
+    "semantic": {
+      "called": 2,
+      "cached": 25,
+      "flagged": 0,
+      "needsReview": 0,
+      "inconclusive": 17,
+      "failed": 0,
+      "skipped": 0,
+      "budgetExhausted": false
+    },
+    "semanticEnabled": true,
+    "verification": {
+      "operatorOfficial": 7,
+      "reported": 3,
+      "mitOnly": 27
+    },
+    "warningCount": 25
+  },
+  "storedRun": {
+    "id": "8860e4d4-e7bb-479d-aeae-46c5b10a4a9e",
+    "started_at": "2026-10-06T07:51:07.790675+00:00",
+    "completed_at": "2026-10-06T07:52:51.16464+00:00",
+    "status": "success",
+    "fetched": 76,
+    "upserted": 58,
+    "unknown_timing": 8,
+    "error": null,
+    "warnings": [
+      "Supplement unavailable: www.ctmcagliari.it/comunicati/: HTTP 403",
+      "Supplement unavailable: www.bresciamobilita.it/: HTTP 403",
+      "Supplement unavailable: www.toscana-aeroporti.com/it/news/: HTTP 403",
+      "Supplement unavailable: www.veneziaairport.it/it_it/news.html: HTTP 403",
+      "Supplement unavailable: www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio: HTTP 403",
+      "Supplement unavailable: www.trenord.it/news/trenord-informa/avvisi/: HTTP 403",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381112: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380241: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380322: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381296: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381220: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381401: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Timing conflict requires review: 2026-10-09 MILANO BUS AL-COBAS",
+      "Timing conflict requires review: 2026-10-09 MILANO SUBWAY AL-COBAS",
+      "Timing conflict requires review: 2026-10-12 BARI BUS OST FILT-CGIL/FIT-CISL/UILT-UIL/UGL AUTOFERRO",
+      "Operational timing unresolved: 2026-10-14 FIRENZE BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-10-14 PISA BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-12-04 NATIONAL AIRPORT SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-12-04 NATIONAL BUS SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE ASPP SOC. ENAV - SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE SOC. ENAV STRUTTURA PROCUREMENT SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-10-03 GENOVA BUS PERSONALE SOC. AMT DI GENOVA",
+      "Operational timing unresolved: 2026-10-03 GENOVA SUBWAY PERSONALE SOC. AMT DI GENOVA",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09"
+    ],
+    "retired": 0
+  },
+  "budget": {
+    "month": "2026-10-01",
+    "charged_micro_usd": 7763,
+    "disabled": false
+  },
+  "activeRows": 39,
+  "membershipCounts": {
+    "NOT_CONFIGURED": 22,
+    "CURRENT_CATALOG": 8,
+    "NOT_APPLICABLE": 9
+  },
+  "potentialCounts": {
+    "NOT_APPLICABLE": 19,
+    "PARTIAL": 4,
+    "RESOLVED": 1,
+    "SCOPE_UNCONFIRMED": 14,
+    "NOT_CONFIGURED": 1
+  },
+  "atm": [
+    {
+      "id": "bde68652-299f-4e6e-9d3a-2c771b98b059",
+      "category": "BUS",
+      "membership": {
+        "url": "https://dati.comune.milano.it/gtfs.zip",
+        "value": {
+          "city": "MILANO",
+          "date": "2026-10-09",
+          "feedId": "GTFS_MILANO",
+          "routes": [
+            {
+              "id": "T1",
+              "name": "1",
+              "type": 0,
+              "longName": "greco - roserio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T2",
+              "name": "2",
+              "type": 0,
+              "longName": "negrelli - bausan (lav. torino)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T3",
+              "name": "3",
+              "type": 0,
+              "longName": "cantu'/orefici - gratosoglio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T4",
+              "name": "4",
+              "type": 0,
+              "longName": "lagosta - p.za castello (lavori testi)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T5",
+              "name": "5",
+              "type": 0,
+              "longName": "ortica - ospedale maggiore",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T7",
+              "name": "7",
+              "type": 0,
+              "longName": "precotto - testi/s. marcellina  (lavori prol per c.na gobba )",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T9",
+              "name": "9",
+              "type": 0,
+              "longName": "stz genova - stz centrale",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T10",
+              "name": "10",
+              "type": 0,
+              "longName": "lunigiana -24 maggio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T12",
+              "name": "12",
+              "type": 0,
+              "longName": "molise - roserio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T14",
+              "name": "14",
+              "type": 0,
+              "longName": "cusani - cim. maggiore (lav. orefici)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T15",
+              "name": "15",
+              "type": 0,
+              "longName": "rozzano via g. rossa - dogana m1 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T16",
+              "name": "16",
+              "type": 0,
+              "longName": "molise - s. siro (lav. umbria - maj)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T19",
+              "name": "19",
+              "type": 0,
+              "longName": "lambrate - castelli",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T24",
+              "name": "24",
+              "type": 0,
+              "longName": "vigentino - fontana",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T27",
+              "name": "27",
+              "type": 0,
+              "longName": "fontana - ungheria",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T31",
+              "name": "31",
+              "type": 0,
+              "longName": "bicocca m5- cinisello b.",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T33",
+              "name": "33",
+              "type": 0,
+              "longName": "lagosta - rimembranze di lambrate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B34",
+              "name": "34",
+              "type": 3,
+              "longName": "toffetti - q.re fatima",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B35",
+              "name": "35",
+              "type": 3,
+              "longName": "molino dorino m1 - comasina m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B38",
+              "name": "38",
+              "type": 3,
+              "longName": "corelli - susa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B39",
+              "name": "39",
+              "type": 3,
+              "longName": "loreto - pitteri",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B40",
+              "name": "40",
+              "type": 3,
+              "longName": "parco nord - bonola m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B41",
+              "name": "41",
+              "type": 3,
+              "longName": "niguarda - q.re bovisasca",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B42",
+              "name": "42",
+              "type": 3,
+              "longName": "q.re bicocca - stz centrale m2 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B43",
+              "name": "43",
+              "type": 3,
+              "longName": "firenze - greco",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B44",
+              "name": "44",
+              "type": 3,
+              "longName": "turro - c.na gobba",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B45",
+              "name": "45",
+              "type": 3,
+              "longName": "stz lambrate m2 - san donato m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B46",
+              "name": "46",
+              "type": 3,
+              "longName": "famagosta m2 - cantalupa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B47",
+              "name": "47",
+              "type": 3,
+              "longName": "bisceglie m1 - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B48",
+              "name": "48",
+              "type": 3,
+              "longName": "palazzolo - lotto m1 - m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B49",
+              "name": "49",
+              "type": 3,
+              "longName": "lotto m1 m5 - tirana",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B50",
+              "name": "50",
+              "type": 3,
+              "longName": "cairoli m1 lorenteggio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B51",
+              "name": "51",
+              "type": 3,
+              "longName": "zara m3 m5 - cimiano m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B52",
+              "name": "52",
+              "type": 3,
+              "longName": "bruzzano f.n. - bicocca (universita')",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B53",
+              "name": "53",
+              "type": 3,
+              "longName": "lambrate fs m2 - q.re adriano - sesto marelli m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B54",
+              "name": "54",
+              "type": 3,
+              "longName": "dateo m4 - stz lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B55",
+              "name": "55",
+              "type": 3,
+              "longName": "cim. lambrate - loreto",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B56",
+              "name": "56",
+              "type": 3,
+              "longName": "q.re adriano - loreto",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B57",
+              "name": "57",
+              "type": 3,
+              "longName": "q.to oggiaro - cairoli",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B58",
+              "name": "58",
+              "type": 3,
+              "longName": "58/ bisceglie m1 - noale",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B59",
+              "name": "59",
+              "type": 3,
+              "longName": "famagosta m2 - lodovica",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B60",
+              "name": "60",
+              "type": 3,
+              "longName": "duomo m1 m3 - zara m3 m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B61",
+              "name": "61",
+              "type": 3,
+              "longName": "duomo - murani",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B62",
+              "name": "62",
+              "type": 3,
+              "longName": "sire raul - lodi",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B63",
+              "name": "63",
+              "type": 3,
+              "longName": "de angeli m1 - muggiano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B64",
+              "name": "64",
+              "type": 3,
+              "longName": "bonola m1 - lorenteggio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B65",
+              "name": "65",
+              "type": 3,
+              "longName": "p.ta romana - abbiategrasso m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B66",
+              "name": "66",
+              "type": 3,
+              "longName": "cadore - peschiera b",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B67",
+              "name": "67",
+              "type": 3,
+              "longName": "scanini - baracca",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B68",
+              "name": "68",
+              "type": 3,
+              "longName": "bonola m1 - bergognone (lav. stuparich)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B69",
+              "name": "69",
+              "type": 3,
+              "longName": "firenze - molino dorino (ramo gallaratese)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B70",
+              "name": "70",
+              "type": 3,
+              "longName": "ceresio - cim . bruzzano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B71",
+              "name": "71",
+              "type": 3,
+              "longName": "famagosta m2 - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B74",
+              "name": "74",
+              "type": 3,
+              "longName": "famagosta m2 - cantore",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B76",
+              "name": "76",
+              "type": 3,
+              "longName": "bisceglie m1 - madonna della provvidenza",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B77",
+              "name": "77",
+              "type": 3,
+              "longName": "s. donato m3 - poasco",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B78",
+              "name": "78",
+              "type": 3,
+              "longName": "bisceglie m1 - govone",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B79",
+              "name": "79",
+              "type": 3,
+              "longName": "gratosoglio - lodovica (transita in c.na basmetto)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B80",
+              "name": "80",
+              "type": 3,
+              "longName": "de angeli m1 - molino dorino m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B81",
+              "name": "81",
+              "type": 3,
+              "longName": "sesto marelli - stz. lambrate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B82",
+              "name": "82",
+              "type": 3,
+              "longName": "q.re bovisasca - zara m3 m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B83",
+              "name": "83",
+              "type": 3,
+              "longName": "comasina m3 - c granda",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B84",
+              "name": "84",
+              "type": 3,
+              "longName": "martini - p.ta volta",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B85",
+              "name": "85",
+              "type": 3,
+              "longName": "bolivar m4 - cadorna fn m1 m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B86",
+              "name": "86",
+              "type": 3,
+              "longName": "f. testi - crescenzago m2 (lavori)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B87",
+              "name": "87",
+              "type": 3,
+              "longName": "stz centrale - villa san giovanni m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B88",
+              "name": "88",
+              "type": 3,
+              "longName": "aviazione - rogoredo fs m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B89",
+              "name": "89",
+              "type": 3,
+              "longName": "novate milanese - ciccotti",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B90",
+              "name": "90",
+              "type": 3,
+              "longName": "lodi m3 - lotto (circolare destra)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B91",
+              "name": "91",
+              "type": 3,
+              "longName": "lotto - lodi m3 (circolare sinistra)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B92",
+              "name": "92",
+              "type": 3,
+              "longName": "vare' - lodi m3 (limita causa mercato la domenica)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B93",
+              "name": "93",
+              "type": 3,
+              "longName": "omero - bottini",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B95",
+              "name": "95",
+              "type": 3,
+              "longName": "rogoredo fs m3 - s. cristoforo m4",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B96",
+              "name": "96",
+              "type": 3,
+              "longName": "cadorna fn m1 m2 - sforza (lavori con 97 soppressa)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B98",
+              "name": "98",
+              "type": 3,
+              "longName": "famagosta m2 - lotto m1 m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B99",
+              "name": "99",
+              "type": 3,
+              "longName": "noverasco - vigentino",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B121",
+              "name": "121",
+              "type": 3,
+              "longName": "stz s.donato m3 - s.giuliano m (stz f.s.)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B130",
+              "name": "130",
+              "type": 3,
+              "longName": "s.donato m3 - s.giuliano m.se",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B132",
+              "name": "132",
+              "type": 3,
+              "longName": "s. donato m3 (marignano) - s. donato ( di vittorio)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B140",
+              "name": "140",
+              "type": 3,
+              "longName": "cefalonia - rogoredo",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B161",
+              "name": "161",
+              "type": 3,
+              "longName": "parco nord - ca' granda ( coll. sost. linea 4)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B165",
+              "name": "165",
+              "type": 3,
+              "longName": "comasina m3 - limbiate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B166",
+              "name": "166",
+              "type": 3,
+              "longName": "parco nord - desio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B169",
+              "name": "169",
+              "type": 3,
+              "longName": "m.te velino - cadore (coll 16)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B171",
+              "name": "171",
+              "type": 3,
+              "longName": "interno cim. maggiore (campo 1 campo 92)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B172",
+              "name": "172",
+              "type": 3,
+              "longName": "martiri della deportazione - bicocca",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B174",
+              "name": "174",
+              "type": 3,
+              "longName": "loreto - cim. greco - turro",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B175",
+              "name": "175",
+              "type": 3,
+              "longName": "p.te lambro - cim. lambrate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B176",
+              "name": "176",
+              "type": 3,
+              "longName": "campo 12 - ingresso",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B321",
+              "name": "321",
+              "type": 3,
+              "longName": "bisceglie m1 - assago forum m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B322",
+              "name": "322",
+              "type": 3,
+              "longName": "c.boscone (gramsci) - milano (bisceglie)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B323",
+              "name": "323",
+              "type": 3,
+              "longName": "cesano boscone fs - milano (bisceglie m1)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B324",
+              "name": "324",
+              "type": 3,
+              "longName": "corsico (p.za europa) - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B325",
+              "name": "325",
+              "type": 3,
+              "longName": "buccinasco (via lario) - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B326",
+              "name": "326",
+              "type": 3,
+              "longName": "stz san cristoforo fs m4 - cesano boscone",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B327",
+              "name": "327",
+              "type": 3,
+              "longName": "milano (bisceglie m1) - trezzano s.n. (morona)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B351",
+              "name": "351",
+              "type": 3,
+              "longName": "buccinasco (via emilia) - p.le negrelli",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B352",
+              "name": "352",
+              "type": 3,
+              "longName": "buccinasco - assago forum m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B353",
+              "name": "353",
+              "type": 3,
+              "longName": "assago (via del sole) - assago (via bazzana)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B700",
+              "name": "700",
+              "type": 3,
+              "longName": "sesto 1 maggio - sesto cimitero",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B701",
+              "name": "701",
+              "type": 3,
+              "longName": "cologno sud m2 - sesto s. g. (4 novembre)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B702",
+              "name": "702",
+              "type": 3,
+              "longName": "cologno nord m2 - cinisello sant' eusebio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B705",
+              "name": "705",
+              "type": 3,
+              "longName": "comasina m3 - cormano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B707",
+              "name": "707",
+              "type": 3,
+              "longName": "cologno ( via giordano) - cologno nord m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B708",
+              "name": "708",
+              "type": 3,
+              "longName": "sesto rond m1 - niguarda ( parco nord )",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B709",
+              "name": "709",
+              "type": 3,
+              "longName": "cologno ( don minzoni ) - cologno sud m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B712",
+              "name": "712",
+              "type": 3,
+              "longName": "sesto f.s. - cinisello ( musu )",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B713",
+              "name": "713",
+              "type": 3,
+              "longName": "milano bignami m5 - sesto rimembranze",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B727",
+              "name": "727",
+              "type": 3,
+              "longName": "sesto s.g.(1 maggio) - stz cormano fn",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B728",
+              "name": "728",
+              "type": 3,
+              "longName": "cusano m. (unione) - bignami m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B729",
+              "name": "729",
+              "type": 3,
+              "longName": "sesto s.g. - comasina m3 (lav. marconi)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B783",
+              "name": "783",
+              "type": 3,
+              "longName": "bresso don minzoni - milano bicocca m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B901",
+              "name": "901",
+              "type": 3,
+              "longName": "san donato m3 - aeroporto di linate (trans. peschiera b.)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B902",
+              "name": "902",
+              "type": 3,
+              "longName": "s. donato m3 (marignano) - peschiera b.",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B903",
+              "name": "903",
+              "type": 3,
+              "longName": "san donato - linate (festivo)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B922",
+              "name": "922",
+              "type": 3,
+              "longName": "(scolastica) di vittorio - san rocco",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B923",
+              "name": "923",
+              "type": 3,
+              "longName": "h.s.raffaele - aeroporto linate (trans. cimitero)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B924",
+              "name": "924",
+              "type": 3,
+              "longName": "milano (bottini) - segrate (s.ambrogio)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B925",
+              "name": "925",
+              "type": 3,
+              "longName": "milano (cascina gobba m2) - milano (udine)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B926",
+              "name": "926",
+              "type": 3,
+              "longName": "peschiera (san felicino) - segrate fs",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B928",
+              "name": "928",
+              "type": 3,
+              "longName": "milano (cascina gobba m2) - segrate (abruzzi)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B973",
+              "name": "973",
+              "type": 3,
+              "longName": "p.za cinque giornate - peschiera b.",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BNM1",
+              "name": "NM1",
+              "type": 3,
+              "longName": "molino dorino m1 - sesto fs",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BNM2",
+              "name": "NM2",
+              "type": 3,
+              "longName": "cascina gobba - abbiategrasso",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BNM3",
+              "name": "NM3",
+              "type": 3,
+              "longName": "comasina m3 - san donato m3 (chiusura p.za velasca)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B154",
+              "name": "NM4",
+              "type": 3,
+              "longName": "lorenteggio  - linate aeroporto m4 (lavori correnti)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN15",
+              "name": "N15",
+              "type": 3,
+              "longName": "gratosoglio - p.za diaz (chiusura p.za velasca)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN24",
+              "name": "N24",
+              "type": 3,
+              "longName": "duomo - vigentino (chiusura p.za velasca)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN25",
+              "name": "N25",
+              "type": 3,
+              "longName": "centrale fs m2 m3 - cadorna fn m1 m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN26",
+              "name": "N26",
+              "type": 3,
+              "longName": "cadorna fn m1 m2 - centrale fs m2 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN27",
+              "name": "N27",
+              "type": 3,
+              "longName": "ungheria - duomo m1 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ34",
+              "name": "BdQ34",
+              "type": 3,
+              "longName": "noverasco - brenta m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ35",
+              "name": "BdQ35",
+              "type": 3,
+              "longName": "bruzzano fn - affori fn m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ39",
+              "name": "BdQ39",
+              "type": 3,
+              "longName": "rubattino - stz lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ44",
+              "name": "BdQ44",
+              "type": 3,
+              "longName": "gorla m1 - c.na gobba m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ45",
+              "name": "BdQ45",
+              "type": 3,
+              "longName": "l.go rodari - san donato m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ46",
+              "name": "BdQ46",
+              "type": 3,
+              "longName": "famagosta m2 - cantalupa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ52",
+              "name": "BdQ52",
+              "type": 3,
+              "longName": "niguarda (parco nord) - bicocca m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ55",
+              "name": "BdQ55",
+              "type": 3,
+              "longName": "loreto - stz lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ68",
+              "name": "BdQ68",
+              "type": 3,
+              "longName": "uruguay -molino dorino m1 (appennini)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ75",
+              "name": "BdQ75",
+              "type": 3,
+              "longName": "rizzoli - lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ76",
+              "name": "BdQ76",
+              "type": 3,
+              "longName": "bisceglie m1 - madonna della provvidenza",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ78",
+              "name": "BdQ78",
+              "type": 3,
+              "longName": "govone - s.siro stadio m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ79",
+              "name": "BdQ79",
+              "type": 3,
+              "longName": "gratosoglio - abbiategrasso m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ86",
+              "name": "BdQ86",
+              "type": 3,
+              "longName": "testi s. monica-c.na gobba",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ88",
+              "name": "BdQ88",
+              "type": 3,
+              "longName": "rogoredo m3 - ungheria",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B201",
+              "name": "201",
+              "type": 3,
+              "longName": "rozzano (milano) - rozzano (alberelle)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B220",
+              "name": "220",
+              "type": 3,
+              "longName": "rozzano - pieve",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B222",
+              "name": "222",
+              "type": 3,
+              "longName": "pieve e. (staz fs) - milano (ripamonti)                                            ",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B230",
+              "name": "230",
+              "type": 3,
+              "longName": "basiglio - abbiategrasso m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B328",
+              "name": "328",
+              "type": 3,
+              "longName": "rozzano - assago m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B423",
+              "name": "423",
+              "type": 3,
+              "longName": "milano (san siro m5) - settimo m. (della libertÃ )                               ",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B424",
+              "name": "424",
+              "type": 3,
+              "longName": "bareggio (gallina) - molino dorino m1                                           ",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B431",
+              "name": "431",
+              "type": 3,
+              "longName": "bareggio - rho fs",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B433",
+              "name": "433",
+              "type": 3,
+              "longName": "bisceglie m1 - cornaredo (artigianato)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B528",
+              "name": "528",
+              "type": 3,
+              "longName": "cim. maggiore - molino dorino m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B542",
+              "name": "542",
+              "type": 3,
+              "longName": "rho fiera - casa di reclusione",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B560",
+              "name": "560",
+              "type": 3,
+              "longName": "arese (alfa romeo porta est)- milano (m1 qt8)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B561",
+              "name": "561",
+              "type": 3,
+              "longName": "rho fiera m1 - arese",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B566",
+              "name": "566",
+              "type": 3,
+              "longName": "paderno dugnano - milano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B965",
+              "name": "965",
+              "type": 3,
+              "longName": "milano - pioltello (lavori)",
+              "operator": "ATM_MILANO"
+            }
+          ],
+          "source": "https://dati.comune.milano.it/gtfs.zip",
+          "status": "CURRENT_CATALOG",
+          "category": "BUS",
+          "coverage": "PUBLISHED_CATALOG_ONLY",
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-06T07:52:48.066Z",
+          "contentHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "publishedSchedule": {
+            "validTo": "2026-10-19",
+            "validFrom": "2026-09-14",
+            "modeValidTo": {
+              "BUS": "2026-10-02",
+              "SUBWAY": "2026-10-15"
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Current published operator route membership only; service calendar and actual operation require separate evidence.",
+        "confidence": "HIGH"
+      },
+      "potentialLines": [
+        {
+          "mode": "BUS",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "B90"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "90",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "lodi m3 - lotto (circolare destra)"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "BUS",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "B91"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "91",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "lotto - lodi m3 (circolare sinistra)"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "actualOperationConfirmed": false
+        }
+      ],
+      "potentialLineCount": 161,
+      "scheduleStatus": "OUT_OF_VALIDITY"
+    },
+    {
+      "id": "edc65463-aa23-41fe-bf56-74b568c5fbb0",
+      "category": "SUBWAY",
+      "membership": {
+        "url": "https://dati.comune.milano.it/gtfs.zip",
+        "value": {
+          "city": "MILANO",
+          "date": "2026-10-09",
+          "feedId": "GTFS_MILANO",
+          "routes": [
+            {
+              "id": "M4",
+              "name": "4",
+              "type": 1,
+              "longName": "m4 - linea blu",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M3",
+              "name": "3",
+              "type": 1,
+              "longName": "m3 - linea gialla",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M1",
+              "name": "1",
+              "type": 1,
+              "longName": "m1 - linea rossa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M2",
+              "name": "2",
+              "type": 1,
+              "longName": "m2 - linea verde",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M5",
+              "name": "5",
+              "type": 1,
+              "longName": "m5 - linea lilla",
+              "operator": "ATM_MILANO"
+            }
+          ],
+          "source": "https://dati.comune.milano.it/gtfs.zip",
+          "status": "CURRENT_CATALOG",
+          "category": "SUBWAY",
+          "coverage": "PUBLISHED_CATALOG_ONLY",
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-06T07:52:48.066Z",
+          "contentHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "publishedSchedule": {
+            "validTo": "2026-10-19",
+            "validFrom": "2026-09-14",
+            "modeValidTo": {
+              "BUS": "2026-10-02",
+              "SUBWAY": "2026-10-15"
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Current published operator route membership only; service calendar and actual operation require separate evidence.",
+        "confidence": "HIGH"
+      },
+      "potentialLines": [
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M1"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M1",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m1 - linea rossa"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:55",
+              "seconds": 89730,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:20",
+              "seconds": 87600,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M2"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M2",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m2 - linea verde"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "01:30",
+              "seconds": 91800,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:32",
+              "seconds": 88320,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M3"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M3",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m3 - linea gialla"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:53",
+              "seconds": 89580,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:23",
+              "seconds": 87810,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M4"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M4",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m4 - linea blu"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:53",
+              "seconds": 89603,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:26",
+              "seconds": 87960,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M5"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M5",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m5 - linea lilla"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:28",
+              "seconds": 88084,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:01",
+              "seconds": 86460,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        }
+      ],
+      "potentialLineCount": 5,
+      "scheduleStatus": "COMPLETE"
+    },
+    {
+      "id": "5f0cc431-b99e-412c-ac04-a14844d81ebb",
+      "category": "BUS",
+      "membership": {
+        "url": "https://dati.comune.milano.it/gtfs.zip",
+        "value": {
+          "city": "MILANO",
+          "date": "2026-10-09",
+          "feedId": "GTFS_MILANO",
+          "routes": [
+            {
+              "id": "T1",
+              "name": "1",
+              "type": 0,
+              "longName": "greco - roserio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T2",
+              "name": "2",
+              "type": 0,
+              "longName": "negrelli - bausan (lav. torino)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T3",
+              "name": "3",
+              "type": 0,
+              "longName": "cantu'/orefici - gratosoglio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T4",
+              "name": "4",
+              "type": 0,
+              "longName": "lagosta - p.za castello (lavori testi)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T5",
+              "name": "5",
+              "type": 0,
+              "longName": "ortica - ospedale maggiore",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T7",
+              "name": "7",
+              "type": 0,
+              "longName": "precotto - testi/s. marcellina  (lavori prol per c.na gobba )",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T9",
+              "name": "9",
+              "type": 0,
+              "longName": "stz genova - stz centrale",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T10",
+              "name": "10",
+              "type": 0,
+              "longName": "lunigiana -24 maggio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T12",
+              "name": "12",
+              "type": 0,
+              "longName": "molise - roserio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T14",
+              "name": "14",
+              "type": 0,
+              "longName": "cusani - cim. maggiore (lav. orefici)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T15",
+              "name": "15",
+              "type": 0,
+              "longName": "rozzano via g. rossa - dogana m1 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T16",
+              "name": "16",
+              "type": 0,
+              "longName": "molise - s. siro (lav. umbria - maj)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T19",
+              "name": "19",
+              "type": 0,
+              "longName": "lambrate - castelli",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T24",
+              "name": "24",
+              "type": 0,
+              "longName": "vigentino - fontana",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T27",
+              "name": "27",
+              "type": 0,
+              "longName": "fontana - ungheria",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T31",
+              "name": "31",
+              "type": 0,
+              "longName": "bicocca m5- cinisello b.",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "T33",
+              "name": "33",
+              "type": 0,
+              "longName": "lagosta - rimembranze di lambrate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B34",
+              "name": "34",
+              "type": 3,
+              "longName": "toffetti - q.re fatima",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B35",
+              "name": "35",
+              "type": 3,
+              "longName": "molino dorino m1 - comasina m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B38",
+              "name": "38",
+              "type": 3,
+              "longName": "corelli - susa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B39",
+              "name": "39",
+              "type": 3,
+              "longName": "loreto - pitteri",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B40",
+              "name": "40",
+              "type": 3,
+              "longName": "parco nord - bonola m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B41",
+              "name": "41",
+              "type": 3,
+              "longName": "niguarda - q.re bovisasca",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B42",
+              "name": "42",
+              "type": 3,
+              "longName": "q.re bicocca - stz centrale m2 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B43",
+              "name": "43",
+              "type": 3,
+              "longName": "firenze - greco",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B44",
+              "name": "44",
+              "type": 3,
+              "longName": "turro - c.na gobba",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B45",
+              "name": "45",
+              "type": 3,
+              "longName": "stz lambrate m2 - san donato m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B46",
+              "name": "46",
+              "type": 3,
+              "longName": "famagosta m2 - cantalupa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B47",
+              "name": "47",
+              "type": 3,
+              "longName": "bisceglie m1 - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B48",
+              "name": "48",
+              "type": 3,
+              "longName": "palazzolo - lotto m1 - m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B49",
+              "name": "49",
+              "type": 3,
+              "longName": "lotto m1 m5 - tirana",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B50",
+              "name": "50",
+              "type": 3,
+              "longName": "cairoli m1 lorenteggio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B51",
+              "name": "51",
+              "type": 3,
+              "longName": "zara m3 m5 - cimiano m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B52",
+              "name": "52",
+              "type": 3,
+              "longName": "bruzzano f.n. - bicocca (universita')",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B53",
+              "name": "53",
+              "type": 3,
+              "longName": "lambrate fs m2 - q.re adriano - sesto marelli m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B54",
+              "name": "54",
+              "type": 3,
+              "longName": "dateo m4 - stz lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B55",
+              "name": "55",
+              "type": 3,
+              "longName": "cim. lambrate - loreto",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B56",
+              "name": "56",
+              "type": 3,
+              "longName": "q.re adriano - loreto",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B57",
+              "name": "57",
+              "type": 3,
+              "longName": "q.to oggiaro - cairoli",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B58",
+              "name": "58",
+              "type": 3,
+              "longName": "58/ bisceglie m1 - noale",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B59",
+              "name": "59",
+              "type": 3,
+              "longName": "famagosta m2 - lodovica",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B60",
+              "name": "60",
+              "type": 3,
+              "longName": "duomo m1 m3 - zara m3 m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B61",
+              "name": "61",
+              "type": 3,
+              "longName": "duomo - murani",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B62",
+              "name": "62",
+              "type": 3,
+              "longName": "sire raul - lodi",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B63",
+              "name": "63",
+              "type": 3,
+              "longName": "de angeli m1 - muggiano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B64",
+              "name": "64",
+              "type": 3,
+              "longName": "bonola m1 - lorenteggio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B65",
+              "name": "65",
+              "type": 3,
+              "longName": "p.ta romana - abbiategrasso m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B66",
+              "name": "66",
+              "type": 3,
+              "longName": "cadore - peschiera b",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B67",
+              "name": "67",
+              "type": 3,
+              "longName": "scanini - baracca",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B68",
+              "name": "68",
+              "type": 3,
+              "longName": "bonola m1 - bergognone (lav. stuparich)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B69",
+              "name": "69",
+              "type": 3,
+              "longName": "firenze - molino dorino (ramo gallaratese)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B70",
+              "name": "70",
+              "type": 3,
+              "longName": "ceresio - cim . bruzzano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B71",
+              "name": "71",
+              "type": 3,
+              "longName": "famagosta m2 - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B74",
+              "name": "74",
+              "type": 3,
+              "longName": "famagosta m2 - cantore",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B76",
+              "name": "76",
+              "type": 3,
+              "longName": "bisceglie m1 - madonna della provvidenza",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B77",
+              "name": "77",
+              "type": 3,
+              "longName": "s. donato m3 - poasco",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B78",
+              "name": "78",
+              "type": 3,
+              "longName": "bisceglie m1 - govone",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B79",
+              "name": "79",
+              "type": 3,
+              "longName": "gratosoglio - lodovica (transita in c.na basmetto)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B80",
+              "name": "80",
+              "type": 3,
+              "longName": "de angeli m1 - molino dorino m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B81",
+              "name": "81",
+              "type": 3,
+              "longName": "sesto marelli - stz. lambrate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B82",
+              "name": "82",
+              "type": 3,
+              "longName": "q.re bovisasca - zara m3 m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B83",
+              "name": "83",
+              "type": 3,
+              "longName": "comasina m3 - c granda",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B84",
+              "name": "84",
+              "type": 3,
+              "longName": "martini - p.ta volta",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B85",
+              "name": "85",
+              "type": 3,
+              "longName": "bolivar m4 - cadorna fn m1 m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B86",
+              "name": "86",
+              "type": 3,
+              "longName": "f. testi - crescenzago m2 (lavori)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B87",
+              "name": "87",
+              "type": 3,
+              "longName": "stz centrale - villa san giovanni m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B88",
+              "name": "88",
+              "type": 3,
+              "longName": "aviazione - rogoredo fs m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B89",
+              "name": "89",
+              "type": 3,
+              "longName": "novate milanese - ciccotti",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B90",
+              "name": "90",
+              "type": 3,
+              "longName": "lodi m3 - lotto (circolare destra)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B91",
+              "name": "91",
+              "type": 3,
+              "longName": "lotto - lodi m3 (circolare sinistra)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B92",
+              "name": "92",
+              "type": 3,
+              "longName": "vare' - lodi m3 (limita causa mercato la domenica)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B93",
+              "name": "93",
+              "type": 3,
+              "longName": "omero - bottini",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B95",
+              "name": "95",
+              "type": 3,
+              "longName": "rogoredo fs m3 - s. cristoforo m4",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B96",
+              "name": "96",
+              "type": 3,
+              "longName": "cadorna fn m1 m2 - sforza (lavori con 97 soppressa)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B98",
+              "name": "98",
+              "type": 3,
+              "longName": "famagosta m2 - lotto m1 m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B99",
+              "name": "99",
+              "type": 3,
+              "longName": "noverasco - vigentino",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B121",
+              "name": "121",
+              "type": 3,
+              "longName": "stz s.donato m3 - s.giuliano m (stz f.s.)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B130",
+              "name": "130",
+              "type": 3,
+              "longName": "s.donato m3 - s.giuliano m.se",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B132",
+              "name": "132",
+              "type": 3,
+              "longName": "s. donato m3 (marignano) - s. donato ( di vittorio)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B140",
+              "name": "140",
+              "type": 3,
+              "longName": "cefalonia - rogoredo",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B161",
+              "name": "161",
+              "type": 3,
+              "longName": "parco nord - ca' granda ( coll. sost. linea 4)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B165",
+              "name": "165",
+              "type": 3,
+              "longName": "comasina m3 - limbiate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B166",
+              "name": "166",
+              "type": 3,
+              "longName": "parco nord - desio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B169",
+              "name": "169",
+              "type": 3,
+              "longName": "m.te velino - cadore (coll 16)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B171",
+              "name": "171",
+              "type": 3,
+              "longName": "interno cim. maggiore (campo 1 campo 92)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B172",
+              "name": "172",
+              "type": 3,
+              "longName": "martiri della deportazione - bicocca",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B174",
+              "name": "174",
+              "type": 3,
+              "longName": "loreto - cim. greco - turro",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B175",
+              "name": "175",
+              "type": 3,
+              "longName": "p.te lambro - cim. lambrate",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B176",
+              "name": "176",
+              "type": 3,
+              "longName": "campo 12 - ingresso",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B321",
+              "name": "321",
+              "type": 3,
+              "longName": "bisceglie m1 - assago forum m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B322",
+              "name": "322",
+              "type": 3,
+              "longName": "c.boscone (gramsci) - milano (bisceglie)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B323",
+              "name": "323",
+              "type": 3,
+              "longName": "cesano boscone fs - milano (bisceglie m1)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B324",
+              "name": "324",
+              "type": 3,
+              "longName": "corsico (p.za europa) - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B325",
+              "name": "325",
+              "type": 3,
+              "longName": "buccinasco (via lario) - romolo m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B326",
+              "name": "326",
+              "type": 3,
+              "longName": "stz san cristoforo fs m4 - cesano boscone",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B327",
+              "name": "327",
+              "type": 3,
+              "longName": "milano (bisceglie m1) - trezzano s.n. (morona)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B351",
+              "name": "351",
+              "type": 3,
+              "longName": "buccinasco (via emilia) - p.le negrelli",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B352",
+              "name": "352",
+              "type": 3,
+              "longName": "buccinasco - assago forum m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B353",
+              "name": "353",
+              "type": 3,
+              "longName": "assago (via del sole) - assago (via bazzana)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B700",
+              "name": "700",
+              "type": 3,
+              "longName": "sesto 1 maggio - sesto cimitero",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B701",
+              "name": "701",
+              "type": 3,
+              "longName": "cologno sud m2 - sesto s. g. (4 novembre)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B702",
+              "name": "702",
+              "type": 3,
+              "longName": "cologno nord m2 - cinisello sant' eusebio",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B705",
+              "name": "705",
+              "type": 3,
+              "longName": "comasina m3 - cormano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B707",
+              "name": "707",
+              "type": 3,
+              "longName": "cologno ( via giordano) - cologno nord m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B708",
+              "name": "708",
+              "type": 3,
+              "longName": "sesto rond m1 - niguarda ( parco nord )",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B709",
+              "name": "709",
+              "type": 3,
+              "longName": "cologno ( don minzoni ) - cologno sud m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B712",
+              "name": "712",
+              "type": 3,
+              "longName": "sesto f.s. - cinisello ( musu )",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B713",
+              "name": "713",
+              "type": 3,
+              "longName": "milano bignami m5 - sesto rimembranze",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B727",
+              "name": "727",
+              "type": 3,
+              "longName": "sesto s.g.(1 maggio) - stz cormano fn",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B728",
+              "name": "728",
+              "type": 3,
+              "longName": "cusano m. (unione) - bignami m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B729",
+              "name": "729",
+              "type": 3,
+              "longName": "sesto s.g. - comasina m3 (lav. marconi)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B783",
+              "name": "783",
+              "type": 3,
+              "longName": "bresso don minzoni - milano bicocca m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B901",
+              "name": "901",
+              "type": 3,
+              "longName": "san donato m3 - aeroporto di linate (trans. peschiera b.)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B902",
+              "name": "902",
+              "type": 3,
+              "longName": "s. donato m3 (marignano) - peschiera b.",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B903",
+              "name": "903",
+              "type": 3,
+              "longName": "san donato - linate (festivo)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B922",
+              "name": "922",
+              "type": 3,
+              "longName": "(scolastica) di vittorio - san rocco",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B923",
+              "name": "923",
+              "type": 3,
+              "longName": "h.s.raffaele - aeroporto linate (trans. cimitero)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B924",
+              "name": "924",
+              "type": 3,
+              "longName": "milano (bottini) - segrate (s.ambrogio)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B925",
+              "name": "925",
+              "type": 3,
+              "longName": "milano (cascina gobba m2) - milano (udine)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B926",
+              "name": "926",
+              "type": 3,
+              "longName": "peschiera (san felicino) - segrate fs",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B928",
+              "name": "928",
+              "type": 3,
+              "longName": "milano (cascina gobba m2) - segrate (abruzzi)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B973",
+              "name": "973",
+              "type": 3,
+              "longName": "p.za cinque giornate - peschiera b.",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BNM1",
+              "name": "NM1",
+              "type": 3,
+              "longName": "molino dorino m1 - sesto fs",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BNM2",
+              "name": "NM2",
+              "type": 3,
+              "longName": "cascina gobba - abbiategrasso",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BNM3",
+              "name": "NM3",
+              "type": 3,
+              "longName": "comasina m3 - san donato m3 (chiusura p.za velasca)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B154",
+              "name": "NM4",
+              "type": 3,
+              "longName": "lorenteggio  - linate aeroporto m4 (lavori correnti)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN15",
+              "name": "N15",
+              "type": 3,
+              "longName": "gratosoglio - p.za diaz (chiusura p.za velasca)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN24",
+              "name": "N24",
+              "type": 3,
+              "longName": "duomo - vigentino (chiusura p.za velasca)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN25",
+              "name": "N25",
+              "type": 3,
+              "longName": "centrale fs m2 m3 - cadorna fn m1 m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN26",
+              "name": "N26",
+              "type": 3,
+              "longName": "cadorna fn m1 m2 - centrale fs m2 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BN27",
+              "name": "N27",
+              "type": 3,
+              "longName": "ungheria - duomo m1 m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ34",
+              "name": "BdQ34",
+              "type": 3,
+              "longName": "noverasco - brenta m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ35",
+              "name": "BdQ35",
+              "type": 3,
+              "longName": "bruzzano fn - affori fn m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ39",
+              "name": "BdQ39",
+              "type": 3,
+              "longName": "rubattino - stz lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ44",
+              "name": "BdQ44",
+              "type": 3,
+              "longName": "gorla m1 - c.na gobba m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ45",
+              "name": "BdQ45",
+              "type": 3,
+              "longName": "l.go rodari - san donato m3",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ46",
+              "name": "BdQ46",
+              "type": 3,
+              "longName": "famagosta m2 - cantalupa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ52",
+              "name": "BdQ52",
+              "type": 3,
+              "longName": "niguarda (parco nord) - bicocca m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ55",
+              "name": "BdQ55",
+              "type": 3,
+              "longName": "loreto - stz lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ68",
+              "name": "BdQ68",
+              "type": 3,
+              "longName": "uruguay -molino dorino m1 (appennini)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ75",
+              "name": "BdQ75",
+              "type": 3,
+              "longName": "rizzoli - lambrate m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ76",
+              "name": "BdQ76",
+              "type": 3,
+              "longName": "bisceglie m1 - madonna della provvidenza",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ78",
+              "name": "BdQ78",
+              "type": 3,
+              "longName": "govone - s.siro stadio m5",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ79",
+              "name": "BdQ79",
+              "type": 3,
+              "longName": "gratosoglio - abbiategrasso m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ86",
+              "name": "BdQ86",
+              "type": 3,
+              "longName": "testi s. monica-c.na gobba",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "BQ88",
+              "name": "BdQ88",
+              "type": 3,
+              "longName": "rogoredo m3 - ungheria",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B201",
+              "name": "201",
+              "type": 3,
+              "longName": "rozzano (milano) - rozzano (alberelle)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B220",
+              "name": "220",
+              "type": 3,
+              "longName": "rozzano - pieve",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B222",
+              "name": "222",
+              "type": 3,
+              "longName": "pieve e. (staz fs) - milano (ripamonti)                                            ",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B230",
+              "name": "230",
+              "type": 3,
+              "longName": "basiglio - abbiategrasso m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B328",
+              "name": "328",
+              "type": 3,
+              "longName": "rozzano - assago m2",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B423",
+              "name": "423",
+              "type": 3,
+              "longName": "milano (san siro m5) - settimo m. (della libertÃ )                               ",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B424",
+              "name": "424",
+              "type": 3,
+              "longName": "bareggio (gallina) - molino dorino m1                                           ",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B431",
+              "name": "431",
+              "type": 3,
+              "longName": "bareggio - rho fs",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B433",
+              "name": "433",
+              "type": 3,
+              "longName": "bisceglie m1 - cornaredo (artigianato)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B528",
+              "name": "528",
+              "type": 3,
+              "longName": "cim. maggiore - molino dorino m1",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B542",
+              "name": "542",
+              "type": 3,
+              "longName": "rho fiera - casa di reclusione",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B560",
+              "name": "560",
+              "type": 3,
+              "longName": "arese (alfa romeo porta est)- milano (m1 qt8)",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B561",
+              "name": "561",
+              "type": 3,
+              "longName": "rho fiera m1 - arese",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B566",
+              "name": "566",
+              "type": 3,
+              "longName": "paderno dugnano - milano",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "B965",
+              "name": "965",
+              "type": 3,
+              "longName": "milano - pioltello (lavori)",
+              "operator": "ATM_MILANO"
+            }
+          ],
+          "source": "https://dati.comune.milano.it/gtfs.zip",
+          "status": "CURRENT_CATALOG",
+          "category": "BUS",
+          "coverage": "PUBLISHED_CATALOG_ONLY",
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-06T07:52:48.066Z",
+          "contentHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "publishedSchedule": {
+            "validTo": "2026-10-19",
+            "validFrom": "2026-09-14",
+            "modeValidTo": {
+              "BUS": "2026-10-02",
+              "SUBWAY": "2026-10-15"
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Current published operator route membership only; service calendar and actual operation require separate evidence.",
+        "confidence": "HIGH"
+      },
+      "potentialLines": [
+        {
+          "mode": "BUS",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "B90"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "90",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "lodi m3 - lotto (circolare destra)"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "BUS",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "B91"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "91",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "lotto - lodi m3 (circolare sinistra)"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "actualOperationConfirmed": false
+        }
+      ],
+      "potentialLineCount": 161,
+      "scheduleStatus": "OUT_OF_VALIDITY"
+    },
+    {
+      "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+      "category": "SUBWAY",
+      "membership": {
+        "url": "https://dati.comune.milano.it/gtfs.zip",
+        "value": {
+          "city": "MILANO",
+          "date": "2026-10-09",
+          "feedId": "GTFS_MILANO",
+          "routes": [
+            {
+              "id": "M4",
+              "name": "4",
+              "type": 1,
+              "longName": "m4 - linea blu",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M3",
+              "name": "3",
+              "type": 1,
+              "longName": "m3 - linea gialla",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M1",
+              "name": "1",
+              "type": 1,
+              "longName": "m1 - linea rossa",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M2",
+              "name": "2",
+              "type": 1,
+              "longName": "m2 - linea verde",
+              "operator": "ATM_MILANO"
+            },
+            {
+              "id": "M5",
+              "name": "5",
+              "type": 1,
+              "longName": "m5 - linea lilla",
+              "operator": "ATM_MILANO"
+            }
+          ],
+          "source": "https://dati.comune.milano.it/gtfs.zip",
+          "status": "CURRENT_CATALOG",
+          "category": "SUBWAY",
+          "coverage": "PUBLISHED_CATALOG_ONLY",
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-06T07:52:48.066Z",
+          "contentHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "publishedSchedule": {
+            "validTo": "2026-10-19",
+            "validFrom": "2026-09-14",
+            "modeValidTo": {
+              "BUS": "2026-10-02",
+              "SUBWAY": "2026-10-15"
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Current published operator route membership only; service calendar and actual operation require separate evidence.",
+        "confidence": "HIGH"
+      },
+      "potentialLines": [
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M1"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M1",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m1 - linea rossa"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:55",
+              "seconds": 89730,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:20",
+              "seconds": 87600,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M2"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M2",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m2 - linea verde"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "01:30",
+              "seconds": 91800,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:32",
+              "seconds": 88320,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M3"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M3",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m3 - linea gialla"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:53",
+              "seconds": 89580,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:23",
+              "seconds": 87810,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M4"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M4",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m4 - linea blu"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:53",
+              "seconds": 89603,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:26",
+              "seconds": 87960,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        },
+        {
+          "mode": "SUBWAY",
+          "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+          "routeIds": [
+            "M5"
+          ],
+          "confidence": "HIGH",
+          "operatorId": "ATM_MILANO",
+          "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+          "displayName": "M5",
+          "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "catalogFeedId": "GTFS_MILANO",
+          "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+          "routeLongNames": [
+            "m5 - linea lilla"
+          ],
+          "catalogCheckedAt": "2026-10-06T07:52:48.066Z",
+          "scheduledReference": {
+            "kind": "SCHEDULED_REFERENCE",
+            "source": "https://dati.comune.milano.it/gtfs.zip",
+            "checkedAt": "2026-10-06T07:52:44.083Z",
+            "lastArrival": {
+              "clock": "00:28",
+              "seconds": 88084,
+              "dayOffset": 1
+            },
+            "lastDeparture": {
+              "clock": "00:01",
+              "seconds": 86460,
+              "dayOffset": 1
+            },
+            "firstDeparture": {
+              "clock": "05:40",
+              "seconds": 20400,
+              "dayOffset": 0
+            }
+          },
+          "actualOperationConfirmed": false
+        }
+      ],
+      "potentialLineCount": 5,
+      "scheduleStatus": "COMPLETE"
+    }
+  ],
+  "rows": [
+    {
+      "id": "22cb03cd-9ee3-46a9-8c06-96d750db9989",
+      "date": "2026-10-08",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "b48f3571-53dc-42e9-9b05-846b13819801",
+      "date": "2026-10-08",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "1af36117-2a5f-49dc-aca5-a0346233b902",
+      "date": "2026-10-08",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "bde68652-299f-4e6e-9d3a-2c771b98b059",
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "PARTIAL",
+      "potentialLineCount": 161
+    },
+    {
+      "id": "edc65463-aa23-41fe-bf56-74b568c5fbb0",
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "PARTIAL",
+      "potentialLineCount": 5
+    },
+    {
+      "id": "5f0cc431-b99e-412c-ac04-a14844d81ebb",
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "PARTIAL",
+      "potentialLineCount": 161
+    },
+    {
+      "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "PARTIAL",
+      "potentialLineCount": 5
+    },
+    {
+      "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+      "date": "2026-10-10",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "RESOLVED",
+      "potentialLineCount": 2
+    },
+    {
+      "id": "85cd2036-95c8-493c-9a82-48cc856af206",
+      "date": "2026-10-12",
+      "region": "BARI",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "7f510256-420c-4365-9630-6efe09a73f7d",
+      "date": "2026-10-12",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "6b81a4a2-a9f4-4683-b4bf-f7e4ee80d6cd",
+      "date": "2026-10-12",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "72c708db-5c9a-4722-88cc-951ba6c8a83b",
+      "date": "2026-10-12",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "4359d3ff-be46-4f65-9b3e-49804c9e84cb",
+      "date": "2026-10-13",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "aebb9b48-442c-4dcf-9359-ae32692af0d2",
+      "date": "2026-10-13",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "54dcb0c9-d34c-487f-ad6b-7a9427f7548f",
+      "date": "2026-10-13",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "3b056a2c-392e-49fd-8c4e-6ac021c84d87",
+      "date": "2026-10-14",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "status": "UNCERTAIN",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "fd88c237-1c29-49ee-a89b-5ec6762ba014",
+      "date": "2026-10-14",
+      "region": "FIRENZE",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "d13441c1-45c7-4ade-8672-7ce0fd539100",
+      "date": "2026-10-14",
+      "region": "PISA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "cbce5237-b04d-4611-a6da-ebd47c28c9b5",
+      "date": "2026-10-14",
+      "region": "PISA",
+      "category": "BUS",
+      "status": "UNCERTAIN",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "d6e75359-2c40-4dcd-b57d-652016fde9fc",
+      "date": "2026-10-15",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "3ea595cd-7f2c-42ac-ada7-63e636e6cf4a",
+      "date": "2026-10-16",
+      "region": "BERGAMO",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_CONFIGURED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "c31349db-90fe-4c02-9071-1ca4ae0d1aea",
+      "date": "2026-10-16",
+      "region": "FIRENZE",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "2c933134-acb8-4c9b-8ff8-fb92fd3aa377",
+      "date": "2026-10-16",
+      "region": "NAPOLI",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "aebcb913-1e90-4e40-b62a-b2008a886de1",
+      "date": "2026-10-16",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "57209d4a-9e0a-4b14-b5a4-662eedb09b68",
+      "date": "2026-10-16",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "d5abcc67-3665-4d92-8e71-fc67e8f306c7",
+      "date": "2026-10-16",
+      "region": "PISA",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "b960e728-4bf6-4a0c-bd73-f1cf83ea8f3f",
+      "date": "2026-10-20",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "8148105e-f4a0-410b-bed9-af0878a70c27",
+      "date": "2026-10-28",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "CURRENT_CATALOG",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "b8bb2f09-8e85-403d-b40c-d9f9e7bd1569",
+      "date": "2026-10-29",
+      "region": "BOLOGNA",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "76fa9aa0-66f6-4f2c-bcd1-9913f316d059",
+      "date": "2026-11-06",
+      "region": "BARI",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "ee481683-e21f-4954-ba6b-881d1584924d",
+      "date": "2026-11-21",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "ffaabbfd-b5f1-4f1a-bcad-d69667d0d6fc",
+      "date": "2026-11-22",
+      "region": "MILANO",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "3d264a22-79bb-4117-a712-51a3b8a90483",
+      "date": "2026-11-22",
+      "region": "VENEZIA",
+      "category": "AIRPORT",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "43510dd3-15aa-4ae6-b74d-d0d067f2aa52",
+      "date": "2026-12-03",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "192358c8-69e0-4ceb-8a49-7e06ceece0a6",
+      "date": "2026-12-04",
+      "region": "NATIONAL",
+      "category": "BUS",
+      "status": "UNCERTAIN",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "f6e8500c-0c27-487a-82b4-b50e8e785550",
+      "date": "2026-12-04",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "60b6780f-c45c-4611-811d-7434dae98c4b",
+      "date": "2026-12-04",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "status": "UNCERTAIN",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_APPLICABLE",
+      "potentialStatus": "NOT_APPLICABLE",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "6c8ff135-8809-47ea-9105-dd4bc31b491f",
+      "date": "2026-12-16",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    },
+    {
+      "id": "0578cf0a-b5fc-4140-9417-8c347a8a36bd",
+      "date": "2026-12-16",
+      "region": "NAPOLI",
+      "category": "SUBWAY",
+      "status": "CONFIRMED",
+      "lastSeen": "2026-10-06T07:51:07.790675+00:00",
+      "membershipStatus": "NOT_CONFIGURED",
+      "potentialStatus": "SCOPE_UNCONFIRMED",
+      "potentialLineCount": 0
+    }
+  ]
+}

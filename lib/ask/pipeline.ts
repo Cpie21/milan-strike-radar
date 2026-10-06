@@ -1,3 +1,4 @@
+import { AiBudgetError } from '../aiBudget';
 import { cityPath, resolveCity } from '../cities';
 import { addDaysIso } from '../romeDate';
 import { readCityStrikes, romeToday, serverDatabase } from '../strikeQuery';
@@ -87,7 +88,7 @@ export type DaySummary = { date: string; path: string; items: { category: Mode; 
 export type AskResult =
   | { kind: 'clarify'; missing: 'date' | 'mode'; understanding: Understanding }
   | { kind: 'navigate'; understanding: Understanding; path: string; date: string }
-  | { kind: 'out_of_scope'; understanding: Understanding; place?: string }
+  | { kind: 'out_of_scope'; understanding: Understanding; place?: string; coverage?: { from: string; to: string; reason: 'DATE_OUTSIDE_SYNC_RANGE' } }
   | {
       kind: 'result';
       view: 'trip' | 'day' | 'period' | 'claim';
@@ -315,6 +316,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
     understood = await decide({ query, today, page_city: resolveCity(pageCity)?.en }, UNDERSTAND_QUESTIONS);
     cost += understood.cost;
   } catch (error) {
+    if (error instanceof AiBudgetError) throw error;
     console.error('[ask] understanding fallback:', error instanceof Error ? error.message : error);
   }
   const intentAnswer = choice(understood, 'intent');
@@ -393,9 +395,14 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
     understanding.scope = parsed.scope;
   }
   if (view === 'trip' && !modeSet.size) return { kind: 'clarify', missing: 'mode', understanding };
-  if (view === 'day' && !modeSet.size && parsed.scope.kind === 'day') {
-    return { kind: 'navigate', understanding, path: cityPath(city), date: parsed.scope.date };
-  }
+
+  // Do not call an empty database result 'clear' outside the sync horizon.
+  const coverage = { from: today, to: addDaysIso(today, 90), reason: 'DATE_OUTSIDE_SYNC_RANGE' as const };
+  const requestedFrom = parsed.scope.kind === 'day' ? parsed.scope.date : parsed.scope.from;
+  const requestedTo = parsed.scope.kind === 'day' ? parsed.scope.date : parsed.scope.to;
+  if (requestedFrom < coverage.from || requestedTo > coverage.to) return { kind: 'out_of_scope', understanding, coverage };
+
+  if (view === 'day' && !modeSet.size && parsed.scope.kind === 'day') return { kind: 'navigate', understanding, path: cityPath(city), date: parsed.scope.date };
 
   // 3. Retrieval: deterministic date and city filtering in the database.
   started = Date.now();
@@ -450,6 +457,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   started = Date.now();
   const judgedPool = pool.slice(0, MAX_JUDGED);
   let jevFailures = 0;
+  let denied: AiBudgetError | null = null;
   const judged: Judged[] = await Promise.all(judgedPool.map(async candidate => {
     const overlap = computeOverlap(parsed.time, candidate.windows, candidate.guarantees, understanding.span);
     const impact = candidate.indirect && candidate.status !== 'CANCELLED' ? 'unknown' : computeImpact(candidate.status, candidate.windows, overlap);
@@ -487,6 +495,7 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
       }, judgeQuestions(view === 'claim'));
       cost += result.cost;
     } catch (error) {
+      if (error instanceof AiBudgetError) denied = error;
       jevFailures += 1;
       console.error('[ask] judgement fallback:', error instanceof Error ? error.message : error);
     }
@@ -500,6 +509,8 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
       impact,
     };
   }));
+  // Wait for every attempted decision to settle before returning a budget error.
+  if (denied) throw denied;
   emit({
     type: 'stage', id: 'judge', ms: Date.now() - started,
     note: jevFailures ? 'jev_unavailable' : undefined,
@@ -534,4 +545,3 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
   });
   return { kind: 'result', view, understanding, level, matches, excluded, days: [], range: { from, to }, checked: { cities: cityTags, modes: [...wanted] }, lastSync, cost, unchecked };
 }
-

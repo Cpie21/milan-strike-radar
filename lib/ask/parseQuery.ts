@@ -1,5 +1,5 @@
 import { CITIES } from '../cities';
-import { addDaysIso, romeTodayIso, weekdayOfIso } from '../romeDate';
+import { addDaysIso, isIsoDate, romeTodayIso, weekdayOfIso } from '../romeDate';
 
 // Deterministic extraction. Dates, clock times, cities and line codes are
 // facts the code can read exactly; a decision model treats dates as text and
@@ -62,7 +62,7 @@ export function weekEnd(today: string) {
 export function parseScope(text: string, today = romeTodayIso()): DateScope | null {
   const t = text.toLowerCase();
   // A real calendar date only: 31/02 or 2026-13-40 is no date at all.
-  const real = (date: string) => /^\d{4}-\d{2}-\d{2}$/.test(date) && new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) === date;
+  const real = isIsoDate;
   const day = (date: string | null, match: string): DateScope | null => (date && real(date) ? { kind: 'day', date, text: match } : null);
 
   let m: RegExpMatchArray | null;
