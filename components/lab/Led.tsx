@@ -312,7 +312,11 @@ export function LedBoard({ mood = 'idle', pitch = 4.4, nudge, attend = false }: 
       eyes.show(false);
       for (const d of [0.06, 0.18, 0.34, 0.16, 0.05]) { show(noise(width.current, d), 0, 'cut'); await wait(70); }
       show([], 0, 'cut'); await wait(140);
-      for (let x = 0; x < width.current; x += 2) { show([0x1ff, 0x1ff], x, 'fade'); await wait(14); }
+      // The sweep is a band six columns wide moving two at a time, so each
+      // column stays lit across a few frames: a two-column band skipped
+      // columns whenever two steps fell in one frame (dark "pillars").
+      const BAND = Array(6).fill(0x1ff);
+      for (let x = 0; x < width.current + 4; x += 2) { show(BAND, x - 4, 'fade'); await wait(14); }
       show([], 0, 'fade'); await wait(220);
       eyes.show(true); eyes.look(-0.8, 0, 500); await wait(600);
       eyes.look(0.8, -0.2, 500); await wait(600);

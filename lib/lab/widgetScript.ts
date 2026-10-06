@@ -70,6 +70,13 @@ const COL = {
 };
 const c = (hex, a) => new Color(hex, a === undefined ? 1 : a);
 const family = config.widgetFamily || "medium";
+// Widget sizes follow the phone (Apple's widget metrics, in points): a Pro
+// Max / Plus medium widget is 364×170, a 6.1" one 338×158, a mini 329×155.
+// Everything drawn to width uses the real content width, CW.
+const SW = Device.screenSize().width;
+const WSZ = SW >= 428 ? [170, 364, 170] : SW >= 414 ? [169, 360, 169] : SW >= 390 ? [158, 338, 158] : [155, 329, 155];
+const CW = family === "small" ? WSZ[0] - 28 : WSZ[1] - 30;
+const DOT = Math.round(30 * WSZ[2] / 158);
 const ORDER = { SUBWAY: 0, BUS: 1, TRAIN: 2, AIRPORT: 3 };
 
 // ── The face: the page's amber dot matrix ──
@@ -255,7 +262,7 @@ function week(parent, byDate, from, n, today) {
     const col = row.addStack(); col.layoutVertically(); col.centerAlignContent();
     const wd = col.addText(T.weekday[dow(d)]); wd.font = Font.mediumSystemFont(10); wd.textColor = c(d === today ? COL.text2 : COL.text3);
     col.addSpacer(5);
-    const dot = col.addStack(); dot.size = new Size(30, 30); dot.cornerRadius = 15; dot.centerAlignContent();
+    const dot = col.addStack(); dot.size = new Size(DOT, DOT); dot.cornerRadius = DOT / 2; dot.centerAlignContent();
     const modes = [...new Set(items.map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
     dot.backgroundColor = modes.length ? c(COL.mode[modes[0]]) : c(COL.surface);
     if (d === today) { dot.borderWidth = 1.5; dot.borderColor = c("#FFFFFF", 0.85); }
@@ -292,6 +299,9 @@ try {
   const modesToday = [...new Set(todays.map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
   const dense = !small && modesToday.length >= 3;
 
+  // The content sits as one block, centred top to bottom: on a taller
+  // widget (Pro Max, Plus) the extra height is even margins, not a hole.
+  widget.addSpacer();
   // Top band: the assistant's face and what it is saying. Bottom: the
   // picture of the day, the full width of the widget.
   const top = widget.addStack(); top.layoutHorizontally(); top.centerAlignContent();
@@ -310,7 +320,7 @@ try {
   if (!strike) {
     eyebrow(CITY + " · " + T.week[dow(today)]);
     label(say, T.calm, small ? 18 : 20, COL.text, "bold");
-    if (!small) widget.addSpacer();
+    widget.addSpacer(small ? 6 : 12);
     const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
     if (nextDate) {
       const t = new Date(nextDate + "T12:00:00Z");
@@ -330,8 +340,8 @@ try {
     say.addSpacer(4);
     const wins = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end));
     const hl = label(say, wins.join(wins.length === 2 ? "\\n" : "  ") || T.pending, 16, COL.text, "bold"); hl.lineLimit = 2;
-    widget.addSpacer();
-    const tr = widget.addImage(track(g.items, color, now, 130, true)); tr.imageSize = new Size(130, 20);
+    widget.addSpacer(8);
+    const tr = widget.addImage(track(g.items, color, now, CW, true)); tr.imageSize = new Size(CW, 20);
   } else if (dense) {
     // three or four modes, each on its own, two to a line
     eyebrow(CITY);
@@ -343,7 +353,7 @@ try {
       const row = widget.addStack(); row.layoutHorizontally(); row.centerAlignContent();
       each.slice(r, r + 2).forEach((g, k) => {
         if (k) row.addSpacer(14);
-        const cell = row.addStack(); cell.layoutHorizontally(); cell.centerAlignContent(); cell.size = new Size(147, 16);
+        const cell = row.addStack(); cell.layoutHorizontally(); cell.centerAlignContent(); cell.size = new Size((CW - 14) / 2, 16);
         badge(cell, g.modes[0], 15); cell.addSpacer(5);
         label(cell, T.modes[g.modes[0]], 12, COL.text2, "semibold");
         cell.addSpacer();
@@ -353,14 +363,13 @@ try {
       if (each.length - r === 1) row.addSpacer();
     }
     widget.addSpacer(7);
-    const ln = widget.addImage(lanes(each, now, 308, 5, 4)); ln.imageSize = new Size(308, lanesHeight(each.length, 5, 4));
-    widget.addSpacer();
+    const ln = widget.addImage(lanes(each, now, CW, 5, 4)); ln.imageSize = new Size(CW, lanesHeight(each.length, 5, 4));
   } else {
     // one or two strikes: one line each, then the day on one axis
     const one = groups.length === 1;
     eyebrow(CITY);
     label(say, one ? oneText(groups[0].modes.map(m => T.modes[m]).join(T.and)) : manyText(groups.length), 19, COL.text, "bold");
-    if (one) widget.addSpacer(); else widget.addSpacer(10);
+    widget.addSpacer(one ? 12 : 10);
     const shown = family === "large" ? groups : groups.slice(0, 2);
     shown.forEach((g, i) => {
       if (i) widget.addSpacer(3);
@@ -376,8 +385,7 @@ try {
     });
     widget.addSpacer(one ? 9 : 7);
     const [lane, gap] = one ? [10, 0] : [7, 6];
-    const ln = widget.addImage(lanes(shown, now, 308, lane, gap)); ln.imageSize = new Size(308, lanesHeight(shown.length, lane, gap));
-    widget.addSpacer();
+    const ln = widget.addImage(lanes(shown, now, CW, lane, gap)); ln.imageSize = new Size(CW, lanesHeight(shown.length, lane, gap));
   }
   if (family === "large") {
     // on a strike day the medium part has no week: show this one first
@@ -387,6 +395,7 @@ try {
     widget.addSpacer(4);
     week(widget, byDate, addDays(today, 7), 7, today);
   }
+  widget.addSpacer();
 } catch (e) {
   background(widget, null);
   const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();

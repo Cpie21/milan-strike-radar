@@ -17,10 +17,11 @@ export const metadata: Metadata = {
   description: "Italy Strike Query - Real-time strike information for Italy",
   appleWebApp: {
     capable: true,
-    // Not translucent: since iOS 26 the system lays a Liquid Glass blur over
-    // the top ~40pt of a home-screen app that draws under its status bar.
-    // With an opaque bar the page starts below it and nothing is blurred.
-    statusBarStyle: "black",
+    // No status-bar style at all: iOS then starts the page below an opaque
+    // status bar tinted from theme-color. Since iOS 26 a page that runs
+    // under the bar (black-translucent) gets ~110px of Liquid Glass blur
+    // over its top, while env(safe-area-inset-top) reports 0 there, so the
+    // page can't even make room for it.
     title: "罢工查询",
   },
   icons: {

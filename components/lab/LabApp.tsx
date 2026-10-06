@@ -63,9 +63,13 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   // app/layout.tsx), so the header row sits on a dark wash that fades down
   // into the glow: the top edge always matches the bar above it.
   const glowModes = jumpModes.slice(0, 2);
+  // One soft light in the first mode's colour, centred just under the top
+  // edge so it rises out of the dark bar; a second mode only tints one
+  // side faintly, so two colours never mix into a muddy middle.
   const glow = glowModes.length
-    ? glowModes.map((m, i, all) => `radial-gradient(${all.length > 1 ? '70%' : '110%'} 70% at ${all.length > 1 ? (i ? '85%' : '15%') : '50%'} -5%, ${MODE_COLOR[m].main}38, transparent 72%)`).join(', ')
-    : 'radial-gradient(110% 70% at 50% -5%, rgba(255,255,255,0.06), transparent 72%)';
+    ? [`radial-gradient(115% 62% at 50% 6%, ${MODE_COLOR[glowModes[0]].main}2E, transparent 72%)`,
+       ...(glowModes[1] ? [`radial-gradient(55% 40% at 88% 18%, ${MODE_COLOR[glowModes[1]].main}1C, transparent 75%)`] : [])].join(', ')
+    : 'radial-gradient(115% 62% at 50% 6%, rgba(255,255,255,0.05), transparent 72%)';
 
   useEffect(() => {
     const tick = () => setNow(romeMinutes());
@@ -154,8 +158,8 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           very edge, then an eased fade (a scrim: the alpha follows a curve,
           not a straight line, so it has no visible start or end) over the
           rest of the status bar and a little past it. */}
-      <div aria-hidden className="fixed inset-x-0 top-0 z-[30]" style={{ height: 'min(10px, env(safe-area-inset-top) * 100)', backgroundColor: C.bg }}>
-        <div className="absolute inset-x-0 top-full pointer-events-none" style={{ height: 'calc(env(safe-area-inset-top) + min(12px, env(safe-area-inset-top) * 100))', background: SCRIM }} />
+      <div aria-hidden className="fixed inset-x-0 top-0 z-[30]" style={{ height: 'env(safe-area-inset-top)', backgroundColor: C.bg }}>
+        <div className="absolute inset-x-0 top-full h-4 pointer-events-none" style={{ background: SCRIM }} />
       </div>
       <div>
         <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'max(14px, calc(env(safe-area-inset-top) + 14px))' }}>
