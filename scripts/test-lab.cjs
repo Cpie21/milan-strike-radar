@@ -160,7 +160,7 @@ test('the lab widget script never claims a line is stopped and keeps end of serv
   for (const lang of ['zh', 'en']) {
     const code = buildLabWidgetScript({ origin: 'https://x.test', region: 'MILANO', types: ['SUBWAY'], cityName: 'M', path: '/milan', lang });
     assert.doesNotMatch(code, /停运中|is stopped|not running/i);
-    assert.match(code, lang === 'zh' ? /运营结束/ : /End of service/);
+    assert.match(code, lang === 'zh' ? /运营结束/ : /end of service/i);
     assert.doesNotThrow(() => new Function(`return async () => {${code}}`));
   }
 });

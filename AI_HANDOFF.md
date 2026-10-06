@@ -248,3 +248,15 @@ Server contract needed:
   - The brush is 1.5 wall px, rendered at 3×.
   - A person paints once per strike: after `uploadDrawing` there is no second session.
   - Server-side checks for the stroke upload should use the new panel rectangles.
+
+### Lab v15 (Claude) — please review the budget change
+- **Why every Ask failed.** Since #9, Ask required `reserve_ai_budget` to return `true`, but that function was never created. Production returns PGRST202, so every Ask was `unavailable`.
+- **Fix in `lib/aiBudget.ts`, no schema change.**
+  - **When the RPC exists:** it is used exactly as #9 specifies.
+  - **When the RPC is missing (PGRST202 only):** the reservation is made on the existing `ai_monthly_budget` row for the current UTC month. This is the same $0.20 cap as semantic QA. It uses an atomic compare-and-set (`update … where charged_micro_usd = <read value>`, retried up to 6 times, service role only).
+  - **Over the cap, or `disabled`:** `BUDGET_EXHAUSTED`.
+  - **Any other error or contention:** `UNAVAILABLE`, never unmetered.
+  - **Settling:** returns the unspent reservation. Spending beyond the reservation is charged and sets `disabled`.
+- **Verified locally.** One Ask moved `charged_micro_usd` from 7566 to 7596 (its real cost).
+- **Codex.** If you prefer the RPCs, adding them makes the ledger path dormant; no code change is needed.
+- **Pixel vehicles.** Generated with the Codex CLI (`codex exec`) from `docs/design/pixel-brief`. They were downsampled to 240×140 with the magenta keyed out and placed in `public/lab/wall/`. The wall uses them automatically.

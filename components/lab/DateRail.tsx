@@ -88,12 +88,15 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
         const fromPrev = tile.joinPrev && before ? strikeModes(tile).find(m => strikeModes(before).includes(m)) ?? null : null;
         // Strong where you are, weak on the day it continues into.
         const focus = tile.date === selected || (bridge !== null && after?.date === selected) || (fromPrev !== null && before?.date === selected);
+        // Where the next day's joined badge sits, measured from this tile's left edge.
+        const nextRow = after ? 18 + (Math.min(3, strikeModes(after).length) - 1) * 14 : 18;
+        const reach = TILE_W + GAP + (after?.monthStart ? MONTH_SEP : 0) + TILE_W / 2 - nextRow / 2 + 9;
         return (
-          <div key={tile.date} data-month={tile.date} className="relative shrink-0 flex flex-col" style={{ width: TILE_W, marginLeft: tile.monthStart && i > 0 ? MONTH_SEP : 0 }}>
+          <div key={tile.date} data-month={tile.date} className="relative shrink-0 flex flex-col" style={{ width: TILE_W, marginLeft: tile.monthStart && i > 0 ? MONTH_SEP : 0, zIndex: bridge ? 2 : 1 }}>
             {/* A new month: its name in full strength, and a rule before it */}
             {tile.monthStart && i > 0 && <i aria-hidden className="absolute top-[3px] bottom-[2px] w-px" style={{ left: -(MONTH_SEP + GAP) / 2 - 0.5, background: C.lineStrong }} />}
             <span className="h-[18px] pl-1 text-[11.5px] whitespace-nowrap" style={{ color: tile.monthStart ? C.text2 : C.text3, fontWeight: tile.monthStart ? 650 : 500 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
-            <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} />
+            <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} reach={reach} nextRing={after?.date === selected ? '#FFFFFF' : C.surface} />
           </div>
         );
       })}
@@ -106,18 +109,19 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
 export const strikeModes = (tile: { cards: { category: Mode; status: string }[] }) =>
   [...new Set(tile.cards.filter(c => c.status !== 'CANCELLED').map(c => c.category))];
 
-function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromPrev = null, focus = false }: {
+function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromPrev = null, focus = false, reach = 0, nextRing = C.surface }: {
   tile: Extract<RailTile, { kind: 'day' }>; today: string; selected: boolean; lang: Lang; onSelect: (d: string) => void; past?: boolean;
-  bridge?: Mode | null; fromPrev?: Mode | null; focus?: boolean;
+  bridge?: Mode | null; fromPrev?: Mode | null; focus?: boolean; reach?: number; nextRing?: string;
 }) {
   const modes = strikeModes(tile);
   const isToday = tile.date === today;
   const ring = selected ? '#FFFFFF' : C.surface;
-  // An overnight strike: one capsule in the mode's tint holds the badge on
-  // either side and runs between them, as a multi-day event does in a
-  // calendar. The joined mode sits at the inner end of each badge row, so
-  // the capsule goes badge to badge; each day draws its half, meeting in the
-  // gap, the same weight on both sides.
+  // An overnight strike: one capsule holds the badge on either side and
+  // runs between them, as a multi-day event does in a calendar. It is a
+  // single shape drawn by the first day, above the next day's tile, carrying
+  // the next day's badge with it (that day leaves its own in place but
+  // unseen), so there is no seam anywhere. The joined mode sits at the
+  // inner end of each badge row, so the capsule goes badge to badge.
   const ordered = [...modes].sort((a, b) => (a === fromPrev ? -1 : b === fromPrev ? 1 : 0)).sort((a, b) => (a === bridge ? 1 : b === bridge ? -1 : 0));
   const rowW = 18 + (Math.min(3, ordered.length) - 1) * 14;
   // Opaque, so it reads the same over the white selected day and the dark one.
@@ -135,16 +139,18 @@ function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromP
         {isToday ? (lang === 'en' ? 'Today' : '今天') : past ? weekday(tile.date, lang).replace('周', '').slice(0, lang === 'en' ? 2 : 1) : weekday(tile.date, lang)}
       </span>
       <span className="relative mt-[2px] font-semibold tabular-nums leading-[26px]" style={{ fontSize: past ? 17 : 23, color: selected ? C.ink : past ? C.text3 : C.text, fontFamily: NUM }}>{Number(tile.date.slice(8))}</span>
-      {!past && bridge && (
-        <span aria-hidden className="absolute bottom-[6px] h-[24px] rounded-l-full" style={{ left: `calc(50% + ${rowW / 2 - 21}px)`, right: -GAP / 2, background: tint(bridge) }} />
-      )}
-      {!past && fromPrev && (
-        <span aria-hidden className="absolute bottom-[6px] h-[24px] rounded-r-full" style={{ left: -GAP / 2, right: `calc(50% + ${rowW / 2 - 21}px)`, background: tint(fromPrev) }} />
-      )}
+      {!past && bridge && (() => {
+        const start = TILE_W / 2 + rowW / 2 - 21;
+        return (
+          <span aria-hidden className="absolute bottom-[6px] h-[24px] rounded-full flex items-center justify-end pr-[3px]" style={{ left: start, width: reach + 12 - start, background: tint(bridge) }}>
+            <ModeBadge mode={bridge} size={18} ring={nextRing} />
+          </span>
+        );
+      })()}
       <span className="relative mt-auto mb-[9px] h-[18px] flex items-center">
         {past
           ? modes.length > 0 && <i className="w-[5px] h-[5px] rounded-full" style={{ background: selected ? 'rgba(10,11,13,0.45)' : C.text3 }} />
-          : ordered.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
+          : ordered.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i, visibility: m === fromPrev && i === 0 ? 'hidden' : 'visible' }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
       </span>
     </motion.button>
   );
