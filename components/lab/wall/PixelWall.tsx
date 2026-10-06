@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowCounterClockwise, Check } from '@phosphor-icons/react';
 import { tx, type Lang, type Mode } from '../../../lib/lab/model';
-import { colourFor, LIMITS, loadDrawing, myColour, paintLeft, PAINT, strokeCost, uploadDrawing, type Stroke } from '../graffitiStore';
+import { claimPanel, colourFor, LIMITS, loadDrawing, loadWall, myColour, paintLeft, PAINT, savePiece, strokeCost, uploadDrawing, type Piece, type Stroke } from '../graffitiStore';
 import { C, EASE, FILLED, MODE_COLOR, TONAL, TYPE } from '../theme';
 import { boxBlur, PH, PW, sceneFor } from './pixelScene';
 import { assignSlot, slotsFor, type Slot } from './slots';
@@ -23,6 +23,7 @@ type Doodle = { count: number; loaded: boolean; marked: boolean; spraying: boole
 export type WallLink = { anticipate: (on: boolean) => void };
 
 const K = 3; // paint resolution over the pixel scene
+const MARGIN = 5; // wall px a piece may run past its panel, so neighbours meet like paint, not tiles
 const DW = PW * K, DH = PH * K;
 const BRUSH = 1.5; // wall pixels: a can's line, not a pen's
 // The gauge's arc: the left third of a circle around the fingertip.
@@ -114,12 +115,28 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     const t = setTimeout(() => setSlot(mySlot(slots, storeKey, others)), 0);
     return () => clearTimeout(t);
   }, [slots, storeKey, others, doodle.loaded]);
-  const tags = useMemo(() => tagsFor(seed, others, scene.body, K), [seed, others, scene]);
+  // The shared wall: everyone's real pieces, when the server keeps them.
+  const [wall, setWall] = useState<{ available: boolean; pieces: Piece[] }>({ available: false, pieces: [] });
+  useEffect(() => {
+    let alive = true;
+    const t = setTimeout(async () => {
+      const w = await loadWall(storeKey);
+      if (!alive) return;
+      setWall(w);
+      const own = w.pieces.find(p => p.mine);
+      if (own) { setMine(own.colour); if (slots[own.slot]) setSlot(slots[own.slot]); if (own.strokes.length) setSaved(own.strokes); }
+    }, 0);
+    return () => { alive = false; clearTimeout(t); };
+  }, [storeKey, slots]);
+  const pieces = useMemo(() => wall.pieces.filter(p => !p.mine && p.strokes.length), [wall]);
+  // Generated marks stand for the people the counter knows but whose
+  // pieces the wall doesn't hold (before the shared wall, that's everyone).
+  const tags = useMemo(() => tagsFor(seed, Math.max(0, others - pieces.length), scene.body, K), [seed, others, pieces.length, scene]);
 
-  const live = useRef({ strokes, left, spraying, mine, slot, onChange: (s: Stroke[]) => setDraft(s), onEmpty: () => {} });
+  const live = useRef({ strokes, left, spraying, mine, slot, pieces, onChange: (s: Stroke[]) => setDraft(s), onEmpty: () => {} });
   const ext = useRef({ onHint, onLink, marked: doodle.marked });
   useLayoutEffect(() => {
-    live.current = { strokes, left, spraying, mine, slot, onChange: s => setDraft(s), onEmpty: () => { setEmpty(true); setTimeout(() => setEmpty(false), 1600); } };
+    live.current = { strokes, left, spraying, mine, slot, pieces, onChange: s => setDraft(s), onEmpty: () => { setEmpty(true); setTimeout(() => setEmpty(false), 1600); } };
     ext.current = { onHint, onLink, marked: doodle.marked };
   });
 
@@ -128,9 +145,23 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     if (open && doodle.marked && !done && phase === 'idle') { const t = setTimeout(() => setPhase('spray'), 0); return () => clearTimeout(t); }
   }, [open, doodle.marked, done, phase]);
 
+  // On the shared wall, the server gives out the panel and the colour.
+  useEffect(() => {
+    if (!spraying || !wall.available) return;
+    let alive = true;
+    claimPanel(storeKey, slots.length).then(res => {
+      if (!alive || !res) return;
+      if (slots[res.slot]) setSlot(slots[res.slot]);
+      setMine(res.colour);
+      if (res.done) { onClose(); setPhase('idle'); }
+    });
+    return () => { alive = false; };
+  }, [spraying, wall.available, storeKey, slots]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const finish = async (list = draft) => {
     if (list?.length) {
       setSaving(true);
+      if (wall.available) await savePiece(storeKey, list.map(s => ({ ...s, c: mine })));
       await uploadDrawing(storeKey, list);
       setSaved(list);
       setDraft(null);
@@ -206,9 +237,12 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     const redraw = (list: Stroke[]) => {
       pctx.clearRect(0, 0, DW, DH);
       pctx.drawImage(tagsHi, 0, 0);
+      // Everyone's real pieces, oldest first, each in its panel (a little past it)
+      const panel = (sl: Slot | undefined) => { if (!sl) return; pctx.beginPath(); pctx.rect((sl.x - MARGIN) * K, (sl.y - MARGIN) * K, (sl.w + MARGIN * 2) * K, (sl.h + MARGIN * 2) * K); pctx.clip(); };
+      live.current.pieces.forEach(p => { pctx.save(); pctx.globalAlpha = 0.95; panel(slots[p.slot]); p.strokes.forEach(s => paintStroke(pctx, s)); pctx.restore(); });
       const own = live.current.slot;
       pctx.save();
-      if (own) { pctx.beginPath(); pctx.rect(own.x * K, own.y * K, own.w * K, own.h * K); pctx.clip(); }
+      if (own) panel(own);
       list.forEach(s => paintStroke(pctx, s));
       pctx.restore();
       pctx.globalCompositeOperation = 'destination-in';
@@ -276,7 +310,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       pointer = { x, y };
       if (live.current.left <= 0.5 || live.current.strokes.length >= LIMITS.strokes) { live.current.onEmpty(); return; }
       const own = live.current.slot;
-      if (own && (x < own.x - 2 || x > own.x + own.w + 2 || y < own.y - 2 || y > own.y + own.h + 2)) return;
+      if (own && (x < own.x - MARGIN || x > own.x + own.w + MARGIN || y < own.y - MARGIN || y > own.y + own.h + MARGIN)) return;
       try { view.setPointerCapture(e.pointerId); } catch { /* synthetic or lost pointer */ }
       e.preventDefault();
       spent = 0; runs = [];
@@ -398,9 +432,9 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       ext.current.onLink?.(null);
       layers.current = null;
     };
-  }, [scene, tags, seed, mode, reduce, art]);
+  }, [scene, tags, seed, mode, reduce, art, slots]);
 
-  useEffect(() => { layers.current?.redraw(strokes); }, [strokes, tags, mine, slot]);
+  useEffect(() => { layers.current?.redraw(strokes); }, [strokes, tags, mine, slot, pieces]);
   useEffect(() => { if (canvas.current) canvas.current.style.touchAction = spraying ? 'none' : 'pan-y'; }, [spraying]);
 
   // Zoom so your panel fills most of the frame, kept inside the scene.
@@ -472,33 +506,75 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
   );
 }
 
-// A platform LED board: amber text on black, a faint dot screen over it,
-// one message at a time; one that is too long scrolls through, as they do.
+// A platform LED board, made the way real ones are: the text is set on a
+// 16-dot-high grid (enough for Chinese, as bus and station signs use), each
+// dot is a real lamp, lit or dim, and the message crawls from right to left
+// one column at a time, round and round.
+const SIGN_ROWS = 16;
 function LedSign({ lines }: { lines: string[] }) {
-  const [i, setI] = useState(0);
   const reduce = useReducedMotion();
-  const box = useRef<HTMLDivElement>(null);
-  const [over, setOver] = useState(0);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const text = lines.join('   ·   ');
   useEffect(() => {
-    if (lines.length < 2) return;
-    const t = setInterval(() => setI(k => (k + 1) % lines.length), 4200);
-    return () => clearInterval(t);
-  }, [lines.length]);
-  const text = lines[i % lines.length];
-  useEffect(() => {
-    const t = setTimeout(() => { const p = box.current?.querySelector('p'); setOver(p && box.current ? Math.max(0, p.scrollWidth - box.current.clientWidth + 12) : 0); }, 400);
-    return () => clearTimeout(t);
-  }, [text]);
+    const view = canvas.current;
+    const ctx = view?.getContext('2d');
+    if (!view || !ctx) return;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const cssW = view.clientWidth, cssH = view.clientHeight;
+    const pitch = cssH / SIGN_ROWS;
+    const cols = Math.floor(cssW / pitch);
+    view.width = Math.round(cssW * dpr); view.height = Math.round(cssH * dpr);
+    // Set the message in dots: draw it once small, keep what's inked.
+    const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+    const font = `600 14px -apple-system, "PingFang SC", "Noto Sans SC", sans-serif`;
+    probe.font = font;
+    const width = Math.ceil(probe.measureText(text).width) + 2;
+    probe.canvas.width = width; probe.canvas.height = SIGN_ROWS;
+    probe.font = font; probe.textBaseline = 'middle'; probe.fillStyle = '#fff';
+    probe.fillText(text, 1, SIGN_ROWS / 2 + 0.5);
+    const ink = probe.getImageData(0, 0, width, SIGN_ROWS).data;
+    const fits = width <= cols;
+    const gap = Math.max(12, Math.floor(cols / 3));
+    const loop = fits ? width : width + gap;
+    const on = (x: number, y: number) => {
+      const k = fits ? x - Math.floor((cols - width) / 2) : ((x % loop) + loop) % loop;
+      return k >= 0 && k < width && ink[(y * width + k) * 4 + 3] > 120;
+    };
+    // one lamp, lit and unlit, drawn once
+    const s = Math.ceil(pitch * dpr * 2.2), r = pitch * dpr * 0.4;
+    const lamp = (lit: boolean) => {
+      const c = document.createElement('canvas'); c.width = c.height = s;
+      const g = c.getContext('2d')!;
+      if (lit) {
+        const halo = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+        halo.addColorStop(0, 'rgba(255,170,40,0.45)'); halo.addColorStop(1, 'rgba(255,120,0,0)');
+        g.fillStyle = halo; g.fillRect(0, 0, s, s);
+      }
+      const body = g.createRadialGradient(s / 2 - r * 0.3, s / 2 - r * 0.3, 0, s / 2, s / 2, r);
+      if (lit) { body.addColorStop(0, '#FFF2C8'); body.addColorStop(0.55, '#FFB12E'); body.addColorStop(1, '#E07B00'); }
+      else { body.addColorStop(0, '#2E2110'); body.addColorStop(1, '#170F06'); }
+      g.fillStyle = body; g.beginPath(); g.arc(s / 2, s / 2, r, 0, Math.PI * 2); g.fill();
+      return c;
+    };
+    const litLamp = lamp(true), offLamp = lamp(false);
+    let shift = 0, raf = 0, last = 0;
+    const draw = (now: number) => {
+      if (!fits && !reduce) raf = requestAnimationFrame(draw);
+      if (now - last < 55 && last) return;
+      last = now;
+      ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, view.width, view.height);
+      for (let y = 0; y < SIGN_ROWS; y++) for (let x = 0; x < cols; x++) {
+        const px = (x + 0.5) * pitch * dpr - s / 2 + (cssW - cols * pitch) * dpr / 2, py = (y + 0.5) * pitch * dpr - s / 2;
+        ctx.drawImage(on(x + shift, y) ? litLamp : offLamp, px, py);
+      }
+      shift = (shift + 1) % loop;
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [text, reduce]);
   return (
-    <div ref={box} className="relative overflow-hidden rounded-[3px] px-1.5 py-[3px]" style={{ background: '#060606', boxShadow: '0 0 0 1.5px #2B2D32, 0 2px 6px rgba(0,0,0,0.6)' }}>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.p key={text} initial={{ y: reduce ? 0 : '100%', opacity: 0 }} animate={{ y: 0, opacity: 1, x: over && !reduce ? [0, 0, -over, -over] : 0 }} exit={{ y: reduce ? 0 : '-100%', opacity: 0 }}
-          transition={{ duration: 0.35, ease: EASE, x: { duration: 3.4, times: [0, 0.25, 0.85, 1], ease: 'linear' } }}
-          className={`whitespace-nowrap text-[11px] font-semibold leading-[15px] tracking-[0.04em] ${over ? 'inline-block' : 'text-center'}`} style={{ color: '#FFB12E', textShadow: '0 0 6px rgba(255,150,30,0.55)' }}>
-          {text}
-        </motion.p>
-      </AnimatePresence>
-      <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle, transparent 0.6px, rgba(6,6,6,0.55) 1px) 0 0 / 2.5px 2.5px' }} />
+    <div className="relative rounded-[3px] p-[3px]" style={{ background: '#050505', boxShadow: '0 0 0 1.5px #2B2D32, 0 2px 6px rgba(0,0,0,0.6)' }}>
+      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[30px]" />
     </div>
   );
 }

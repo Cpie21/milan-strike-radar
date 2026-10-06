@@ -1,8 +1,7 @@
 // Drawings are lists of strokes on the 240×140 pixel wall, a few KB as JSON.
 //
-// Lab only: uploads stay on this device until the backend endpoint exists
-// (contract in AI_HANDOFF.md, "Graffiti drawing upload"). Swap
-// `uploadDrawing` for the real POST when it lands.
+// Each person's piece is kept on the device and, once the `lab_graffiti`
+// table exists, on the shared wall (loadWall / claimPanel / savePiece).
 
 export type Stroke = { c: string; w: number; p: number[]; d?: 1 }; // p = x0,y0,x1,y1… in wall pixels; d = a drip
 
@@ -52,4 +51,36 @@ export async function uploadDrawing(key: string, strokes: Stroke[]): Promise<voi
   const payload = strokes.slice(0, LIMITS.strokes).map(s => ({ c: s.c, w: s.w, p: s.p.map(v => Math.round(v * 2) / 2), ...(s.d ? { d: 1 as const } : {}) }));
   try { localStorage.setItem(storageKey(key), JSON.stringify(payload)); } catch { /* storage blocked: keep in memory only */ }
   await new Promise(resolve => setTimeout(resolve, 350));
+}
+
+// ── The shared wall (app/api/doodles/wall) ──
+// Answers {available:false} until the table exists; the wall then stays on
+// this device as before.
+export type Piece = { slot: number; colour: string; strokes: Stroke[]; claimed_at: string; mine: boolean };
+export function deviceId(): string {
+  try {
+    let id = localStorage.getItem('lab_device_id');
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('lab_device_id', id); }
+    return id;
+  } catch { return 'anonymous-device'; }
+}
+export async function loadWall(key: string): Promise<{ available: boolean; pieces: Piece[] }> {
+  try {
+    const res = await fetch(`/api/doodles/wall?key=${encodeURIComponent(key)}&deviceId=${encodeURIComponent(deviceId())}`, { cache: 'no-store' });
+    const json = await res.json();
+    return { available: !!json.available, pieces: Array.isArray(json.pieces) ? json.pieces : [] };
+  } catch { return { available: false, pieces: [] }; }
+}
+export async function claimPanel(key: string, slots: number): Promise<{ slot: number; colour: string; done: boolean } | null> {
+  try {
+    const res = await fetch('/api/doodles/wall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'claim', key, deviceId: deviceId(), slots }) });
+    const json = await res.json();
+    return json.available && typeof json.slot === 'number' ? { slot: json.slot, colour: json.colour, done: !!json.done } : null;
+  } catch { return null; }
+}
+export async function savePiece(key: string, strokes: Stroke[]): Promise<boolean> {
+  try {
+    const res = await fetch('/api/doodles/wall', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', key, deviceId: deviceId(), strokes }) });
+    return res.ok;
+  } catch { return false; }
 }

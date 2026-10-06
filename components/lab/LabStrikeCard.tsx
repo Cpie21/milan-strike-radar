@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SealCheck, SprayBottle, Translate } from '@phosphor-icons/react';
+import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SealCheck, ShieldCheck, SprayBottle, Translate } from '@phosphor-icons/react';
 import {
   AXIS_END, AXIS_START, axisPos, carveGuarantees, markTimes, nowPosition, relativeDay, segments, statusLine, timeSpan, tx, windowsText,
   type Lang, type Mode, type ModeCard, type OfficialRecord,
@@ -141,7 +141,6 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
   // so a gap counts as guaranteed when a guarantee covers it within 2 min.
   const near = (a: string, b: string) => Math.abs(mins(a) - mins(b)) <= 2;
   const inGuarantee = (b: { start: string; end: string }) => card.guarantees.some(g => (g.start === null || g.start <= b.start || near(g.start, b.start)) && (g.end_kind === 'end_of_service' || (g.end !== null && (g.end >= b.end || near(g.end, b.end)))));
-  const guardedBreaks = (span?.breaks ?? []).filter(inGuarantee);
   const openBreaks = (span?.breaks ?? []).filter(b => !inGuarantee(b));
 
   const pill = live ? { text: status.text, color: mode.main, bg: mode.soft, dot: true }
@@ -163,6 +162,8 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           <p className={`mt-1 flex items-center gap-2 ${TYPE.caption}`} style={{ color: C.text3 }}>
             {card.national && <span className="px-1.5 h-[18px] rounded-[5px] flex items-center" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}
             {!doubt && <span className="flex items-center gap-0.5"><Check size={11} weight="bold" />{tx(lang, '已确认', 'Confirmed')}</span>}
+            {/* how far off: a footnote to what, not a headline of its own */}
+            {!isToday && <span>{!doubt || card.national ? '· ' : ''}{relativeDay(card.date, ctx.today, lang)}</span>}
           </p>
         </header>
 
@@ -191,14 +192,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
                   {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.label}`)}
                 </a>
               )}
-              {/* Gaps in one line each kind, however many: guaranteed ones by
-                  the guarantee's own times, the rest as plain gaps */}
-              {guardedBreaks.length > 0 && (
-                <p className={`mt-1.5 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.run, fontFamily: SANS }}>
-                  <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.run }} />
-                  {tx(lang, `保障时段 ${windowsText(card.guarantees, lang)}`, `Guaranteed ${windowsText(card.guarantees, lang)}`)}
-                </p>
-              )}
+              {/* Guaranteed gaps have their own row below; plain gaps say so here */}
               {openBreaks.length > 0 && (
                 <p className={`mt-1 flex items-center gap-1.5 tabular-nums ${TYPE.label}`} style={{ color: C.text2, fontFamily: SANS }}>
                   <i className="w-[6px] h-[6px] rounded-full" style={{ background: C.text3 }} />
@@ -210,10 +204,13 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
         </div>
 
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-          <span className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full tabular-nums ${TYPE.label}`} style={{ background: pill.bg, color: pill.color }}>
-            {pill.dot ? <motion.i className="w-[7px] h-[7px] rounded-full" style={{ background: mode.main }} animate={reduce ? undefined : { opacity: [1, 0.35, 1] }} transition={{ repeat: Infinity, duration: 1.6 }} /> : <Clock size={13} weight="bold" />}
-            {pill.text}
-          </span>
+          {/* Only today earns a status line; other days say how far off in the header */}
+          {isToday && (
+            <span className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full tabular-nums ${TYPE.label}`} style={{ background: pill.bg, color: pill.color }}>
+              {pill.dot ? <motion.i className="w-[7px] h-[7px] rounded-full" style={{ background: mode.main }} animate={reduce ? undefined : { opacity: [1, 0.35, 1] }} transition={{ repeat: Infinity, duration: 1.6 }} /> : <Clock size={13} weight="bold" />}
+              {pill.text}
+            </span>
+          )}
           {doubt && (
             <span className={`relative overflow-hidden inline-flex items-center h-7 px-3 rounded-full ${TYPE.label} font-semibold`} style={{ color: C.text, boxShadow: `inset 0 0 0 1.5px ${mode.main}` }}>
               <span aria-hidden className="absolute inset-0" style={{ background: hatch(mode.soft) }} />
@@ -232,7 +229,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           ) : <Bar card={card} lang={lang} now={isToday ? nowPosition(ctx.nowMinutes) : null} />}
         </div>
 
-        <Details card={card} lang={lang} guaranteesAbove={guardedBreaks.length > 0} say={t => (lang === 'en' && ctx.tr[t.trim()] ? ctx.tr[t.trim()].en : t)} />
+        <Details card={card} lang={lang} say={t => (lang === 'en' && ctx.tr[t.trim()] ? ctx.tr[t.trim()].en : t)} />
 
         {card.indirect && (
           <p className={`mt-3 flex gap-2 rounded-[12px] px-3.5 py-2.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
@@ -249,27 +246,56 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
 }
 
 // ── Details: label left, value right ─────────────────────────────────
-// Guaranteed hours already named under the time are not repeated here.
+// Guaranteed hours lead, in their own row and in green: they are the hours
+// you can still travel, which is what people look for first after "when".
 
-function Details({ card, lang, guaranteesAbove, say }: { card: ModeCard; lang: Lang; guaranteesAbove: boolean; say: (text: string) => string }) {
+const GUARANTEE_FROM: Record<string, [string, string]> = {
+  OFFICIAL_STRIKE_NOTICE: ['来自罢工公告', 'From the strike notice'], OPERATOR_RULE: ['运营方的保障规则', 'Operator’s guarantee rules'],
+  STANDARD_RULE: ['法定最低服务', 'Statutory minimum service'],
+};
+
+function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: string) => string }) {
+  const impacts = card.impacts ?? [];
+  const lineImpacts = impacts.filter(i => i.lines);
+  const routes = [...new Set(lineImpacts.flatMap(i => i.routes))].filter(r => /^(M\d|S\d+|R\d+|RE\d+|T\d+)$/i.test(r)).sort();
   const lines = card.category === 'AIRPORT' && /^AIRLINE/.test(card.scopeType)
     ? tx(lang, '仅该航司航班', 'This airline only')
     : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
       ? <span className="inline-flex flex-wrap justify-end gap-1">{card.lines.slice(0, 6).map(l => /^(M\d|S\d+|R\d+|RE\d+)$/i.test(l) ? <LineBadge key={l} line={l} /> : <span key={l}>{l}</span>)}</span>
-      : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
-        : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
-  const sameAsBreaks = guaranteesAbove;
-  const guarantee = card.guarantees.length
-    ? <span className="tabular-nums" style={{ fontFamily: NUM, fontSize: 16 }}>{windowsText(card.guarantees, lang)}</span>
-    : card.guaranteeSource === 'UNKNOWN' ? null : tx(lang, '无保障计划', 'None');
+      : lineImpacts.length
+        ? <span className="inline-flex flex-col items-end gap-1.5">
+            <span>{lineImpacts.map(i => tx(lang, i.zh, i.en)).join(tx(lang, '；', '; '))}</span>
+            {routes.length > 0 && <span className="inline-flex flex-wrap justify-end gap-1">{routes.slice(0, 8).map(r => <LineBadge key={r} line={r} />)}</span>}
+          </span>
+        : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
+          : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
+  const scopeNote = impacts.filter(i => !i.lines).map(i => tx(lang, i.zh, i.en));
   const rows: [string, React.ReactNode][] = [
     [tx(lang, '罢工人员', 'Who'), say(card.provider)],
     ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), say(card.scope)] as [string, React.ReactNode]] : []),
-    ...(sameAsBreaks ? [] : [[card.guaranteeKind === 'PROTECTED_FLIGHTS' ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时间段', 'Guaranteed hours'), guarantee] as [string, React.ReactNode]]),
-    [card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines'), lines],
+    ...(card.category === 'AIRPORT' && scopeNote.length ? [[tx(lang, '影响范围', 'Scope'), scopeNote.join(tx(lang, '；', '; '))] as [string, React.ReactNode]] : []),
+    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines'), lines] as [string, React.ReactNode]] : []),
   ];
+  const airport = card.guaranteeKind === 'PROTECTED_FLIGHTS';
   return (
-    <div className="mt-5">
+    <div className="mt-5 flex flex-col gap-2.5">
+      {/* The guaranteed hours, on their own */}
+      <section className="rounded-[16px] px-3.5 py-3" style={{ background: card.guarantees.length ? C.okSoft : C.surface2, boxShadow: card.guarantees.length ? `inset 0 0 0 1px ${C.ok}33` : 'none' }}>
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={17} weight="fill" color={card.guarantees.length ? C.ok : C.text3} />
+          <span className={`${TYPE.label} font-semibold`} style={{ color: card.guarantees.length ? C.ok : C.text2 }}>{airport ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时段', 'Guaranteed hours')}</span>
+          {card.guarantees.length > 0 && GUARANTEE_FROM[card.guaranteeSource] && <span className={`ml-auto ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, ...GUARANTEE_FROM[card.guaranteeSource])}</span>}
+        </div>
+        {card.guarantees.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {card.guarantees.map((g, i) => (
+              <span key={i} className="h-8 px-3 rounded-full inline-flex items-center tabular-nums text-[15px] font-semibold" style={{ background: 'rgba(61,220,132,0.16)', color: C.ok, fontFamily: NUM }}>{windowsText([g], lang)}</span>
+            ))}
+          </div>
+        ) : (
+          <p className={`mt-1 ${TYPE.label}`} style={{ color: C.text3 }}>{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '还没有公布，以运营方通知为准', 'Not published yet; check the operator') : tx(lang, '这次没有保障时段', 'No guaranteed hours this time')}</p>
+        )}
+      </section>
       <dl className="rounded-[16px] px-3.5" style={{ background: C.surface2 }}>
         {rows.map(([label, value], i) => (
           <div key={label} className="flex items-baseline gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
@@ -278,7 +304,7 @@ function Details({ card, lang, guaranteesAbove, say }: { card: ModeCard; lang: L
           </div>
         ))}
       </dl>
-      {card.geography.map(g => <p key={g.zh} className={`mt-2 px-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
+      {card.geography.map(g => <p key={g.zh} className={`px-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
     </div>
   );
 }

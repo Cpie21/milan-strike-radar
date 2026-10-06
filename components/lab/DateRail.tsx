@@ -96,7 +96,7 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
             {/* A new month: its name in full strength, and a rule before it */}
             {tile.monthStart && i > 0 && <i aria-hidden className="absolute top-[3px] bottom-[2px] w-px" style={{ left: -(MONTH_SEP + GAP) / 2 - 0.5, background: C.lineStrong }} />}
             <span className="h-[18px] pl-1 text-[11.5px] whitespace-nowrap" style={{ color: tile.monthStart ? C.text2 : C.text3, fontWeight: tile.monthStart ? 650 : 500 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
-            <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} reach={reach} nextRing={after?.date === selected ? '#FFFFFF' : C.surface} />
+            <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} reach={reach} />
           </div>
         );
       })}
@@ -109,23 +109,23 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
 export const strikeModes = (tile: { cards: { category: Mode; status: string }[] }) =>
   [...new Set(tile.cards.filter(c => c.status !== 'CANCELLED').map(c => c.category))];
 
-function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromPrev = null, focus = false, reach = 0, nextRing = C.surface }: {
+function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromPrev = null, focus = false, reach = 0 }: {
   tile: Extract<RailTile, { kind: 'day' }>; today: string; selected: boolean; lang: Lang; onSelect: (d: string) => void; past?: boolean;
-  bridge?: Mode | null; fromPrev?: Mode | null; focus?: boolean; reach?: number; nextRing?: string;
+  bridge?: Mode | null; fromPrev?: Mode | null; focus?: boolean; reach?: number;
 }) {
   const modes = strikeModes(tile);
   const isToday = tile.date === today;
   const ring = selected ? '#FFFFFF' : C.surface;
-  // An overnight strike: one capsule holds the badge on either side and
-  // runs between them, as a multi-day event does in a calendar. It is a
-  // single shape drawn by the first day, above the next day's tile, carrying
-  // the next day's badge with it (that day leaves its own in place but
-  // unseen), so there is no seam anywhere. The joined mode sits at the
-  // inner end of each badge row, so the capsule goes badge to badge.
+  // An overnight strike: the two days' badges are joined like two stops on
+  // a transit map, by one line in the mode's colour at the badges' own
+  // height, below the dates. It is drawn by the first day (above the next
+  // day's tile) and stops exactly at the next badge's edge, so nothing is
+  // covered and there is no seam. The joined mode sits at the inner end of
+  // each badge row, so the line runs badge to badge.
   const ordered = [...modes].sort((a, b) => (a === fromPrev ? -1 : b === fromPrev ? 1 : 0)).sort((a, b) => (a === bridge ? 1 : b === bridge ? -1 : 0));
   const rowW = 18 + (Math.min(3, ordered.length) - 1) * 14;
   // Opaque, so it reads the same over the white selected day and the dark one.
-  const tint = (m: Mode) => (focus ? MODE_COLOR[m].deep : `color-mix(in srgb, ${MODE_COLOR[m].main} 34%, ${C.surface2})`);
+  const tint = (m: Mode) => (focus ? MODE_COLOR[m].main : `color-mix(in srgb, ${MODE_COLOR[m].main} 45%, ${C.surface2})`);
   return (
     <motion.button data-date={tile.date} whileTap={{ scale: 0.94 }} onClick={() => onSelect(tile.date)} aria-pressed={selected}
       aria-label={`${tile.date}${modes.length ? '' : lang === 'en' ? ', no strikes' : '，无罢工'}`}
@@ -140,17 +140,13 @@ function Day({ tile, today, selected, lang, onSelect, past, bridge = null, fromP
       </span>
       <span className="relative mt-[2px] font-semibold tabular-nums leading-[26px]" style={{ fontSize: past ? 17 : 23, color: selected ? C.ink : past ? C.text3 : C.text, fontFamily: NUM }}>{Number(tile.date.slice(8))}</span>
       {!past && bridge && (() => {
-        const start = TILE_W / 2 + rowW / 2 - 21;
-        return (
-          <span aria-hidden className="absolute bottom-[6px] h-[24px] rounded-full flex items-center justify-end pr-[3px]" style={{ left: start, width: reach + 12 - start, background: tint(bridge) }}>
-            <ModeBadge mode={bridge} size={18} ring={nextRing} />
-          </span>
-        );
+        const start = TILE_W / 2 + rowW / 2 - 9;
+        return <span aria-hidden className="absolute bottom-[15px] h-[6px] rounded-l-full" style={{ left: start, width: reach - 9 - start, background: tint(bridge) }} />;
       })()}
       <span className="relative mt-auto mb-[9px] h-[18px] flex items-center">
         {past
           ? modes.length > 0 && <i className="w-[5px] h-[5px] rounded-full" style={{ background: selected ? 'rgba(10,11,13,0.45)' : C.text3 }} />
-          : ordered.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i, visibility: m === fromPrev && i === 0 ? 'hidden' : 'visible' }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
+          : ordered.slice(0, 3).map((m, i) => <span key={m} style={{ marginLeft: i ? -4 : 0, zIndex: 3 - i, }} className="relative flex"><ModeBadge mode={m} size={18} ring={ring} /></span>)}
       </span>
     </motion.button>
   );

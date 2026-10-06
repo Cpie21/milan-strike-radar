@@ -183,3 +183,11 @@ test('lab translation cannot make a paid request even when an OpenRouter key exi
     else process.env.OPENROUTER_API_KEY = savedKey;
   }
 });
+
+test('people arriving one after another fill free panels before anyone overlaps', () => {
+  const slots = slotsFor({ x0: 26, y0: 56, x1: 188, y1: 98 }); // the metro: two panels
+  const taken = new Map();
+  const got = ['a', 'b', 'c', 'd'].map((who, k) => { const s = assignSlot(slots, taken, `holder-${who}`).i; taken.set(s, k + 1); return s; });
+  assert.equal(new Set(got.slice(0, slots.length)).size, slots.length, 'the first arrivals each get their own panel');
+  assert.equal(got[slots.length], got[0], 'when full, the oldest panel is repainted');
+});

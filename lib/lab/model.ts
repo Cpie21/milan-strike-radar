@@ -35,6 +35,9 @@ export type ModeCard = {
   indirect: boolean; // rail security/infrastructure/support: staff hours, passenger impact unconfirmed
   lineScope: string; // lib/lineScope kind: ALL_LINES, ALL_OPERATOR_LINES, ALL_EXCEPT, SPECIFIC_LINES, UNKNOWN
   lineLabels: string[]; // backend wording for the scope (lineScopeLabels), e.g. "ATM Milano 所属线路"
+  // Codex's line impact (lib/lineImpact.ts): its concise presentation per
+  // announcement, and the official routes a whole-operator notice may touch.
+  impacts?: { zh: string; en: string; lines: boolean; routes: string[] }[];
   geography: { zh: string; en: string }[]; // official administrative scope beyond this city
   status: CardStatus;
   provider: string;

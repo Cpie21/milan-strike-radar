@@ -110,7 +110,9 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
   const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });
-  const calm = dayCards.length === 0;
+  // A day whose strikes were all called off is a calm day too: the board and
+  // its question field sit under the cancelled cards, and the bar goes away.
+  const calm = active.length === 0;
   const neighbour = (iso: string, mode: Mode) => (byDate.get(iso) || []).find(c => c.category === mode);
   // Days sit side by side: the old one slides out as the new one slides in,
   // at the pace of the rail's own selection, with nothing fading first.

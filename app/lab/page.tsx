@@ -33,6 +33,7 @@ type Aggregated = {
   display_time?: string;
   guaranteeSource?: GuaranteeSource;
   lineScope?: string;
+  lineImpacts?: { impact?: { presentation?: { zh: string; en: string; showLineSection: boolean }; lineMembership?: { value?: { routes?: { id?: string }[] } } } }[];
   lineScopeEvidence?: LineScope;
   guaranteeEvidenceWindows?: EvidenceWindow[];
   serviceSchedule?: ServiceSchedule;
@@ -114,6 +115,9 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       indirect: day.category === 'TRAIN' && !!scope && indirectRail(scope),
       lineScope: day.lineScopeEvidence?.kind || day.lineScope || 'UNKNOWN',
       lineLabels: lineScopeLabels(day.lineScopeEvidence),
+      impacts: (day.lineImpacts || []).map(li => li.impact).filter(i => i?.presentation?.zh)
+        .map(i => ({ zh: i!.presentation!.zh, en: i!.presentation!.en, lines: !!i!.presentation!.showLineSection, routes: (i!.lineMembership?.value?.routes || []).map(r => r.id).filter(Boolean) as string[] }))
+        .filter((x, k, all) => all.findIndex(o => o.zh === x.zh) === k),
       geography,
       category: day.category,
       status: day.status,

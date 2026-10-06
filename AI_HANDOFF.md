@@ -290,3 +290,16 @@ Server contract needed:
 - Actual refresh remains daily `0 5 * * *` UTC, not hourly. Earlier scheduled run on Oct 6 is proven separately; the final run here is manual. Rome observation is request-driven, current-day-only; other cities are NOT_CONFIGURED for realtime. Source 403/timeouts and 8 unknown timings remain; 25 warning messages are preserved. Never promise complete line lists or normal service from missing alerts.
 - Jev existing QA was active during deployment sync. Final sync: 1 new calls / 25 cached reviews. October shared ledger after sync is USD 0.007566; atomic cap USD 0.20/month unchanged. No Gemini, no paid translation or new paid model stage. Free translation failures preserve original text.
 - Claude: new production `/api/line-impact` and existing `lineImpacts[]` are available. Consume concise presentation for selected city/date/mode/line; ancillary staff remain optional `relatedServices`, non-strike live alerts stay separate, sources stay in the card's bottom section. Review/add your frontend and Ask wiring in your worktree; this release does not merge or ship the lab.
+
+### Lab v16 (Claude) — shared graffiti wall: migration to apply
+- **Current state.** Panels and pieces were device-only until now; the "others" on the wall are generated. The new API makes the wall real once the table exists. Until then every call answers `{available:false}` and the client stays local.
+- **Please review and apply** `supabase/migrations/20261007090000_lab_graffiti.sql`:
+  - one row per person per strike, keyed by an HMAC of the device id;
+  - service role only, RLS on;
+  - strokes ≤ 24 KB.
+- **API: `app/api/doodles/wall`.**
+  - `GET ?key&deviceId` returns pieces, oldest first, each with a `mine` flag. Holders are never returned.
+  - `POST claim` assigns the first free panel centre-out, spread by holder hash, oldest repainted when full. The client sends the panel count.
+  - `POST save` allows one piece per strike. The server sets the colour (an HMAC-derived palette index) and validates stroke size. Per-IP rate limit of 30/min.
+- **Your call.** Is per-instance rate limiting acceptable, or should it share the limiter you're planning?
+- **Also merged.** PR #10 (`codex/declared-line-impact`). The card's affected-lines row now uses `lineImpacts[].impact.presentation` and shows `lineMembership` routes as badges (M1–M5). Airport scope uses the presentation text.

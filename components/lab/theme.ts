@@ -2,9 +2,8 @@ import type { Mode } from '../../lib/lab/model';
 
 // One visual system: solid dark surfaces, one radius family. Colour has two
 // jobs only: hue says which transport (so "is my mode hit?" is a glance),
-// and mint says "fine". Guaranteed hours are drawn in timetable ivory: the
-// service simply runs, so they look like the normal printed timetable,
-// not like another colour competing with the mode. Calm days carry no colour.
+// and green says service runs (guaranteed hours, "fine"). No mode is green,
+// so the two never compete. Calm days carry no colour.
 
 export const C = {
   bg: '#0A0B0D',
@@ -18,9 +17,9 @@ export const C = {
   text3: 'rgba(245,246,247,0.42)',
   stop: '#FF5A4E',
   stopSoft: 'rgba(255,90,78,0.14)',
-  ok: '#4AD9A7',
-  okSoft: 'rgba(74,217,167,0.13)',
-  run: '#EDE6D3', // guaranteed hours: the service runs as timetabled
+  ok: '#3DDC84',
+  okSoft: 'rgba(61,220,132,0.13)',
+  run: '#3DDC84', // guaranteed hours: green again now that no mode is green
   pend: '#F5B544',
   pendSoft: 'rgba(245,181,68,0.13)',
   cancel: 'rgba(245,246,247,0.32)',
