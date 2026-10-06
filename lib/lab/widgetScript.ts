@@ -7,13 +7,13 @@
 // concerned), and the right side is what it is telling you.
 // Top band: the face and its line. Bottom: the day's picture, full width.
 //   Calm – "今天没有罢工", the next strike, the coming week.
-//   One strike – a chip row (the modes' signage badges, "今天罢工", the
-//     city), the strike's hours as the headline, and the day drawn exactly
-//     as the page's card draws it: strike hours in the mode's colour,
-//     guaranteed hours green, times under the edges, a thin "now" line.
-//   Several – one line per strike (badges, which, its own state), then a
-//     single day chart: a lane per strike on one time axis with one "now"
-//     line, so overlaps and gaps read at once.
+//   One or two strikes – the same layout: the city and what it is
+//     ("今天地铁罢工" / "今天 2 项罢工"), one line per strike (badges, its
+//     hours or which, its own state), then the day: a lane per strike on
+//     one time axis with one "now" line. One strike gets a thicker lane.
+//   Three or four modes – each mode on its own, two to a line ("地铁 至
+//     15:00   公交 至 15:00" / "火车 …   机场 …"), a thin lane each, and a
+//     smaller face to make the room.
 // Modes with identical hours count as one strike. It never says a line
 // "is stopped": planned hours are planned hours; an open end is "运营结束".
 //
@@ -25,13 +25,13 @@ export type LabWidgetOptions = { origin: string; region: string; types: string[]
 const LABELS = {
   zh: {
     modes: { SUBWAY: '地铁', BUS: '公交', TRAIN: '火车', AIRPORT: '机场' },
-    calm: '今天没有罢工', thisWeek: '这一周', strikeToday: '今天罢工', last: '末班车', next: '下一次', later: '再往后一周', over: '已过', today: '今天', now: '现在', start: '运营开始', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
+    calm: '今天没有罢工', and: '、', thisWeek: '这一周', strikeToday: '今天罢工', last: '末班车', next: '下一次', later: '再往后一周', over: '已过', today: '今天', now: '现在', start: '运营开始', none: '近期没有已公布的罢工', inside: '罢工时段内', until: '至',
     past: '今天的罢工时段已过', end: '运营结束', pending: '时段待公布', guaranteed: '保障',
     error: '暂时无法更新', weekday: ['日', '一', '二', '三', '四', '五', '六'], week: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
   },
   en: {
     modes: { SUBWAY: 'Metro', BUS: 'Bus', TRAIN: 'Train', AIRPORT: 'Airport' },
-    calm: 'No strikes today', thisWeek: 'This week', strikeToday: 'Strike today', last: 'Last service', next: 'Next', later: 'The week after', over: 'Over', today: 'today', now: 'now', start: 'start of service', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
+    calm: 'No strikes today', and: ' & ', thisWeek: 'This week', strikeToday: 'Strike today', last: 'Last service', next: 'Next', later: 'The week after', over: 'Over', today: 'today', now: 'now', start: 'start of service', none: 'No strikes announced', inside: 'In strike hours', until: 'until',
     past: 'Today’s strike hours are over', end: 'end of service', pending: 'Hours pending', guaranteed: 'Guaranteed',
     error: 'Can’t update right now', weekday: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], week: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
@@ -44,12 +44,16 @@ export function buildLabWidgetScript({ origin, region, types, cityName, path, la
     ? `const inDays = n => n === 1 ? "明天" : n + " 天后";
 const dateText = (m, d, w) => m + "月" + d + "日 " + w;
 const fromText = t => t + " 起罢工";
-const manyText = n => "今天 " + n + " 项罢工";`
+const manyText = n => "今天 " + n + " 项罢工";
+const oneText = names => "今天" + names + "罢工";
+const cellState = st => st.kind === "inside" ? "至 " + st.until : st.kind === "later" ? st.from + " 起" : st.kind === "past" ? "已过" : "待公布";`
     : `const inDays = n => n === 1 ? "Tomorrow" : "In " + n + " days";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const dateText = (m, d, w) => w + " " + d + " " + MONTHS[m - 1];
 const fromText = t => "Strike from " + t;
-const manyText = n => n + " strikes today";`;
+const manyText = n => n + " strikes today";
+const oneText = names => names + " strike today";
+const cellState = st => st.kind === "inside" ? "to " + st.until : st.kind === "later" ? "from " + st.from : st.kind === "past" ? "over" : "pending";`;
   return `// ${cityName} · strike radar widget. Medium is the main size; small and large work too.
 const API_URL = ${JSON.stringify(`${origin}/api/strikes?region=${region}`)};
 const OPEN_URL = ${JSON.stringify(`${origin}${path}`)};
@@ -221,8 +225,9 @@ function nowLine(dc, now, x, y, th, width) {
   return dc.getImage();
 }
 // Several strikes on one axis: a thin lane each, one "now" line through all
-function lanes(groups, now, width) {
-  const lane = 7, gap = 6, top = 2, h = top + groups.length * (lane + gap) + 12, dc = new DrawContext();
+const lanesHeight = (n, lane, gap) => 2 + n * (lane + gap) + 12;
+function lanes(groups, now, width, lane = 7, gap = 6) {
+  const top = 2, h = top + groups.length * (lane + gap) + 12, dc = new DrawContext();
   dc.size = new Size(width, h); dc.opaque = false; dc.respectScreenScale = true;
   const x = m => Math.max(0, Math.min(1, (m - 300) / 1200)) * width;
   const bar = (a, b, y, color) => { const p = new Path(); p.addRoundedRect(new Rect(x(a), y, Math.max(lane, x(b) - x(a)), lane), lane / 2, lane / 2); dc.addPath(p); dc.setFillColor(c(color)); dc.fillPath(); };
@@ -283,12 +288,15 @@ try {
   const nextDate = upcoming.length ? upcoming[0].date : null;
   background(widget, strike ? groups[0].modes[0] : null);
   const small = family === "small";
+  // three or four modes: each on its own, two to a line, a smaller face
+  const modesToday = [...new Set(todays.map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
+  const dense = !small && modesToday.length >= 3;
 
   // Top band: the assistant's face and what it is saying. Bottom: the
   // picture of the day, the full width of the widget.
   const top = widget.addStack(); top.layoutHorizontally(); top.centerAlignContent();
-  const fimg = top.addImage(face(strike ? ["worryL", "worryR"] : ["happy", "happy"], small ? 2.4 : 3.4));
-  fimg.imageSize = small ? new Size(46, 26) : new Size(64, 36);
+  const fimg = top.addImage(face(strike ? ["worryL", "worryR"] : ["happy", "happy"], small ? 2.4 : dense ? 2.8 : 3.4));
+  fimg.imageSize = small ? new Size(46, 26) : dense ? new Size(53, 30) : new Size(64, 36);
   top.addSpacer(small ? 0 : 10);
   const words = small ? null : top.addStack();
   if (small) top.addSpacer();
@@ -312,40 +320,63 @@ try {
       label(r, (small ? "" : T.next + " · ") + dateText(t.getUTCMonth() + 1, t.getUTCDate(), T.week[t.getUTCDay()]) + " · " + inDays(daysBetween(today, nextDate)), 11.5, COL.text2);
     } else label(r, T.none, 11.5, COL.text2);
     if (!small) { widget.addSpacer(8); week(widget, byDate, today, 7, today); }
-  } else if (groups.length === 1 || small) {
-    // The strike's own hours are the headline; where "now" falls is the
-    // needle's job, not the headline's.
+  } else if (small) {
+    // small: what and when, then the bar
     const g = groups[0], color = COL.main[g.modes[0]];
-    // a chip row, as signage: the modes' badges, what it is, where
     const chips = say.addStack(); chips.layoutHorizontally(); chips.centerAlignContent();
-    g.modes.slice(0, 3).forEach((m, i) => { if (i) chips.addSpacer(3); badge(chips, m, small ? 15 : 16); });
+    g.modes.slice(0, 3).forEach((m, i) => { if (i) chips.addSpacer(3); badge(chips, m, 15); });
     chips.addSpacer(6);
-    label(chips, T.strikeToday, small ? 12 : 12.5, color, "semibold");
-    if (!small) { chips.addSpacer(); label(chips, CITY, 11.5, COL.text3, "semibold"); }
-    say.addSpacer(small ? 4 : 3);
+    label(chips, T.strikeToday, 12, color, "semibold");
+    say.addSpacer(4);
     const wins = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end));
-    const hours = wins.join(wins.length === 2 ? "\\n" : "  "); // two windows read best stacked
-    const hl = label(say, hours || T.pending, small ? 16 : 18, COL.text, "bold"); hl.lineLimit = 2;
+    const hl = label(say, wins.join(wins.length === 2 ? "\\n" : "  ") || T.pending, 16, COL.text, "bold"); hl.lineLimit = 2;
     widget.addSpacer();
-    if (small) { const tr = widget.addImage(track(g.items, color, now, 130, true)); tr.imageSize = new Size(130, 20); }
-    else { const tr = widget.addImage(track(g.items, color, now, 308)); tr.imageSize = new Size(308, 36); }
-  } else {
-    // several strikes: what the assistant says, the list, then one shared day
+    const tr = widget.addImage(track(g.items, color, now, 130, true)); tr.imageSize = new Size(130, 20);
+  } else if (dense) {
+    // three or four modes, each on its own, two to a line
     eyebrow(CITY);
-    label(say, manyText(groups.length), 19, COL.text, "bold");
-    widget.addSpacer(10);
+    label(say, manyText(modesToday.length), 18, COL.text, "bold");
+    widget.addSpacer(8);
+    const each = modesToday.map(m => ({ modes: [m], items: todays.filter(x => x.category === m) }));
+    for (let r = 0; r < each.length; r += 2) {
+      if (r) widget.addSpacer(3);
+      const row = widget.addStack(); row.layoutHorizontally(); row.centerAlignContent();
+      each.slice(r, r + 2).forEach((g, k) => {
+        if (k) row.addSpacer(14);
+        const cell = row.addStack(); cell.layoutHorizontally(); cell.centerAlignContent(); cell.size = new Size(147, 16);
+        badge(cell, g.modes[0], 15); cell.addSpacer(5);
+        label(cell, T.modes[g.modes[0]], 12, COL.text2, "semibold");
+        cell.addSpacer();
+        const st = todayState(g.items, now);
+        label(cell, cellState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
+      });
+      if (each.length - r === 1) row.addSpacer();
+    }
+    widget.addSpacer(7);
+    const ln = widget.addImage(lanes(each, now, 308, 5, 4)); ln.imageSize = new Size(308, lanesHeight(each.length, 5, 4));
+    widget.addSpacer();
+  } else {
+    // one or two strikes: one line each, then the day on one axis
+    const one = groups.length === 1;
+    eyebrow(CITY);
+    label(say, one ? oneText(groups[0].modes.map(m => T.modes[m]).join(T.and)) : manyText(groups.length), 19, COL.text, "bold");
+    if (one) widget.addSpacer(); else widget.addSpacer(10);
     const shown = family === "large" ? groups : groups.slice(0, 2);
     shown.forEach((g, i) => {
       if (i) widget.addSpacer(3);
       const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
       g.modes.slice(0, 3).forEach((m, k) => { if (k) r.addSpacer(2); badge(r, m, 15); });
-      r.addSpacer(5); label(r, names(g.modes), 12, COL.text2, "semibold");
+      r.addSpacer(5);
+      // one strike: its hours (the headline already names it); two: which
+      const hours = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end)).join(" · ");
+      label(r, one ? hours || T.pending : names(g.modes), 12, one ? COL.text : COL.text2, "semibold");
       r.addSpacer();
       const st = todayState(g.items, now);
       label(r, shortState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
     });
-    widget.addSpacer(7);
-    const ln = widget.addImage(lanes(shown, now, 308)); ln.imageSize = new Size(308, 2 + shown.length * 13 + 12);
+    widget.addSpacer(one ? 9 : 7);
+    const [lane, gap] = one ? [10, 0] : [7, 6];
+    const ln = widget.addImage(lanes(shown, now, 308, lane, gap)); ln.imageSize = new Size(308, lanesHeight(shown.length, lane, gap));
     widget.addSpacer();
   }
   if (family === "large") {

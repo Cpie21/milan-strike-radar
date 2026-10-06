@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
-import { CalendarDots, CalendarPlus, CaretDown, CaretRight, CheckCircle, MapPin, PlusSquare } from '@phosphor-icons/react';
+import { ArrowUpRight, CalendarDots, CalendarPlus, CaretDown, CaretRight, CheckCircle, MapPin, PlusSquare } from '@phosphor-icons/react';
 import {
   buildRail, continuesOvernight, dayLabel, daysBetween, isActive, modeName, nextEventDate, sortCards, tx,
   type Lang, type Mode, type ModeCard,
@@ -137,14 +137,19 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
       </AnimatePresence>
       {/* Three layers at the top: the glow (above), a fixed wash in the
-          page's colour (solid at the very edge, fading softly), and the
-          header, which scrolls with the page. Where the page runs under the
-          status bar (a home-screen app), iOS 26 blurs roughly the next 40pt,
-          so there the header starts below that; elsewhere it sits as usual. */}
-      <div aria-hidden className="fixed inset-x-0 top-0 z-[30] pointer-events-none"
-        style={{ height: 'calc(env(safe-area-inset-top) + min(44px, env(safe-area-inset-top) * 100))', background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bg}B3 45%, ${C.bg}00 100%)` }} />
+          page's colour, and the header, which scrolls with the page.
+          Where the page runs under the status bar, iOS 26 blurs the top of
+          it unless the edge belongs to a fixed full-width box with a plain
+          background-color: WebKit hit-tests a point 8px down, walks up to
+          the first fixed ancestor and extends that colour into the status
+          bar instead (gradients don't count, and a pointer-events:none box
+          is never hit). So the wash is a hit-testable solid strip exactly
+          the status bar's height, with a short fade hanging under it. */}
+      <div aria-hidden className="fixed inset-x-0 top-0 z-[30]" style={{ height: 'env(safe-area-inset-top)', backgroundColor: C.bg }}>
+        <div className="absolute inset-x-0 top-full pointer-events-none" style={{ height: 'min(16px, env(safe-area-inset-top) * 100)', background: `linear-gradient(180deg, ${C.bg}, ${C.bg}00)` }} />
+      </div>
       <div>
-        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 14px + min(34px, env(safe-area-inset-top) * 100))' }}>
+        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'max(14px, calc(env(safe-area-inset-top) + 14px))' }}>
           <div className="justify-self-start flex p-[3px] rounded-full" style={{ background: C.surface2 }} role="group" aria-label="语言 / Language">
             {(['zh', 'en'] as Lang[]).map(l => (
               <button key={l} onClick={() => changeLang(l)} aria-pressed={lang === l} className="relative h-7 w-9 rounded-full text-[12.5px] font-semibold" style={{ color: lang === l ? C.text : C.text3 }}>
@@ -253,6 +258,15 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
               {tx(lang, '去看看', 'Open')}
             </button>
           </motion.section>
+
+          {/* Who made it, what it is, and where to follow: quiet, at the end */}
+          <motion.footer layout="position" transition={SPRING} className="mt-8 mb-2 px-6 flex flex-col items-center gap-1.5 text-center text-[11.5px] leading-[1.5]" style={{ color: C.text3 }}>
+            <p>© {today.slice(0, 4)} 21°C · {tx(lang, '意大利罢工查询', 'Italy Strike Radar')}</p>
+            <p className="max-w-[340px]" style={{ opacity: 0.8 }}>{tx(lang, '基于 MIT License 开源。信息来自意大利交通部与各运营方公告，重要出行请以官方为准。', 'Open source under the MIT License. Data from the Italian Ministry of Transport and operators; check official sources before important trips.')}</p>
+            <a href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-0.5 underline-offset-2 hover:underline" style={{ color: C.text2 }}>
+              {tx(lang, '关注 · 小红书', 'Follow on Xiaohongshu')}<ArrowUpRight size={11} weight="bold" />
+            </a>
+          </motion.footer>
 
         </div>
       </div>
