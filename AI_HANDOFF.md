@@ -372,3 +372,10 @@ Server contract needed:
 - Full implementation/evidence: docs/2026-10-gest-canonical-line-alias.md. 256 regressions pass; release verification to be recorded after normal production sync. Claude can merge this PR into their own branch; no UI change required to keep existing public T1 label.
 
 - Release integration: production was verified to already serve Claude 44fc534. The fix is therefore cherry-picked into owned branch codex/gest-line-alias-release based on that exact production commit, preserving all deployed lab/UI and explicit Ask-date changes. Earlier backend-only build was superseded; 44fc534 was restored before releasing the integrated fix.
+
+## GEST production receipt — 2026-10-06 (PR #14)
+
+- Runtime 985e773 is READY at www.theitalystrike.com, deployment dpl_GPJBYVzqFgt9TR5WKxsKnm1CLhuG. Based on deployed Claude 44fc534, preserving lab/UI/Ask changes. PR #13 is superseded/closed; review #14 on codex/gest-line-alias-release. Documentation/audit-only commits after the runtime do not require redeploying.
+- Normal manual sync b8f263da-559a-415f-bdfb-6f3cf58df79d succeeded, 73 fetched / 58 upserted. Stored GEST scope is VERIFIED: T1→1606821564 and T2→1272089682. Public names T1/T2, guarantees 06:30–09:30 and 17:00–20:00, raw membership T1.3 and source identity are retained. Selected-line APIs each return only the corresponding named line and correct ID; /lab returns 200.
+- 280 integrated regressions, type check, focused lint and build passed. After sync, all 20 city page/API/calendar checks +20 accuracy regressions and 88 concrete-line checks passed, plus GEST all/T1/T2 and preserved lab checks. Receipts: docs/verification/2026-10-gest-alias-{database,http,cities,lines,deployment,sync,status}.json.
+- Existing QA during normal sync made 11 calls /16 cache hits; no new AI parsing stage. October shared ledger .027329 USD, disabled=false, cap .20 unchanged. Daily cron still 0 5 * * * UTC. No paid translation/Gemini/new hosting. Eight unresolved timings and 25 warnings remain; this identity correction is not a claim of complete realtime or operator access.

@@ -19,4 +19,4 @@ Additive JSON/API only: lineScope.routeAliases, lineImpact.declaredScope.value.r
 
 ## Verification
 
-256 tests pass, including 9 new source/date/operator/mode/ambiguity/exclusion/membership/timetable cases. Type checking, focused lint and build plus production sync/database/API verification are required before declaring release complete. Production receipts are saved separately after deployment.
+280 integrated tests pass (including Claude current frontend/Ask suites), with 9 new source/date/operator/mode/ambiguity/exclusion/membership/timetable cases. Type checking, focused lint and build passed. Production runtime 985e773 is READY; normal sync, actual database scope=VERIFIED, selected T1/T2 APIs, 20-city checks and 88 line checks passed. Claude current production UI is retained (base 44fc534); /lab returns 200. Receipts: docs/verification/2026-10-gest-alias-*.json.
