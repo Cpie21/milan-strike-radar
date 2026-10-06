@@ -18,6 +18,15 @@ test('GEST visible publication date, Divi content and heading-only guarantees pr
  assert.equal(parseExternalNotices(gestFixture,gestUrl,['2027-10-10'],'2027-10-05T12:00:00Z',true).length,0);
  assert.equal(applyTimingEvidence({...gestRecord(),raw_payload:{...gestRecord().raw_payload,unions:'USB'}},notices).timing_evidence.fields.guaranteeSource,'UNKNOWN');
 });
+test('full live GEST article preserves T1/T2 before historical workforce grievances',()=>{
+ const html=fs.readFileSync(require('node:path').join(__dirname,'fixtures/gest-official-2026-10-live.html'),'utf8');
+ const notices=parseExternalNotices(html,gestUrl,['2026-10-10'],'2026-10-06T12:00:00Z',true);
+ const r=applyTimingEvidence(gestRecord(),notices);
+ assert.deepEqual(r.affected_lines,['T1','T2']);
+ assert.equal(r.timing_evidence.fields.guaranteeSource,'OFFICIAL_STRIKE_NOTICE');
+ assert.deepEqual(r.guarantee_windows,[{start:'06:30',end:'09:30'},{start:'17:00',end:'20:00'}]);
+ assert.ok(r.timing_evidence.sources.some(s=>s.url===gestUrl));
+});
 test('GEST discovery follows the registered news index without hard-coding the event URL',async()=>{
  const original=global.fetch;const fetched=[];
  global.fetch=async url=>{fetched.push(String(url));return new Response(String(url)===gestUrl?gestFixture:String(url)==='https://www.gestramvia.it/news/'?`<main><a href="${gestUrl}">10 ottobre, sciopero aziendale COBAS</a></main>`:'<main>News</main>',{headers:{'content-type':'text/html'}});};

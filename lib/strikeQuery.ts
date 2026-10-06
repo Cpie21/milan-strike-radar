@@ -22,7 +22,7 @@ const cachedCityStrikes = unstable_cache(async (tag: string, startDate: string) 
   const db = serverDatabase();
   const records = [];
   for (let offset = 0; offset < 10000; offset += 1000) {
-    const { data, error } = await db.from('strikes').select('id,date,category,provider,region,status,display_time,duration_hours,strike_windows,guarantee_windows,affected_lines,data_source,source_url,source_key,timing_evidence,raw_payload').gte('date', startDate).in('region', aliases).neq('status', 'STALE').order('date').order('id').range(offset, offset + 999);
+    const { data, error } = await db.from('strikes').select('id,date,category,provider,region,status,display_time,duration_hours,strike_windows,guarantee_windows,affected_lines,data_source,source_url,source_key,timing_evidence,raw_payload,last_seen_at').gte('date', startDate).in('region', aliases).neq('status', 'STALE').order('date').order('id').range(offset, offset + 999);
     if (error) throw new Error(`Cannot read strikes: ${error.message}`);
     records.push(...(data || []).map(withOfficialRecord));
     if (!data || data.length < 1000) return records;

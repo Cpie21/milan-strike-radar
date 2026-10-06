@@ -1,3 +1,4 @@
+import { buildLineImpact, type DeclaredLineImpact } from '../lib/lineImpact';
 import { eventWindows, mergeEvidenceWindows, numericWindows, intersectGuarantees, windowsDisplay, windowsDuration, aggregateTimingConfidence, type StrikeEvent } from '../lib/strikePresentation';
 import { mergeServiceSchedules, type ServiceSchedule } from '../lib/serviceSchedule';
 import type { OfficialStrikeRecord } from '../lib/officialStrikeRecord';
@@ -26,6 +27,7 @@ type StrikeLike = {
   data_source?: string;
   source_url?: string;
   source_key?: string;
+  last_seen_at?: string;
   timing_evidence?: TimingEvidence | null;
   display_time?: string;
   duration_hours?: string;
@@ -43,6 +45,7 @@ type StrikeLike = {
   guaranteeSource?: GuaranteeSource;
   lineScope?: LineScopeKind;
   lineScopeEvidence?: LineScope;
+  lineImpacts?: {source_key?:string;impact:DeclaredLineImpact}[];
   guaranteeEvidenceWindows?: EvidenceWindow[];
   guaranteePolicies?: GuaranteePolicy[];
   serviceSchedule?: ServiceSchedule;
@@ -223,6 +226,7 @@ export function aggregateStrikes(rawStrikes: Array<StrikeLike | null | undefined
       legacyLineScope: broad?'ALL_LINES':allLines.length?'SPECIFIC_LINES':'UNKNOWN',
       lineScope: lineScopeEvidence.kind,
       lineScopeEvidence,
+      lineImpacts:relevant.map(e=>({source_key:e.source_key,impact:buildLineImpact({date:first.date,last_seen_at:rows.find(row=>e.source_key ? row.source_key===e.source_key : e.id!==undefined && row.id===e.id)?.last_seen_at,provider:e.provider || '',region:e.region || first.region || '',category:first.category as 'TRAIN'|'BUS'|'SUBWAY'|'AIRPORT',timing_evidence:e.timing_evidence,official_record:e.official_record})})),
       field_evidence:relevant.map(e=>({source_key:e.source_key,...e.timing_evidence?.fields})),
       affected_lines: first.category === 'AIRPORT' ? [...new Set(allLines)] : broad ? ['全部线路'] : sanitizeAffectedLines([...new Set(allLines)]),
     };

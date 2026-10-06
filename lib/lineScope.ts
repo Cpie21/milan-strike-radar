@@ -1,3 +1,4 @@
+import { officialOperatorIds } from './operatorAdapters';
 import type { FieldEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
 import type { TimingSource } from './strikeEvidence';
@@ -18,7 +19,7 @@ export type LineScope = {
 export const unknownLineScope=():LineScope=>({kind:'UNKNOWN',operatorIds:[],networkNames:[],affectedLineNames:[],excludedLineNames:[],affectedRouteIds:[],excludedRouteIds:[],routeValidation:'NOT_REQUESTED'});
 
 function lineNames(text:string) {
-  const names=[...text.matchAll(/\b(?:M[1-5]|T\d{1,2})\b/gi)].map(m=>m[0].toUpperCase());
+  const names=[...text.matchAll(/\b(?:M[1-5]|T\d{1,2}|S\d{1,2}|RE?\d{1,3})\b/gi)].map(m=>m[0].toUpperCase());
   for(const m of text.matchAll(/\bline[ae]\s+((?:(?:\d{1,4}[A-Z]?|[ABC])(?:\b|(?=,))\s*(?:,|\/|\be\b|\band\b)?\s*)+)/gi)) {
     names.push(...(m[1].match(/\d{1,4}[A-Z]?|\b[ABC]\b/gi)||[]).map(s=>s.toUpperCase()));
   }
@@ -45,16 +46,30 @@ export function parseLineScope(text:string,operators:OperatorId[],officialOperat
   return names.length ? {...result,kind:'SPECIFIC_LINES',affectedLineNames:names}:result;
 }
 
+export function lineTextForMode(text:string,category:string) {
+  // Historical grievances must be removed before selecting mode sections.
+  // Otherwise a later 'tram:' complaint can replace this strike's T1/T2 scope.
+  text=text.split(/\b(?:motivazioni|motivi dello sciopero|reasons for (?:the )?strike)\s*:/i)[0];
+  if(!['BUS','SUBWAY'].includes(category))return text;
+  const wanted=(label:string)=>category==='SUBWAY'?/metro|metropolitan/i.test(label):/superficie|autobus|bus|tram/i.test(label);
+  const labels=[...text.matchAll(/\b(metropolitan[ae]|metro|superficie|autobus|bus|tram)\s*:\s*/gi)];
+  if(labels.length) {
+    // Explicit mode sections cannot lend lines to a neighbouring section.
+    return labels.filter(m=>wanted(m[1])).map(m=>text.slice(m.index!+m[0].length,labels[labels.indexOf(m)+1]?.index ?? text.length)).join(' ');
+  }
+  const metro=/\bmetropolitan[ae]|\bmetro\b/i.test(text),surface=/\bsuperficie|\bautobus\b|\bbus\b|\btram\b/i.test(text);
+  if(category==='BUS'&&metro&&!surface || category==='SUBWAY'&&surface&&!metro)return '';
+  return text;
+}
+
 export function officialLineScope(record:StrikeRecord,text:string,source:TimingSource):FieldEvidence<LineScope> {
   let operators=identifyOperators(record);
   // A national general-strike projection can gain a concrete operator only
   // from its already matched, dated, city-specific official notice.
-  if(!operators.length && source.authority==='official' && /sciopero generale|settori pubblichi|categorie pubbliche|plurisettorial/i.test(record.raw_payload?.provider||'')) {
-    const hostname=new URL(source.url).hostname;
-    const known:[string,string,OperatorId][]=[['www.atm.it','MILANO','ATM_MILANO'],['www.atac.roma.it','ROMA','ATAC_ROMA'],['www.gtt.to.it','TORINO','GTT_TORINO'],['bergamo.arriva.it','BERGAMO','ARRIVA_BERGAMO']];
-    operators=known.filter(([host,city])=>host===hostname&&city===record.region).map(([, ,operator])=>operator);
+  if(!operators.length && source.authority==='official' && /sciopero generale|settori pubblici|categorie pubbliche|plurisettorial/i.test(record.raw_payload?.provider||'')) {
+    operators=officialOperatorIds(source.url,record.region);
   }
-  const value=parseLineScope(text,operators,true);
+  const value=parseLineScope(lineTextForMode(text,record.category),operators,true);
   return {value,confidence:value.kind==='UNKNOWN'?'UNKNOWN':'HIGH',source:value.kind==='UNKNOWN'?'UNKNOWN':'OPERATOR_OFFICIAL',method:'CODE',url:source.url,excerpt:text.slice(0,800)};
 }
 
