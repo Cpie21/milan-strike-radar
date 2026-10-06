@@ -17,7 +17,10 @@ export const metadata: Metadata = {
   description: "Italy Strike Query - Real-time strike information for Italy",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // Not translucent: since iOS 26 the system lays a Liquid Glass blur over
+    // the top ~40pt of a home-screen app that draws under its status bar.
+    // With an opaque bar the page starts below it and nothing is blurred.
+    statusBarStyle: "black",
     title: "罢工查询",
   },
   icons: {
@@ -54,6 +57,10 @@ export default function RootLayout({
         className={`${jetBrainsMono.variable} ${num.variable} antialiased`}
       >
         <style>{'html,body{background:#0A0B0D;color-scheme:dark;overscroll-behavior-y:none}'}</style>
+        {/* Wherever the page still runs under the status bar, one solid strip
+            there: WebKit leaves the edge unblurred when a fixed full-width box
+            paints it in a single colour. */}
+        <div aria-hidden style={{ position: 'fixed', top: 0, left: 0, right: 0, height: 'env(safe-area-inset-top)', background: '#0A0B0D', zIndex: 80, pointerEvents: 'none' }} />
         <CSPostHogProvider>
           {children}
         </CSPostHogProvider>

@@ -114,6 +114,16 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '{}')[key] ?? null; } catch { return null; }
   };
   const reopen = () => { if (result || error) setOpen(true); };
+  const [history, setHistory] = useState<PastAnswer[]>([]);
+  useEffect(() => { const t = setTimeout(() => setHistory(readHistory(region)), 0); return () => clearTimeout(t); }, [region]);
+  const keep = (entry: PastAnswer) => {
+    try {
+      const all = (JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') as PastAnswer[]).filter(h => h.key !== entry.key);
+      all.push(entry);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(all.slice(-12)));
+    } catch { /* storage full or blocked */ }
+    setHistory(readHistory(region));
+  };
 
   async function ask(text: string, next: Hints = {}) {
     const q = text.trim().slice(0, 200);
@@ -168,6 +178,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
             if (answered) counted.current = true;
             setResult(event.result);
             if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result });
+            if (event.result.kind === 'result') keep({ key: keyOf(q, next), q, hints: next, result: event.result, stages: seen, at: Date.now() });
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
           } else if (event.type === 'error') setError(event.error === 'budget' ? 'budget' : 'down');
         }
@@ -181,22 +192,34 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   // Picked modes replace the guessed ones (a correction, not an addition).
   const refine = (patch: Hints) => ask(asked, { ...hints, ...patch });
 
-  const verdict = result?.kind === 'result'
-    ? result.view === 'claim' ? CLAIM[result.matches[0]?.claim || 'none']
-      : result.view === 'period'
-        ? (result.days.length ? [tx(lang, `这段时间有 ${result.days.length} 天有罢工`, `Strikes on ${result.days.length} day(s)`), '', C.pend] : [tx(lang, '这段时间没有已公布的罢工', 'No strikes announced'), '', C.ok])
-        : LEVEL[result.level]
-    : null;
+  const verdict = verdictOf(result, lang);
+  const groups = groupsOf(result);
 
-  // Group matches by mode, in the order the user mentioned them.
-  const groups = result?.kind === 'result' ? (() => {
-    const order = result.understanding.modes.map(m => m.mode);
-    const map = new Map<Mode, Judged[]>();
-    result.matches.forEach(m => map.set(m.category, [...(map.get(m.category) || []), m]));
-    return [...map].sort((a, b) => (order.indexOf(a[0]) + 99) % 99 - (order.indexOf(b[0]) + 99) % 99);
-  })() : [];
+  return { lang, today, region, query, setQuery, asked, hints, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen, history, keyOf };
+}
 
-  return { lang, today, region, query, setQuery, asked, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen };
+function verdictOf(result: AskResult | null, lang: Lang): string[] | null {
+  if (result?.kind !== 'result') return null;
+  if (result.view === 'claim') return CLAIM[result.matches[0]?.claim || 'none'];
+  if (result.view === 'period') return result.days.length ? [tx(lang, `这段时间有 ${result.days.length} 天有罢工`, `Strikes on ${result.days.length} day(s)`), '', C.pend] : [tx(lang, '这段时间没有已公布的罢工', 'No strikes announced'), '', C.ok];
+  return LEVEL[result.level];
+}
+
+// Group matches by mode, in the order the user mentioned them.
+function groupsOf(result: AskResult | null): [Mode, Judged[]][] {
+  if (result?.kind !== 'result') return [];
+  const order = result.understanding.modes.map(m => m.mode);
+  const map = new Map<Mode, Judged[]>();
+  result.matches.forEach(m => map.set(m.category, [...(map.get(m.category) || []), m]));
+  return [...map].sort((a, b) => (order.indexOf(a[0]) + 99) % 99 - (order.indexOf(b[0]) + 99) % 99);
+}
+
+// Earlier answers, kept on this device, newest last: the answer sheet shows
+// them to the left of the current one.
+const HISTORY_KEY = 'lab_ask_history';
+export type PastAnswer = { key: string; q: string; hints: Hints; result: AskResult; stages: StageEvent[]; at: number };
+function readHistory(region: string): PastAnswer[] {
+  try { return (JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') as PastAnswer[]).filter(h => h.key.startsWith(`${region}|`)); } catch { return []; }
 }
 
 // The face on the page is the assistant at rest: it never keeps an answer's
@@ -361,12 +384,61 @@ export function AskModule({ ask: a, nudge }: { ask: AskState; nudge?: { key: str
   );
 }
 
+// The answer sheet: the current answer, and the earlier ones to its left,
+// one page each, a swipe apart (the past sits left, as on the date rail).
 export function AskSheet({ ask: a }: { ask: AskState }) {
-  const { lang, today, open, setOpen, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
+  const { lang, open, setOpen } = a;
+  const current = a.keyOf(a.asked, a.hints);
+  const past = a.history.filter(h => h.key !== current);
+  // Each earlier answer as the sheet would have shown it, opened read-only
+  // apart from its own trace and follow-up chips.
+  const [traces, setTraces] = useState<Record<string, boolean>>({});
+  const pages: AskState[] = [
+    ...past.map(h => ({
+      ...a, asked: h.q, hints: h.hints, busy: false, error: null, result: h.result, stages: h.stages,
+      verdict: verdictOf(h.result, lang), groups: groupsOf(h.result),
+      trace: !!traces[h.key],
+      setTrace: ((v: boolean | ((x: boolean) => boolean)) => setTraces(t => ({ ...t, [h.key]: typeof v === 'function' ? v(!!t[h.key]) : v }))) as AskState['setTrace'],
+      refine: (patch: Hints) => a.ask(h.q, { ...h.hints, ...patch }),
+    })),
+    a,
+  ];
+  const [index, setIndex] = useState(pages.length - 1);
+  const strip = useRef<HTMLDivElement | null>(null);
+  // Opening, or a new answer: back to the newest page.
+  const last = pages.length - 1;
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => { const el = strip.current; if (el) el.scrollLeft = el.scrollWidth; setIndex(last); }, 0);
+    return () => clearTimeout(t);
+  }, [open, current, last]);
+  const shown = pages[Math.min(index, last)];
+  return (
+    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall fit expand={shown.trace}
+      header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(shown)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{shown.asked}”</p></div>}>
+      {pages.length > 1 && (
+        // where you are among your answers: the newest is the rightmost
+        <div className="pt-0.5 pb-1 flex items-center justify-center gap-[5px]" aria-hidden>
+          {pages.map((_, i) => <i key={i} className="h-[6px] rounded-full transition-all duration-300" style={{ width: i === index ? 16 : 6, background: i === index ? C.text : 'rgba(255,255,255,0.22)' }} />)}
+        </div>
+      )}
+      <div ref={strip} onScroll={e => { const el = e.currentTarget; setIndex(Math.round(el.scrollLeft / el.clientWidth)); }}
+        className="-mx-5 flex items-start overflow-x-auto snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {pages.map((p, i) => (
+          <div key={i === last ? 'now' : p.asked + i} data-sheet-page={i === index ? '' : undefined} className="w-full shrink-0 snap-center px-5" aria-hidden={i !== index}>
+            <AnswerBody a={p} active={i === index} />
+          </div>
+        ))}
+      </div>
+    </Sheet>
+  );
+}
+
+function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
+  const { lang, today, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall fit expand={trace}
-      header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(a)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{asked}”</p></div>}>
+    <>
       <AnimatePresence mode="wait" initial={false}>
       {busy ? (
         // Thinking is quick, so it says one thing at a time.
@@ -499,7 +571,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 
       {stages.length > 0 && (
         <div className="mt-3 mb-1">
-          <button data-sheet-fit onClick={e => { const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+          <button data-sheet-fit={active ? '' : undefined} onClick={e => { const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
             <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
             <motion.span animate={{ rotate: trace ? 180 : 0 }} className="flex"><CaretDown size={13} weight="bold" /></motion.span>
           </button>
@@ -515,7 +587,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
       </motion.div>
       )}
       </AnimatePresence>
-    </Sheet>
+    </>
   );
 }
 
