@@ -289,12 +289,16 @@ export function LedBoard({ mood = 'idle', pitch = 4.4, nudge, attend = false }: 
   const box = useRef<HTMLSpanElement>(null);
   const [W, setW] = useState(41);
   const width = useRef(W);
+  const measured = useRef(false);
   useLayoutEffect(() => { width.current = W; });
   useEffect(() => {
     const el = box.current;
     if (!el) return;
     // Room for the housing's frame on both sides
-    const ro = new ResizeObserver(([e]) => setW(Math.max(31, Math.min(64, Math.floor((e.contentRect.width - pitch * 3.4 - 8) / pitch)))));
+    const ro = new ResizeObserver(([e]) => {
+      const w = Math.max(31, Math.min(64, Math.floor((e.contentRect.width - pitch * 3.4 - 8) / pitch)));
+      width.current = w; measured.current = true; setW(w);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, [pitch]);
@@ -307,11 +311,13 @@ export function LedBoard({ mood = 'idle', pitch = 4.4, nudge, attend = false }: 
   const live = async (show: Show, wait: Wait) => {
     if (!woke.current) {
       woke.current = true;
-      const w = width.current;
+      // The board's real width first: woken at the default width, the static
+      // and the sweep stopped short of its right edge.
+      for (let i = 0; i < 20 && !measured.current; i++) await wait(30);
       eyes.show(false);
-      for (const d of [0.06, 0.18, 0.34, 0.16, 0.05]) { show(noise(w, d), 0, 'cut'); await wait(70); }
+      for (const d of [0.06, 0.18, 0.34, 0.16, 0.05]) { show(noise(width.current, d), 0, 'cut'); await wait(70); }
       show([], 0, 'cut'); await wait(140);
-      for (let x = 0; x < w; x += 2) { show([0x1ff, 0x1ff], x, 'fade'); await wait(14); }
+      for (let x = 0; x < width.current; x += 2) { show([0x1ff, 0x1ff], x, 'fade'); await wait(14); }
       show([], 0, 'fade'); await wait(220);
       eyes.show(true); eyes.look(-0.8, 0, 500); await wait(600);
       eyes.look(0.8, -0.2, 500); await wait(600);

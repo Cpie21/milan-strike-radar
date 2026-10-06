@@ -98,6 +98,18 @@ export function Bar({ card, now = null, label, lang = 'zh' }: { card: ModeCard; 
   );
 }
 
+// A long value reads as its clauses, one per line and without the commas
+// between them, so a right-aligned sentence never leaves one character
+// alone on its last line. Short values and lists ("M1, M2") stay as they are.
+function clauses(text: string) {
+  const long = /[\u4e00-\u9fff]/.test(text) ? text.length > 14 : text.length > 32;
+  if (!long) return text;
+  const parts = text.split(/\s*[，；]\s*|;\s+/).flatMap(p => (p.length > 30 && /, /.test(p) ? p.split(/,\s+/) : [p]))
+    .map(p => p.trim().replace(/[。.]$/, '')).filter(Boolean);
+  if (parts.length < 2 || parts.some(p => p.length < 3)) return text;
+  return parts.map((p, i) => <span key={i} className="block">{p}</span>);
+}
+
 // ── Card ──────────────────────────────────────────────────────────────
 // Reading order follows the questions people ask, one per band:
 //   what & is it sure → when → how far off → (the day at a glance)
@@ -313,7 +325,7 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
         {rows.map(([label, value, key], i) => (
           <div key={key} className="flex items-start gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
             <dt className={`shrink-0 ${TYPE.label} pt-[3px]`} style={{ color: C.text3 }}>{label}</dt>
-            <dd className="flex-1 min-w-0 text-right text-[14.5px] font-medium leading-snug" style={{ color: value === null ? C.text3 : C.text }}>{value ?? tx(lang, '待核实', 'Unverified')}</dd>
+            <dd className="flex-1 min-w-0 text-right text-[14.5px] font-medium leading-snug" style={{ color: value === null ? C.text3 : C.text }}>{typeof value === 'string' ? clauses(value) : value ?? tx(lang, '待核实', 'Unverified')}</dd>
           </div>
         ))}
       </dl>
