@@ -110,7 +110,7 @@ export class EyeLife {
     out.fill(0);
     if (this.visible < 0.01) return out;
     const b = this.blink < 0 ? 1 : this.blink < 0.35 ? 1 - this.blink / 0.35 : (this.blink - 0.35) / 0.65; // close fast, open slower
-    const small = rows <= 9 && cols < 24;
+    const small = cols < 24; // a small face, whether a 9-row strip or the round porthole
     const w = small ? 4.2 : 5.2, h = small ? 6.2 : 7, sep = small ? 3.9 : 4.9;
     const reach = small ? 1.6 : Math.min(cols / 2 - sep - w / 2 - 0.5, 5.5);
     const cx0 = cols / 2 + this.gx * reach, cy0 = rows / 2 + this.gy * 1.1;

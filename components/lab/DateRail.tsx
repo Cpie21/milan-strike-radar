@@ -23,6 +23,9 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const placed = useRef(false);
+  // The title follows the rail only when you scroll it yourself; placing the
+  // selected day leaves it on the selected day's month.
+  const browsing = useRef(false);
   const reduce = useReducedMotion();
   const days = tiles.filter((t): t is Extract<RailTile, { kind: 'day' }> => t.kind === 'day');
   const past = days.filter(t => t.date < today);
@@ -43,6 +46,7 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
     const x = el.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft;
     const left = x - PEEK;
     const visible = x >= strip.scrollLeft + 8 && x + el.offsetWidth <= strip.scrollLeft + strip.clientWidth - 16;
+    browsing.current = false;
     if (!placed.current) strip.scrollLeft = left;
     else if (!visible) strip.scrollTo({ left, behavior: reduce ? 'auto' : 'smooth' });
     placed.current = true;
@@ -51,7 +55,7 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
   // The title follows the month at the left anchor.
   const onScroll = () => {
     const strip = ref.current;
-    if (!strip) return;
+    if (!strip || !browsing.current) return;
     const anchor = strip.scrollLeft + PEEK + 12;
     const items = [...strip.querySelectorAll<HTMLElement>('[data-month]')];
     const hit = items.find(el => el.offsetLeft <= anchor && el.offsetLeft + el.offsetWidth + GAP > anchor);
@@ -60,11 +64,12 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
 
   return (
     <motion.div ref={ref} layoutScroll onScroll={onScroll}
+      onPointerDown={() => { browsing.current = true; }} onTouchStart={() => { browsing.current = true; }} onWheel={() => { browsing.current = true; }}
       className="relative flex items-end overflow-x-auto px-4 pt-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ gap: GAP }}>
       {/* The past: one sunken strip, still split and labelled by month */}
       {past.length > 0 && (
         <div className="shrink-0 flex flex-col mr-1">
-          <div className="h-[18px] flex px-1">
+          <div className="h-[16px] mb-[7px] flex px-1 leading-[16px]">
             {pastMonths.map((g, k) => (
               <span key={g[0].date} className="text-[11.5px] font-semibold whitespace-nowrap overflow-visible" style={{ width: g.length * PAST_W + (k ? MONTH_SEP : 0), paddingLeft: k ? MONTH_SEP + 2 : 4, color: C.text3 }}>
                 {monthLabel(g[0].date, lang)}{k === pastMonths.length - 1 ? ` · ${lang === 'en' ? 'past' : '过去'}` : ''}
@@ -95,7 +100,7 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
           <div key={tile.date} data-month={tile.date} className="relative shrink-0 flex flex-col" style={{ width: TILE_W, marginLeft: tile.monthStart && i > 0 ? MONTH_SEP : 0, zIndex: bridge ? 2 : 1 }}>
             {/* A new month: its name in full strength, and a rule before it */}
             {tile.monthStart && i > 0 && <i aria-hidden className="absolute top-[3px] bottom-[2px] w-px" style={{ left: -(MONTH_SEP + GAP) / 2 - 0.5, background: C.lineStrong }} />}
-            <span className="h-[18px] pl-1 text-[11.5px] whitespace-nowrap" style={{ color: tile.monthStart ? C.text2 : C.text3, fontWeight: tile.monthStart ? 650 : 500 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
+            <span className="h-[16px] mb-[7px] pl-1 text-[11.5px] leading-[16px] whitespace-nowrap" style={{ color: tile.monthStart ? C.text2 : C.text3, fontWeight: tile.monthStart ? 650 : 500 }}>{tile.monthStart || tile.date === today ? monthLabel(tile.date, lang) : ''}</span>
             <Day tile={tile} today={today} selected={tile.date === selected} lang={lang} onSelect={onSelect} bridge={bridge} fromPrev={fromPrev} focus={focus} reach={reach} />
           </div>
         );

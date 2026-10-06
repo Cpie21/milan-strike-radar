@@ -365,7 +365,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   const { lang, today, open, setOpen, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall expand={trace}
+    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall fit expand={trace}
       header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(a)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{asked}”</p></div>}>
       <AnimatePresence mode="wait" initial={false}>
       {busy ? (
@@ -499,7 +499,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 
       {stages.length > 0 && (
         <div className="mt-3 mb-1">
-          <button onClick={e => { const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+          <button data-sheet-fit onClick={e => { const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
             <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
             <motion.span animate={{ rotate: trace ? 180 : 0 }} className="flex"><CaretDown size={13} weight="bold" /></motion.span>
           </button>

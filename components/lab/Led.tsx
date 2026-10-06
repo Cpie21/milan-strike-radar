@@ -121,14 +121,17 @@ function makeSprite(pitch: number): Sprite {
 }
 
 // Two layers: the living eyes (every frame) and a picture over them.
-function Panel({ cols, pitch, frame, glow, eyes }: { cols: number; pitch: number; frame: Frame; glow: number; eyes?: EyeLife }) {
+// `rows` above ROWS (the round face) adds dots above and below the frame's
+// band, so the whole face is a grid of dots; frames stay vertically centred.
+function Panel({ cols, pitch, frame, glow, eyes, rows = ROWS }: { cols: number; pitch: number; frame: Frame; glow: number; eyes?: EyeLife; rows?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const reduce = useReducedMotion();
   const state = useRef({ alpha: new Float32Array(0), goal: new Float32Array(0), start: 0, mode: 'cut' as Frame['mode'], cover: new Uint8Array(0), raf: 0, last: 0 });
 
   useEffect(() => {
     const st = state.current;
-    const n = cols * ROWS;
+    const n = cols * rows;
+    const pad = Math.floor((rows - ROWS) / 2);
     if (st.alpha.length !== n) st.alpha = new Float32Array(n);
     const goal = new Float32Array(n);
     const cover = new Uint8Array(cols);
@@ -136,7 +139,7 @@ function Panel({ cols, pitch, frame, glow, eyes }: { cols: number; pitch: number
       const x = i + frame.offset;
       if (x < 0 || x >= cols) return;
       if (frame.cover && col) cover[x] = 1;
-      for (let y = 0; y < ROWS; y++) if (col & (1 << y)) goal[y * cols + x] = 1;
+      for (let y = 0; y < ROWS; y++) if (col & (1 << y)) goal[(y + pad) * cols + x] = 1;
     });
     st.goal = goal; st.cover = cover;
     st.mode = reduce ? 'cut' : frame.mode;
@@ -147,7 +150,7 @@ function Panel({ cols, pitch, frame, glow, eyes }: { cols: number; pitch: number
     // and hydration keeps server attributes.
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     if (canvas.current) {
-      const w = Math.round(cols * pitch * dpr), h = Math.round(ROWS * pitch * dpr);
+      const w = Math.round(cols * pitch * dpr), h = Math.round(rows * pitch * dpr);
       if (canvas.current.width !== w) canvas.current.width = w;
       if (canvas.current.height !== h) canvas.current.height = h;
     }
@@ -185,9 +188,9 @@ function Panel({ cols, pitch, frame, glow, eyes }: { cols: number; pitch: number
     cancelAnimationFrame(st.raf);
     st.raf = requestAnimationFrame(draw);
     return () => { cancelAnimationFrame(st.raf); io?.disconnect(); };
-  }, [frame, cols, pitch, glow, reduce, eyes]);
+  }, [frame, cols, rows, pitch, glow, reduce, eyes]);
 
-  return <canvas ref={canvas} style={{ width: cols * pitch, height: ROWS * pitch, display: 'block' }} aria-hidden />;
+  return <canvas ref={canvas} style={{ width: cols * pitch, height: rows * pitch, display: 'block' }} aria-hidden />;
 }
 
 // ── Programmes ─────────────────────────────────────────────────────────
@@ -248,9 +251,13 @@ function Housing({ children, pitch, glow, radius }: { children: React.ReactNode;
 
 // `round`: a circular porthole of a display, for the bar's round end, where
 // a round thing sits with an even margin all the way round.
-export function LedFace({ mood = 'idle', size = 20, cols = 19, attend = false, round }: { mood?: Mood; size?: number; cols?: number; attend?: boolean; round?: number }) {
+export function LedFace({ mood = 'idle', size = 20, cols: wide = 19, attend = false, round }: { mood?: Mood; size?: number; cols?: number; attend?: boolean; round?: number }) {
   const pitch = size / 7;
-  const [eyes] = useState(() => new EyeLife(cols, ROWS));
+  // Round: a square grid just covering the porthole, so dots reach its rim
+  // all the way round, not only across the middle.
+  const span = round ? Math.ceil((round - 6) / pitch) | 1 : 0;
+  const cols = round ? span : wide, rows = round ? span : ROWS;
+  const [eyes] = useState(() => new EyeLife(cols, rows));
   useEffect(() => { eyes.setExpr(EXPR[mood]); }, [eyes, mood]);
   useEffect(() => { if (attend) eyes.look(1, 0.25, 60_000); else eyes.look(0, 0, 0); }, [eyes, attend]);
   if (round) return (
@@ -259,7 +266,7 @@ export function LedFace({ mood = 'idle', size = 20, cols = 19, attend = false, r
       boxShadow: `inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.5), 0 0 ${pitch * 6}px rgba(255,150,30,${glowOf(mood) * 0.18})`,
     }}>
       <span className="relative flex items-center justify-center rounded-full overflow-hidden" style={{ width: round - 6, height: round - 6, background: '#040404', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.95)' }}>
-        <Panel cols={cols} pitch={pitch} frame={EMPTY} glow={glowOf(mood)} eyes={eyes} />
+        <Panel cols={cols} rows={rows} pitch={pitch} frame={EMPTY} glow={glowOf(mood)} eyes={eyes} />
         <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: GLASS }} />
       </span>
     </span>

@@ -19,6 +19,7 @@ import { ModeBadge } from './ui';
 import MonthSheet from './MonthSheet';
 import { C, EASE, MODE_COLOR, NUM, R, SANS, SPRING, TONAL, TYPE } from './theme';
 import { track } from './track';
+import { holdWalls } from './wall/PixelWall';
 
 type City = { tag: string; zh: string; en: string; path: string };
 export type CityStatus = Record<string, { today: Mode[]; next: string | null; nextModes: Mode[] }>;
@@ -55,23 +56,19 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const jumpModes = [...new Set(active.map(c => c.category))];
   const next = nextEventDate(byDate, selected);
   const name = lang === 'en' ? city.en : city.zh;
-  // The page glow takes the colours of the modes striking that day; a calm
-  // day stays neutral, so colour itself means "something is on".
-  const glow = jumpModes.length
-    ? jumpModes.slice(0, 2).map((m, i, all) => `radial-gradient(${all.length > 1 ? '70%' : '110%'} 70% at ${all.length > 1 ? (i ? '85%' : '15%') : '50%'} -5%, ${MODE_COLOR[m].main}38, transparent 72%)`).join(', ')
-    : 'radial-gradient(110% 70% at 50% -5%, rgba(255,255,255,0.06), transparent 72%)';
-
-  // Safari's bars take theme-color: match the top of the page, which glows
-  // in the striking mode's colour on strike days.
-  const topTint = jumpModes.length ? MODE_COLOR[jumpModes[0]].main : null;
+  // The top of the page takes the colours of the modes striking that day; a
+  // calm day stays neutral, so colour itself means "something is on".
+  // The header is one flat band in exactly the colour Safari gives its bars
+  // (theme-color is a single colour), so page and browser meet without a
+  // seam; the glow blooms below it, its colours parting only further down.
+  const glowModes = jumpModes.slice(0, 2);
+  const band = bandColour(glowModes);
+  const blobs = glowModes.length
+    ? glowModes.map((m, i, all) => `radial-gradient(${all.length > 1 ? '62% 230px' : '90% 250px'} at ${all.length > 1 ? (i ? '82%' : '18%') : '50%'} 70px, ${MODE_COLOR[m].main}30, transparent 70%)`).join(', ')
+    : 'radial-gradient(90% 240px at 50% 60px, rgba(255,255,255,0.045), transparent 70%)';
   useEffect(() => {
-    const mix = (hex: string, k: number) => {
-      const n = parseInt(hex.slice(1), 16), base = [10, 11, 13];
-      return `#${[n >> 16, (n >> 8) & 255, n & 255].map((v, i) => Math.round(base[i] + (v - base[i]) * k).toString(16).padStart(2, '0')).join('')}`;
-    };
-    const color = topTint ? mix(topTint, 0.2) : '#0A0B0D';
-    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', color));
-  }, [topTint]);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', band));
+  }, [band]);
 
   useEffect(() => {
     const tick = () => setNow(romeMinutes());
@@ -82,17 +79,21 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         setLang(stored === 'en' || stored === 'zh' ? stored : detectBrowserLanguage());
       } catch { /* storage blocked */ }
       if (/MicroMessenger/i.test(navigator.userAgent)) { setWechat(true); track('wechat_jump_success'); }
+      // The page is cached for everyone; the day a link points at is read here.
+      const linked = new URLSearchParams(window.location.search).get('date');
+      if (linked && /^\d{4}-\d{2}-\d{2}$/.test(linked) && linked !== initialDate && linked >= from && linked <= to) { setSelected(linked); setMonth(linked); }
     }, 0);
     const timer = setInterval(tick, 60_000);
     return () => { clearTimeout(first); clearInterval(timer); };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 
   const select = (date: string) => {
     if (date === selected) return;
+    holdWalls(520); // the walls hold still while the days slide
     setDirection(Math.sign(daysBetween(selected, date)));
     setSelected(date);
     setMonth(date);
-    window.history.replaceState(null, '', `/lab?city=${city.tag}&date=${date}`);
+    window.history.replaceState(null, '', date === today ? city.path : `${city.path}?date=${date}`);
   };
   // Forward tap-to-jump (portfolio decision 02): scroll to the card and pulse it.
   const jump = (mode: Mode) => {
@@ -104,7 +105,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   };
   const openDate = (date: string, path: string) => {
     if (path === city.path) select(date);
-    else router.push(`/lab?city=${cities.find(c => c.path === path)?.tag ?? city.tag}&date=${date}`);
+    else router.push(`${path}?date=${date}`);
   };
   const changeLang = (l: Lang) => { setLang(l); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, l); } catch { /* ignore */ } };
 
@@ -125,13 +126,9 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   return (
     <LayoutGroup>
     <main className="relative min-h-[100dvh]" style={{ background: C.bg, color: C.text, fontFamily: SANS, WebkitFontSmoothing: 'antialiased' }}>
-      <AnimatePresence initial={false}>
-        <motion.div key={glow} aria-hidden className="absolute inset-x-0 top-0 h-[460px] pointer-events-none" style={{ background: glow }}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
-      </AnimatePresence>
-      <div className="relative mx-auto max-w-[520px] pb-[120px]">
-        {/* Brand centred between the two entry points */}
-        <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}>
+      {/* The band: one flat colour, continuous with Safari's bar */}
+      <div className="relative z-[1]" style={{ background: band, transition: 'background-color 0.5s ease' }}>
+        <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 pb-3" style={{ paddingTop: 'max(14px, env(safe-area-inset-top))' }}>
           <div className="justify-self-start flex p-[3px] rounded-full" style={{ background: C.surface2 }} role="group" aria-label="语言 / Language">
             {(['zh', 'en'] as Lang[]).map(l => (
               <button key={l} onClick={() => changeLang(l)} aria-pressed={lang === l} className="relative h-7 w-9 rounded-full text-[12.5px] font-semibold" style={{ color: lang === l ? C.text : C.text3 }}>
@@ -148,9 +145,20 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
             <MapPin size={14} weight="fill" />{name}<CaretDown size={11} weight="bold" color={C.text3} />
           </button>
         </header>
+      </div>
+      <div className="relative">
+      {/* The glow: the band's colour washing down evenly, and each striking
+          mode's light opening up beneath it */}
+      <div aria-hidden className="absolute inset-x-0 top-0 h-[420px] pointer-events-none" style={{ background: `linear-gradient(180deg, ${band} 0px, ${band}00 300px)`, transition: 'background 0.5s ease' }} />
+      <AnimatePresence initial={false}>
+        <motion.div key={blobs} aria-hidden className="absolute inset-x-0 top-0 h-[420px] pointer-events-none"
+          style={{ background: blobs, WebkitMaskImage: 'linear-gradient(180deg, transparent 0px, #000 90px, #000 55%, transparent 100%)', maskImage: 'linear-gradient(180deg, transparent 0px, #000 90px, #000 55%, transparent 100%)' }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5, ease: EASE }} />
+      </AnimatePresence>
+      <div className="relative mx-auto max-w-[520px] pb-[120px]">
 
         {/* Title left, the way out to the full calendar right, on one baseline */}
-        <div className="flex items-end justify-between gap-3 px-5 mt-7 mb-3">
+        <div className="flex items-end justify-between gap-3 pl-5 pr-4 pt-4 mb-3">
           <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
           <button onClick={() => setSheet('month')} className={`mb-0.5 h-[34px] pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: C.surface2, color: C.text }}>
             <CalendarDots size={16} weight="bold" />{tx(lang, '全部日期', 'All dates')}
@@ -180,7 +188,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         </AnimatePresence>
 
         <div className="px-4 pt-3">
-          <div className="relative -mx-4 px-4" style={{ overflowX: 'clip' }}>
+          <div data-day-stage className="relative -mx-4 px-4" style={{ overflowX: 'clip' }}>
           <AnimatePresence mode="popLayout" initial={false} custom={direction}>
             <motion.div key={selected} custom={direction} variants={variants} initial="enter" animate="center" exit="exit" transition={reduce ? { duration: 0.15 } : SPRING} className="flex flex-col gap-3">
               {dayCards.length ? dayCards.map(card => {
@@ -238,6 +246,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
         </div>
       </div>
+      </div>
 
       <AnimatePresence>
         {!calm && <AskField key="dock" ask={ask} />}
@@ -247,7 +256,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
       <CitySheet open={sheet === 'city'} onClose={() => setSheet(null)} lang={lang} cities={cities} current={city.tag} status={cityStatus} today={today} />
       <CalendarSheet open={sheet === 'calendar'} onClose={() => setSheet(null)} lang={lang} region={city.tag} cityName={name} />
-      <WidgetSheet open={sheet === 'widget'} onClose={() => setSheet(null)} lang={lang} region={city.tag} cityName={city.zh} cityPath={city.path} />
+      <WidgetSheet open={sheet === 'widget'} onClose={() => setSheet(null)} lang={lang} region={city.tag} cityName={name} cityPath={city.path} />
       <HomeScreenSheet open={sheet === 'home'} onClose={() => setSheet(null)} lang={lang} />
       <SupportSheet open={sheet === 'support'} onClose={() => setSheet(null)} lang={lang} />
 
@@ -265,6 +274,13 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     </main>
     </LayoutGroup>
   );
+}
+
+function bandColour(modes: Mode[]) {
+  if (!modes.length) return '#0A0B0D';
+  const rgb = (hex: string) => { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const avg = modes.map(m => rgb(MODE_COLOR[m].main)).reduce((a, c) => a.map((v, i) => v + c[i] / modes.length), [0, 0, 0]);
+  return `#${avg.map((v, i) => Math.round([10, 11, 13][i] + (v - [10, 11, 13][i]) * 0.16).toString(16).padStart(2, '0')).join('')}`;
 }
 
 function Tool({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {

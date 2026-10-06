@@ -51,15 +51,100 @@ function mySlot(slots: Slot[], storeKey: string, others: number): Slot {
 }
 
 // Drawn art for the vehicle (docs/design/pixel-brief), when it exists.
-function useArt(mode: Mode) {
-  const [art, setArt] = useState<{ veh: HTMLImageElement | null; mask: HTMLImageElement | null }>({ veh: null, mask: null });
-  useEffect(() => {
-    let alive = true;
+// Loaded once per mode for the whole page, so a day you come back to has it.
+type Art = { veh: HTMLImageElement | null; mask: HTMLImageElement | null };
+const NO_ART: Art = { veh: null, mask: null };
+const artLoaded = new Map<Mode, Art>();
+const artLoading = new Map<Mode, Promise<Art>>();
+function loadArt(mode: Mode) {
+  if (!artLoading.has(mode)) {
     const load = (src: string) => new Promise<HTMLImageElement | null>(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
-    Promise.all([load(`/lab/wall/${ART[mode]}.png`), load(`/lab/wall/${ART[mode]}-mask.png`)]).then(([veh, mask]) => { if (alive && (veh || mask)) setArt({ veh, mask }); });
-    return () => { alive = false; };
+    artLoading.set(mode, Promise.all([load(`/lab/wall/${ART[mode]}.png`), load(`/lab/wall/${ART[mode]}-mask.png`)]).then(([veh, mask]) => {
+      const art = veh || mask ? { veh, mask } : NO_ART;
+      artLoaded.set(mode, art);
+      return art;
+    }));
+  }
+  return artLoading.get(mode)!;
+}
+// `null` until known (drawn art or none): the wall is built once, not twice.
+// A wall not built yet waits for the day's slide to finish, so the slide
+// never stalls on it; one already built is there at once.
+const layerKey = (mode: Mode, art: Art) => `${mode}|${art.veh ? 'art' : 'code'}`;
+function useArt(mode: Mode) {
+  const [art, setArt] = useState<Art | null>(() => { const a = artLoaded.get(mode); return a && layerCache.has(layerKey(mode, a)) ? a : null; });
+  useEffect(() => {
+    let alive = true, timer: ReturnType<typeof setTimeout> | undefined;
+    loadArt(mode).then(a => {
+      if (!alive) return;
+      if (layerCache.has(layerKey(mode, a))) setArt(a);
+      else timer = setTimeout(() => { if (alive) setArt(a); }, 420);
+    });
+    return () => { alive = false; clearTimeout(timer); };
   }, [mode]);
   return art;
+}
+
+// The static layers of a scene: built once per vehicle and kept for the
+// page, so switching between days only has to compose them.
+type Layers = { bgHi: HTMLCanvasElement; vehHi: HTMLCanvasElement; fgHi: HTMLCanvasElement; maskHi: HTMLCanvasElement; lightHi: HTMLCanvasElement; glossHi: HTMLCanvasElement; maskData: Uint8ClampedArray };
+const layerCache = new Map<string, Layers>();
+const canvasOf = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d', { willReadFrequently: true })!] as const; };
+let grainCanvas: HTMLCanvasElement | null = null;
+// Paint on metal is never flat: one faint mottle, shared by every wall.
+function grain() {
+  if (grainCanvas) return grainCanvas;
+  const [c, g] = canvasOf(DW, DH);
+  const img = g.createImageData(DW, DH);
+  for (let i = 0; i < img.data.length; i += 4) { const v = 225 + Math.floor(Math.random() * 30); img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0);
+  return (grainCanvas = c);
+}
+// Composed paint per wall, so a day you come back to is there at once.
+const paintCache = new Map<string, HTMLCanvasElement>();
+// While the days slide, walls hold their last frame instead of animating.
+let holdUntil = 0;
+export function holdWalls(ms: number) { holdUntil = performance.now() + ms; }
+
+function layersFor(mode: Mode, scene: ReturnType<typeof sceneFor>, art: Art): Layers {
+  const key = layerKey(mode, art);
+  const hit = layerCache.get(key);
+  if (hit) return hit;
+  const make = (w = PW, h = PH) => canvasOf(w, h);
+  const [bg, bctx] = make();
+  scene.background(bctx);
+  const [nb, nctx] = make();
+  scene.neighbours(nctx);
+  boxBlur(nctx, 2);
+  bctx.drawImage(nb, 0, 0);
+  const [veh, vctx] = make();
+  if (art.veh) vctx.drawImage(art.veh, 0, 0, PW, PH); else scene.vehicle(vctx);
+  const [mask, mctx] = make();
+  scene.mask(mctx);
+  if (art.mask) { mctx.clearRect(0, 0, PW, PH); mctx.drawImage(art.mask, 0, 0, PW, PH); }
+  else if (art.veh) { mctx.globalCompositeOperation = 'destination-in'; mctx.drawImage(art.veh, 0, 0, PW, PH); mctx.globalCompositeOperation = 'source-over'; }
+  const [fg, fctx] = make();
+  scene.foreground(fctx);
+  // How lit the body is at each point, so paint sits *on* it: seams, frames
+  // and glass darken the paint over them. Smoothed when scaled up.
+  const [light, lctx] = make();
+  const [gloss, glctx] = make();
+  {
+    const v = vctx.getImageData(0, 0, PW, PH);
+    const lo = lctx.createImageData(PW, PH), go = glctx.createImageData(PW, PH);
+    for (let i = 0; i < v.data.length; i += 4) {
+      const l = (v.data[i] * 0.3 + v.data[i + 1] * 0.59 + v.data[i + 2] * 0.11) / 255;
+      const k = Math.min(255, Math.round(255 * Math.min(1, 0.38 + l * 1.2)));
+      lo.data[i] = lo.data[i + 1] = lo.data[i + 2] = k; lo.data[i + 3] = 255;
+      if (l > 0.7) { go.data[i] = 255; go.data[i + 1] = 246; go.data[i + 2] = 228; go.data[i + 3] = Math.round(((l - 0.7) / 0.3) * 90); }
+    }
+    lctx.putImageData(lo, 0, 0); glctx.putImageData(go, 0, 0);
+  }
+  // High-res layers: the scene scaled up in hard pixels, the paint in soft.
+  const up = (src: HTMLCanvasElement, smooth: boolean) => { const [c, g] = make(DW, DH); g.imageSmoothingEnabled = smooth; g.drawImage(src, 0, 0, DW, DH); return c; };
+  const layers = { bgHi: up(bg, false), vehHi: up(veh, false), fgHi: up(fg, false), maskHi: up(mask, false), lightHi: up(light, true), glossHi: up(gloss, true), maskData: mctx.getImageData(0, 0, PW, PH).data };
+  layerCache.set(key, layers);
+  return layers;
 }
 
 // A stroke as a can lays it: a solid core, a soft overspray halo, round ends.
@@ -196,52 +281,14 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     const view = canvas.current;
     const ctx = view?.getContext('2d');
     if (!view || !ctx) return;
-    const make = (w = PW, h = PH) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d', { willReadFrequently: true })!] as const; };
-    const [bg, bctx] = make();
-    scene.background(bctx);
-    const [nb, nctx] = make();
-    scene.neighbours(nctx);
-    boxBlur(nctx, 2);
-    bctx.drawImage(nb, 0, 0);
-    const [veh, vctx] = make();
-    if (art.veh) vctx.drawImage(art.veh, 0, 0, PW, PH); else scene.vehicle(vctx);
-    const [mask, mctx] = make();
-    scene.mask(mctx);
-    if (art.mask) { mctx.clearRect(0, 0, PW, PH); mctx.drawImage(art.mask, 0, 0, PW, PH); }
-    else if (art.veh) { mctx.globalCompositeOperation = 'destination-in'; mctx.drawImage(art.veh, 0, 0, PW, PH); mctx.globalCompositeOperation = 'source-over'; }
-    const [fg, fctx] = make();
-    scene.foreground(fctx);
-    // How lit the body is at each point, so paint sits *on* it: seams, frames
-    // and glass darken the paint over them. Smoothed when scaled up.
-    const [light, lctx] = make();
-    const [gloss, glctx] = make();
-    {
-      const v = vctx.getImageData(0, 0, PW, PH);
-      const lo = lctx.createImageData(PW, PH), go = glctx.createImageData(PW, PH);
-      for (let i = 0; i < v.data.length; i += 4) {
-        const l = (v.data[i] * 0.3 + v.data[i + 1] * 0.59 + v.data[i + 2] * 0.11) / 255;
-        const k = Math.min(255, Math.round(255 * Math.min(1, 0.38 + l * 1.2)));
-        lo.data[i] = lo.data[i + 1] = lo.data[i + 2] = k; lo.data[i + 3] = 255;
-        if (l > 0.7) { go.data[i] = 255; go.data[i + 1] = 246; go.data[i + 2] = 228; go.data[i + 3] = Math.round(((l - 0.7) / 0.3) * 90); }
-      }
-      lctx.putImageData(lo, 0, 0); glctx.putImageData(go, 0, 0);
-    }
-    // High-res layers: the scene scaled up in hard pixels, the paint in soft.
-    const up = (src: HTMLCanvasElement, smooth: boolean) => { const [c, g] = make(DW, DH); g.imageSmoothingEnabled = smooth; g.drawImage(src, 0, 0, DW, DH); return c; };
-    const bgHi = up(bg, false), vehHi = up(veh, false), fgHi = up(fg, false), maskHi = up(mask, false), lightHi = up(light, true), glossHi = up(gloss, true);
-    // Grain: paint on metal is never flat; a faint mottle shows the surface.
-    const [grain, grctx] = make(DW, DH);
-    {
-      const img = grctx.createImageData(DW, DH);
-      for (let i = 0; i < img.data.length; i += 4) { const v = 225 + Math.floor(Math.random() * 30); img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
-      grctx.putImageData(img, 0, 0);
-    }
+    if (!art) return;
+    const { bgHi, vehHi, fgHi, maskHi, lightHi, glossHi, maskData } = layersFor(mode, scene, art);
+    const make = (w = PW, h = PH) => canvasOf(w, h);
     // Others' pieces, painted once
     const [tagsHi, tgctx] = make(DW, DH);
     tags.forEach(t => paintTag(tgctx, t));
     const [paint, pctx] = make(DW, DH);
     const [alpha, actx] = make(DW, DH);
-    const maskData = mctx.getImageData(0, 0, PW, PH).data;
     const onBody = (x: number, y: number) => x >= 0 && y >= 0 && x < PW && y < PH && maskData[(Math.floor(y) * PW + Math.floor(x)) * 4 + 3] > 0;
 
     const redraw = (list: Stroke[]) => {
@@ -261,15 +308,29 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       actx.clearRect(0, 0, DW, DH); actx.drawImage(paint, 0, 0);
       pctx.globalCompositeOperation = 'multiply';
       pctx.drawImage(lightHi, 0, 0);
-      pctx.drawImage(grain, 0, 0);
+      pctx.drawImage(grain(), 0, 0);
       pctx.globalCompositeOperation = 'destination-in';
       pctx.drawImage(alpha, 0, 0);
       pctx.globalCompositeOperation = 'source-atop';
       pctx.drawImage(glossHi, 0, 0);
       pctx.globalCompositeOperation = 'source-over';
     };
-    layers.current = { redraw };
-    redraw(live.current.strokes);
+    // The paint's identity: what is on this wall right now.
+    const sig = (list: Stroke[]) => `${storeKey}|${art.veh ? 1 : 0}|${tags.length}|${live.current.pieces.map(p => `${p.slot}:${p.strokes.length}`).join(',')}|${live.current.slot?.i ?? '-'}|${list.length}:${list.reduce((n, s) => n + s.p.length, 0)}`;
+    let paintAt = -1; // when the paint appeared; it fades in the first time
+    const keep = (list: Stroke[]) => {
+      if (live.current.spraying) return;
+      const [copy, cctx] = make(DW, DH); cctx.drawImage(paint, 0, 0);
+      paintCache.set(sig(list), copy);
+      if (paintCache.size > 24) paintCache.delete(paintCache.keys().next().value!);
+    };
+    const settle = (list: Stroke[]) => { redraw(list); keep(list); };
+    layers.current = { redraw: list => { if (paintAt < 0) return; settle(list); } };
+    const cached = paintCache.get(sig(live.current.strokes));
+    let first: ReturnType<typeof setTimeout> | undefined;
+    if (cached) { pctx.drawImage(cached, 0, 0); paintAt = 0; }
+    // composed after the slide, not during it
+    else first = setTimeout(() => { settle(live.current.strokes); paintAt = performance.now(); }, 420);
 
     // Ambient life, nothing that drives away: dust in the light.
     const dust = Array.from({ length: 14 }, () => ({ x: Math.random() * PW, y: Math.random() * 100, v: 0.02 + Math.random() * 0.05 }));
@@ -323,6 +384,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       if (own && (x < own.x - MARGIN || x > own.x + own.w + MARGIN || y < own.y - MARGIN || y > own.y + own.h + MARGIN)) return;
       try { view.setPointerCapture(e.pointerId); } catch { /* synthetic or lost pointer */ }
       e.preventDefault();
+      if (paintAt < 0) { clearTimeout(first); paintAt = 0; }
       spent = 0; runs = [];
       current = { c: live.current.mine, w: BRUSH, p: [x, y] };
       armDrip(x, y);
@@ -361,18 +423,19 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     let visible = true;
     const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting; }, { rootMargin: '40px' });
     io.observe(view);
-    let raf = 0;
+    let raf = 0, drawn = false;
     let last = performance.now();
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw);
-      if (!visible || now - last < 33) return;
+      if (!visible || now - last < 33 || (drawn && now < holdUntil)) return;
+      drawn = true;
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       t += dt;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(bgHi, 0, 0);
       ctx.drawImage(vehHi, 0, 0);
-      ctx.drawImage(paint, 0, 0);
+      if (paintAt >= 0) { ctx.globalAlpha = Math.min(1, paintAt ? (now - paintAt) / 260 : 1); ctx.drawImage(paint, 0, 0); ctx.globalAlpha = 1; }
       // Headlights flash while you touch the button
       if (anticipate && Math.floor(t * 8) % 2 === 0) scene.lamps.forEach(([lx, ly]) => { ctx.fillStyle = '#FFF4D0'; ctx.fillRect((lx - 2) * K, (ly - 1) * K, 5 * K, 3 * K); });
       ctx.drawImage(fgHi, 0, 0);
@@ -433,6 +496,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
 
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(first);
       io.disconnect();
       stopDrip(false);
       view.removeEventListener('pointerdown', down);
@@ -442,7 +506,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       ext.current.onLink?.(null);
       layers.current = null;
     };
-  }, [scene, tags, seed, mode, reduce, art, slots]);
+  }, [scene, tags, seed, mode, reduce, art, slots, storeKey]);
 
   useEffect(() => { layers.current?.redraw(strokes); }, [strokes, tags, mine, slot, pieces]);
   useEffect(() => { if (canvas.current) canvas.current.style.touchAction = spraying ? 'none' : 'pan-y'; }, [spraying]);
@@ -469,7 +533,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
     <div className="relative overflow-hidden rounded-[20px]" style={{ background: '#0E0F12' }}>
       <div className="relative overflow-hidden" style={{ aspectRatio: `${PW} / ${PH}` }}>
         <motion.canvas ref={canvas} width={DW} height={DH} className="block w-full" initial={false} animate={zoom} transition={reduce ? { duration: 0 } : { duration: 0.55, ease: EASE }}
-          style={{ aspectRatio: `${PW} / ${PH}`, cursor: spraying ? 'crosshair' : 'default', transformOrigin: '0 0' }} />
+          style={{ aspectRatio: `${PW} / ${PH}`, cursor: spraying ? 'crosshair' : 'default', transformOrigin: '0 0', opacity: art ? 1 : 0, transition: 'opacity 0.3s ease' }} />
         <AnimatePresence>
           {!spraying && signLines.length > 0 && (
             <motion.div key="sign" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute" style={{ left: `${(Math.max(16, Math.min(sign.x, PW - 150)) / PW) * 100}%`, top: `${(Math.max(2, sign.y - 4) / PH) * 100}%`, width: `${(134 / PW) * 100}%` }}>

@@ -31,6 +31,7 @@ export type ModeCard = {
   date: string;
   category: Mode;
   scope: string; // airport cards are split by scope (whole airport vs one airline)
+  scopeEn?: string;
   scopeType: string; // lib/strikeScope ScopeType; rail and aviation subtypes
   indirect: boolean; // rail security/infrastructure/support: staff hours, passenger impact unconfirmed
   lineScope: string; // lib/lineScope kind: ALL_LINES, ALL_OPERATOR_LINES, ALL_EXCEPT, SPECIFIC_LINES, UNKNOWN
@@ -41,11 +42,12 @@ export type ModeCard = {
   geography: { zh: string; en: string }[]; // official administrative scope beyond this city
   status: CardStatus;
   provider: string;
+  providerEn?: string; // the backend writes the staff in Chinese; this is the English reading
   national: boolean;
   displayTime: string; // kept for the existing "I'm affected" grouping key
   windows: EvidenceWindow[];
   guarantees: EvidenceWindow[]; // cardGuaranteeWindows: may start at service start or run to its end
-  scheduledEnd: { label: string; source: string } | null; // timetable reference only (PR #7); never the strike's end
+  scheduledEnd: { label: string; labelEn?: string; source: string } | null; // timetable reference only (PR #7); never the strike's end
   guaranteeSource: GuaranteeSource;
   guaranteeKind: 'GUARANTEED_SERVICE' | 'PROTECTED_FLIGHTS';
   lines: string[];
