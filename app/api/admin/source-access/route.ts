@@ -5,6 +5,7 @@ import { fetchToscanaNotice } from '../../../../lib/toscanaAirportNotices';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 40;
+export const preferredRegion = 'fra1';
 
 // Fixed public sources only. This read-only diagnostic never touches the DB or AI.
 const sources = [
@@ -44,7 +45,9 @@ export async function GET(request: Request) {
       return { source, url, status: response.ok && bytes > 0 ? 'READABLE' : 'HTTP_ERROR', http: response.status, bytes, elapsedMs: Date.now() - start };
     } catch (error) {
       const name = error instanceof Error ? error.name : '';
-      return { source, url, status: name === 'TimeoutError' || name === 'AbortError' ? 'TIMEOUT' : 'FETCH_ERROR', elapsedMs: Date.now() - start };
+      const code = (error as { cause?: { code?: string } })?.cause?.code;
+      const knownCodes = ['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_SOCKET'];
+      return { source, url, status: name === 'TimeoutError' || name === 'AbortError' ? 'TIMEOUT' : 'FETCH_ERROR', ...(code && knownCodes.includes(code) ? { code } : {}), elapsedMs: Date.now() - start };
     }
   }));
   return NextResponse.json({ checkedAt, region: process.env.VERCEL_REGION || 'local', results }, { headers: { 'Cache-Control': 'private, no-store' } });
