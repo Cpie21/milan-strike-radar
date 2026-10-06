@@ -90,7 +90,7 @@ test('API failures and budget denial keep deterministic output without paid retr
 test('PostgreSQL budget enforces cap, leases, cache, uncertain costs and role isolation',async()=>{
  const db=new PGlite();try{
   await db.exec('create role anon; create role authenticated; create role service_role bypassrls;');
-  await db.exec(fs.readFileSync(__dirname+'/../supabase/migrations/20261004215721_strike_semantic_review_budget.sql','utf8'));
+  await db.exec(fs.readFileSync(__dirname+'/../supabase/migrations/20261004221157_strike_semantic_review_budget.sql','utf8'));
   const reserve=async(hash,amount)=> (await db.query('select * from reserve_strike_semantic_review($1,$2)',[hash,amount])).rows[0];
   const hash='a'.repeat(64),r=await reserve(hash,1000);assert.equal(r.decision,'call');assert.equal((await reserve(hash,1000)).decision,'busy');
   const finish=(token,result,cost)=>db.query('select finish_strike_semantic_review($1,$2,$3,$4) as ok',[hash,token,result===null?null:JSON.stringify(result),cost]);
