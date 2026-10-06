@@ -7,6 +7,10 @@ import { LedBoard, LedFace, type Mood } from './Led';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, windowsText, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
+import { translateProvider } from '../i18n';
+
+// The backend names striking staff in Chinese; English reads its own words.
+const who = (provider: string, lang: Lang) => (lang === 'en' ? translateProvider(provider, 'en').replace(/^\w/, ch => ch.toUpperCase()) : provider);
 import { Bar } from './LabStrikeCard';
 import { LineBadge, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C, EASE, TYPE } from './theme';
@@ -533,7 +537,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
                 const status = statusLine(card, today, -1, lang);
                 return (
                   <div key={item.key} className="px-4 py-3" style={{ borderTop: `1px solid ${C.line}` }}>
-                    <p className="text-[15px] font-semibold leading-snug">{item.provider}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
+                    <p className="text-[15px] font-semibold leading-snug">{who(item.provider, lang)}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
                     {item.reason && item.status !== 'CANCELLED' && <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
                     <p className="mt-1 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
                     {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.run }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
@@ -560,7 +564,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
 
           {result.excluded.length > 0 && (
             <p className="text-[12.5px] px-1" style={{ color: C.text3 }}>
-              {tx(lang, `已排除 ${result.excluded.length} 条无关记录：`, `Excluded ${result.excluded.length}: `)}{result.excluded.map(e => `${modeName(e.category, lang)} ${e.provider}`).join('、')}
+              {tx(lang, `已排除 ${result.excluded.length} 条无关记录：`, `Excluded ${result.excluded.length}: `)}{result.excluded.map(e => `${modeName(e.category, lang)} ${who(e.provider, lang)}`).join(tx(lang, '、', ', '))}
             </p>
           )}
         </div>
