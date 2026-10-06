@@ -5,6 +5,7 @@
 // it is the widget's character, as Duolingo's owl is: its amber LED face
 // fills the left, its expression is the day at a glance (at ease, or
 // concerned), and the right side is what it is telling you.
+// Top band: the face and its line. Bottom: the day's picture, full width.
 //   Calm – "今天没有罢工", the next strike, the coming week.
 //   One strike – the mode, the state now ("罢工时段内" over "至 15:00"),
 //     the day as one track (strike hours in the mode's colour, guaranteed
@@ -239,70 +240,62 @@ try {
   background(widget, strike ? groups[0].modes[0] : null);
   const small = family === "small";
 
-  const root = widget.addStack(); root.layoutHorizontally(); root.topAlignContent();
-  // The assistant: its face is the day at a glance
-  const left = root.addStack(); left.layoutVertically();
-  const pitch = small ? 2.4 : 4.2;
-  const fimg = left.addImage(face(strike ? ["worryL", "worryR"] : ["happy", "happy"], pitch));
-  fimg.imageSize = small ? new Size(46, 26) : new Size(80, 45);
-  left.addSpacer(5);
-  label(left, CITY, 11, COL.text3, "semibold");
-  if (small) { root.addSpacer(); }
-  else { left.size = new Size(84, 0); root.addSpacer(12); }
-  const right = small ? widget : root.addStack();
-  if (!small) { right.layoutVertically(); }
-  if (small) widget.addSpacer();
+  // Top band: the assistant's face and what it is saying. Bottom: the
+  // picture of the day, the full width of the widget.
+  const top = widget.addStack(); top.layoutHorizontally(); top.centerAlignContent();
+  const fimg = top.addImage(face(strike ? ["worryL", "worryR"] : ["happy", "happy"], small ? 2.4 : 3.4));
+  fimg.imageSize = small ? new Size(46, 26) : new Size(64, 36);
+  top.addSpacer(small ? 0 : 10);
+  const words = small ? null : top.addStack();
+  if (small) top.addSpacer();
+  const say = small ? widget : words;
+  if (words) words.layoutVertically();
+  if (small) widget.addSpacer(8);
 
   const names = ms => ms.map(m => T.modes[m]).join(" · ");
-  const modeLine = (parent, ms, extra) => {
-    const r = parent.addStack(); r.layoutHorizontally(); r.centerAlignContent();
-    ms.forEach((m, i) => { if (i) r.addSpacer(3); badge(r, m, 16); });
-    r.addSpacer(5); label(r, names(ms) + (extra ? " · " + extra : ""), 12, COL.text2, "semibold");
-    return r;
-  };
+  const eyebrow = text => label(say, text, 11.5, COL.text3, "semibold");
 
   if (!strike) {
-    label(right, T.calm, small ? 18 : 21, COL.text, "bold");
-    right.addSpacer(4);
+    eyebrow(CITY + " · " + T.week[dow(today)]);
+    label(say, T.calm, small ? 18 : 20, COL.text, "bold");
+    if (!small) widget.addSpacer();
+    const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
     if (nextDate) {
       const t = new Date(nextDate + "T12:00:00Z");
       const ms = [...new Set((byDate[nextDate] || []).map(x => x.category))].sort((a, b) => ORDER[a] - ORDER[b]);
-      const r = right.addStack(); r.layoutHorizontally(); r.centerAlignContent();
       ms.forEach((m, i) => { if (i) r.addSpacer(2); badge(r, m, 14); });
       r.addSpacer(5);
       label(r, (small ? "" : T.next + " · ") + dateText(t.getUTCMonth() + 1, t.getUTCDate(), T.week[t.getUTCDay()]) + " · " + inDays(daysBetween(today, nextDate)), 11.5, COL.text2);
-    } else label(right, T.none, 11.5, COL.text2);
-    if (!small) { right.addSpacer(); week(right, byDate, today, 7, today); }
+    } else label(r, T.none, 11.5, COL.text2);
+    if (!small) { widget.addSpacer(6); week(widget, byDate, today, 7, today); }
   } else if (groups.length === 1 || small) {
     const g = groups[0], st = todayState(groups.flatMap(x => x.items), now);
-    if (!small) modeLine(right, groups.flatMap(x => x.modes), T.today);
-    if (!small) right.addSpacer(4);
-    const head = st.kind === "inside" ? T.inside : st.kind === "later" ? "" : st.kind === "past" ? T.past : T.pending;
-    if (head) label(right, head, 12, st.kind === "inside" ? COL.main[g.modes[0]] : COL.text2, "semibold");
-    const big = st.kind === "inside" ? T.until + " " + st.until : st.kind === "later" ? fromText(st.from) : null;
-    if (big) label(right, big, small ? 21 : 24, COL.text, "bold");
+    eyebrow(names(groups.flatMap(x => x.modes)) + " · " + CITY);
+    const big = st.kind === "inside" ? T.inside + " · " + T.until + " " + st.until : st.kind === "later" ? fromText(st.from) : st.kind === "past" ? T.past : T.pending;
+    label(say, big, small ? 17 : 19, st.kind === "inside" ? COL.main[g.modes[0]] : COL.text, "bold");
     if (!small) {
-      right.addSpacer();
-      const tr = right.addImage(track(g.items, now, 196)); tr.imageSize = new Size(196, 30);
+      widget.addSpacer();
+      const tr = widget.addImage(track(g.items, now, 296)); tr.imageSize = new Size(296, 30);
       const gs = g.items.flatMap(guaranteesOf).filter((x, i, all) => all.findIndex(o => o.start === x.start && o.end === x.end) === i);
-      if (gs.length) label(right, T.guaranteed + " " + gs.map(x => x.start + "–" + x.end).join(" · "), 11, COL.run, "semibold");
+      if (gs.length) label(widget, T.guaranteed + " " + gs.map(x => x.start + "–" + x.end).join(" · "), 11, COL.run, "semibold");
     }
   } else {
-    // several strikes: the list, then one shared day chart
-    label(right, manyText(groups.length), 15, COL.text, "bold");
-    right.addSpacer(5);
-    const shown = family === "large" ? groups : groups.slice(0, 3);
+    // several strikes: what the assistant says, the list, then one shared day
+    eyebrow(CITY);
+    label(say, manyText(groups.length), 19, COL.text, "bold");
+    widget.addSpacer();
+    const shown = family === "large" ? groups : groups.slice(0, 2);
     shown.forEach((g, i) => {
-      if (i) right.addSpacer(4);
-      const r = right.addStack(); r.layoutHorizontally(); r.centerAlignContent();
+      if (i) widget.addSpacer(3);
+      const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
       g.modes.slice(0, 3).forEach((m, k) => { if (k) r.addSpacer(2); badge(r, m, 15); });
       r.addSpacer(5); label(r, names(g.modes), 12, COL.text2, "semibold");
       r.addSpacer();
       const st = todayState(g.items, now);
       label(r, shortState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
     });
-    right.addSpacer();
-    const ln = right.addImage(lanes(shown, now, 196)); ln.imageSize = new Size(196, 2 + shown.length * 9 + 12);
+    widget.addSpacer(5);
+    const ln = widget.addImage(lanes(shown, now, 296)); ln.imageSize = new Size(296, 2 + shown.length * 9 + 12);
   }
   if (family === "large") {
     widget.addSpacer(16);

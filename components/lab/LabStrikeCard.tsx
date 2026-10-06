@@ -147,7 +147,10 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
     : isToday && !pending ? { text: status.text, color: C.text, bg: C.surface3, dot: false }
       : { text: `${relativeDay(card.date, ctx.today, lang)}${pending ? '' : ` · ${overnight ? tx(lang, '跨夜', 'Overnight') : hoursText(card, lang)}`}`, color: C.text2, bg: C.surface3, dot: false };
   const sub = (text: string) => <span className="text-[16px] font-semibold ml-1" style={{ color: C.text3, fontFamily: SANS }}>{text}</span>;
-  const word = (text: string) => <span className="text-[24px]" style={{ fontFamily: SANS }}>{text}</span>;
+  // Words beside big digits: centred on the digits (not sitting on their
+  // baseline), a step larger than body text, a weight lighter than the
+  // digits, so "08:45 – 运营结束" reads as one balanced line.
+  const word = (text: string) => <span className="text-[28px] leading-none font-medium tracking-[0.02em]" style={{ fontFamily: SANS }}>{text}</span>;
 
   return (
     <motion.article id={`card-${card.id}`} className="relative overflow-hidden"
@@ -179,9 +182,9 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
             </p>
           ) : span && (
             <>
-              <p className={TYPE.display}>
+              <p className={`${TYPE.display} flex items-center justify-center`}>
                 {span.start ?? word(tx(lang, '运营开始', 'Start'))}
-                <span className="mx-2" style={{ color: C.text3 }}>–</span>
+                <span className="mx-2.5" style={{ color: C.text3 }}>–</span>
                 {span.end ?? word(tx(lang, '运营结束', 'end of service'))}
               </p>
               {/* The notice says "end of service"; a timetable time is only a reference beside it */}
@@ -250,15 +253,15 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
 // right in green), so one or two windows sit as neatly as five, and nothing
 // is boxed apart or left empty.
 
-const GUARANTEE_FROM: Record<string, [string, string]> = {
-  OFFICIAL_STRIKE_NOTICE: ['据罢工公告', 'Per the strike notice'], OPERATOR_RULE: ['运营方规定', 'Operator rules'],
-  STANDARD_RULE: ['法定最低服务', 'Statutory minimum'],
-};
 
 function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: string) => string }) {
   const impacts = card.impacts ?? [];
   const lineImpacts = impacts.filter(i => i.lines);
-  const routes = [...new Set(lineImpacts.flatMap(i => i.routes))].filter(r => /^(M\d|S\d+|R\d+|RE\d+|T\d+)$/i.test(r)).sort();
+  // Named by the notice (certain), else the operator's lines (possible).
+  const short = (r: string) => r.length <= 6;
+  const named = [...new Set(lineImpacts.flatMap(i => i.named ?? []))].filter(short);
+  const possible = [...new Set(lineImpacts.flatMap(i => i.routes))].filter(short).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  const routes = named.length ? named : possible;
   const lines = card.category === 'AIRPORT' && /^AIRLINE/.test(card.scopeType)
     ? tx(lang, '仅该航司航班', 'This airline only')
     : card.lineScope === 'SPECIFIC_LINES' && card.lines.length
@@ -266,20 +269,18 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
       // Known lines are shown as the lines themselves: people know which
       // one they ride, so no "operator's lines…" sentence on top of them.
       : routes.length
-        ? <span className="inline-flex flex-wrap justify-end gap-1">{routes.slice(0, 10).map(r => <LineBadge key={r} line={r} />)}</span>
+        ? <span className="inline-flex flex-wrap justify-end gap-1">{routes.slice(0, 12).map(r => <LineBadge key={r} line={r} />)}</span>
         : lineImpacts.length ? lineImpacts.map(i => tx(lang, i.zh, i.en)).join(tx(lang, '；', '; '))
         : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
           : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
   const scopeNote = impacts.filter(i => !i.lines).map(i => tx(lang, i.zh, i.en));
   const has = card.guarantees.length > 0;
-  const from = GUARANTEE_FROM[card.guaranteeSource];
   const guaranteeLabel = (
     <span className="flex flex-col gap-0.5">
       <span className="flex items-center gap-1.5" style={{ color: has ? C.ok : C.text3 }}>
         <ShieldCheck size={14} weight="fill" />
         {card.guaranteeKind === 'PROTECTED_FLIGHTS' ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时段', 'Guaranteed')}
       </span>
-      {has && from && <span className="text-[11px]" style={{ color: C.text3 }}>{tx(lang, ...from)}</span>}
     </span>
   );
   // One line of quiet green pills: each window its own, so two read as two.
@@ -292,7 +293,7 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
     ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), say(card.scope), 'type'] as [React.ReactNode, React.ReactNode, string]] : []),
     ...(card.category === 'AIRPORT' && scopeNote.length ? [[tx(lang, '影响范围', 'Scope'), scopeNote.join(tx(lang, '；', '; ')), 'scope'] as [React.ReactNode, React.ReactNode, string]] : []),
     // Lines from a whole-operator notice may be hit, not certainly: the label says so.
-    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : routes.length && !(card.lineScope === 'SPECIFIC_LINES' && card.lines.length) ? tx(lang, '可能受影响', 'May be affected') : tx(lang, '受影响线路', 'Affected lines'), lines, 'lines'] as [React.ReactNode, React.ReactNode, string]] : []),
+    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : !named.length && possible.length && !(card.lineScope === 'SPECIFIC_LINES' && card.lines.length) ? tx(lang, '可能受影响', 'May be affected') : tx(lang, '受影响线路', 'Affected lines'), lines, 'lines'] as [React.ReactNode, React.ReactNode, string]] : []),
   ];
   return (
     <div className="mt-5">
@@ -480,7 +481,7 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
       </motion.button>
       <motion.button whileTap={doodle.marked ? undefined : { scale: 0.97 }} onClick={react} aria-pressed={doodle.marked}
         onPointerDown={() => wall.current?.anticipate(true)} onPointerUp={() => wall.current?.anticipate(false)} onPointerLeave={() => wall.current?.anticipate(false)} onPointerCancel={() => wall.current?.anticipate(false)}
-        className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`}
+        className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 ${TYPE.action}`}
         style={doodle.marked ? TONAL : { ...FILLED(mode.deep), boxShadow: `0 6px 20px ${mode.soft}` }}>
         {/* The can shakes in time with the puff of paint in the scene above */}
         <motion.span key={hint} className="flex" animate={doodle.marked || reduce ? undefined : { rotate: [0, -16, 13, -9, 5, 0], y: [0, -2, 0, -1, 0, 0] }} transition={{ duration: 0.6 }}>

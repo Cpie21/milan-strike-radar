@@ -151,12 +151,56 @@ function station(c: C) {
     for (let y = 6; y < 46; y++) { const w = 14 + (y - 6) * 0.7; c.fillStyle = `rgba(255,214,150,${0.05 - (y - 6) * 0.001})`; c.fillRect(Math.round(x - w), y, Math.round(w * 2), 1); }
   });
 }
+// ── Ground: drawn with the same care as the vehicles ───────────────────
+
+// A fixed speckle, so the ground never shimmers between frames.
+const speck = (x: number, y: number) => ((x * 73856093) ^ (y * 19349663)) % 97;
+// Warm light from a ceiling lamp lying on the floor: a dithered ellipse.
+function pool(c: C, cx: number, cy: number, rx: number, ry: number, alpha: number) {
+  for (let y = Math.floor(cy - ry); y <= cy + ry; y++) for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+    const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+    if (d > 1) continue;
+    const a = alpha * (1 - d);
+    if (d > 0.55 && (x + y) % 2) continue; // dithered rim
+    c.fillStyle = `rgba(255,214,150,${a.toFixed(3)})`; c.fillRect(x, y, 1, 1);
+  }
+}
+
+// A station platform: concrete coping, the yellow tactile strip with its
+// domes, then terrazzo tiles running away from you, lamp light on them.
 function platform(c: C) {
-  R(c, 0, 106, PW, 3, '#3C4047'); R(c, 0, 106, PW, 1, '#5C6169');
-  R(c, 0, 109, PW, 31, '#1A1C21');
-  R(c, 0, 110, PW, 4, '#D6B13F'); R(c, 0, 110, PW, 1, '#ECCB5E');
-  for (let x = 1; x < PW; x += 3) P(c, x, 112, '#A88A2C');
-  CEILING.forEach(x => { for (let y = 116; y < 140; y++) { const w = 18 + (y - 116) * 0.9; c.fillStyle = 'rgba(255,214,150,0.035)'; c.fillRect(Math.round(x - w), y, Math.round(w * 2), 1); } });
+  R(c, 0, 105, PW, 1, '#74798250'); // the vehicle's floor-line shadow edge
+  R(c, 0, 106, PW, 1, '#6E737C'); R(c, 0, 107, PW, 1, '#4B4F57'); R(c, 0, 108, PW, 1, '#2A2D33');
+  R(c, 0, 109, PW, 5, '#C9A436'); R(c, 0, 109, PW, 1, '#E3C25A'); R(c, 0, 113, PW, 1, '#8E7426');
+  for (let x = 1; x < PW; x += 3) for (const y of [110, 112]) { P(c, x + (y === 112 ? 1 : 0), y, '#F0D27A'); P(c, x + (y === 112 ? 1 : 0), y + 1, '#A3852C'); }
+  R(c, 0, 114, PW, 1, '#121317');
+  // terrazzo, joints closer near the edge, wider toward you
+  R(c, 0, 115, PW, 25, '#1B1D22');
+  for (let y = 115; y < PH; y++) for (let x = 0; x < PW; x++) if (speck(x, y) < 3) P(c, x, y, speck(x, y) ? '#262930' : '#2E3139');
+  [119, 124, 131, 139].forEach(y => R(c, 0, y, PW, 1, '#15171B'));
+  for (let k = -6; k < 14; k++) for (let y = 115; y < PH; y++) { const x = Math.round(PW / 2 + (k * 26 - PW / 2 + 13) * (1 + (y - 115) * 0.045)); if (x >= 0 && x < PW) P(c, x, y, '#16181C'); }
+  CEILING.forEach(x => pool(c, x, 127, 34, 9, 0.09));
+}
+// A city street at night: the kerb, asphalt with its grit, lane markings,
+// a drain cover, lamp light pooling.
+function road(c: C) {
+  R(c, 0, 112, PW, 1, '#6A6E76'); R(c, 0, 113, PW, 2, '#45484F'); R(c, 0, 115, PW, 1, '#202227');
+  R(c, 0, 116, PW, 24, '#16181C');
+  for (let y = 116; y < PH; y++) for (let x = 0; x < PW; x++) if (speck(x, y) < 4) P(c, x, y, speck(x, y) < 2 ? '#1F2126' : '#22252B');
+  for (let lx = 6; lx < PW; lx += 28) { R(c, lx, 129, 15, 2, '#5B5E64'); R(c, lx, 129, 15, 1, '#74777E'); }
+  R(c, 196, 121, 12, 3, '#0F1013'); R(c, 197, 121, 10, 1, '#2A2C31'); for (let x = 198; x < 206; x += 2) P(c, x, 122, '#26282D');
+  CEILING.forEach(x => pool(c, x, 124, 30, 7, 0.07));
+}
+// An apron at night: concrete slabs with joints, the yellow taxi line
+// edged in black, blue edge lights.
+function apron(c: C) {
+  R(c, 0, 104, PW, 36, '#15171B'); R(c, 0, 104, PW, 1, '#23262C');
+  for (let y = 105; y < PH; y++) for (let x = 0; x < PW; x++) if (speck(x, y) < 3) P(c, x, y, '#1C1E23');
+  [111, 121, 134].forEach(y => R(c, 0, y, PW, 1, '#111216'));
+  for (let k = 0; k < 8; k++) for (let y = 105; y < PH; y++) { const x = Math.round(k * 36 - 10 + (y - 105) * 0.4); if (x >= 0 && x < PW) P(c, x, y, '#111216'); }
+  R(c, 0, 125, PW, 1, '#0B0C0E'); R(c, 0, 126, PW, 2, '#C9A63A'); R(c, 0, 126, PW, 1, '#E1BF55'); R(c, 0, 128, PW, 1, '#0B0C0E');
+  for (let x = 8; x < PW; x += 24) { P(c, x, 108, '#5FA8FF'); c.fillStyle = 'rgba(95,168,255,0.18)'; c.fillRect(x - 1, 107, 3, 3); }
+  [30, 120, 210].forEach(x => pool(c, x, 116, 28, 6, 0.06));
 }
 
 // ── Metro: Milan M1 "Leonardo" cab car ─────────────────────────────────
@@ -319,9 +363,8 @@ function bus(): Scene {
       c.globalCompositeOperation = 'source-over';
     },
     foreground: c => {
-      R(c, 0, 114, PW, 2, '#3A3C41'); R(c, 0, 116, PW, 24, '#17191C');
-      for (let lx = 4; lx < PW; lx += 26) R(c, lx, 128, 14, 2, '#4E5055');
-      for (let i = x0; i < x1; i += 2) P(c, i, 115, 'rgba(0,0,0,0.6)');
+      road(c);
+      for (let i = x0; i < x1; i += 1) P(c, i, 116, 'rgba(0,0,0,0.45)'); // the bus's shadow on the road
     },
   };
 }
@@ -384,9 +427,8 @@ function plane(tail: string): Scene {
     },
     mask: c => hullMask(c, 66, nose - 2, T, B),
     foreground: c => {
-      R(c, 0, 104, PW, 36, '#14161A'); R(c, 0, 104, PW, 1, '#22252B');
-      for (let i = 0; i < 80; i++) P(c, i * 3, 124, i % 2 ? '#C9A63A' : 'rgba(201,166,58,0.4)');
-      for (let x = 20; x < 220; x += 2) P(c, x, 113, 'rgba(0,0,0,0.5)');
+      apron(c);
+      for (let x = 20; x < 220; x += 1) P(c, x, 112, 'rgba(0,0,0,0.4)'); // the plane's shadow
     },
   };
 }

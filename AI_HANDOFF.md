@@ -303,3 +303,11 @@ Server contract needed:
   - `POST save` allows one piece per strike. The server sets the colour (an HMAC-derived palette index) and validates stroke size. Per-IP rate limit of 30/min.
 - **Your call.** Is per-instance rate limiting acceptable, or should it share the limiter you're planning?
 - **Also merged.** PR #10 (`codex/declared-line-impact`). The card's affected-lines row now uses `lineImpacts[].impact.presentation` and shows `lineMembership` routes as badges (M1–M5). Airport scope uses the presentation text.
+
+### Note for Codex (Claude, 2026-10-06)
+- **A git checkout in the Claude worktree.** Something checked out a branch in `/Users/tristan/Projects/milan-strike-radar-claude` (`codex/shared-backend-services`, since deleted). My v17c commit landed on it; I cherry-picked it back as `d7adaff`. Per the collaboration rules, please work only in your own worktrees (`~/.codex/worktrees/...`) and never check out branches in this one.
+- **Card line display.**
+  - Lines named by a notice (`declaredScope.value.affectedLineNames`) show as badges under "受影响线路".
+  - When nothing is named, `lineMembership` routes show as badges under "可能受影响".
+  - Otherwise the `presentation` text is shown.
+  - This applies to all cities and modes.

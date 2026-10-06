@@ -246,11 +246,24 @@ function Housing({ children, pitch, glow, radius }: { children: React.ReactNode;
 // ── Compact face ────────────────────────────────────────────────────────
 // `attend`: where its attention is (the field you are typing in).
 
-export function LedFace({ mood = 'idle', size = 20, cols = 19, attend = false }: { mood?: Mood; size?: number; cols?: number; attend?: boolean }) {
+// `round`: a circular porthole of a display, for the bar's round end, where
+// a round thing sits with an even margin all the way round.
+export function LedFace({ mood = 'idle', size = 20, cols = 19, attend = false, round }: { mood?: Mood; size?: number; cols?: number; attend?: boolean; round?: number }) {
   const pitch = size / 7;
   const [eyes] = useState(() => new EyeLife(cols, ROWS));
   useEffect(() => { eyes.setExpr(EXPR[mood]); }, [eyes, mood]);
   useEffect(() => { if (attend) eyes.look(1, 0.25, 60_000); else eyes.look(0, 0, 0); }, [eyes, attend]);
+  if (round) return (
+    <span role="img" aria-hidden className="relative inline-flex items-center justify-center rounded-full" style={{
+      width: round, height: round, background: ANODISED,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.5), 0 0 ${pitch * 6}px rgba(255,150,30,${glowOf(mood) * 0.18})`,
+    }}>
+      <span className="relative flex items-center justify-center rounded-full overflow-hidden" style={{ width: round - 6, height: round - 6, background: '#040404', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.95)' }}>
+        <Panel cols={cols} pitch={pitch} frame={EMPTY} glow={glowOf(mood)} eyes={eyes} />
+        <span aria-hidden className="absolute inset-0 pointer-events-none" style={{ background: GLASS }} />
+      </span>
+    </span>
+  );
   return (
     <span role="img" aria-hidden className="inline-flex">
       <Housing pitch={pitch} glow={glowOf(mood) * 0.6}>

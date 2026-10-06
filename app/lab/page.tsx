@@ -33,7 +33,7 @@ type Aggregated = {
   display_time?: string;
   guaranteeSource?: GuaranteeSource;
   lineScope?: string;
-  lineImpacts?: { impact?: { presentation?: { zh: string; en: string; showLineSection: boolean }; lineMembership?: { value?: { routes?: { id?: string }[] } } } }[];
+  lineImpacts?: { impact?: { presentation?: { zh: string; en: string; showLineSection: boolean }; lineMembership?: { value?: { routes?: { id?: string }[] } }; declaredScope?: { value?: { kind?: string; affectedLineNames?: string[] } } } }[];
   lineScopeEvidence?: LineScope;
   guaranteeEvidenceWindows?: EvidenceWindow[];
   serviceSchedule?: ServiceSchedule;
@@ -116,7 +116,12 @@ export default async function LabPage({ searchParams }: { searchParams: Promise<
       lineScope: day.lineScopeEvidence?.kind || day.lineScope || 'UNKNOWN',
       lineLabels: lineScopeLabels(day.lineScopeEvidence),
       impacts: (day.lineImpacts || []).map(li => li.impact).filter(i => i?.presentation?.zh)
-        .map(i => ({ zh: i!.presentation!.zh, en: i!.presentation!.en, lines: !!i!.presentation!.showLineSection, routes: (i!.lineMembership?.value?.routes || []).map(r => r.id).filter(Boolean) as string[] }))
+        .map(i => ({
+          zh: i!.presentation!.zh, en: i!.presentation!.en, lines: !!i!.presentation!.showLineSection,
+          // lines the notice names itself, and lines an operator-wide notice may touch
+          named: i!.declaredScope?.value?.kind === 'SPECIFIC_LINES' || (i!.declaredScope?.value?.affectedLineNames?.length ?? 0) > 0 ? i!.declaredScope?.value?.affectedLineNames ?? [] : [],
+          routes: (i!.lineMembership?.value?.routes || []).map(r => r.id).filter(Boolean) as string[],
+        }))
         .filter((x, k, all) => all.findIndex(o => o.zh === x.zh) === k),
       geography,
       category: day.category,

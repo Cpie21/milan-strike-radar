@@ -143,8 +143,9 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
 
   useEffect(() => { const t = setTimeout(() => { setSaved(loadDrawing(storeKey) ?? []); setMine(myColour()); }, 0); return () => clearTimeout(t); }, [storeKey]);
   useEffect(() => {
-    if (open && doodle.marked && !done && phase === 'idle') { const t = setTimeout(() => setPhase('spray'), 0); return () => clearTimeout(t); }
-  }, [open, doodle.marked, done, phase]);
+    // only once your panel is known: before that there is nowhere to paint
+    if (open && doodle.marked && !done && slot && phase === 'idle') { const t = setTimeout(() => setPhase('spray'), 0); return () => clearTimeout(t); }
+  }, [open, doodle.marked, done, phase, slot]);
 
   // On the shared wall, the server gives out the panel and the colour.
   useEffect(() => {
@@ -174,6 +175,14 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
   // An empty can ends the session by itself.
   const finishRef = useRef(finish);
   useLayoutEffect(() => { finishRef.current = finish; });
+  // Leaving the page mid-spray keeps what was sprayed.
+  useEffect(() => {
+    if (!spraying || !draft?.length) return;
+    const keep = (e: Event) => { if (e.type === 'pagehide' || document.visibilityState === 'hidden') finishRef.current(draft); };
+    document.addEventListener('visibilitychange', keep);
+    window.addEventListener('pagehide', keep);
+    return () => { document.removeEventListener('visibilitychange', keep); window.removeEventListener('pagehide', keep); };
+  }, [spraying, draft]);
   useEffect(() => {
     if (!spraying || !draft?.length || left > 0.5) return;
     const t = setTimeout(() => finishRef.current(draft), 900);
@@ -497,7 +506,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
             <motion.button whileTap={{ scale: 0.97 }} onClick={() => setDraft(d => (d ?? saved).slice(0, -1))} disabled={!strokes.length} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 disabled:opacity-40 ${TYPE.action}`} style={TONAL}>
               <ArrowCounterClockwise size={17} weight="bold" />{tx(lang, '撤销一笔', 'Undo')}
             </motion.button>
-            <motion.button whileTap={{ scale: 0.97 }} onClick={() => finish()} disabled={saving} className={`flex-[1.35] h-12 rounded-[14px] flex items-center justify-center gap-1.5 disabled:opacity-60 ${TYPE.action}`} style={FILLED(color.deep)}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={() => finish()} disabled={saving} className={`flex-1 h-12 rounded-[14px] flex items-center justify-center gap-1.5 disabled:opacity-60 ${TYPE.action}`} style={FILLED(color.deep)}>
               <Check size={17} weight="bold" />{saving ? tx(lang, '保存中…', 'Saving…') : tx(lang, '喷好了', 'Done')}
             </motion.button>
           </div>
@@ -508,7 +517,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
 }
 
 // A platform LED board, made the way real ones are: the text is set in a
-// pixel typeface drawn for 12-dot screens (pixelFont.ts, thin one-dot
+// pixel typeface drawn for 10-dot screens (pixelFont.ts, thin one-dot
 // strokes, as Chinese station and bus boards are lettered), every dot is a
 // real lamp, lit or dim, and the message crawls from right to left one
 // column at a time, round and round.
@@ -570,7 +579,7 @@ function LedSign({ lines }: { lines: string[] }) {
   }, [text, reduce]);
   return (
     <div className="relative rounded-[2px] px-[3px] py-[2px]" style={{ background: '#050505', boxShadow: '0 0 0 1px #3A3D43, 0 0 0 2px #121316, 0 2px 5px rgba(0,0,0,0.55)' }}>
-      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[22px]" />
+      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[17px]" />
     </div>
   );
 }

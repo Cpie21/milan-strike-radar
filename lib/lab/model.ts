@@ -37,7 +37,7 @@ export type ModeCard = {
   lineLabels: string[]; // backend wording for the scope (lineScopeLabels), e.g. "ATM Milano 所属线路"
   // Codex's line impact (lib/lineImpact.ts): its concise presentation per
   // announcement, and the official routes a whole-operator notice may touch.
-  impacts?: { zh: string; en: string; lines: boolean; routes: string[] }[];
+  impacts?: { zh: string; en: string; lines: boolean; named?: string[]; routes: string[] }[];
   geography: { zh: string; en: string }[]; // official administrative scope beyond this city
   status: CardStatus;
   provider: string;

@@ -313,7 +313,7 @@ export function AskField({ ask: a }: { ask: AskState }) {
           {/* Centred on the pill's round end, as Apple centres a leading icon in
               a capsule: the face's middle sits on the end circle's centre. */}
           <span className="absolute left-0 inset-y-0 w-[56px] z-10 flex items-center justify-center pointer-events-none">
-            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood} size={13} cols={15} attend={a.focused} /></motion.span>
+            <motion.span layoutId="ask-face" transition={{ type: 'spring', stiffness: 300, damping: 34 }} className="flex"><LedFace mood={mood} size={17} cols={13} attend={a.focused} round={42} /></motion.span>
           </span>
         </div>
         {a.left <= 2 && (
