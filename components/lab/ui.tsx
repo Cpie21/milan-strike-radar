@@ -158,7 +158,8 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
       <Drawer.Overlay className="fixed inset-0 z-[90]" style={{ background: 'rgba(0,0,0,0.55)' }} />
       <Drawer.Content aria-describedby={undefined} className="fixed z-[95] inset-x-0 bottom-0 mx-auto w-full max-w-[520px] flex flex-col outline-none"
         style={{ background: C.surface, color: C.text, borderTopLeftRadius: 28, borderTopRightRadius: 28, height: detents ? '94dvh' : undefined, maxHeight: '94dvh', boxShadow: `0 -0.5px 0 ${C.lineStrong}, 0 -20px 60px rgba(0,0,0,0.5)`}}>
-        {detents ? <div className="pt-2 pb-1.5 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div> : <div className="h-2" />}
+        {/* the grabber on every sheet: any of them can be pulled down */}
+        <div className="pt-2 pb-1.5 flex justify-center"><span className="w-9 h-[5px] rounded-full" style={{ background: C.lineStrong }} /></div>
         <div className="flex items-center justify-between gap-3 px-5 pt-3 pb-3 select-none">
           {header ?? <Drawer.Title className="text-[18px] font-semibold tracking-tight">{title}</Drawer.Title>}
           {header && <Drawer.Title className="sr-only">{title}</Drawer.Title>}

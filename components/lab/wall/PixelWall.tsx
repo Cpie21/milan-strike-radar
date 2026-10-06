@@ -27,6 +27,8 @@ const K = 3; // paint resolution over the pixel scene
 const MARGIN = 5; // wall px a piece may run past its panel, so neighbours meet like paint, not tiles
 const DW = PW * K, DH = PH * K;
 const BRUSH = 1.5; // wall pixels: a can's line, not a pen's
+// Speed (wall px/ms) to line width: slow and full, fast and fine; in steps.
+const widthFor = (v: number) => Number((Math.round(Math.max(1, Math.min(2.2, 2.3 - v * 5.5)) / 0.3) * 0.3).toFixed(1));
 // The gauge's arc: the left third of a circle around the fingertip.
 const ARC = (() => { const r = 38, a0 = (215 * Math.PI) / 180, a1 = (145 * Math.PI) / 180; return `M ${r * Math.cos(a0)} ${r * Math.sin(a0)} A ${r} ${r} 0 0 0 ${r * Math.cos(a1)} ${r * Math.sin(a1)}`; })();
 const ART: Record<Mode, string> = { SUBWAY: 'metro', TRAIN: 'train', BUS: 'bus', AIRPORT: 'plane' };
@@ -343,6 +345,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
 
     // Spraying
     let current: Stroke | null = null;
+    let pace = { t: 0, v: 0.08 }; // wall px per ms, smoothed
     let runs: Stroke[] = [];
     let spent = 0;
     let drip: { stroke: Stroke; timer: ReturnType<typeof setTimeout> | null; grow: ReturnType<typeof setInterval> | null } | null = null;
@@ -387,6 +390,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       if (paintAt < 0) { clearTimeout(first); paintAt = 0; }
       spent = 0; runs = [];
       current = { c: live.current.mine, w: BRUSH, p: [x, y] };
+      pace = { t: e.timeStamp, v: 0.08 };
       armDrip(x, y);
       redraw(liveList());
     };
@@ -401,6 +405,16 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       if (Math.hypot(x - lx, y - ly) < 0.6) return;
       if (spent + strokeCost({ ...current, p: [...current.p, x, y] }) >= live.current.left) { live.current.onEmpty(); return; }
       stopDrip();
+      // A can sprayed slowly lays a fuller line, swept fast a thinner one.
+      // The width is quantised and a change starts a new segment from the
+      // same point (the stored format has one width per stroke).
+      const dt = Math.max(8, e.timeStamp - pace.t);
+      pace = { t: e.timeStamp, v: pace.v * 0.75 + (Math.hypot(x - lx, y - ly) / dt) * 0.25 };
+      const want = widthFor(pace.v);
+      if (want !== current.w && current.p.length >= 6 && live.current.strokes.length + runs.length < LIMITS.strokes - 6) {
+        spent += strokeCost(current); runs.push(current);
+        current = { c: live.current.mine, w: want, p: [lx, ly] };
+      }
       current.p.push(x, y);
       armDrip(x, y);
       redraw(liveList());
@@ -439,15 +453,29 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
       // Headlights flash while you touch the button
       if (anticipate && Math.floor(t * 8) % 2 === 0) scene.lamps.forEach(([lx, ly]) => { ctx.fillStyle = '#FFF4D0'; ctx.fillRect((lx - 2) * K, (ly - 1) * K, 5 * K, 3 * K); });
       ctx.drawImage(fgHi, 0, 0);
-      // Spraying: everything but your panel steps back; the panel's edge marches.
+      // Spraying: the rest of the wall falls softly into shadow (no frame),
+      // and four faint corner marks in your colour say where the can reaches.
       const own = live.current.slot;
       if (live.current.spraying && own) {
-        const [x, y, w, h] = [own.x * K, own.y * K, own.w * K, own.h * K];
-        ctx.fillStyle = 'rgba(8,9,11,0.55)';
-        ctx.fillRect(0, 0, DW, y); ctx.fillRect(0, y + h, DW, DH - y - h); ctx.fillRect(0, y, x, h); ctx.fillRect(x + w, y, DW - x - w, h);
+        const [x, y, w, h] = [(own.x - MARGIN) * K, (own.y - MARGIN) * K, (own.w + MARGIN * 2) * K, (own.h + MARGIN * 2) * K];
+        const dim = 'rgba(8,9,11,0.42)', clear = 'rgba(8,9,11,0)', soft = K * 7;
+        const band = (x0: number, y0: number, x1: number, y1: number, gx0: number, gy0: number, gx1: number, gy1: number) => {
+          const g = ctx.createLinearGradient(gx0, gy0, gx1, gy1); g.addColorStop(0, dim); g.addColorStop(1, clear);
+          ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        };
+        ctx.fillStyle = dim;
+        ctx.fillRect(0, 0, DW, Math.max(0, y - soft)); ctx.fillRect(0, y + h + soft, DW, DH);
+        ctx.fillRect(0, y - soft, Math.max(0, x - soft), h + soft * 2); ctx.fillRect(x + w + soft, y - soft, DW, h + soft * 2);
+        band(x - soft, y - soft, x + w + soft, y, 0, y - soft, 0, y);
+        band(x - soft, y + h, x + w + soft, y + h + soft, 0, y + h + soft, 0, y + h);
+        band(x - soft, y, x, y + h, x - soft, 0, x, 0);
+        band(x + w, y, x + w + soft, y + h, x + w + soft, 0, x + w, 0);
         ctx.save();
-        ctx.setLineDash([K * 2, K * 2]); ctx.lineDashOffset = reduce ? 0 : -t * K * 8;
-        ctx.strokeStyle = live.current.mine; ctx.lineWidth = K * 0.6; ctx.strokeRect(x - K * 0.5, y - K * 0.5, w + K, h + K);
+        ctx.globalAlpha = 0.55; ctx.strokeStyle = live.current.mine; ctx.lineWidth = K * 0.5; ctx.lineCap = 'round';
+        const arm = K * 3;
+        for (const [cx, cy, sx, sy] of [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + h, 1, -1], [x + w, y + h, -1, -1]] as const) {
+          ctx.beginPath(); ctx.moveTo(cx + sx * arm, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + sy * arm); ctx.stroke();
+        }
         ctx.restore();
       }
       if (!reduce) dust.forEach(d => { d.y += d.v; d.x += Math.sin(t + d.y) * 0.03; if (d.y > 104) { d.y = 0; d.x = Math.random() * PW; } ctx.fillStyle = 'rgba(255,220,170,0.35)'; ctx.fillRect(Math.round(d.x) * K, Math.round(d.y) * K, K, K); });
@@ -521,7 +549,7 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
   })();
   const caption = !doodle.loaded ? null
     : spraying ? (empty || left <= 0.5 ? tx(lang, '这罐漆用完了', 'This can is empty') : tx(lang, '这块车身归你：喷几笔，把火气留在车上', 'This panel is yours: spray, and leave your anger on the train'))
-      : done ? tx(lang, `你的涂鸦已经留在车上了，和 ${others} 人的一起`, `Your piece is on the train, with ${others} others`) : null;
+      : null;
   // The station sign carries the wall's news, readable, in the sign's amber.
   const sign = scene.sign;
   const signLines = [

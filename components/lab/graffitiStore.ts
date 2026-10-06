@@ -10,7 +10,7 @@ export const LIMITS = { strokes: 80, points: 4000 };
 // One can per strike per person. Paint is spent by length × width; undo
 // gives it back. Enough for a tag and a bit more, not to fill the panel:
 // a can, not a bucket.
-export const PAINT = 55;
+export const PAINT = 41; // a quarter less than the first can (55)
 export function strokeCost(s: Stroke) {
   let length = 0;
   for (let i = 2; i < s.p.length; i += 2) length += Math.hypot(s.p[i] - s.p[i - 2], s.p[i + 1] - s.p[i - 1]);

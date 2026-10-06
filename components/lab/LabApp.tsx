@@ -143,10 +143,12 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           background-color: WebKit hit-tests a point 8px down, walks up to
           the first fixed ancestor and extends that colour into the status
           bar instead (gradients don't count, and a pointer-events:none box
-          is never hit). So the wash is a hit-testable solid strip exactly
-          the status bar's height, with a short fade hanging under it. */}
-      <div aria-hidden className="fixed inset-x-0 top-0 z-[30]" style={{ height: 'env(safe-area-inset-top)', backgroundColor: C.bg }}>
-        <div className="absolute inset-x-0 top-full pointer-events-none" style={{ height: 'min(16px, env(safe-area-inset-top) * 100)', background: `linear-gradient(180deg, ${C.bg}, ${C.bg}00)` }} />
+          is never hit). So the wash is a thin hit-testable solid line at the
+          very edge, then an eased fade (a scrim: the alpha follows a curve,
+          not a straight line, so it has no visible start or end) over the
+          rest of the status bar and a little past it. */}
+      <div aria-hidden className="fixed inset-x-0 top-0 z-[30]" style={{ height: 'min(10px, env(safe-area-inset-top) * 100)', backgroundColor: C.bg }}>
+        <div className="absolute inset-x-0 top-full pointer-events-none" style={{ height: 'calc(env(safe-area-inset-top) + min(12px, env(safe-area-inset-top) * 100))', background: SCRIM }} />
       </div>
       <div>
         <header className="mx-auto max-w-[520px] grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4" style={{ paddingTop: 'max(14px, calc(env(safe-area-inset-top) + 14px))' }}>
@@ -309,6 +311,10 @@ function WidgetGlyph() {
     </svg>
   );
 }
+
+// The page colour fading out along an eased curve (scrim / easing gradients:
+// css-tricks.com/easing-linear-gradients): no hard edge where it ends.
+const SCRIM = `linear-gradient(180deg, ${[[1, 0], [0.738, 19], [0.541, 34], [0.382, 47], [0.278, 56.5], [0.194, 65], [0.126, 73], [0.075, 80.2], [0.042, 86.1], [0.021, 91], [0.008, 95.2], [0.002, 98.2], [0, 100]].map(([a, p]) => `rgba(10,11,13,${a}) ${p}%`).join(', ')})`;
 
 function Tool({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
