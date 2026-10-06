@@ -39,7 +39,7 @@ export const GTFS_FEEDS={
   GTFS_CATANIA:{url:'https://www.amts.ct.it/GTFS/AMTCT.zip',operator:'AMTS_CATANIA',agency:/\bAMTS?\b|Azienda Metropolitana Trasporti Catania/i},
 } as const;
 export type FeedId=keyof typeof GTFS_FEEDS;
-export type RouteCatalog={feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;routes:{id:string;name:string;type:number;operator:string}[]};
+export type RouteCatalog={feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;modeValidTo?:Partial<Record<'BUS'|'SUBWAY',string>>;routes:{id:string;name:string;type:number;operator:string}[]};
 
 export function parseCsv(text:string):Record<string,string>[] {
   const rows:string[][]=[];let row:string[]=[],field='',quoted=false;
@@ -67,7 +67,7 @@ export function catalogFromFiles(feedId:FeedId,files:Record<string,string>,check
   const starts=calendar.map(r=>dateIso(r.start_date)).concat(exceptions.filter(r=>r.exception_type==='1').map(r=>dateIso(r.date))).filter((s):s is string=>Boolean(s)).sort();
   const ends=calendar.map(r=>dateIso(r.end_date)).concat(exceptions.filter(r=>r.exception_type==='1').map(r=>dateIso(r.date))).filter((s):s is string=>Boolean(s)).sort();
   const validFrom=dateIso(info?.feed_start_date)||starts[0]||null,validTo=dateIso(info?.feed_end_date)||ends.at(-1)||null;
-  return {feedId,source:feed.url,contentHash:createHash('sha256').update(JSON.stringify(files)).digest('hex'),checkedAt,validFrom,validTo,routes};
+  return {feedId,source:feed.url,contentHash:createHash('sha256').update(JSON.stringify(files)).digest('hex'),checkedAt,validFrom,validTo,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(dateIso(info?.surface_end_date)?{BUS:dateIso(info?.surface_end_date)!}:{}),...(dateIso(info?.mm_end_date)?{SUBWAY:dateIso(info?.mm_end_date)!}:{})}}:{}),routes};
 }
 
 // Fetch only the small directory and CSV members, not stops/trips/stop_times.
@@ -120,7 +120,8 @@ export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):
 
 export function validateLineRoutes(scope:LineScope,catalog:RouteCatalog,date:string,category:string):LineScope {
   const value={...scope,affectedRouteIds:[],excludedRouteIds:[],gtfsFeedId:catalog.feedId};
-  if(!catalog.validFrom || !catalog.validTo || date<catalog.validFrom || date>catalog.validTo) return {...value,routeValidation:'OUT_OF_VALIDITY'};
+  const modeEnd=catalog.modeValidTo?.[category as 'BUS'|'SUBWAY'];
+  if(!catalog.validFrom || !catalog.validTo || date<catalog.validFrom || date>catalog.validTo || modeEnd&&date>modeEnd) return {...value,routeValidation:'OUT_OF_VALIDITY'};
   if(scope.operatorIds.length!==1||scope.operatorIds[0]!==GTFS_FEEDS[catalog.feedId].operator)return {...value,routeValidation:'UNAVAILABLE'};
   if(!['SPECIFIC_LINES','ALL_EXCEPT'].includes(scope.kind))return {...value,routeValidation:'NOT_REQUESTED'};
   const types=category==='SUBWAY'?[1]:category==='BUS'?[0,3,11]:category==='TRAIN'?[2]:[];

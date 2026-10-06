@@ -1,3 +1,4 @@
+import { attachLineImpacts } from '../../../../lib/lineImpact';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase, type StrikeRecord } from '../../../../lib/strikeSync';
@@ -36,6 +37,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const warnings: string[] = [];
     const enrichment = await enrichStrikeTiming(records, warnings).catch(error => {
       warnings.push(`External timing discovery failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      records=records.map(r=>r.timing_evidence?.fields?{...r,timing_evidence:{...r.timing_evidence,fields:{...r.timing_evidence.fields,noticeDiscovery:{checkedAt:new Date().toISOString(),status:'UNAVAILABLE' as const,sources:[]}}}}:r);
       return { records, enriched: 0, sourcesChecked: 0, conflicts: 0 };
     });
     records = enrichment.records;
@@ -47,7 +49,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const semantic = await reviewStrikeSemantics(records,rawRows,db,warnings).catch(()=>({records,stats:{failed:1},enabled:false}));
     records=semantic.records;
     const schedules=await enrichScheduledServiceTimes(records,warnings).catch(()=>{warnings.push('Scheduled service enrichment unavailable');return {records,complete:0,feeds:0};});
-    records=schedules.records;
+    records=attachLineImpacts(schedules.records);
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
     const unknownTiming = records.filter(record => record.status !== 'CANCELLED' && !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
     const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {

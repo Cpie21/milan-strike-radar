@@ -1,0 +1,687 @@
+{
+  "checkedAt": "2026-10-06T06:34:48.545Z",
+  "target": "LOCAL_BUILT_BACKEND_WITH_READ_ONLY_PRODUCTION_DATA",
+  "databaseWrites": 0,
+  "paidModelCalls": 0,
+  "checks": [
+    {
+      "case": "supported city MILANO",
+      "status": 200,
+      "events": 2
+    },
+    {
+      "case": "supported city ROMA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city TORINO",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city NAPOLI",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city FIRENZE",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city BOLOGNA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city VENEZIA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city GENOVA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city PALERMO",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city CATANIA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city BARI",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city VERONA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city PADOVA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city TRIESTE",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city CAGLIARI",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city BERGAMO",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city BRESCIA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city PISA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city MESSINA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "supported city PERUGIA",
+      "status": 200,
+      "events": 0
+    },
+    {
+      "case": "ATM same scope consolidated",
+      "status": 200,
+      "data": {
+        "query": {
+          "region": "MILANO",
+          "date": "2026-10-09",
+          "category": "SUBWAY"
+        },
+        "declared": {
+          "events": [
+            {
+              "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+              "sourceKey": "fe6ad34afb572e5cf64a994195f47bb7d3aaa9693d566bec00b43140772f44e8",
+              "category": "SUBWAY",
+              "impact": {
+                "version": 1,
+                "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                "declaredScope": {
+                  "value": {
+                    "kind": "ALL_OPERATOR_LINES",
+                    "operatorIds": [
+                      "ATM_MILANO"
+                    ],
+                    "operatorNames": [
+                      "ATM Milano"
+                    ],
+                    "networkNames": [],
+                    "affectedLineNames": [],
+                    "excludedLineNames": [],
+                    "affectedRouteIds": [],
+                    "excludedRouteIds": [],
+                    "officialRegion": "Lombardia",
+                    "officialProvince": "Tutte"
+                  },
+                  "confidence": "HIGH",
+                  "source": "OPERATOR_OFFICIAL",
+                  "method": "CODE",
+                  "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+                  "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+                },
+                "lineMembership": {
+                  "value": {
+                    "operator": "ATM_MILANO",
+                    "date": "2026-10-09",
+                    "category": "SUBWAY",
+                    "routes": [
+                      {
+                        "id": "M4",
+                        "name": "4"
+                      },
+                      {
+                        "id": "M3",
+                        "name": "3"
+                      },
+                      {
+                        "id": "M1",
+                        "name": "1"
+                      },
+                      {
+                        "id": "M2",
+                        "name": "2"
+                      },
+                      {
+                        "id": "M5",
+                        "name": "5"
+                      }
+                    ]
+                  },
+                  "confidence": "HIGH",
+                  "source": "OPERATOR_OFFICIAL",
+                  "method": "CODE",
+                  "url": "https://dati.comune.milano.it/gtfs.zip",
+                  "excerpt": "Dated official timetable route identity; does not confirm actual strike operation"
+                },
+                "specificLinesStatus": "NOT_ENUMERATED",
+                "passengerRelevance": "PASSENGER_SERVICE",
+                "observedStatus": "NOT_CHECKED",
+                "presentation": {
+                  "zh": "ATM Milano 所属线路可能受影响",
+                  "en": "ATM Milano services may be affected",
+                  "showLineSection": true
+                }
+              },
+              "lineMatch": null,
+              "announcements": [
+                {
+                  "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+                  "sourceKey": "fe6ad34afb572e5cf64a994195f47bb7d3aaa9693d566bec00b43140772f44e8",
+                  "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                  "scope": {
+                    "value": {
+                      "kind": "ALL_OPERATOR_LINES",
+                      "operatorIds": [
+                        "ATM_MILANO"
+                      ],
+                      "operatorNames": [
+                        "ATM Milano"
+                      ],
+                      "networkNames": [],
+                      "affectedLineNames": [],
+                      "excludedLineNames": [],
+                      "affectedRouteIds": [],
+                      "excludedRouteIds": [],
+                      "officialRegion": "Lombardia",
+                      "officialProvince": "Tutte"
+                    },
+                    "confidence": "HIGH",
+                    "source": "OPERATOR_OFFICIAL",
+                    "method": "CODE",
+                    "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+                    "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+                  }
+                },
+                {
+                  "id": "edc65463-aa23-41fe-bf56-74b568c5fbb0",
+                  "sourceKey": "d57475fbe3f3f892440fc29fd72c336edb0c7c9c1d9e9634155db4e5da37ae47",
+                  "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                  "scope": {
+                    "value": {
+                      "kind": "ALL_OPERATOR_LINES",
+                      "operatorIds": [
+                        "ATM_MILANO"
+                      ],
+                      "operatorNames": [
+                        "ATM Milano"
+                      ],
+                      "networkNames": [],
+                      "affectedLineNames": [],
+                      "excludedLineNames": [],
+                      "affectedRouteIds": [],
+                      "excludedRouteIds": [],
+                      "officialRegion": "Lombardia",
+                      "officialProvince": "Tutte"
+                    },
+                    "confidence": "HIGH",
+                    "source": "OPERATOR_OFFICIAL",
+                    "method": "CODE",
+                    "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+                    "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+                  }
+                }
+              ]
+            }
+          ],
+          "relatedServices": [],
+          "absenceMeansNormalService": false
+        },
+        "observed": {
+          "status": "NOT_APPLICABLE",
+          "alerts": [],
+          "absenceMeansNormalService": false
+        }
+      }
+    },
+    {
+      "case": "GEST selected line",
+      "status": 200,
+      "data": {
+        "query": {
+          "region": "FIRENZE",
+          "date": "2026-10-10",
+          "category": "BUS",
+          "line": "T1"
+        },
+        "declared": {
+          "events": [
+            {
+              "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+              "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+              "category": "BUS",
+              "impact": {
+                "version": 1,
+                "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                "declaredScope": {
+                  "value": {
+                    "kind": "SPECIFIC_LINES",
+                    "operatorIds": [
+                      "GEST_FIRENZE"
+                    ],
+                    "operatorNames": [
+                      "GEST"
+                    ],
+                    "networkNames": [],
+                    "affectedLineNames": [
+                      "T1",
+                      "T2"
+                    ],
+                    "excludedLineNames": [],
+                    "affectedRouteIds": [],
+                    "excludedRouteIds": [],
+                    "officialRegion": "Toscana",
+                    "officialProvince": "Firenze"
+                  },
+                  "confidence": "HIGH",
+                  "source": "OPERATOR_OFFICIAL",
+                  "method": "CODE",
+                  "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+                  "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+                },
+                "specificLinesStatus": "KNOWN",
+                "passengerRelevance": "PASSENGER_SERVICE",
+                "observedStatus": "NOT_CHECKED",
+                "presentation": {
+                  "zh": "T1 可能受影响",
+                  "en": "T1 may be affected",
+                  "showLineSection": true
+                }
+              },
+              "lineMatch": "NAMED",
+              "announcements": [
+                {
+                  "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+                  "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+                  "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                  "scope": {
+                    "value": {
+                      "kind": "SPECIFIC_LINES",
+                      "operatorIds": [
+                        "GEST_FIRENZE"
+                      ],
+                      "operatorNames": [
+                        "GEST"
+                      ],
+                      "networkNames": [],
+                      "affectedLineNames": [
+                        "T1",
+                        "T2"
+                      ],
+                      "excludedLineNames": [],
+                      "affectedRouteIds": [],
+                      "excludedRouteIds": [],
+                      "officialRegion": "Toscana",
+                      "officialProvince": "Firenze"
+                    },
+                    "confidence": "HIGH",
+                    "source": "OPERATOR_OFFICIAL",
+                    "method": "CODE",
+                    "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+                    "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+                  }
+                }
+              ]
+            }
+          ],
+          "relatedServices": [],
+          "absenceMeansNormalService": false
+        },
+        "observed": {
+          "status": "NOT_APPLICABLE",
+          "alerts": [],
+          "absenceMeansNormalService": false
+        }
+      }
+    },
+    {
+      "case": "Arriva subnetworks",
+      "status": 200,
+      "data": {
+        "query": {
+          "region": "BERGAMO",
+          "date": "2026-10-16",
+          "category": "BUS"
+        },
+        "declared": {
+          "events": [
+            {
+              "id": "3ea595cd-7f2c-42ac-ada7-63e636e6cf4a",
+              "sourceKey": "6ef9ce99d404276f381e36e559834c2a4392192a20fc3d1115188e72a1370d15",
+              "category": "BUS",
+              "impact": {
+                "version": 1,
+                "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                "declaredScope": {
+                  "value": {
+                    "kind": "NAMED_NETWORKS",
+                    "operatorIds": [
+                      "ARRIVA_BERGAMO"
+                    ],
+                    "operatorNames": [
+                      "Arriva Bergamo"
+                    ],
+                    "networkNames": [
+                      "BERGAMO TRASPORTI SUD",
+                      "BERGAMO TRASPORTI EST",
+                      "BERGAMO TRASPORTI OVEST"
+                    ],
+                    "affectedLineNames": [],
+                    "excludedLineNames": [],
+                    "affectedRouteIds": [],
+                    "excludedRouteIds": [],
+                    "officialRegion": "Lombardia",
+                    "officialProvince": "Bergamo"
+                  },
+                  "confidence": "HIGH",
+                  "source": "OPERATOR_OFFICIAL",
+                  "method": "CODE",
+                  "url": "https://bergamo.arriva.it/notice/sciopero-di-24-ore-del-16-10-2026-arriva-italia/",
+                  "excerpt": "Si avvisa la gentile clientela, che nella giornata di venerdì 16 ottobre 2026 è stato indotto dalle sigle sindalcali Filt Cgil, Fit Cisl, Faisa Cisal e UILTransporti, uno sciopero aziendale per i dipendenti di Arriva Italia di 24 ore. In tale giornata NON saranno garantiti i servizi di linea gestiti da BERGAMO TRASPORTI SUD, BERGAMO TRASPORTI EST, BERGAMO TRASPORTI OVEST s.c. a r.l. nelle fasce orarie: Da inizio servizio alle ore 05:59- dalle ore 08:31 alle ore 12:29 e dalle ore 16:01 sino a termine servizio."
+                },
+                "specificLinesStatus": "NOT_ENUMERATED",
+                "passengerRelevance": "PASSENGER_SERVICE",
+                "observedStatus": "NOT_CHECKED",
+                "presentation": {
+                  "zh": "BERGAMO TRASPORTI SUD / BERGAMO TRASPORTI EST / BERGAMO TRASPORTI OVEST 可能受影响",
+                  "en": "BERGAMO TRASPORTI SUD / BERGAMO TRASPORTI EST / BERGAMO TRASPORTI OVEST services may be affected",
+                  "showLineSection": true
+                }
+              },
+              "lineMatch": null,
+              "announcements": [
+                {
+                  "id": "3ea595cd-7f2c-42ac-ada7-63e636e6cf4a",
+                  "sourceKey": "6ef9ce99d404276f381e36e559834c2a4392192a20fc3d1115188e72a1370d15",
+                  "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                  "scope": {
+                    "value": {
+                      "kind": "NAMED_NETWORKS",
+                      "operatorIds": [
+                        "ARRIVA_BERGAMO"
+                      ],
+                      "operatorNames": [
+                        "Arriva Bergamo"
+                      ],
+                      "networkNames": [
+                        "BERGAMO TRASPORTI SUD",
+                        "BERGAMO TRASPORTI EST",
+                        "BERGAMO TRASPORTI OVEST"
+                      ],
+                      "affectedLineNames": [],
+                      "excludedLineNames": [],
+                      "affectedRouteIds": [],
+                      "excludedRouteIds": [],
+                      "officialRegion": "Lombardia",
+                      "officialProvince": "Bergamo"
+                    },
+                    "confidence": "HIGH",
+                    "source": "OPERATOR_OFFICIAL",
+                    "method": "CODE",
+                    "url": "https://bergamo.arriva.it/notice/sciopero-di-24-ore-del-16-10-2026-arriva-italia/",
+                    "excerpt": "Si avvisa la gentile clientela, che nella giornata di venerdì 16 ottobre 2026 è stato indotto dalle sigle sindalcali Filt Cgil, Fit Cisl, Faisa Cisal e UILTransporti, uno sciopero aziendale per i dipendenti di Arriva Italia di 24 ore. In tale giornata NON saranno garantiti i servizi di linea gestiti da BERGAMO TRASPORTI SUD, BERGAMO TRASPORTI EST, BERGAMO TRASPORTI OVEST s.c. a r.l. nelle fasce orarie: Da inizio servizio alle ore 05:59- dalle ore 08:31 alle ore 12:29 e dalle ore 16:01 sino a termine servizio."
+                  }
+                }
+              ]
+            }
+          ],
+          "relatedServices": [],
+          "absenceMeansNormalService": false
+        },
+        "observed": {
+          "status": "NOT_APPLICABLE",
+          "alerts": [],
+          "absenceMeansNormalService": false
+        }
+      }
+    },
+    {
+      "case": "ATM requested membership",
+      "status": 200,
+      "data": {
+        "query": {
+          "region": "MILANO",
+          "date": "2026-10-09",
+          "category": "SUBWAY",
+          "line": "M1"
+        },
+        "declared": {
+          "events": [
+            {
+              "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+              "sourceKey": "fe6ad34afb572e5cf64a994195f47bb7d3aaa9693d566bec00b43140772f44e8",
+              "category": "SUBWAY",
+              "impact": {
+                "version": 1,
+                "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                "declaredScope": {
+                  "value": {
+                    "kind": "ALL_OPERATOR_LINES",
+                    "operatorIds": [
+                      "ATM_MILANO"
+                    ],
+                    "operatorNames": [
+                      "ATM Milano"
+                    ],
+                    "networkNames": [],
+                    "affectedLineNames": [],
+                    "excludedLineNames": [],
+                    "affectedRouteIds": [],
+                    "excludedRouteIds": [],
+                    "officialRegion": "Lombardia",
+                    "officialProvince": "Tutte"
+                  },
+                  "confidence": "HIGH",
+                  "source": "OPERATOR_OFFICIAL",
+                  "method": "CODE",
+                  "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+                  "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+                },
+                "lineMembership": {
+                  "value": {
+                    "operator": "ATM_MILANO",
+                    "date": "2026-10-09",
+                    "category": "SUBWAY",
+                    "routes": [
+                      {
+                        "id": "M4",
+                        "name": "4"
+                      },
+                      {
+                        "id": "M3",
+                        "name": "3"
+                      },
+                      {
+                        "id": "M1",
+                        "name": "1"
+                      },
+                      {
+                        "id": "M2",
+                        "name": "2"
+                      },
+                      {
+                        "id": "M5",
+                        "name": "5"
+                      }
+                    ]
+                  },
+                  "confidence": "HIGH",
+                  "source": "OPERATOR_OFFICIAL",
+                  "method": "CODE",
+                  "url": "https://dati.comune.milano.it/gtfs.zip",
+                  "excerpt": "Dated official timetable route identity; does not confirm actual strike operation"
+                },
+                "specificLinesStatus": "NOT_ENUMERATED",
+                "passengerRelevance": "PASSENGER_SERVICE",
+                "observedStatus": "NOT_CHECKED",
+                "presentation": {
+                  "zh": "M1 可能受影响",
+                  "en": "M1 may be affected",
+                  "showLineSection": true
+                }
+              },
+              "lineMatch": "POTENTIAL",
+              "announcements": [
+                {
+                  "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+                  "sourceKey": "fe6ad34afb572e5cf64a994195f47bb7d3aaa9693d566bec00b43140772f44e8",
+                  "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                  "scope": {
+                    "value": {
+                      "kind": "ALL_OPERATOR_LINES",
+                      "operatorIds": [
+                        "ATM_MILANO"
+                      ],
+                      "operatorNames": [
+                        "ATM Milano"
+                      ],
+                      "networkNames": [],
+                      "affectedLineNames": [],
+                      "excludedLineNames": [],
+                      "affectedRouteIds": [],
+                      "excludedRouteIds": [],
+                      "officialRegion": "Lombardia",
+                      "officialProvince": "Tutte"
+                    },
+                    "confidence": "HIGH",
+                    "source": "OPERATOR_OFFICIAL",
+                    "method": "CODE",
+                    "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+                    "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+                  }
+                },
+                {
+                  "id": "edc65463-aa23-41fe-bf56-74b568c5fbb0",
+                  "sourceKey": "d57475fbe3f3f892440fc29fd72c336edb0c7c9c1d9e9634155db4e5da37ae47",
+                  "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+                  "scope": {
+                    "value": {
+                      "kind": "ALL_OPERATOR_LINES",
+                      "operatorIds": [
+                        "ATM_MILANO"
+                      ],
+                      "operatorNames": [
+                        "ATM Milano"
+                      ],
+                      "networkNames": [],
+                      "affectedLineNames": [],
+                      "excludedLineNames": [],
+                      "affectedRouteIds": [],
+                      "excludedRouteIds": [],
+                      "officialRegion": "Lombardia",
+                      "officialProvince": "Tutte"
+                    },
+                    "confidence": "HIGH",
+                    "source": "OPERATOR_OFFICIAL",
+                    "method": "CODE",
+                    "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+                    "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+                  }
+                }
+              ]
+            }
+          ],
+          "relatedServices": [],
+          "absenceMeansNormalService": false
+        },
+        "observed": {
+          "status": "NOT_APPLICABLE",
+          "alerts": [],
+          "absenceMeansNormalService": false
+        }
+      }
+    },
+    {
+      "case": "invalid day",
+      "status": 400,
+      "data": {
+        "error": "Invalid date"
+      }
+    },
+    {
+      "case": "unsupported city",
+      "status": 400,
+      "data": {
+        "error": "Unsupported city"
+      }
+    },
+    {
+      "case": "unscoped line",
+      "status": 400,
+      "data": {
+        "error": "Line requires a surface, metro or train category"
+      }
+    },
+    {
+      "case": "Rome current route observation (availability recorded, not assumed)",
+      "status": 200,
+      "data": {
+        "query": {
+          "region": "ROMA",
+          "date": "2026-10-06",
+          "category": "BUS",
+          "line": "64"
+        },
+        "declared": {
+          "events": [],
+          "relatedServices": [],
+          "absenceMeansNormalService": false
+        },
+        "observed": {
+          "status": "FRESH",
+          "source": "https://romamobilita.it/sites/default/files/rome_rtgtfs_service_alerts_feed.pb",
+          "sourceTimestamp": "2026-10-06T06:30:01.000Z",
+          "checkedAt": "2026-10-06T06:34:46.415Z",
+          "absenceMeansNormalService": false,
+          "alerts": [
+            {
+              "id": "39504",
+              "header": "PIAZZA VENEZIA: CANTIERI STAZIONE METRO C",
+              "description": "In centro stiamo modificando alcune fermate della linea per la realizzazione della stazione metro Venezia della linea C della metropolitana. La linea non fa la fermata 79711 di largo Argentina di fronte al teatro. In alternativa, utilizzare, la fermata precedente posta a circa 150 metri, in corso Vittorio Emanuele angolo largo Argentina. (@romamobilita)",
+              "effect": "DETOUR",
+              "routeIds": [
+                "64"
+              ],
+              "strikeCauseConfirmed": false
+            },
+            {
+              "id": "42249",
+              "header": "Lavori in Via Innocenzo III",
+              "description": "Da inizio servizio di mercoledì 19 Agosto 2026 fino a cessate esigenze:\r\nProv. da Stazione Termini: giunti in Via del Crocifisso, sx Via Paolo Il, dx Via della Stazione di San Pietro, Piazza della Stazione di San Pietro dove si attesta ed effettua regolare capolinea.\r\nProv. da Stazione San Pietro: normale itinerario di linea.\r\n (@romamobilita)",
+              "effect": "DETOUR",
+              "routeIds": [
+                "64"
+              ],
+              "strikeCauseConfirmed": false
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

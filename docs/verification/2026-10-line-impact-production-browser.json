@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-10-06T07:01:12.188662+00:00",
+  "method": "Browser accessibility inspection",
+  "url": "https://www.theitalystrike.com/firenze",
+  "selectedDate": "2026-10-10",
+  "provider": "GEST",
+  "affectedLines": [
+    "T1",
+    "T2"
+  ],
+  "guaranteeWindows": [
+    "06:30–09:30",
+    "17:00–20:00"
+  ],
+  "timelinePresent": true,
+  "officialNoticeAtCardBottom": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+  "affectedUserCounterClicked": false
+}
