@@ -29,6 +29,7 @@ export function travellerLineImpacts(records:TravellerRecord[],query:ReturnType<
     if(lineMatch==='EXCLUDED')continue;
     if(query.line&&impact.declaredScope.value.kind==='SPECIFIC_LINES'&&impact.declaredScope.confidence!=='CONFLICT'&&lineMatch!=='NAMED')continue;
     if(query.line && (lineMatch==='NAMED'||lineMatch==='POTENTIAL'))impact.presentation={...impact.presentation,zh:`${query.line} 可能受影响`,en:`${query.line} may be affected`};
+    if(query.line){impact.potentialLines=impact.potentialLines.filter(l=>l.displayName.toUpperCase()===query.line);if(impact.lineMembership)impact.lineMembership={...impact.lineMembership,value:{...impact.lineMembership.value,routes:impact.lineMembership.value.routes.filter(l=>l.name.toUpperCase()===query.line)}};}
     const entry={id:r.id,sourceKey:r.source_key,category:r.category,impact,lineMatch,announcements:[{id:r.id,sourceKey:r.source_key,checkedAt:impact.checkedAt,scope:impact.declaredScope}]};
     (impact.passengerRelevance==='SUPPORT_SERVICE'?relatedServices:events).push(entry);
   }
@@ -43,6 +44,10 @@ export function travellerLineImpacts(records:TravellerRecord[],query:ReturnType<
       const prior=groups.get(key);
       if(!prior){groups.set(key,entry);continue;}
       prior.announcements.push(...entry.announcements);
+      // Same declared scope may have different enrichment freshness. Choose
+      // the newest catalogue snapshot; do not union a retired route back in.
+      const stamp=(i:DeclaredLineImpact)=>Math.max(0,...i.potentialLines.map(l=>Date.parse(l.catalogCheckedAt||'')||0));
+      if(stamp(entry.impact)>stamp(prior.impact))prior.impact=entry.impact;
       const stamps=prior.announcements.map(a=>a.checkedAt);
       prior.impact={...prior.impact,checkedAt:stamps.some(t=>!t)?null:stamps.slice().sort()[0]!};
     }

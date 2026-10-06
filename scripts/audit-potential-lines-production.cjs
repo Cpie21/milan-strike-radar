@@ -1,0 +1,20 @@
+// Read-only deployed API validation. No synchronization, paid AI or database writes.
+/* eslint-disable @typescript-eslint/no-require-imports */
+const fs=require('node:fs'),assert=require('node:assert/strict'),ts=require('typescript');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:1,esModuleInterop:true,target:9}}).outputText,f);
+const {CITIES}=require('../lib/cities.ts'),origin=process.env.STRIKE_AUDIT_ORIGIN||'https://www.theitalystrike.com';
+(async()=>{
+ const checks=[],get=async params=>{const url=origin+'/api/line-impact?'+new URLSearchParams(params),r=await fetch(url,{signal:AbortSignal.timeout(25000)});assert.equal(r.status,200);const body=await r.json();checks.push({params,http:r.status,events:body.declared.events.length});return body;};
+ for(let i=0;i<CITIES.length;i+=4)await Promise.all(CITIES.slice(i,i+4).map(async city=>{for(const category of ['BUS','SUBWAY','TRAIN','AIRPORT']){const out=await get({region:city.tag,date:'2026-10-09',category});assert.equal(out.declared.absenceMeansNormalService,false);for(const e of out.declared.events){assert.ok(Array.isArray(e.impact.potentialLines));assert.ok(e.impact.potentialLines.every(l=>l.mode===category&&!l.actualOperationConfirmed));if(category==='AIRPORT')assert.equal(e.impact.potentialLines.length,0);}}}));
+ const metro=await get({region:'MILANO',date:'2026-10-09',category:'SUBWAY'}),mi=metro.declared.events.find(e=>e.impact.declaredScope.value.operatorIds.includes('ATM_MILANO')).impact;
+ assert.deepEqual(mi.potentialLines.map(l=>l.displayName),['M1','M2','M3','M4','M5']);assert.equal(mi.potentialLinesStatus,'PARTIAL');
+ const m1=mi.potentialLines.find(l=>l.displayName==='M1'),m2=mi.potentialLines.find(l=>l.displayName==='M2');assert.equal(m1.scheduledReference.lastArrival.clock,'00:55');assert.equal(m2.scheduledReference.lastArrival.clock,'01:30');assert.equal(m1.scheduledReference.lastDeparture.dayOffset,1);
+ const bus=await get({region:'MILANO',date:'2026-10-09',category:'BUS'}),bi=bus.declared.events.find(e=>e.impact.declaredScope.value.operatorIds.includes('ATM_MILANO')).impact;
+ for(const line of ['90','91']){assert.ok(bi.potentialLines.some(l=>l.displayName===line));const chosen=await get({region:'MILANO',date:'2026-10-09',category:'BUS',line});assert.ok(chosen.declared.events.some(e=>e.lineMatch==='POTENTIAL'));assert.ok(chosen.declared.events.every(e=>e.impact.potentialLines.every(l=>l.displayName===line)));}
+ assert.ok(bi.potentialLines.every(l=>!l.scheduledReference&&!/^M[1-5]$/.test(l.displayName)));assert.ok(bi.potentialLines.every(l=>l.noticeSource&&l.catalogSource&&l.catalogFeedId));
+ const selected=await get({region:'MILANO',date:'2026-10-09',category:'SUBWAY',line:'M1'});assert.ok(selected.declared.events.every(e=>e.impact.potentialLines.every(l=>l.displayName==='M1')));
+ const gest=await get({region:'FIRENZE',date:'2026-10-10',category:'BUS'});assert.ok(gest.declared.events.some(e=>e.impact.potentialLines.map(l=>l.displayName).join(',')==='T1,T2'));
+ const eav=await get({region:'NAPOLI',date:'2026-10-16',category:'TRAIN'});assert.ok(eav.declared.events.every(e=>e.impact.potentialLines.length===0));
+ const security=await get({region:'PALERMO',date:'2026-10-08',category:'TRAIN'});assert.equal(security.declared.events.length,0);assert.ok(security.declared.relatedServices.length);assert.ok(security.declared.relatedServices.every(e=>e.impact.potentialLines.length===0));
+ const report={checkedAt:new Date().toISOString(),origin,checks,allPassed:true,metroLines:mi.potentialLines,busPotentialLineCount:bi.potentialLines.length,busExamples:bi.potentialLines.filter(l=>['90','91'].includes(l.displayName)),actualOperationConfirmed:false};fs.writeFileSync(process.argv[2]||'/tmp/potential-lines-production-http.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({checks:checks.length,allPassed:true,busPotentialLines:bi.potentialLines.length,metroLines:mi.potentialLines.map(l=>l.displayName)}));
+})().catch(e=>{console.error(e.stack);process.exitCode=1;});

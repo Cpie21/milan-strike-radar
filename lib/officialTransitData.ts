@@ -1,9 +1,10 @@
 import { inflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import type { LineScope } from './lineScope';
+import * as cheerio from 'cheerio';
 
-const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it','dati.toscana.it','www.amtabservizio.it','www.amt.genova.it','www.ctmcagliari.it','www.amts.ct.it']);
-export async function transitBytes(url:string,maxBytes:number,deadline:number,headers:Record<string,string>={},method='GET') {
+const HOSTS=new Set(['dati.comune.milano.it','romamobilita.it','www.atm.it','www.atac.roma.it','www.gtt.to.it','www.trenitalia.com','arriva.it','aircampania.it','dati.toscana.it','www.amtabservizio.it','www.amt.genova.it','www.ctmcagliari.it','www.amts.ct.it','www.wimob.it','actv.avmspa.it','solweb.tper.it','www.dati.lombardia.it','www.atb.bergamo.it','www.eavsrl.it','bergamo.arriva.it','www.bresciamobilita.it','www.triestetrasporti.it','www.amat.pa.it','www.atv.verona.it']);
+export async function transitBytes(url:string,maxBytes:number,deadline:number,headers:Record<string,string>={},method='GET',fullArchiveFallback=false) {
   const u=new URL(url);
   if(u.protocol!=='https:' || !HOSTS.has(u.hostname) || u.username || u.password || u.port) throw new Error('Unapproved transit source');
   const remaining=deadline-Date.now();
@@ -22,6 +23,7 @@ export async function transitBytes(url:string,maxBytes:number,deadline:number,he
   if(!response)throw new Error('Missing transit response');
   if(!response.ok) { await response.body?.cancel(); throw new Error('Transit source HTTP '+response.status); }
   if(method==='HEAD') return {bytes:Buffer.alloc(0),response};
+  if(fullArchiveFallback&&headers.Range&&response.status===200)maxBytes=64_000_000;
   if(Number(response.headers.get('content-length')||0)>maxBytes) {await response.body?.cancel();throw new Error('Transit document too large');}
   const reader=response.body?.getReader();if(!reader) throw new Error('Missing transit document');
   const parts:Uint8Array[]=[];let size=0;
@@ -37,9 +39,14 @@ export const GTFS_FEEDS={
   GTFS_GENOVA:{url:'https://www.amt.genova.it/amt/GTFS/GTFS_AMT_GENOVA.zip',operator:'AMT_GENOVA',agency:/\bAMT\b/i},
   GTFS_CAGLIARI:{url:'https://www.ctmcagliari.it/open_data/GTFS.zip',operator:'CTM_CAGLIARI',agency:/\bCTM\b/i},
   GTFS_CATANIA:{url:'https://www.amts.ct.it/GTFS/AMTCT.zip',operator:'AMTS_CATANIA',agency:/\bAMTS?\b|Azienda Metropolitana Trasporti Catania/i},
+  GTFS_TORINO:{url:'https://www.gtt.to.it/open_data/gtt_gtfs.zip',operator:'GTT_TORINO',agency:/GTT Servizio (?:Urbano|Extraurbano)/i},
+  // EAV explicitly delegates the feed to this URL on its official Open Data page.
+  GTFS_EAV:{url:'https://www.wimob.it/cfile/download.php?file=google-transit.zip',operator:'EAV_NAPOLI',agency:/\bEAV\b|Ente Autonomo Volturno/i},
+  GTFS_ACTV:{url:'https://actv.avmspa.it/sites/default/files/attachments/opendata/automobilistico/actv_aut.zip',operator:'ACTV_VENEZIA',agency:/^ACTV(?:s\.?p\.?a\.?)?$/i},
+  GTFS_TPER:{url:'https://solweb.tper.it/web/tools/open-data/open-data.aspx',operator:'TPER_BOLOGNA',agency:/\bTPER\b/i},
 } as const;
 export type FeedId=keyof typeof GTFS_FEEDS;
-export type RouteCatalog={feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;modeValidTo?:Partial<Record<'BUS'|'SUBWAY',string>>;routes:{id:string;name:string;type:number;operator:string}[]};
+export type RouteCatalog={feedId:FeedId;source:string;contentHash:string;checkedAt:string;validFrom:string|null;validTo:string|null;modeValidTo?:Partial<Record<'BUS'|'SUBWAY',string>>;routes:{id:string;name:string;type:number;operator:string;longName?:string;cities?:string[]}[]};
 
 export function parseCsv(text:string):Record<string,string>[] {
   const rows:string[][]=[];let row:string[]=[],field='',quoted=false;
@@ -60,7 +67,7 @@ export function catalogFromFiles(feedId:FeedId,files:Record<string,string>,check
   const feed=GTFS_FEEDS[feedId],agencies=parseCsv(files['agency.txt']||'');
   const allowed=new Set(agencies.filter(a=>feed.agency.test(a.agency_name)).map(a=>a.agency_id||''));
   if(!allowed.size)throw new Error('GTFS operator identity not found');
-  const routes=parseCsv(files['routes.txt']||'').filter(r=>allowed.has(r.agency_id||'') || !r.agency_id&&agencies.length===1).map(r=>({id:r.route_id,name:r.route_short_name,type:Number(r.route_type),operator:feed.operator}));
+  const routes=parseCsv(files['routes.txt']||'').filter(r=>allowed.has(r.agency_id||'') || !r.agency_id&&agencies.length===1).map(r=>({id:r.route_id,name:r.route_short_name,type:Number(r.route_type),operator:feed.operator,...(r.route_long_name?{longName:r.route_long_name}:{}),...(feedId==='GTFS_EAV'?{cities:/(?:^|[^a-z])napoli(?:$|[^a-z])/i.test(r.route_long_name||'')?['NAPOLI']:[]}:{} )}));
   if(!routes.length || routes.some(r=>!r.id || !Number.isInteger(r.type)))throw new Error('Invalid GTFS routes');
   if(new Set(routes.map(r=>r.id)).size!==routes.length)throw new Error('Duplicate GTFS route ID');
   const calendar=parseCsv(files['calendar.txt']||''),exceptions=parseCsv(files['calendar_dates.txt']||''),info=parseCsv(files['feed_info.txt']||'')[0];
@@ -70,10 +77,30 @@ export function catalogFromFiles(feedId:FeedId,files:Record<string,string>,check
   return {feedId,source:feed.url,contentHash:createHash('sha256').update(JSON.stringify(files)).digest('hex'),checkedAt,validFrom,validTo,...(feedId==='GTFS_MILANO'?{modeValidTo:{...(dateIso(info?.surface_end_date)?{BUS:dateIso(info?.surface_end_date)!}:{}),...(dateIso(info?.mm_end_date)?{SUBWAY:dateIso(info?.mm_end_date)!}:{})}}:{}),routes};
 }
 
+// ZIP64 member sizes occur even in EAV's small archive (forced ZIP64 writer).
+// Support only bounded safe member lengths; no multi-disk/huge archive support.
+export function zip64MemberSizes(extra:Buffer,packed:number,unpacked:number) {
+  for(let i=0;i+4<=extra.length;){const tag=extra.readUInt16LE(i),length=extra.readUInt16LE(i+2);i+=4;if(i+length>extra.length)throw new Error('Invalid ZIP extra field');
+    if(tag===1){let p=i;const size=()=>{if(p+8>i+length)throw new Error('Incomplete ZIP64 sizes');const n=extra.readBigUInt64LE(p);p+=8;if(n>BigInt(Number.MAX_SAFE_INTEGER))throw new Error('Oversize ZIP64 member');return Number(n);};if(unpacked===0xffffffff)unpacked=size();if(packed===0xffffffff)packed=size();return {packed,unpacked};}i+=length;
+  }
+  throw new Error('Missing ZIP64 sizes');
+}
+
 // Fetch only the small directory and CSV members, not stops/trips/stop_times.
-// A server ignoring Range or changing version mid-read is rejected.
+// Without Range, use one bounded internally consistent archive; never mix versions.
+export async function resolveGtfsSource(feedId:FeedId,deadline=Date.now()+20000) {
+  const root=GTFS_FEEDS[feedId].url;
+  if(feedId!=='GTFS_TPER')return root;
+  const html=(await transitBytes(root,2_000_000,deadline)).bytes.toString('utf8'),$=cheerio.load(html);
+  const detail=$('a[href]').map((_,e)=>new URL($(e).attr('href')!,root).href).get().find(u=>new URL(u).hostname==='solweb.tper.it'&&new URL(u).pathname.endsWith('/open-data-detail.aspx')&&new URL(u).searchParams.get('filename')==='gommagtfsbo');
+  if(!detail||!/^\d{8}$/.test(new URL(detail).searchParams.get('version')||''))throw new Error('Current Bologna GTFS version not found');
+  const page=cheerio.load((await transitBytes(detail,2_000_000,deadline)).bytes.toString('utf8'));
+  const url=page('a[href]').map((_,e)=>new URL(page(e).attr('href')!,detail).href).get().find(u=>new URL(u).hostname==='solweb.tper.it'&&new URL(u).pathname.endsWith('/open-data-download.aspx')&&new URL(u).searchParams.get('filename')==='gommagtfsbo'&&new URL(u).searchParams.get('format')==='zip'&&new URL(u).searchParams.get('version')===new URL(detail).searchParams.get('version'));
+  if(!url)throw new Error('Official Bologna GTFS download not found');
+  return url;
+}
 export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):Promise<RouteCatalog> {
-  const url=GTFS_FEEDS[feedId].url;
+  const url=await resolveGtfsSource(feedId,deadline);
   const {response:head}=await transitBytes(url,0,deadline,{},'HEAD');
   let size=Number(head.headers.get('content-length'));
   const etag=head.headers.get('etag');
@@ -85,14 +112,15 @@ export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):
     size=full.length;
   }
   if(size<22||size>200_000_000)throw new Error('Invalid GTFS archive size');
-  async function range(start:number,end:number) {
+  async function range(start:number,end:number,initial=false) {
     if(start<0||end<start||end>=size)throw new Error('GTFS member outside archive');
     if(full)return full.subarray(start,end+1);
-    const r=await transitBytes(url,Math.min(end-start+1,2_000_000),deadline,{Range:'bytes='+start+'-'+end,'If-Range':etag!});
+    const r=await transitBytes(url,Math.min(end-start+1,2_000_000),deadline,{Range:'bytes='+start+'-'+end,'If-Range':etag!},'GET',initial);
+    if(initial&&r.response.status===200){if(r.bytes.length!==size)throw new Error('GTFS archive changed during retrieval');full=r.bytes;return full.subarray(start,end+1);}
     if(r.response.status!==206 || r.response.headers.get('content-range')!=='bytes '+start+'-'+end+'/'+size || r.response.headers.get('etag')!==etag || r.bytes.length!==end-start+1)throw new Error('GTFS range/version mismatch');
     return r.bytes;
   }
-  const tail=await range(Math.max(0,size-65557),size-1);
+  const tail=await range(Math.max(0,size-65557),size-1,true);
   let pos=-1;
   for(let i=tail.length-22;i>=0;i--)if(tail.readUInt32LE(i)===0x06054b50 && i+22+tail.readUInt16LE(i+20)===tail.length){pos=i;break;}
   if(pos<0 || tail.readUInt16LE(pos+4)!==0 || tail.readUInt16LE(pos+6)!==0)throw new Error('Unsupported GTFS ZIP');
@@ -103,19 +131,22 @@ export async function loadRouteCatalog(feedId:FeedId,deadline=Date.now()+20000):
   const files:Record<string,string>={};
   for(let i=0;i<directory.length;) {
     if(i+46>directory.length||directory.readUInt32LE(i)!==0x02014b50)throw new Error('Invalid ZIP member');
-    const method=directory.readUInt16LE(i+10),packed=directory.readUInt32LE(i+20),unpacked=directory.readUInt32LE(i+24),nameSize=directory.readUInt16LE(i+28),extra=directory.readUInt16LE(i+30),comment=directory.readUInt16LE(i+32),local=directory.readUInt32LE(i+42);
+    const flags=directory.readUInt16LE(i+8),method=directory.readUInt16LE(i+10),nameSize=directory.readUInt16LE(i+28),extra=directory.readUInt16LE(i+30),comment=directory.readUInt16LE(i+32),local=directory.readUInt32LE(i+42);
+    let packed=directory.readUInt32LE(i+20),unpacked=directory.readUInt32LE(i+24);
+    if(i+46+nameSize+extra+comment>directory.length)throw new Error('Invalid ZIP directory bounds');
+    if(packed===0xffffffff||unpacked===0xffffffff){const sizes=zip64MemberSizes(directory.subarray(i+46+nameSize,i+46+nameSize+extra),packed,unpacked);packed=sizes.packed;unpacked=sizes.unpacked;}
     const name=directory.subarray(i+46,i+46+nameSize).toString('utf8');i+=46+nameSize+extra+comment;
     if(!wanted.has(name))continue;
-    if(files[name]!==undefined||packed>2_000_000||unpacked>4_000_000||!packed||![0,8].includes(method))throw new Error('Unsupported GTFS CSV member');
+    if(files[name]!==undefined||packed>2_000_000||unpacked>4_000_000||flags&1||(!packed&&unpacked!==0)||![0,8].includes(method))throw new Error('Unsupported GTFS CSV member: '+name+'/'+method+'/'+packed+'/'+unpacked);
     const h=await range(local,local+29);
     if(h.readUInt32LE(0)!==0x04034b50)throw new Error('Invalid ZIP local member');
     const start=local+30+h.readUInt16LE(26)+h.readUInt16LE(28);
-    const content=await range(start,start+packed-1);
-    const raw=method===8?inflateRawSync(content,{maxOutputLength:4_000_000}):content;
+    const content=packed?await range(start,start+packed-1):Buffer.alloc(0);
+    const raw=method===8&&packed?inflateRawSync(content,{maxOutputLength:4_000_000}):content;
     if(raw.length!==unpacked)throw new Error('Invalid GTFS CSV length');
     files[name]=raw.toString('utf8');
   }
-  return catalogFromFiles(feedId,files);
+  return {...catalogFromFiles(feedId,files),source:url};
 }
 
 export function validateLineRoutes(scope:LineScope,catalog:RouteCatalog,date:string,category:string):LineScope {

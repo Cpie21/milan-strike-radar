@@ -5,12 +5,15 @@ import { applyGuaranteeProfile } from './operatorGuaranteeProfiles';
 import { GTFS_FEEDS, loadRouteCatalog, validateLineRoutes, type FeedId } from './officialTransitData';
 import { enrichServiceSchedules } from './serviceScheduleEnrichment';
 import { loadScheduleIndex } from './gtfsSchedule';
+import { enrichRouteMembership } from './routeMembershipEnrichment';
+import { loadNetworkCatalog } from './routeCatalogSources';
+import { FEED_CITIES } from './serviceScheduleEnrichment';
 import type { StrikeRecord } from './strikeSync';
 
 // Cache the small parsed result, not multi-megabyte PDFs/ZIPs. Cache failures
 // never become fabricated successful verification.
 const cachedProfile=unstable_cache(async(url:string)=>({text:await fetchProfileDocument(url),fetchedAt:new Date().toISOString()}),['operator-guarantee-doc-v1'],{revalidate:604800});
-const cachedCatalog=unstable_cache((id:FeedId)=>loadRouteCatalog(id),['gtfs-route-catalog-v1'],{revalidate:86400});
+const cachedCatalog=unstable_cache((id:FeedId)=>loadRouteCatalog(id),['gtfs-route-catalog-v2'],{revalidate:86400});
 const cachedSchedule=unstable_cache((id:FeedId)=>loadScheduleIndex(id),['gtfs-service-schedule-v1'],{revalidate:86400});
 export async function enrichTransitScope(records:StrikeRecord[],warnings:string[],now=new Date()) {
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
@@ -38,4 +41,12 @@ export async function enrichTransitScope(records:StrikeRecord[],warnings:string[
 
 export async function enrichScheduledServiceTimes(records:StrikeRecord[],warnings:string[],now=new Date()) {
   return enrichServiceSchedules(records,warnings,cachedSchedule,now);
+}
+
+const cachedNetwork=unstable_cache(async(id:string)=>{
+  if(id in GTFS_FEEDS){const feedId=id as FeedId,catalog=await cachedCatalog(feedId);return {...catalog,operator:GTFS_FEEDS[feedId].operator,cities:FEED_CITIES[feedId]};}
+  return loadNetworkCatalog(id);
+},['official-network-membership-v1'],{revalidate:86400});
+export async function enrichPotentialRouteCatalogs(records:StrikeRecord[],warnings:string[],now=new Date()) {
+  return enrichRouteMembership(records,warnings,cachedNetwork,now);
 }
