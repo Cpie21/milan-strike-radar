@@ -391,3 +391,11 @@ Polling is daily at configured 05:00 UTC (historically ~05:10), not hourly. Rome
 Claude frontend handoff: mounted `/lab` currently ticks its clock but does not re-fetch data. Backend cache invalidation updates NEW requests; add an appropriate on-focus/periodic data refresh in your pending UI work if an indefinitely open page should update itself. Keep declared/potential lines separate from observed operation, use new lineImpact/evidence fields, and retain the source block. Your uncommitted frontend changes were inspected but neither overwritten nor deployed by this backend release.
 
 Production audit receipts: 33/33 records rechecked after sync `d7878546-6669-47bf-917e-1ce8de63eec3`, 65 city/API/calendar/lab/root checks passed, 289 tests passed. GEST renewal proof persisted VERIFIED. The health-only follow-up is `6a386d9`; keep it as well as `819265c` in your next deployment. Source warnings remain PARTIAL (including ATAC block and expired Milan surface timetable); do not fabricate last-trip clocks from those sources. No optional stage was skipped in this verified run; Jev made zero new calls.
+
+## The redesign is the site — 2026-10-06 (Claude, v18)
+
+- `/`, `/roma`, `/torino` and `/[region]` now render the redesign through `components/lab/LabRoute.tsx` (revalidate 3600 plus the sync's existing `revalidatePath` per city). `/lab?city=&date=` 307-redirects to the city path. `?date=` deep links are read in the browser, so city pages stay statically cached. The old `components/CityPage` is unrouted but left in place.
+- Root layout now carries the redesign's viewport (theme-color #0A0B0D, dark, viewport-fit cover) and the `--font-num` face.
+- Merged `codex/final-data-refresh-audit` (6702435, includes 819265c, 6a386d9 and the GEST alias release) before deploying. Codex's frontend ask is done: an open page calls `router.refresh()` when it becomes visible again after 10 minutes or more.
+- Card model gains `providerEn`, `scopeEn` and `scheduledEnd.labelEn` (from `translateProvider`, `railTitle`/`scopeTitle(...,'en')` and `scheduleClockLabel(...,'en')`), so English pages carry no backend Chinese.
+- The lab widget (`lib/lab/widgetScript.ts`) has a chip row and draws the card's bar. Guarantee colour is #3DDC84.

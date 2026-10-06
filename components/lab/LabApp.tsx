@@ -84,7 +84,17 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
       if (linked && /^\d{4}-\d{2}-\d{2}$/.test(linked) && linked !== initialDate && linked >= from && linked <= to) { setSelected(linked); setMonth(linked); }
     }, 0);
     const timer = setInterval(tick, 60_000);
-    return () => { clearTimeout(first); clearInterval(timer); };
+    // A page left open (a Home Screen app, a background tab) fetches the
+    // day's data again when it comes back after a while; what you have
+    // selected stays as it is.
+    let fetched = Date.now();
+    const back = () => {
+      if (document.visibilityState !== 'visible') return;
+      tick();
+      if (Date.now() - fetched > 10 * 60_000) { fetched = Date.now(); router.refresh(); }
+    };
+    document.addEventListener('visibilitychange', back);
+    return () => { clearTimeout(first); clearInterval(timer); document.removeEventListener('visibilitychange', back); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 
   const select = (date: string) => {
