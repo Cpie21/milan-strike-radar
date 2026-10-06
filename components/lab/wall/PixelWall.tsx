@@ -9,6 +9,7 @@ import { C, EASE, FILLED, MODE_COLOR, TONAL, TYPE } from '../theme';
 import { boxBlur, PH, PW, sceneFor } from './pixelScene';
 import { assignSlot, slotsFor, type Slot } from './slots';
 import { paintTag, tagsFor } from './tags';
+import { GLYPH_ROWS, glyphColumns } from './pixelFont';
 
 // The wall. The vehicle is a pixel scene (parked: it is a strike); the
 // paint on it is real spray paint, drawn at three times the scene's
@@ -506,11 +507,12 @@ export default function PixelWall({ mode, seed, storeKey, doodle, lang, open, on
   );
 }
 
-// A platform LED board, made the way real ones are: the text is set on a
-// 16-dot-high grid (enough for Chinese, as bus and station signs use), each
-// dot is a real lamp, lit or dim, and the message crawls from right to left
-// one column at a time, round and round.
-const SIGN_ROWS = 16;
+// A platform LED board, made the way real ones are: the text is set in a
+// pixel typeface drawn for 12-dot screens (pixelFont.ts, thin one-dot
+// strokes, as Chinese station and bus boards are lettered), every dot is a
+// real lamp, lit or dim, and the message crawls from right to left one
+// column at a time, round and round.
+const SIGN_ROWS = GLYPH_ROWS + 2;
 function LedSign({ lines }: { lines: string[] }) {
   const reduce = useReducedMotion();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -524,24 +526,18 @@ function LedSign({ lines }: { lines: string[] }) {
     const pitch = cssH / SIGN_ROWS;
     const cols = Math.floor(cssW / pitch);
     view.width = Math.round(cssW * dpr); view.height = Math.round(cssH * dpr);
-    // Set the message in dots: draw it once small, keep what's inked.
-    const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
-    const font = `600 14px -apple-system, "PingFang SC", "Noto Sans SC", sans-serif`;
-    probe.font = font;
-    const width = Math.ceil(probe.measureText(text).width) + 2;
-    probe.canvas.width = width; probe.canvas.height = SIGN_ROWS;
-    probe.font = font; probe.textBaseline = 'middle'; probe.fillStyle = '#fff';
-    probe.fillText(text, 1, SIGN_ROWS / 2 + 0.5);
-    const ink = probe.getImageData(0, 0, width, SIGN_ROWS).data;
+    // Set the message in the pixel face, one column of dots at a time.
+    const glyphs = glyphColumns(text);
+    const width = glyphs.length;
     const fits = width <= cols;
     const gap = Math.max(12, Math.floor(cols / 3));
     const loop = fits ? width : width + gap;
     const on = (x: number, y: number) => {
       const k = fits ? x - Math.floor((cols - width) / 2) : ((x % loop) + loop) % loop;
-      return k >= 0 && k < width && ink[(y * width + k) * 4 + 3] > 120;
+      return k >= 0 && k < width && y >= 1 && y <= GLYPH_ROWS && ((glyphs[k] >> (y - 1)) & 1) === 1;
     };
     // one lamp, lit and unlit, drawn once
-    const s = Math.ceil(pitch * dpr * 2.2), r = pitch * dpr * 0.4;
+    const s = Math.ceil(pitch * dpr * 2.2), r = pitch * dpr * 0.36;
     const lamp = (lit: boolean) => {
       const c = document.createElement('canvas'); c.width = c.height = s;
       const g = c.getContext('2d')!;
@@ -574,7 +570,7 @@ function LedSign({ lines }: { lines: string[] }) {
   }, [text, reduce]);
   return (
     <div className="relative rounded-[3px] p-[3px]" style={{ background: '#050505', boxShadow: '0 0 0 1.5px #2B2D32, 0 2px 6px rgba(0,0,0,0.6)' }}>
-      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[30px]" />
+      <canvas ref={canvas} role="img" aria-label={text} className="block w-full h-[33px]" />
     </div>
   );
 }

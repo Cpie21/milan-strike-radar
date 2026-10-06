@@ -162,8 +162,6 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
           <p className={`mt-1 flex items-center gap-2 ${TYPE.caption}`} style={{ color: C.text3 }}>
             {card.national && <span className="px-1.5 h-[18px] rounded-[5px] flex items-center" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}
             {!doubt && <span className="flex items-center gap-0.5"><Check size={11} weight="bold" />{tx(lang, '已确认', 'Confirmed')}</span>}
-            {/* how far off: a footnote to what, not a headline of its own */}
-            {!isToday && <span>{!doubt || card.national ? '· ' : ''}{relativeDay(card.date, ctx.today, lang)}</span>}
           </p>
         </header>
 
@@ -246,12 +244,15 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
 }
 
 // ── Details: label left, value right ─────────────────────────────────
-// Guaranteed hours lead, in their own row and in green: they are the hours
-// you can still travel, which is what people look for first after "when".
+// One table. Guaranteed hours lead it: they are the hours you can still
+// travel, the first thing people look for after "when". They take the
+// table's own shape (label and source on the left, the hours stacked on the
+// right in green), so one or two windows sit as neatly as five, and nothing
+// is boxed apart or left empty.
 
 const GUARANTEE_FROM: Record<string, [string, string]> = {
-  OFFICIAL_STRIKE_NOTICE: ['来自罢工公告', 'From the strike notice'], OPERATOR_RULE: ['运营方的保障规则', 'Operator’s guarantee rules'],
-  STANDARD_RULE: ['法定最低服务', 'Statutory minimum service'],
+  OFFICIAL_STRIKE_NOTICE: ['据罢工公告', 'Per the strike notice'], OPERATOR_RULE: ['运营方规定', 'Operator rules'],
+  STANDARD_RULE: ['法定最低服务', 'Statutory minimum'],
 };
 
 function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: string) => string }) {
@@ -270,41 +271,38 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
         : card.lineLabels.length ? card.lineLabels.join(tx(lang, '；', '; '))
           : card.lineScope === 'ALL_LINES' ? tx(lang, '全部线路', 'All lines') : null;
   const scopeNote = impacts.filter(i => !i.lines).map(i => tx(lang, i.zh, i.en));
-  const rows: [string, React.ReactNode][] = [
-    [tx(lang, '罢工人员', 'Who'), say(card.provider)],
-    ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), say(card.scope)] as [string, React.ReactNode]] : []),
-    ...(card.category === 'AIRPORT' && scopeNote.length ? [[tx(lang, '影响范围', 'Scope'), scopeNote.join(tx(lang, '；', '; '))] as [string, React.ReactNode]] : []),
-    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines'), lines] as [string, React.ReactNode]] : []),
+  const has = card.guarantees.length > 0;
+  const from = GUARANTEE_FROM[card.guaranteeSource];
+  const guaranteeLabel = (
+    <span className="flex flex-col gap-0.5">
+      <span className="flex items-center gap-1.5" style={{ color: has ? C.ok : C.text3 }}>
+        <ShieldCheck size={15} weight="fill" />
+        {card.guaranteeKind === 'PROTECTED_FLIGHTS' ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时段', 'Guaranteed')}
+      </span>
+      {has && from && <span className={TYPE.caption} style={{ color: C.text3 }}>{tx(lang, ...from)}</span>}
+    </span>
+  );
+  const guaranteeValue = has
+    ? <span className="flex flex-col items-end gap-1 tabular-nums" style={{ color: C.ok, fontFamily: NUM, fontSize: 16, fontWeight: 600 }}>{card.guarantees.map((g, i) => <span key={i}>{windowsText([g], lang)}</span>)}</span>
+    : <span style={{ color: C.text3 }}>{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '待公布', 'Not yet published') : tx(lang, '无', 'None')}</span>;
+  const rows: [React.ReactNode, React.ReactNode, string][] = [
+    [guaranteeLabel, guaranteeValue, 'guarantee'],
+    [tx(lang, '罢工人员', 'Who'), say(card.provider), 'who'],
+    ...(card.scope ? [[tx(lang, '罢工类型', 'Type'), say(card.scope), 'type'] as [React.ReactNode, React.ReactNode, string]] : []),
+    ...(card.category === 'AIRPORT' && scopeNote.length ? [[tx(lang, '影响范围', 'Scope'), scopeNote.join(tx(lang, '；', '; ')), 'scope'] as [React.ReactNode, React.ReactNode, string]] : []),
+    ...(card.category !== 'AIRPORT' || lines ? [[card.category === 'AIRPORT' ? tx(lang, '受影响机场', 'Airports') : tx(lang, '受影响线路', 'Affected lines'), lines, 'lines'] as [React.ReactNode, React.ReactNode, string]] : []),
   ];
-  const airport = card.guaranteeKind === 'PROTECTED_FLIGHTS';
   return (
-    <div className="mt-5 flex flex-col gap-2.5">
-      {/* The guaranteed hours, on their own */}
-      <section className="rounded-[16px] px-3.5 py-3" style={{ background: card.guarantees.length ? C.okSoft : C.surface2, boxShadow: card.guarantees.length ? `inset 0 0 0 1px ${C.ok}33` : 'none' }}>
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={17} weight="fill" color={card.guarantees.length ? C.ok : C.text3} />
-          <span className={`${TYPE.label} font-semibold`} style={{ color: card.guarantees.length ? C.ok : C.text2 }}>{airport ? tx(lang, '保障航班', 'Protected flights') : tx(lang, '保障时段', 'Guaranteed hours')}</span>
-          {card.guarantees.length > 0 && GUARANTEE_FROM[card.guaranteeSource] && <span className={`ml-auto ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, ...GUARANTEE_FROM[card.guaranteeSource])}</span>}
-        </div>
-        {card.guarantees.length ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {card.guarantees.map((g, i) => (
-              <span key={i} className="h-8 px-3 rounded-full inline-flex items-center tabular-nums text-[15px] font-semibold" style={{ background: 'rgba(61,220,132,0.16)', color: C.ok, fontFamily: NUM }}>{windowsText([g], lang)}</span>
-            ))}
-          </div>
-        ) : (
-          <p className={`mt-1 ${TYPE.label}`} style={{ color: C.text3 }}>{card.guaranteeSource === 'UNKNOWN' ? tx(lang, '还没有公布，以运营方通知为准', 'Not published yet; check the operator') : tx(lang, '这次没有保障时段', 'No guaranteed hours this time')}</p>
-        )}
-      </section>
+    <div className="mt-5">
       <dl className="rounded-[16px] px-3.5" style={{ background: C.surface2 }}>
-        {rows.map(([label, value], i) => (
-          <div key={label} className="flex items-baseline gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
-            <dt className={`shrink-0 ${TYPE.label}`} style={{ color: C.text3 }}>{label}</dt>
+        {rows.map(([label, value, key], i) => (
+          <div key={key} className="flex items-start gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
+            <dt className={`shrink-0 ${TYPE.label} pt-[2px]`} style={{ color: C.text3 }}>{label}</dt>
             <dd className="flex-1 min-w-0 text-right text-[14.5px] font-medium leading-snug" style={{ color: value === null ? C.text3 : C.text }}>{value ?? tx(lang, '待核实', 'Unverified')}</dd>
           </div>
         ))}
       </dl>
-      {card.geography.map(g => <p key={g.zh} className={`px-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
+      {card.geography.map(g => <p key={g.zh} className={`mt-2 px-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
     </div>
   );
 }
