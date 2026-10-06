@@ -28,6 +28,32 @@ export type Abroad = { country: string; zh: string; en: string };
 
 const WEEKDAYS: Record<string, number> = { 日: 0, 天: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6 };
 const EN_WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const EN_SHORT: Record<string, number> = { sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6 };
+const IT_WEEKDAYS: Record<string, number> = { domenica: 0, luned: 1, marted: 2, mercoled: 3, gioved: 4, venerd: 5, sabato: 6 };
+// English and Italian month names, full and short ("ago" is left out: "3 days ago").
+const MONTHS: Record<string, number> = {
+  january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7,
+  august: 8, aug: 8, september: 9, sept: 9, sep: 9, october: 10, oct: 10, november: 11, nov: 11, december: 12, dec: 12,
+  gennaio: 1, gen: 1, febbraio: 2, marzo: 3, aprile: 4, maggio: 5, mag: 5, giugno: 6, giu: 6, luglio: 7, lug: 7,
+  agosto: 8, settembre: 9, set: 9, ottobre: 10, ott: 10, novembre: 11, dicembre: 12, dic: 12,
+};
+const MONTH = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|');
+const CN_DIGITS: Record<string, number> = { 〇: 0, 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+// 九 → 9, 十二 → 12, 二十 → 20, 三十一 → 31.
+function cnNumber(text: string) {
+  const i = text.indexOf('十');
+  if (i < 0) return text.length === 1 ? CN_DIGITS[text] : NaN;
+  const tens = i === 0 ? 1 : CN_DIGITS[text.slice(0, i)];
+  const ones = i === text.length - 1 ? 0 : CN_DIGITS[text.slice(i + 1)];
+  return tens * 10 + ones;
+}
+// "十月九号" reads as "10月9号"; weekdays (周日) and lines (九号线) are left alone.
+function cnDates(text: string) {
+  const N = '[〇零一二两三四五六七八九十]{1,3}';
+  return text
+    .replace(new RegExp(`(${N})(?=\\s*月)`, 'g'), n => String(cnNumber(n)))
+    .replace(new RegExp(`(?<![周期拜])(${N})(?=\\s*[号日](?!线))`, 'g'), n => String(cnNumber(n)));
+}
 
 const MODE_KEYWORDS: Record<Mode, RegExp> = {
   TRAIN: /火车|高铁|动车|铁路|列车|城际|trenord|trenitalia|italo|frecciarossa|freccia|treno|treni|\btrain|regionale|malpensa express|\b(?:s\d{1,2}|re?\d{1,2})\b/i,
@@ -41,15 +67,17 @@ function nextWeekday(today: string, weekday: number, weekOffset = 0) {
     const delta = (weekday - weekdayOfIso(today) + 7) % 7;
     return addDaysIso(today, delta);
   }
-  // "下周X": the given weekday inside next Monday–Sunday week.
+  // "下周X": the given weekday inside next Monday–Sunday week; "下下周X" the one after.
   const mondayNext = addDaysIso(today, ((8 - weekdayOfIso(today)) % 7) || 7);
-  return addDaysIso(mondayNext, (weekday + 6) % 7);
+  return addDaysIso(mondayNext, (weekOffset - 1) * 7 + (weekday + 6) % 7);
 }
 
-function monthDay(today: string, month: number, day: number) {
+function monthDay(today: string, month: number, day: number, year0?: number) {
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
   let year = Number(today.slice(0, 4));
+  if (year0) year = year0;
   let iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  if (year0) return iso;
   if (iso < addDaysIso(today, -7)) iso = `${++year}${iso.slice(4)}`;
   return iso;
 }
@@ -60,15 +88,28 @@ export function weekEnd(today: string) {
 }
 
 export function parseScope(text: string, today = romeTodayIso()): DateScope | null {
-  const t = text.toLowerCase();
+  const t = cnDates(text.normalize('NFKC').toLowerCase());
   // A real calendar date only: 31/02 or 2026-13-40 is no date at all.
   const real = isIsoDate;
   const day = (date: string | null, match: string): DateScope | null => (date && real(date) ? { kind: 'day', date, text: match } : null);
 
   let m: RegExpMatchArray | null;
   if ((m = t.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/))) return day(`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`, m[0]);
-  if ((m = t.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/))) return day(monthDay(today, +m[1], +m[2]), m[0]);
+  if ((m = t.match(/(?:(\d{4})\s*年\s*)?(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]?/))) return day(monthDay(today, +m[2], +m[3], m[1] ? +m[1] : undefined), m[0]);
+  // "October 9", "Oct. 9th, 2026", "9 ottobre", "the 4th of December"
+  if ((m = t.match(new RegExp(`\\b(${MONTH})\\.?\\s*(\\d{1,2})(?:st|nd|rd|th)?\\b(?:,?\\s*(\\d{4}))?`)))) return day(monthDay(today, MONTHS[m[1]], +m[2], m[3] ? +m[3] : undefined), m[0]);
+  if ((m = t.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:of\\s+)?(${MONTH})\\b\\.?(?:,?\\s*(\\d{4}))?`)))) return day(monthDay(today, MONTHS[m[2]], +m[1], m[3] ? +m[3] : undefined), m[0]);
+  // "10.9号": with 号/日 it is a date, not 10:09
+  if ((m = t.match(/\b(\d{1,2})[.．](\d{1,2})\s*[号日](?!线)/))) return day(monthDay(today, +m[1], +m[2]), m[0]);
   // Only "/" here: "8.30" is far more often a clock time than 30 August.
+  // Bare "10.9" / "10-9", the Chinese way of writing a date: only in Chinese,
+  // with one digit after the separator (so never 8.30, a clock), and followed
+  // by Chinese or the end, never by a count (2-3个人, 1.5小时, 2.5欧).
+  if (/[\u4e00-\u9fff]/.test(t) && (m = t.match(/(?<![\d:.\-])(\d{1,2})[.\-](\d)(?![\d:.\-])(?=\s*(?:[\u4e00-\u9fff]|[?？,，。!！]|$))(?!\s*(?:点|时|号线|个|人|小时|分|倍|块|欧|元|天|周|次|趟|站|公里|倍))/))) {
+    const [a, b] = [+m[1], +m[2]];
+    const date = a <= 12 ? monthDay(today, a, b) : null;
+    if (date) return day(date, m[0]);
+  }
   if ((m = t.match(/\b(\d{1,2})\/(\d{1,2})\b/))) {
     const [a, b] = [+m[1], +m[2]];
     // 10/16 is month/day, 16/10 is day/month; when both fit, take the nearest future one.
@@ -76,23 +117,33 @@ export function parseScope(text: string, today = romeTodayIso()): DateScope | nu
     if (options.length) return day(options.sort()[0], m[0]);
   }
   if ((m = t.match(/大后天/))) return day(addDaysIso(today, 3), m[0]);
-  if ((m = t.match(/后天|day after tomorrow/))) return day(addDaysIso(today, 2), m[0]);
-  if ((m = t.match(/明天|明日|明早|明晚|tomorrow|domani/))) return day(addDaysIso(today, 1), m[0]);
+  if ((m = t.match(/后天|day after tomorrow|dopodomani/))) return day(addDaysIso(today, 2), m[0]);
+  if ((m = t.match(/明天|明日|明早|明晚|tomorrow|\btmrw?\b|\btmw\b|\b2moro\b|domani|domattina/))) return day(addDaysIso(today, 1), m[0]);
   if ((m = t.match(/今天|今日|今早|今晚|today|tonight|oggi|stasera/))) return day(today, m[0]);
-  if ((m = t.match(/(下|这|本)?(?:个)?(?:周|星期|礼拜)([一二三四五六日天])/))) {
-    return day(nextWeekday(today, WEEKDAYS[m[2]], m[1] === '下' ? 1 : 0), m[0]);
+  if ((m = t.match(/(下下|下|这|本)?(?:个)?(?:周|星期|礼拜)([一二三四五六日天])/))) {
+    return day(nextWeekday(today, WEEKDAYS[m[2]], m[1] === '下下' ? 2 : m[1] === '下' ? 1 : 0), m[0]);
   }
   if ((m = t.match(/\b(next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/))) {
     return day(nextWeekday(today, EN_WEEKDAYS.indexOf(m[2]), m[1] ? 1 : 0), m[0]);
   }
-  if ((m = t.match(/(\d{1,2})\s*[号日]/))) {
-    const d = +m[1];
+  // "fri", "next sat"; mon/sat/sun only with next/this/on, as they are also words
+  if ((m = t.match(/\b(?:(next)\s+|(?:this|on)\s+)(sun|mon|tues?|wed|thu(?:rs?)?|fri|sat)\b|\b()(tues?|wed|thu(?:rs?)?|fri)\b/))) {
+    return day(nextWeekday(today, EN_SHORT[m[2] || m[4]], m[1] ? 1 : 0), m[0]);
+  }
+  // "venerdì", "lunedi prossimo": the coming one (a week on if that is today)
+  if ((m = t.match(/(?<![a-z])(domenica|luned|marted|mercoled|gioved|venerd|sabato)[iìí]?(?:\s+(prossim[oa]))?(?![a-z])/))) {
+    const date = nextWeekday(today, IT_WEEKDAYS[m[1]]);
+    return day(m[2] && date === today ? addDaysIso(today, 7) : date, m[0]);
+  }
+  // "the 9th": this month's, or next month's once it has passed
+  if ((m = t.match(/(\d{1,2})\s*[号日](?!线)|\b(\d{1,2})(?:st|nd|rd|th)\b/))) {
+    const d = +(m[1] || m[2]);
     const month = Number(today.slice(5, 7));
     const thisMonth = monthDay(today, month, d);
     return day(thisMonth && thisMonth >= today ? thisMonth : monthDay(today, month === 12 ? 1 : month + 1, d), m[0]);
   }
-  if ((m = t.match(/下(?:个)?(?:周|星期|礼拜)|next week|settimana prossima/))) {
-    const from = nextWeekday(today, 1, 1);
+  if ((m = t.match(/(下下|下)(?:个)?(?:周|星期|礼拜)|week after next|next week|settimana prossima/))) {
+    const from = nextWeekday(today, 1, m[1] === '下下' || m[0] === 'week after next' ? 2 : 1);
     return { kind: 'range', from, to: addDaysIso(from, 6), text: m[0] };
   }
   if ((m = t.match(/(?:这|本)(?:个)?(?:周|星期|礼拜)|this week|questa settimana|周末|weekend/))) {
@@ -187,7 +238,8 @@ export function unsupportedPlace(text: string): string | null {
 }
 
 export function parseQuery(text: string, today = romeTodayIso()): ParsedQuery {
-  const lines = [...new Set((text.match(/\b(?:m[1-5]|s\d{1,2}|re?\d{1,2})\b/gi) || []).map(line => line.toUpperCase()))];
+  const metro = [...text.normalize('NFKC').matchAll(/(?<!\d)([1-5])\s*号线/g)].map(m => `M${m[1]}`); // 3号线 = M3
+  const lines = [...new Set([...(text.match(/\b(?:m[1-5]|s\d{1,2}|re?\d{1,2})\b/gi) || []).map(line => line.toUpperCase()), ...metro])];
   return {
     text,
     today,

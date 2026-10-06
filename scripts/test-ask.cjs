@@ -104,3 +104,27 @@ test('invalid ISO months are rejected rather than throwing while parsing a quest
   assert.equal(parseScope('2026-13-40 subway','2026-10-06'),null);
   assert.equal(parseScope('2026-02-31 subway','2026-10-06'),null);
 });
+
+// Bad case: a user named a specific date and was still asked "this week or
+// next week?". Every way people write a date must read as that day.
+test('explicit dates in English, Italian and Chinese numerals read as a day, not a clarify', () => {
+  const TUE = '2026-10-06';
+  const cases = {
+    'is there a strike on October 9?': '2026-10-09', 'strike on 9 October in Milan': '2026-10-09', 'Oct 9th metro?': '2026-10-09',
+    'on the 9th will the metro run': '2026-10-09', 'Oct. 12': '2026-10-12', '12th october train': '2026-10-12', 'the 4th of december': '2026-12-04',
+    'Dec 4 train strike': '2026-12-04', 'fri 9 oct metro': '2026-10-09', 'October 9, 2026': '2026-10-09',
+    '9 ottobre sciopero metro': '2026-10-09', 'sciopero venerdì 9 ottobre': '2026-10-09', '4 dicembre treno': '2026-12-04',
+    'venerdì metro milano': '2026-10-09', 'sabato treni': '2026-10-10', 'lunedì prossimo': '2026-10-12', 'dopodomani': '2026-10-08',
+    '十月九号地铁': '2026-10-09', '十二月四号火车': '2026-12-04', '10.9号地铁罢工吗': '2026-10-09', '10.9 地铁': '2026-10-09', '１０月９日': '2026-10-09',
+    '2026年12月4日火车': '2026-12-04', '下下周三火车': '2026-10-21', 'next fri': '2026-10-16', 'tmr metro': '2026-10-07',
+  };
+  for (const [q, date] of Object.entries(cases)) assert.equal(parseScope(q, TUE)?.date, date, q);
+  assert.deepEqual([parseScope('下下周', TUE).from, parseScope('下下周', TUE).to], ['2026-10-19', '2026-10-25']);
+});
+
+test('clocks, counts and line names are not misread as dates', () => {
+  const TUE = '2026-10-06';
+  for (const q of ['8.30 地铁', '3号线会罢工吗', '九号线', 'm3 2-3 people', '1.5 hours late?', 'it costs 2.5', '2-3个人坐地铁']) assert.equal(parseScope(q, TUE), null, q);
+  assert.deepEqual(parseQuery('3号线明天', TUE).lines, ['M3']);
+  assert.equal(parseTime('明天8.30坐地铁'), '08:30');
+});
