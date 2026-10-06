@@ -39,7 +39,7 @@ const sameUnionContext = (a:string,b:string) => a===b || matchingUnion(a,b) && m
 const hasWord = (s: string, word: string) => new RegExp(`(?:^|[^a-z0-9])${word}(?:$|[^a-z0-9])`, 'i').test(normalize(s));
 const digest = (s: string) => createHash('sha256').update(s).digest('hex');
 const linkUrl = (href: string, base: string) => { try { const value = new URL(href, base).href; return allowedSourceUrl(value) ? value : null; } catch { return null; } };
-const timeKey = (windows: EvidenceWindow[]) => JSON.stringify(windows);
+const timeKey = (windows: EvidenceWindow[]) => JSON.stringify(windows.map(w=>[w.start,w.end,w.end_kind]));
 
 export interface ExternalNotice {
   date: string;
@@ -154,6 +154,31 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
   const cards=easyJetNoticeDocuments(html,url);
   if(cards)return cards.flatMap(card=>parseExternalNotices(card,url,dates,checkedAt));
   const $ = cheerio.load(html);
+  // The regulator's Drupal detail view has separate labelled fields. Its
+  // generic heading and adjacent label/value nodes are not event geography or
+  // an operator name. Never fall back to reading the entire detail page.
+  if (['cgsse.it','www.cgsse.it'].includes(new URL(url).hostname) && /^\/calendario-scioperi\/dettaglio-sciopero\/\d+\/?$/.test(new URL(url).pathname)) {
+    const rows=$('#dettaglio-section .row-as-table.views-row');
+    if(rows.length!==1)return [];
+    const fields=new Map<string,string>();
+    let duplicate=false;
+    rows.children('.views-field').each((_,el)=>{
+      const label=normalize($(el).children('.views-label').text());
+      const content=$(el).children('.field-content').clone();
+      content.find('div,p,li,br').append(' ');
+      if(fields.has(label))duplicate=true;
+      fields.set(label,content.text().replace(/\s+/g,' ').trim());
+    });
+    const date=dates.find(d=>exactDate(fields.get('data sciopero')||'',d));
+    const provider=fields.get('azienda')||'',sector=fields.get('settore')||'';
+    const unions=[fields.get('sindacato proclamante'),fields.get('sindacato aderente')].filter(Boolean).join(' / ');
+    const timing=fields.get('modalita')||'',status=fields.get('stato sciopero')||'';
+    if(duplicate || !date || !provider || !sector || !unions || !timing || !/^(?:attivo|revocato|differito|sospeso)$/i.test(status))return [];
+    const note=fields.get('note')||'';
+    const territory=['ambito geografico','regione','provincia','rilevanza'].map(label=>fields.get(label)).filter(Boolean).join(' ');
+    const fieldText=[provider,timing,note].filter(Boolean).join(' | ');
+    return [{date,provider:[provider,note].filter(Boolean).join(' | '),territory,unions,sector,timing,status,field_text:fieldText,source:sourceFor(url,[date,provider,territory,unions,sector,timing,note,status].join(' | '),checkedAt)}];
+  }
   const published = $('meta[property="article:published_time"]').attr('content') || $('time[datetime]').first().attr('datetime') || html.match(/"datePublished"\s*:\s*"([^"]+)/)?.[1] || visiblePublicationDate($('.published').first().text());
   $('script,style,nav,footer,header,aside').remove();
   const output: ExternalNotice[] = [];

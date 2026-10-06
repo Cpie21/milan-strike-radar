@@ -21,7 +21,7 @@ export const CITY_STRIKE_SOURCES = [
   { cities:['VERONA'], name:'ATV Verona', aliases:['atv'], urls:['https://www.atv.verona.it/news-sul-servizio'] },
   { cities:['PADOVA'], name:'Busitalia Veneto', aliases:['busitalia'], urls:['https://www.fsbusitalia.it/it/veneto/news-veneto.html'] },
   { cities:['TRIESTE'], name:'Trieste Trasporti', aliases:['trieste trasporti','triestetrasporti'], urls:['https://www.triestetrasporti.it/it/avvisi-infomobilita'] },
-  { cities:['CAGLIARI'], name:'CTM Cagliari', aliases:['ctm'], urls:['https://www.ctmcagliari.it/comunicati/'] },
+  { cities:['CAGLIARI'], name:'CTM Cagliari', aliases:['ctm'], urls:['https://www.ctmcagliari.it/comunicati/','https://www.ctmcagliari.it/notizie/'] },
   { cities:['BERGAMO'], name:'Arriva Bergamo', aliases:['arriva'], urls:['https://bergamo.arriva.it/notice-category/avvisi-di-servizio/'] },
   { cities:['BERGAMO'], name:'ATB / TEB', aliases:['atb','teb'], urls:['https://www.atb.bergamo.it/avvisi'] },
   { cities:['BRESCIA'], name:'Brescia Mobilità', aliases:['brescia mobilita','brescia trasporti','metro brescia'], urls:['https://www.bresciamobilita.it/news'] },
