@@ -29,3 +29,12 @@ No schema of strikes or existing data APIs changes. No affected-user counter, la
 ## Verification
 
 Local PostgreSQL tests cover duplicate/cross-month settlements, shared cap with semantic QA, budget-unavailable/provider-call blocking, multibyte/chunked body limits, shared quotas, refinement abuse, panel claims/recycling, duplicate saves and private table/function access. Full regressions, type check, lint and production build are required before release. Production receipts record the alias, permission checks, API responses, stored feedback/wall results and actual shared ledger separately.
+
+
+## Production outcome
+
+Final runtime aece749 / dpl_5o2EYz1gPEqiQE5zHQKE17UZSVcq is READY and aliased to www.theitalystrike.com. Migration 20261006081821 is applied; migration filenames match production history, including repaired older semantic-budget timestamp 20261004221157. SQL definitions/spending are unchanged by those filename alignments.
+
+247 local tests, TypeScript, focused lint and build passed. Live verification passed 22 new API/storage checks, 20 city surfaces/20 earlier data regressions and 88 concrete-line checks. Real Ask used the existing STRIKE_REVIEW_API_KEY and returned a non-fallback Jev-understood period result, with its reservation durably settled. Final October charge 25,921 micro-USD / .025921 USD; the live call added 29 micro-USD. All generated test feedback/wall rows were removed. Existing 39 active future strike rows and latest healthy sync remain intact; no manual resync or new polling was necessary.
+
+Private-table/RPC role checks passed on production. The advisor's [RLS Enabled No Policy](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy) INFO is expected for service-only tables with revoked public grants; it is not a reason to expose data. Public drawing approval workflow is still a separate product integration. Claude's lab UI is not included in this deployment.
