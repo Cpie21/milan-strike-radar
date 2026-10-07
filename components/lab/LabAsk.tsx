@@ -564,11 +564,11 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
       )}
 
       {result?.kind === 'result' && verdict && (
-        <Observed event="ai_verdict_viewed" identity={`${a.requestId}:verdict`} properties={{ request_id: a.requestId, level: result.level, view: result.view }} active={a.open && active} className="mt-4 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-3">
           {/* The answer is said by the face above: a speech bubble in the
               verdict's colour, its tail pointing up at the face, with "was this
               helpful?" as the bubble's last line. */}
-          <div className="relative mt-1">
+          <Observed event="ai_verdict_viewed" identity={`${a.requestId}:verdict`} properties={{ request_id: a.requestId, level: result.level, view: result.view }} active={a.open && active} className="relative mt-1">
             <span aria-hidden className="absolute -top-[6px] left-[26px] w-[14px] h-[14px] rotate-45 rounded-[3px]" style={{ background: bubble(verdict[2]) }} />
             <div className="relative rounded-[20px] rounded-tl-[10px] px-4 pt-3.5 pb-2.5" style={{ background: bubble(verdict[2]) }}>
               <p className="text-[19px] font-bold flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: verdict[2] }} />{verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]}</p>
@@ -578,7 +578,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
               </p>
               <Feedback active={active} key={a.requestId ?? asked} ask={a} inline />
             </div>
-          </div>
+          </Observed>
 
           <Observed event="ai_assumptions_viewed" identity={`${a.requestId}:assumptions`} properties={{ request_id: a.requestId, assumption_count: result.understanding.assumptions.length }} active={a.open && active && result.understanding.assumptions.length > 0}><Assumptions ask={a} result={result} /></Observed>
 
@@ -643,7 +643,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
               {tx(lang, `已排除 ${result.excluded.length} 条无关记录：`, `Excluded ${result.excluded.length}: `)}{result.excluded.map(e => `${modeName(e.category, lang)} ${who(e.provider, lang)}`).join(tx(lang, '、', ', '))}
             </p>
           )}
-        </Observed>
+        </div>
       )}
 
       {result?.kind === 'result' && <ShareAnswer ask={a} />}
@@ -760,7 +760,7 @@ function Feedback({ ask: a, inline = false, active }: { ask: AskState; inline?: 
   };
   const chip = inline ? 'rgba(255,255,255,0.08)' : C.surface3;
   return (
-    <Observed event="ai_feedback_prompt_viewed" identity={`${a.requestId}:feedback`} properties={{ request_id: a.requestId }} active={a.open && active}><div className={inline ? 'mt-3 pt-2.5' : 'mt-4 rounded-[14px] px-4 py-3'} style={inline ? { borderTop: '1px solid rgba(255,255,255,0.08)' } : { background: C.surface2 }}>
+    <Observed event="ai_feedback_prompt_viewed" identity={`${a.requestId}:feedback`} properties={{ request_id: a.requestId }} active={a.open && active && rating === null}><div className={inline ? 'mt-3 pt-2.5' : 'mt-4 rounded-[14px] px-4 py-3'} style={inline ? { borderTop: '1px solid rgba(255,255,255,0.08)' } : { background: C.surface2 }}>
       {rating === null ? (
         <div className="flex items-center gap-2">
           <span className="flex-1 text-[13px]" style={{ color: failed ? C.stop : C.text2 }}>{failed ? tx(lang, '没提交成功，再点一次试试', 'Not sent — try again') : tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>

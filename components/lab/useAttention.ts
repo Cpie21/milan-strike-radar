@@ -25,7 +25,7 @@ export function useAttention<T extends HTMLElement>(key: string, event: string, 
     const observer = new IntersectionObserver(([entry]) => {
       // Use the viewport for very tall cards; requiring half the whole card
       // would exclude mobile users who can never fit the card on screen.
-      intersecting = entry.isIntersecting && entry.intersectionRect.height >= Math.min(entry.boundingClientRect.height, window.innerHeight) * 0.25;
+      intersecting = entry.isIntersecting && entry.boundingClientRect.height > 0 && entry.boundingClientRect.width > 0 && entry.intersectionRect.height >= Math.min(entry.boundingClientRect.height, window.innerHeight) * 0.25;
       update();
     }, { threshold: [0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1] });
     observer.observe(el);
