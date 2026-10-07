@@ -50,6 +50,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "filterTestAccounts": true,
@@ -99,6 +103,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "filterTestAccounts": true,
@@ -120,7 +128,7 @@
         "kind": "DataVisualizationNode",
         "source": {
           "kind": "HogQLQuery",
-          "query": "SELECT if(cached = 1, '缓存', '网络') AS path, count() AS submitted_attempts, countIf(admitted = 1) AS api_admitted, countIf(completed = 1) AS api_completed, countIf(received = 1) AS received_attempts, countIf(viewed = 1) AS viewed_attempts, countIf(viewed = 1 AND action = 1) AS acted, countIf(failed = 1) AS failure_receipt FROM (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) WHERE submitted = 1 GROUP BY path LIMIT 10"
+          "query": "SELECT if(cached = 1, '缓存', '网络') AS path, count() AS submitted_attempts, countIf(admitted = 1) AS api_admitted, countIf(completed = 1) AS api_completed, countIf(received = 1) AS received_attempts, countIf(viewed = 1) AS viewed_attempts, countIf(viewed = 1 AND action = 1) AS acted, countIf(failed = 1) AS failure_receipt FROM (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2 AND (coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id))\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) WHERE submitted = 1 GROUP BY path LIMIT 10"
         },
         "display": "ActionsTable"
       },
@@ -134,7 +142,7 @@
         "kind": "DataVisualizationNode",
         "source": {
           "kind": "HogQLQuery",
-          "query": "SELECT kind, level, fallback, count() AS viewed_answers, countIf(assumption_count > 0) AS with_assumptions, countIf(rating = 'good') AS good, countIf(rating = 'bad') AS bad, countIf(rating != 'good' AND rating != 'bad') AS unrated FROM (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) WHERE viewed = 1 GROUP BY kind, level, fallback LIMIT 30"
+          "query": "SELECT kind, level, fallback, count() AS viewed_answers, countIf(assumption_count > 0) AS with_assumptions, countIf(rating = 'good') AS good, countIf(rating = 'bad') AS bad, countIf(rating != 'good' AND rating != 'bad') AS unrated FROM (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2 AND (coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id))\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) WHERE viewed = 1 GROUP BY kind, level, fallback LIMIT 30"
         },
         "display": "ActionsTable"
       },
@@ -148,7 +156,7 @@
         "kind": "DataVisualizationNode",
         "source": {
           "kind": "HogQLQuery",
-          "query": "WITH attempts AS (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) SELECT p.missing AS missing, count() AS clarifications_viewed, countIf(coalesce(c.children, 0) > 0) AS parents_continued, countIf(coalesce(c.child_viewed, 0) > 0) AS parents_with_child_viewed FROM attempts p LEFT JOIN (SELECT parent_id, countIf(submitted = 1) AS children, max(viewed) AS child_viewed FROM attempts WHERE parent_id IS NOT NULL AND parent_id != '' GROUP BY parent_id) c ON p.request_id = c.parent_id WHERE p.kind = 'clarify' AND p.viewed = 1 GROUP BY p.missing LIMIT 10"
+          "query": "WITH attempts AS (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2 AND (coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id))\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) SELECT p.missing AS missing, count() AS clarifications_viewed, countIf(coalesce(c.children, 0) > 0) AS parents_continued, countIf(coalesce(c.child_viewed, 0) > 0) AS parents_with_child_viewed FROM attempts p LEFT JOIN (SELECT parent_id, countIf(submitted = 1) AS children, max(viewed) AS child_viewed FROM attempts WHERE parent_id IS NOT NULL AND parent_id != '' GROUP BY parent_id) c ON p.request_id = c.parent_id WHERE p.kind = 'clarify' AND p.viewed = 1 GROUP BY p.missing LIMIT 10"
         },
         "display": "ActionsTable"
       },
@@ -218,6 +226,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "filterTestAccounts": true,
@@ -277,6 +289,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "filterTestAccounts": true,
@@ -328,6 +344,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "filterTestAccounts": true,
@@ -390,6 +410,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "dateRange": {
@@ -470,6 +494,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "dateRange": {
@@ -556,6 +584,10 @@
               "type": "event",
               "operator": "gt",
               "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
             }
           ],
           "dateRange": {
