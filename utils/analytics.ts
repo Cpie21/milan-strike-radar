@@ -7,6 +7,9 @@
 import posthog from 'posthog-js';
 import { ANALYTICS_VERSION, readAnalyticsContext, type AnalyticsContext } from '../lib/analyticsContract';
 
+let pageContext: { region?: string; language?: string; page_view_id?: string; app_mode?: string } = {};
+export function setAnalyticsPageContext(value: typeof pageContext): void { pageContext = value; }
+
 export function analyticsEnabled(): boolean {
     return typeof window !== 'undefined' && !!process.env.NEXT_PUBLIC_POSTHOG_KEY &&
         ['theitalystrike.com', 'www.theitalystrike.com'].includes(window.location.hostname) &&
@@ -59,11 +62,11 @@ export function captureOnce(event: string, properties?: Record<string, unknown>)
 export function capture(event: string, properties?: Record<string, unknown>): boolean {
     if (!analyticsEnabled()) return false;
     try {
-        return !!posthog.capture(event, { ...properties, analytics_version: ANALYTICS_VERSION, environment: 'production',
+        return !!posthog.capture(event, { ...pageContext, ...properties, analytics_version: ANALYTICS_VERSION, environment: 'production',
             surface: 'site', device: getDeviceType(), is_test: analyticsIsTest() }, { transport: 'sendBeacon', send_instantly: true });
     } catch { return false; }
 }
 
 export function trackSource(url: string, properties?: Record<string, unknown>): void {
-    try { capture('official_source_clicked', { ...properties, source_host: new URL(url).hostname }); } catch { /* malformed source cannot interrupt navigation */ }
+    try { const props = { ...properties, source_host: new URL(url).hostname }; capture('source_link_clicked', props); capture('official_source_clicked', props); } catch { /* malformed source cannot interrupt navigation */ }
 }

@@ -154,3 +154,87 @@ test('share receipts distinguish completed copy, unsupported clipboard and nativ
     { method: 'native', outcome: 'cancelled' }, { method: 'native', outcome: 'failed' },
   ]);
 });
+
+test('mutation telemetry preserves success/rejection/exception and cannot change business results', async () => {
+  const { interactionReceipt } = load('lib/interactionTelemetry.ts');
+  const sent = []; const emit = (event, properties) => sent.push({ event, properties });
+  for (const success of [true, false]) {
+    const value = { success, error: 'PRIVATE DATABASE MESSAGE' };
+    const response = await interactionReceipt('affected_reaction', async () => value, emit, { card_id: 'public-card' });
+    assert.equal(response, value); assert.equal(sent.at(-1).properties.outcome, success ? 'saved' : 'rejected');
+  }
+  const error = new Error('PRIVATE');
+  await assert.rejects(interactionReceipt('affected_reaction', async () => { throw error; }, emit, {}), e => e === error);
+  assert.equal(sent.at(-1).properties.outcome, 'network_failed'); assert.ok(!JSON.stringify(sent).includes('PRIVATE'));
+  const value = { success: true };
+  assert.equal(await interactionReceipt('affected_reaction', async () => value, () => { throw error; }, {}), value);
+});
+
+test('one-second section impressions do not emit later attention milestones', () => {
+  const { attentionClock } = load('lib/attention.ts'); let now = 0; const sent = [];
+  const clock = attentionClock(s => sent.push(s), () => now, [1]);
+  clock.setVisible(true); now = 1000; clock.sample(); now = 60000; clock.sample(); clock.setVisible(false);
+  assert.deepEqual(sent, [1]);
+});
+
+test('page context and source authority remain anonymous and opt-out gates all source events', () => {
+  let optedOut = false; const sent = [];
+  const sdk = { has_opted_out_capturing: () => optedOut, capture: (event, properties) => { sent.push({ event, properties }); return {}; } };
+  const globals = { window: { location: { hostname: 'www.theitalystrike.com' } }, navigator: { userAgent: 'test' }, sessionStorage: { getItem: () => null } };
+  const prev = process.env.NEXT_PUBLIC_POSTHOG_KEY; process.env.NEXT_PUBLIC_POSTHOG_KEY = 'public-mock';
+  try {
+    const client = load('utils/analytics.ts', { 'posthog-js': sdk, '../lib/analyticsContract': contract }, globals);
+    client.setAnalyticsPageContext({ region: 'MILANO', language: 'en', page_view_id: id });
+    client.trackSource('https://news.example/article?secret=PRIVATE', { source_authority: 'reported' });
+    assert.deepEqual(sent.map(e => e.event), ['source_link_clicked','official_source_clicked']);
+    assert.ok(sent.every(e => e.properties.source_authority === 'reported' && e.properties.language === 'en' && e.properties.page_view_id === id));
+    assert.ok(!JSON.stringify(sent).includes('PRIVATE')); assert.ok(sent.every(e => e.properties.analytics_version === 3));
+    optedOut = true; client.trackSource('https://news.example/'); assert.equal(sent.length, 2);
+  } finally { if (prev === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY; else process.env.NEXT_PUBLIC_POSTHOG_KEY = prev; }
+});
+
+function sheetHarness(states = []) {
+  const sent = [], effects = [], updates = []; let index = 0;
+  const react = { useState: initial => { const i = index++; return [i < states.length ? states[i] : initial, value => updates.push({ i, value })]; }, useRef: value => ({ current: value }), useEffect: f => effects.push(f) };
+  const mock = {
+    react, '@phosphor-icons/react': { ArrowSquareOut: 'icon', Check: 'icon', Copy: 'icon', MagnifyingGlass: 'icon' }, 'framer-motion': { motion: { span: 'span' } },
+    '../../app/actions': { submitFeedback: async () => ({ success: true }) },
+    '../../lib/lab/widgetScript': { buildLabWidgetScript: () => 'private-script' }, './Led': { LedFace: 'led' },
+    '../../lib/lab/model': { MODES: [], tx: (lang, zh, en) => en }, './ui': { Sheet: 'sheet', Button: 'button' },
+    './theme': { C: {} }, './track': { track: (event, properties) => sent.push({ event, properties }) },
+    './Telemetry': { GuideStep: 'guide', Observed: 'observed' },
+  };
+  return { sent, effects, updates, mock, react };
+}
+function elements(tree) {
+  if (!tree || typeof tree !== 'object') return [];
+  return [tree, ...[].concat(tree.props?.children ?? []).flatMap(elements)];
+}
+function loadJsx(file, mocks, globals = {}) {
+  const module = { exports: {} };
+  const code = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX } }).outputText;
+  vm.runInNewContext(code, { module, exports: module.exports, require: id => Object.hasOwn(mocks, id) ? mocks[id] : require(id), console, setTimeout, clearTimeout, crypto: require('node:crypto').webcrypto, ...globals }, { filename: file });
+  return module.exports;
+}
+test('support double click cannot duplicate a write; empty input and rejected writes never become saved', async () => {
+  for (const outcome of ['empty', 'success', 'rejected', 'network']) {
+    const h = sheetHarness([1, 'PRIVATE NAME', outcome === 'empty' ? ' ' : 'PRIVATE FEEDBACK', 'idle', '']);
+    let release, writes = 0;
+    h.mock['../../app/actions'].submitFeedback = () => { writes++; return new Promise((resolve, reject) => { release = () => outcome === 'network' ? reject(new Error('PRIVATE')) : resolve({ success: outcome === 'success', error: 'PRIVATE ERROR' }); }); };
+    const sheets = loadJsx('components/lab/sheets.tsx', h.mock);
+    const tree = sheets.SupportSheet({ open: true, onClose() {}, lang: 'en' });
+    const send = elements(tree).find(e => e.type === 'button' && e.props.children === 'Send feedback').props.onClick;
+    const pending = send(); await send();
+    if (outcome === 'empty') { assert.equal(writes, 0); assert.ok(h.sent.every(e => e.event === 'support_feedback_blocked')); }
+    else { assert.equal(writes, 1); release(); await pending; assert.equal(h.sent.at(-1).event, outcome === 'success' ? 'support_feedback_saved' : 'support_feedback_failed'); assert.equal(h.sent[0].properties.submission_id, h.sent.at(-1).properties.submission_id); }
+    assert.ok(!JSON.stringify(h.sent).includes('PRIVATE'));
+  }
+});
+test('home guide clipboard failure records failure without showing copied', async () => {
+  const h = sheetHarness([false, false]);
+  const sheets = loadJsx('components/lab/sheets.tsx', h.mock, { navigator: {}, window: { location: { origin: 'https://www.theitalystrike.com', pathname: '/' } } });
+  const tree = sheets.HomeScreenSheet({ open: true, onClose() {}, lang: 'en' });
+  const copy = elements(tree).find(e => e.type === 'button' && Array.isArray(e.props.children) && e.props.children.includes('Copy link')).props.onClick;
+  await copy(); assert.deepEqual(h.sent.map(e => e.event), ['home_link_copy_clicked','home_link_copy_failed']);
+  assert.ok(!h.updates.some(e => e.value === true));
+});

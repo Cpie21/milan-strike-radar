@@ -4,6 +4,7 @@ import { MODES, modeName, tx, type Lang, type ModeCard } from '../../lib/lab/mod
 import { addDaysIso, weekdayOfIso } from '../../lib/romeDate';
 import { strikeModes } from './DateRail';
 import { ModeBadge, Sheet } from './ui';
+import { Observed } from './Telemetry';
 import { C, NUM, TYPE } from './theme';
 
 const HEAD_ZH = ['一', '二', '三', '四', '五', '六', '日'];
@@ -23,7 +24,7 @@ export default function MonthSheet({ open, onClose, lang, byDate, from, to, toda
   const used = new Set([...byDate.values()].flat().filter(c => c.status !== 'CANCELLED').map(c => c.category));
 
   return (
-    <Sheet open={open} onClose={onClose} title={tx(lang, '全部日期', 'All dates')} large>
+    <Sheet telemetryId="month" open={open} onClose={onClose} title={tx(lang, '全部日期', 'All dates')} large>
       <div className="flex flex-wrap gap-x-3 gap-y-1.5 pb-3">
         {MODES.filter(m => used.has(m)).map(m => (
           <span key={m} className={`flex items-center gap-1.5 ${TYPE.caption}`} style={{ color: C.text2 }}><ModeBadge mode={m} size={14} />{modeName(m, lang)}</span>
@@ -37,7 +38,7 @@ export default function MonthSheet({ open, onClose, lang, byDate, from, to, toda
           for (let d = first; d.startsWith(month); d = addDaysIso(d, 1)) days.push(d);
           const struck = days.filter(d => d >= today && strikeModes({ cards: byDate.get(d) || [] }).length).length;
           return (
-            <section key={month}>
+            <Observed key={month} event="calendar_month_viewed" identity={month} active={open} properties={{ month_offset: (Number(month.slice(0, 4)) - Number(today.slice(0, 4))) * 12 + Number(month.slice(5)) - Number(today.slice(5, 7)), strike_day_count: struck }}>
               <h3 className="flex items-baseline gap-2 mb-2">
                 <span className={TYPE.title}>{tx(lang, `${Number(month.slice(5))}月`, MONTH_EN[Number(month.slice(5)) - 1])}</span>
                 <span className={TYPE.caption} style={{ color: C.text3 }}>{struck ? tx(lang, `${struck} 天有罢工`, `${struck} strike day${struck > 1 ? 's' : ''}`) : tx(lang, '没有已公布的罢工', 'No strikes announced')}</span>
@@ -64,7 +65,7 @@ export default function MonthSheet({ open, onClose, lang, byDate, from, to, toda
                   );
                 })}
               </div>
-            </section>
+            </Observed>
           );
         })}
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowSquareOut, Check, Copy, MagnifyingGlass } from '@phosphor-icons/react';
 import { submitFeedback } from '../../app/actions';
@@ -10,6 +10,7 @@ import { MODES, modeName, relativeDay, tx, type Lang, type Mode } from '../../li
 import { Button, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C, MODE_COLOR } from './theme';
 import { track } from './track';
+import { GuideStep, Observed } from './Telemetry';
 
 type City = { tag: string; zh: string; en: string; path: string };
 type Base = { open: boolean; onClose: () => void; lang: Lang };
@@ -49,13 +50,13 @@ function ModeToggles({ value, onChange, lang }: { value: Set<Mode>; onChange: (v
 // the sheet's full width, so every control lines up with both edges.
 function Step({ n, title, children }: { n: number; title: string; children?: React.ReactNode }) {
   return (
-    <div className="py-3">
+    <GuideStep step={n}><div className="py-3">
       <div className="flex items-center gap-3">
         <span className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[13px] font-semibold tabular-nums" style={{ background: '#272A30' }}>{n}</span>
         <p className="text-[15px] font-medium leading-6">{title}</p>
       </div>
       {children && <div className="mt-3">{children}</div>}
-    </div>
+    </div></GuideStep>
   );
 }
 
@@ -68,17 +69,18 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
   const [going, setGoing] = useState<string | null>(null);
   useEffect(() => { if (!base.open) { const t = setTimeout(() => setGoing(null), 0); return () => clearTimeout(t); } }, [base.open]);
   const list = cities.filter(c => !q || c.zh.includes(q) || c.en.toLowerCase().includes(q.toLowerCase()) || c.tag.toLowerCase().includes(q.toLowerCase()));
+  useEffect(() => { if (!base.open || !q.trim()) return; const timer = setTimeout(() => track('city_search_completed', { query_length: q.trim().length, result_count: list.length, no_results: list.length === 0 }), 600); return () => clearTimeout(timer); }, [base.open, q, list.length]);
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '城市', 'Cities')} tall>
+    <Sheet telemetryId="city" open={base.open} onClose={base.onClose} title={tx(base.lang, '城市', 'Cities')} tall>
       <label className="flex items-center gap-2 h-10 px-3 rounded-[12px] mb-3" style={{ background: '#1E2025' }}>
         <MagnifyingGlass size={16} color={C.text3} />
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder={tx(base.lang, '搜索城市', 'Search cities')} aria-label={tx(base.lang, '搜索城市', 'Search cities')}
+        <input value={q} onChange={e => { if (!q && e.target.value) track('city_search_started'); if (q && !e.target.value) track('city_search_cleared'); setQ(e.target.value); }} placeholder={tx(base.lang, '搜索城市', 'Search cities')} aria-label={tx(base.lang, '搜索城市', 'Search cities')}
           className="flex-1 bg-transparent outline-none text-[16px] placeholder:text-white/40" />
       </label>
       <div className="flex flex-col gap-2 pb-2">
         {list.map(city => (
           <a key={city.tag} href={city.path} aria-busy={going === city.tag}
-            onClick={e => { if (city.tag !== current) track('city_selected', { region: city.tag, previous_region: current }); try { localStorage.setItem('italy_strike_city', city.path); } catch { /* storage blocked */ } if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
+            onClick={e => { track('city_selection_clicked', { region: city.tag, current_city: city.tag === current, from_search: !!q.trim() }); if (city.tag !== current) track('city_selected', { region: city.tag, previous_region: current }); try { localStorage.setItem('italy_strike_city', city.path); } catch { /* storage blocked */ } if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
             className="relative overflow-hidden flex items-center justify-between gap-3 h-[64px] px-4 rounded-[16px] active:scale-[0.99] transition-transform"
             style={{ background: city.tag === current || going === city.tag ? '#272A30' : '#1E2025', opacity: going && going !== city.tag ? 0.5 : 1 }}>
             {going === city.tag && <motion.span aria-hidden className="absolute inset-y-0 left-0 w-1/3" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} animate={{ x: ['-100%', '300%'] }} transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }} />}
@@ -92,7 +94,7 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
               : <CityHeadline s={status[city.tag]} today={today} lang={base.lang} current={city.tag === current} />}
           </a>
         ))}
-        {!list.length && <p className="py-6 text-center text-[14px]" style={{ color: C.text3 }}>{tx(base.lang, '暂不支持这个城市', 'This city isn’t covered yet')}</p>}
+        {!list.length && <Observed event="city_search_empty_viewed" identity="empty" properties={{ query_length: q.trim().length }} active={base.open}><p className="py-6 text-center text-[14px]" style={{ color: C.text3 }}>{tx(base.lang, '暂不支持这个城市', 'This city isn’t covered yet')}</p></Observed>}
       </div>
     </Sheet>
   );
@@ -116,7 +118,7 @@ export function CalendarSheet({ region, cityName, ...base }: Base & { region: st
   const [types, setTypes] = useState<Set<Mode>>(new Set(MODES));
   useSeen(base.open, 'CalendarSync_tutorial_success');
   const subscribe = () => {
-    if (!types.size) return;
+    if (!types.size) { track('calendar_subscription_blocked', { reason: 'no_modes', region }); return; }
     const host = isLocal(window.location.host) ? PROD_HOST : window.location.host;
     const param = [...types].map(t => (t === 'AIRPORT' ? 'airport' : t.toLowerCase())).join(',');
     track('calendar_sync_clicked', { region, modes: [...types] });
@@ -124,7 +126,7 @@ export function CalendarSheet({ region, cityName, ...base }: Base & { region: st
     window.location.assign(`webcal://${host}/api/calendar?types=${encodeURIComponent(param)}&region=${encodeURIComponent(region)}`);
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '同步到本地日历', 'Sync to calendar')}>
+    <Sheet telemetryId="calendar" open={base.open} onClose={base.onClose} title={tx(base.lang, '同步到本地日历', 'Sync to calendar')}>
       <p className="text-[14.5px] leading-relaxed mb-4" style={{ color: C.text2 }}>
         {tx(base.lang, `把${cityName}的罢工加入手机日历。新公布、改期或取消的罢工会自动同步，不用再回来查。`, `Add ${cityName} strikes to your calendar. New, moved or cancelled strikes update automatically.`)}
       </p>
@@ -157,7 +159,7 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, `添加桌面小组件 · ${cityName}`, `Add home widget · ${cityName}`)}>
+    <Sheet telemetryId="widget" open={base.open} onClose={base.onClose} title={tx(base.lang, `添加桌面小组件 · ${cityName}`, `Add home widget · ${cityName}`)}>
       <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>
         {tx(base.lang, `在桌面上直接看到${cityName}今天和最近的罢工。借助免费的 Scriptable 实现，只需设置一次。`, `See ${cityName} strikes on your Home Screen, via the free Scriptable app. Set it up once.`)}
       </p>
@@ -291,7 +293,7 @@ function Shot({ src }: { src: string }) {
     <div className="relative w-full max-w-[300px] mx-auto rounded-[14px] overflow-hidden" style={{ aspectRatio: ratio, background: C.surface2, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
       {!loaded && <motion.span aria-hidden className="absolute inset-y-0 w-1/2" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent)' }} animate={{ x: ['-100%', '220%'] }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} />}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" onLoad={() => setLoaded(true)} ref={el => { if (el?.complete && el.naturalWidth && !loaded) setLoaded(true); }}
+      <img src={src} alt="" onError={() => track('tool_image_failed', { asset: src.split('/').pop() })} onLoad={() => setLoaded(true)} ref={el => { if (el?.complete && el.naturalWidth && !loaded) setLoaded(true); }}
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" style={{ opacity: loaded ? 1 : 0 }} />
     </div>
   );
@@ -318,15 +320,15 @@ export function HomeScreenSheet(base: Base) {
   const [copied, setCopied] = useState(false);
   useSeen(base.open, 'AppToDesktop_tutorial_success');
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '添加网站到桌面', 'Add website to Home Screen')}>
+    <Sheet telemetryId="home" open={base.open} onClose={base.onClose} title={tx(base.lang, '添加网站到桌面', 'Add website to Home Screen')}>
       <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>{tx(base.lang, '像 App 一样从桌面一键打开，不用每次搜索。', 'Open it from your Home Screen like an app.')}</p>
       {!safari && (
-        <div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(245,181,68,0.13)' }}>
+        <Observed event="home_browser_notice_viewed" identity="safari" active={base.open}><div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(245,181,68,0.13)' }}>
           <p className="text-[14px] font-medium" style={{ color: C.pend }}>{tx(base.lang, '需要在 Safari 中操作', 'This works in Safari')}</p>
-          <button onClick={async () => { await navigator.clipboard?.writeText(window.location.origin + window.location.pathname); setCopied(true); }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
+          <button onClick={async () => { track('home_link_copy_clicked'); try { if (!navigator.clipboard) throw new Error('Unavailable'); await navigator.clipboard.writeText(window.location.origin + window.location.pathname); track('home_link_copy_succeeded'); setCopied(true); } catch { track('home_link_copy_failed'); } }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
             {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}{copied ? tx(base.lang, '已复制，去 Safari 粘贴', 'Copied — paste in Safari') : tx(base.lang, '复制链接', 'Copy link')}
           </button>
-        </div>
+        </div></Observed>
       )}
       <Step n={1} title={tx(base.lang, '点击底部的分享按钮', 'Tap Share')}><Shot src="/assets/tutorial-step-1.png" /></Step>
       <Step n={2} title={tx(base.lang, '向上滑，展开更多选项', 'Scroll for more options')}><Shot src="/assets/tutorial-step-2.png" /></Step>
@@ -344,25 +346,30 @@ export function SupportSheet(base: Base) {
   const [text, setText] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [error, setError] = useState('');
+  const pending = useRef(false);
+  const draft = useRef(false);
+  useEffect(() => { if (!base.open && draft.current) { track('support_feedback_left_unsent'); draft.current = false; } }, [base.open]);
   const send = async () => {
-    if (!text.trim()) { setState('error'); setError(tx(base.lang, '先写点内容', 'Write something first')); return; }
+    if (pending.current) return;
+    if (!text.trim()) { track('support_feedback_blocked', { reason: 'empty' }); setState('error'); setError(tx(base.lang, '先写点内容', 'Write something first')); return; }
+    pending.current = true; draft.current = false; const submission_id = crypto.randomUUID();
     setState('sending');
-    track('support_feedback_submitted', { text_length: text.trim().length, has_name: !!name.trim() });
+    track('support_feedback_submitted', { submission_id, text_length: text.trim().length, has_name: !!name.trim() });
     try {
       const res = await submitFeedback(text, name);
-      if (res.success) { track('support_feedback_saved'); setState('sent'); setText(''); }
-      else { track('support_feedback_failed', { reason: 'rejected' }); setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
-    } catch { track('support_feedback_failed', { reason: 'network' }); setState('error'); setError(tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
+      if (res.success) { track('support_feedback_saved', { submission_id }); setState('sent'); setText(''); }
+      else { track('support_feedback_failed', { submission_id, reason: 'rejected' }); setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
+    } catch { track('support_feedback_failed', { submission_id, reason: 'network' }); setState('error'); setError(tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); } finally { pending.current = false; }
   };
   return (
-    <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '支持与反馈', 'Support & feedback')} tall>
+    <Sheet telemetryId="support" open={base.open} onClose={base.onClose} title={tx(base.lang, '支持与反馈', 'Support & feedback')} tall>
       <p className="text-[14.5px] leading-relaxed" style={{ color: C.text2 }}>{tx(base.lang, '感谢您愿意点进这个界面！独立开发不易，如果对你有用请支持一杯奶茶。', 'Thanks for opening this panel! If the tool helps you, consider buying a bubble tea.')}</p>
       <div className="mt-4 rounded-[18px] p-4" style={{ background: '#1E2025' }}>
         <div className="flex items-center justify-between">
           <span className="text-[15px] font-medium">{tx(base.lang, '奶茶 · 每杯 2€', 'Drinks · 2€ each')}</span>
           <div className="flex items-center gap-1 rounded-full p-1" style={{ background: '#1E2025' }}>
             {[1, 2, 3, 5].map(n => (
-              <button key={n} aria-pressed={cups === n} onClick={() => setCups(n)} className="w-9 h-8 rounded-full text-[14px] font-semibold tabular-nums transition-colors" style={{ background: cups === n ? '#FFFFFF' : 'transparent', color: cups === n ? '#0A0B0D' : C.text2 }}>{n}</button>
+              <button key={n} aria-pressed={cups === n} onClick={() => { track('donation_amount_selected', { cups: n, amount_eur: n * 2 }); setCups(n); }} className="w-9 h-8 rounded-full text-[14px] font-semibold tabular-nums transition-colors" style={{ background: cups === n ? '#FFFFFF' : 'transparent', color: cups === n ? '#0A0B0D' : C.text2 }}>{n}</button>
             ))}
           </div>
         </div>
@@ -381,13 +388,13 @@ export function SupportSheet(base: Base) {
       <h3 className="mt-6 mb-2 text-[15px] font-semibold">{tx(base.lang, '可以来点建议', 'Suggestions are welcome')}</h3>
             <input value={name} onChange={e => setName(e.target.value.slice(0, 60))} placeholder={tx(base.lang, '您的昵称是', 'Your nickname')} aria-label={tx(base.lang, '昵称', 'Name')}
         className="w-full h-11 px-3 rounded-[12px] bg-transparent outline-none text-[15px] placeholder:text-white/40" style={{ background: '#1E2025' }} />
-      <textarea value={text} onChange={e => { setText(e.target.value.slice(0, 1000)); if (state === 'error') setState('idle'); }} rows={4} placeholder={tx(base.lang, '说点什么吗', 'Anything to share?')} aria-label={tx(base.lang, '反馈内容', 'Feedback')}
+      <textarea value={text} onChange={e => { if (!text.trim() && e.target.value.trim()) { draft.current = true; track('support_feedback_started'); } if (text.trim() && !e.target.value.trim()) { draft.current = false; track('support_feedback_cleared'); } setText(e.target.value.slice(0, 1000)); if (state === 'error') setState('idle'); }} rows={4} placeholder={tx(base.lang, '说点什么吗', 'Anything to share?')} aria-label={tx(base.lang, '反馈内容', 'Feedback')}
         className="mt-2 w-full p-3 rounded-[12px] bg-transparent outline-none text-[15px] leading-relaxed resize-none placeholder:text-white/40" style={{ background: '#1E2025' }} />
       {state === 'error' && <p className="mt-1 text-[13px]" style={{ color: C.stop }}>{error}</p>}
       {state === 'sent' && <p className="mt-1 text-[13px]" style={{ color: C.ok }}>{tx(base.lang, '收到了，谢谢你。', 'Got it — thank you.')}</p>}
       <div className="mt-3"><Button className="w-full" tone="quiet" onClick={send}>{state === 'sending' ? tx(base.lang, '发送中…', 'Sending…') : tx(base.lang, '发送反馈', 'Send feedback')}</Button></div>
 
-      <a href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-5 mb-2 flex items-center justify-between h-12 px-4 rounded-[14px]" style={{ background: '#1E2025' }}>
+      <a onClick={() => track('social_link_clicked', { destination: 'xiaohongshu', placement: 'support' })} href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-5 mb-2 flex items-center justify-between h-12 px-4 rounded-[14px]" style={{ background: '#1E2025' }}>
         <span className="text-[15px] font-medium">{tx(base.lang, '或者点个关注 · 小红书', 'Or follow along · Xiaohongshu')}</span>
         <ArrowSquareOut size={15} color={C.text2} />
       </a>

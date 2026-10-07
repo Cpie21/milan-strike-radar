@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getDoodleCount, submitDoodle } from '../../app/actions';
 import type { ModeCard } from '../../lib/lab/model';
+import { interactionReceipt } from '../../lib/interactionTelemetry';
 import { track } from './track';
 
 // Same contract as the live card (components/StrikeCard.tsx): one mark per
@@ -70,7 +71,7 @@ export function useDoodle(card: ModeCard, region: string) {
       localStorage.setItem(key, uuid);
     }
     if (manual !== null) return;
-    await submitDoodle(card.id, uuid, card.date, card.category, displayTime, region);
+    await interactionReceipt('affected_reaction', () => submitDoodle(card.id, uuid!, card.date, card.category, displayTime, region), track, { card_id: card.id, region, transport_type: card.category });
     const latest = await getDoodleCount(card.id, card.date, card.category, displayTime, region);
     setCount(latest + offset);
     track('graffiti_spray_triggered', { transport_type: card.category.toLowerCase(), total_rage_count: latest + offset });

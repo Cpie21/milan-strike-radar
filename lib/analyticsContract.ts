@@ -1,6 +1,6 @@
 import type { AskResult, StageEvent } from './ask/pipeline';
 
-export const ANALYTICS_VERSION = 2;
+export const ANALYTICS_VERSION = 3;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type AnalyticsContext = { requestId: string; distinctId: string; sessionId?: string; isTest: boolean };
 export function readAnalyticsContext(raw: unknown): AnalyticsContext | null {
