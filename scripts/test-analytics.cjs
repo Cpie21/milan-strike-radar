@@ -116,3 +116,41 @@ test('legacy once semantics work with unavailable storage; preview and opted-out
     client.captureOnce('CalendarSync_tutorial_success'); assert.equal(count, 2);
   } finally { if (prev === undefined) delete process.env.NEXT_PUBLIC_POSTHOG_KEY; else process.env.NEXT_PUBLIC_POSTHOG_KEY = prev; }
 });
+
+test('attention pauses offscreen/background, sums foreground exposure, and bounds repeated milestones', () => {
+  const { attentionClock } = load('lib/attention.ts');
+  let now = 0;
+  const events = [];
+  const clock = attentionClock(s => events.push(s), () => now);
+  clock.sample();
+  assert.deepEqual(events, []);
+  clock.setVisible(true); now = 600; clock.setVisible(false);
+  now = 30000; clock.sample();
+  assert.deepEqual(events, []);
+  clock.setVisible(true); now += 500; clock.sample();
+  assert.deepEqual(events, [1]);
+  now += 4000; clock.sample();
+  assert.deepEqual(events, [1, 5]);
+  clock.setVisible(false); now += 100000; clock.sample();
+  assert.deepEqual(events, [1, 5]);
+  clock.setVisible(true); now += 20000; clock.sample(); clock.sample();
+  assert.deepEqual(events, [1, 5, 15]);
+});
+
+test('share receipts distinguish completed copy, unsupported clipboard and native dismissal without raw payload', async () => {
+  const events = [];
+  let navigator = { clipboard: { writeText: async () => {} } };
+  const { shareOutcome } = load('utils/shareOutcome.ts', {}, { navigator, Error });
+  const emit = props => events.push({ ...props });
+  assert.equal(await shareOutcome({ text: 'PRIVATE QUERY' }, 'PRIVATE QUERY', false, emit), true);
+  navigator.clipboard = undefined;
+  assert.equal(await shareOutcome({}, 'PRIVATE QUERY', false, emit), false);
+  navigator.share = async () => { const e = new Error('PRIVATE QUERY'); e.name = 'AbortError'; throw e; };
+  assert.equal(await shareOutcome({ text: 'PRIVATE QUERY' }, '', true, emit), false);
+  navigator.share = async () => { throw new Error('PRIVATE QUERY'); };
+  await shareOutcome({}, '', true, emit);
+  assert.deepEqual(events, [
+    { method: 'clipboard', outcome: 'completed' }, { method: 'clipboard', outcome: 'failed' },
+    { method: 'native', outcome: 'cancelled' }, { method: 'native', outcome: 'failed' },
+  ]);
+});

@@ -1,5 +1,7 @@
 'use client';
 
+import { useAttention } from './useAttention';
+import { shareOutcome } from '../../utils/shareOutcome';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
@@ -83,7 +85,7 @@ function readQuota(today: string) {
   } catch { return 0; }
 }
 
-export function useAsk({ region, lang, today, onOpenDate }: { region: string; lang: Lang; today: string; onOpenDate: (date: string, path: string) => void }) {
+export function useAsk({ region, lang, today, onOpenDate, attentionActive = true }: { attentionActive?: boolean; region: string; lang: Lang; today: string; onOpenDate: (date: string, path: string) => void }) {
   const [query, setQuery] = useState('');
   const [requestId, setRequestId] = useState<string | null>(null);
   const currentRequest = useRef<string | null>(null);
@@ -100,6 +102,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     if (!open || busy || !result || !requestId || viewedRequests.current.has(requestId)) return;
     viewedRequests.current.add(requestId);
     track('ai_result_viewed', { ...resultMeta, request_id: requestId, ...askResultProperties(result) });
+    if (result.kind === 'clarify') track('ai_clarification_shown', { request_id: requestId, missing: result.missing });
   }, [open, busy, result, requestId, resultMeta]);
   const [error, setError] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
@@ -200,7 +203,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
             const meta = { request_id: id, result_source: 'network', duration_ms: Math.round(performance.now() - started) };
             setResultMeta(meta);
             track('ai_response_received', { ...meta, ...askResultProperties(event.result) });
-            if (event.result.kind === 'clarify') track('ai_clarification_shown', { request_id: id, missing: event.result.missing });
+
             const answered = event.result.kind === 'result' || event.result.kind === 'navigate';
             if (event.result.kind === 'clarify') { token.current = event.refineToken ?? null; counted.current = false; }
             else token.current = null;
@@ -238,7 +241,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   const verdict = verdictOf(result, lang);
   const groups = groupsOf(result);
 
-  return { requestId, lang, today, region, query, setQuery, asked, hints, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen, history, keyOf };
+  return { attentionActive, requestId, lang, today, region, query, setQuery, asked, hints, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen, history, keyOf };
 }
 
 function verdictOf(result: AskResult | null, lang: Lang): string[] | null {
@@ -298,7 +301,16 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
   const reduce = useReducedMotion();
   const { lang, query, setQuery, busy, setFocused, left, focused } = a;
   const out = left === 0;
-  const send = () => { if (query.trim() && !busy && !out) a.ask(query); };
+  const attention = useAttention<HTMLFormElement>(`${a.region}:${big ? 'module' : 'bar'}`, 'ai_input_attention', { region: a.region, input_layout: big ? 'module' : 'bar' }, a.attentionActive && !a.open);
+  const draft = useRef<number | null>(null);
+  const send = () => { if (query.trim() && !busy && !out) { draft.current = null; a.ask(query); } };
+  const blur = () => {
+    if (draft.current !== null) {
+      track('ai_input_abandoned', { region: a.region, input_layout: big ? 'module' : 'bar', query_length: query.trim().length, editing_ms: Math.round(performance.now() - draft.current) });
+      draft.current = null;
+    }
+    setFocused(false);
+  };
   // Examples take turns in the empty field, so it shows what it can do
   // without a row of suggestions.
   const [n, setN] = useState(0);
@@ -316,19 +328,24 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
     el.style.height = `${Math.min(el.scrollHeight, 3 * 24)}px`;
   }, [big, query]);
   const sendButton = (
-    <motion.button whileTap={{ scale: 0.92 }} type="submit" disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
+    <motion.button whileTap={{ scale: 0.92 }} type="submit" onPointerDown={() => { if (query.trim() && !busy && !out) draft.current = null; }} disabled={!query.trim() || busy || out} aria-label={tx(lang, '发送', 'Send')}
       className={`relative shrink-0 rounded-full flex items-center justify-center transition-colors disabled:opacity-40 ${big ? 'w-10 h-10' : 'w-11 h-11'}`} style={{ background: query.trim() ? '#F2A33A' : C.surface3, color: query.trim() ? '#1A1204' : '#FFFFFF' }}>
       <ArrowUp size={18} weight="bold" />
     </motion.button>
   );
   const common = {
     value: query, maxLength: 200, enterKeyHint: 'send' as const, disabled: out,
-    onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => setQuery(e.target.value.replace(/\n/g, ' ')),
-    onFocus: () => { if (!focused) track('ai_input_focused', { region: a.region, input_layout: big ? 'module' : 'bar' }); setFocused(true); }, onBlur: () => setFocused(false),
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+      const text = e.target.value.replace(/\n/g, ' ');
+      if (text.trim() && draft.current === null) { draft.current = performance.now(); track('ai_input_started', { region: a.region, input_layout: big ? 'module' : 'bar' }); }
+      if (!text.trim() && draft.current !== null) { track('ai_input_cleared', { region: a.region }); draft.current = null; }
+      setQuery(text);
+    },
+    onFocus: () => { if (!focused) track('ai_input_focused', { region: a.region, input_layout: big ? 'module' : 'bar' }); setFocused(true); }, onBlur: blur,
     'aria-label': tx(lang, '用一句话问罢工', 'Ask about strikes'),
   };
   return (
-    <motion.form layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
+    <motion.form ref={attention} layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
       onSubmit={e => { e.preventDefault(); send(); }}
       className={`ph-no-capture relative w-full ${big ? 'rounded-[26px] pl-4 pr-1.5 py-1.5 flex items-end gap-2' : 'h-[56px] rounded-full pl-[58px] pr-1.5 flex items-center gap-2'}`}
       style={big ? { background: C.surface2, boxShadow: `inset 0 0 0 1px ${focused ? 'rgba(242,163,58,0.45)' : C.line}` } : PILL}>
@@ -488,8 +505,9 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
   const { lang, today, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
+  const attention = useAttention<HTMLDivElement>(a.requestId ?? 'legacy', 'ai_answer_attention', { request_id: a.requestId, region: a.region, ...(result ? askResultProperties(result) : {}) }, a.open && active && !busy && !!result);
   return (
-    <>
+    <div ref={attention}>
       <AnimatePresence mode="wait" initial={false}>
       {busy ? (
         // Thinking is quick, so it says one thing at a time.
@@ -638,7 +656,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
       </motion.div>
       )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
 
@@ -687,8 +705,10 @@ function ShareAnswer({ ask: a }: { ask: AskState }) {
     const url = `${window.location.origin}${window.location.pathname}?date=${day}`;
     const head = verdict ? (verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]) : '';
     const text = tx(lang, `我问：${asked}\n答：${head}（${dayLabel(day, lang)}）`, `Q: ${asked}\nA: ${head} (${dayLabel(day, lang)})`);
-    if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) { try { await navigator.share({ text, url }); } catch { /* dismissed */ } return; }
-    await navigator.clipboard?.writeText(`${text}\n${url}`);
+    const didCopy = await shareOutcome({ text, url }, `${text}\n${url}`,
+      !!navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent),
+      props => track('ai_answer_share_outcome', { ...props, request_id: a.requestId }));
+    if (!didCopy) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
@@ -795,7 +815,7 @@ function Assumptions({ ask: a, result }: { ask: AskState; result: Extract<AskRes
           {local && local.kind === 'local_modes' && <>{tx(lang, '日常出行，查', 'everyday travel: ')}{local.modes.map(m => modeName(m, lang)).join(tx(lang, '、', ', '))}{tx(lang, '（不含机场）', ' (no flights)')}</>}
           {local && part && tx(lang, '；', '; ')}
           {part && part.kind === 'day_part' && <>{tx(lang, `${part.zh}按 ${part.from}–${part.to} 算`, `${part.en} as ${part.from}–${part.to}`)}</>}
-          {local && !editing && <button onClick={() => setEditing(true)} className="ml-1.5 font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, '改交通', 'Change')}</button>}
+          {local && !editing && <button onClick={() => { track('ai_assumption_edit_opened', { request_id: a.requestId, field: 'modes' }); setEditing(true); }} className="ml-1.5 font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, '改交通', 'Change')}</button>}
           {editing && local && local.kind === 'local_modes' && <ModePicker lang={lang} initial={local.modes} onConfirm={modes => { setEditing(false); a.refine({ modes }); }} />}
         </div>
       )}

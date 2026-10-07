@@ -129,7 +129,7 @@ export function CalendarSheet({ region, cityName, ...base }: Base & { region: st
         {tx(base.lang, `把${cityName}的罢工加入手机日历。新公布、改期或取消的罢工会自动同步，不用再回来查。`, `Add ${cityName} strikes to your calendar. New, moved or cancelled strikes update automatically.`)}
       </p>
       <p className="text-[13px] mb-2" style={{ color: C.text3 }}>{tx(base.lang, '同步哪些交通', 'Which transport')}</p>
-      <ModeToggles value={types} onChange={setTypes} lang={base.lang} />
+      <ModeToggles value={types} onChange={v => { track('tool_modes_changed', { tool: 'calendar', region, modes: [...v] }); setTypes(v); }} lang={base.lang} />
       <div className="mt-5">
         <Button className="w-full" onClick={subscribe}>{types.size ? tx(base.lang, '添加到日历', 'Add to Calendar') : tx(base.lang, '至少选择一种交通', 'Choose at least one')}</Button>
       </div>
@@ -162,13 +162,13 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
         {tx(base.lang, `在桌面上直接看到${cityName}今天和最近的罢工。借助免费的 Scriptable 实现，只需设置一次。`, `See ${cityName} strikes on your Home Screen, via the free Scriptable app. Set it up once.`)}
       </p>
       <WidgetPreview lang={base.lang} cityName={cityName} />
-      <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={setTypes} lang={base.lang} /></Step>
+      <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={v => { track('tool_modes_changed', { tool: 'widget', region, modes: [...v] }); setTypes(v); }} lang={base.lang} /></Step>
       <Step n={2} title={tx(base.lang, '复制代码，并安装 Scriptable', 'Copy the code and get Scriptable')}>
         <div className="flex gap-2">
           <button onClick={copy} disabled={!types.size} className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold disabled:opacity-40" style={{ background: '#454A54', color: '#FFFFFF' }}>
             {copied ? <Check size={16} weight="bold" /> : <Copy size={16} weight="bold" />}{copied ? tx(base.lang, '已复制', 'Copied') : tx(base.lang, '复制代码', 'Copy code')}
           </button>
-          <a href="https://apps.apple.com/us/app/scriptable/id1405459188" target="_blank" rel="noreferrer" className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold" style={{ background: '#272A30' }}>
+          <a onClick={() => track('widget_app_store_opened', { region })} href="https://apps.apple.com/us/app/scriptable/id1405459188" target="_blank" rel="noreferrer" className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold" style={{ background: '#272A30' }}>
             Scriptable<ArrowSquareOut size={14} />
           </a>
         </div>
@@ -249,7 +249,7 @@ function WidgetPreview({ lang, cityName }: { lang: Lang; cityName: string }) {
       </div>
       <div className="flex p-[3px] rounded-full" style={{ background: C.surface2 }}>
         {(['calm', 'strike', 'many'] as const).map(v => (
-          <button key={v} onClick={() => setState(v)} className="h-7 px-3 rounded-full text-[12.5px] font-semibold" style={{ background: state === v ? C.surface3 : 'transparent', color: state === v ? C.text : C.text3 }}>
+          <button key={v} onClick={() => { track('widget_preview_selected', { preview: v }); setState(v); }} className="h-7 px-3 rounded-full text-[12.5px] font-semibold" style={{ background: state === v ? C.surface3 : 'transparent', color: state === v ? C.text : C.text3 }}>
             {v === 'calm' ? tx(lang, '平日', 'Calm') : v === 'strike' ? tx(lang, '罢工日', 'Strike') : tx(lang, '多项罢工', 'Several')}
           </button>
         ))}
@@ -347,9 +347,12 @@ export function SupportSheet(base: Base) {
   const send = async () => {
     if (!text.trim()) { setState('error'); setError(tx(base.lang, '先写点内容', 'Write something first')); return; }
     setState('sending');
-    const res = await submitFeedback(text, name);
-    if (res.success) { setState('sent'); setText(''); }
-    else { setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
+    track('support_feedback_submitted', { text_length: text.trim().length, has_name: !!name.trim() });
+    try {
+      const res = await submitFeedback(text, name);
+      if (res.success) { track('support_feedback_saved'); setState('sent'); setText(''); }
+      else { track('support_feedback_failed', { reason: 'rejected' }); setState('error'); setError(res.error || tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
+    } catch { track('support_feedback_failed', { reason: 'network' }); setState('error'); setError(tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); }
   };
   return (
     <Sheet open={base.open} onClose={base.onClose} title={tx(base.lang, '支持与反馈', 'Support & feedback')} tall>
