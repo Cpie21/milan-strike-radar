@@ -58,7 +58,7 @@ function Scene({ lang }: { lang: Lang }) {
   switch (name) {
     case 'chaos': return <Chaos4 f={f} lang={lang} />;
     case 'title': return <Title f={f} len={b(4)} lang={lang} delay={b(1.5)} lines={lang === 'zh'
-      ? [<>意大利的每一次罢工，</>, <><B>一句话</B>问清楚</>] : [<>Any strike in Italy,</>, <>cleared up in <B>one</B> question.</>]} />;
+      ? [<>意大利的每一次罢工</>, <><B>一句话</B>问清楚</>] : [<>Any strike in Italy</>, <>cleared up in <B>one</B> question</>]} />;
     case 'ask': {
       // the phone arrives from below, already framed on the lower half; the
       // field is the only thing in focus while you type; send on the beat
@@ -117,7 +117,7 @@ function Scene({ lang }: { lang: Lang }) {
           <Board show={{ kind: 'eyes', open: blink, gx: Math.sin(f * 0.06) * 0.3 }} width={600} swing={Math.sin(f * 0.09) * 1.2} />
         </div>
         <div style={{ position: 'absolute', left: 0, right: 60, top: 760, height: 520 }}>
-          <Title clear f={f} len={b(6)} lang={lang} delay={b(2)} lines={lang === 'zh' ? [<>罢工，它替你盯着。</>, <>怎么走，你来定。</>] : [<>It keeps track of the strikes.</>, <>You make the plan.</>]} />
+          <Title clear f={f} len={b(6)} lang={lang} delay={b(2)} lines={lang === 'zh' ? [<>罢工，它替你盯着</>, <>怎么走，你来定</>] : [<>It keeps track of the strikes</>, <>You make the plan</>]} />
         </div>
       </AbsoluteFill>;
     }
