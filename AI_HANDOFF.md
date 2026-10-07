@@ -1,3 +1,10 @@
+## Production PostHog instrumentation (Codex)
+
+- `codex/posthog-ai-events` builds on Claude03ddb0b and PR21. Redesigned UI `track.ts` was a no-send prototype stub; now wired to the existing EU PostHog project136776, retaining all eight legacy names and once-per-device guide/calendar semantics. Repeat calendar intent has a separate new event. Contract: `docs/posthog-events.md`.
+- Ask has explicit browser intent/cache/refinement/result/error/history/trace/share/rating events and server admission/stages/finalization/feedback storage receipts. Correlate on anonymous UUID request_id; refinements parent_request_id; cache answer_origin_id. Do not equate server completion with client viewing, or clicks with stored feedback. No AI/parser/budget changes.
+- Additive optional API body `analytics={requestId,distinctId,sessionId?,isTest}` is strictly UUID checked; omitted/opted-out clients send no server telemetry and work as before. Existing feedback JSON now retains `answer.analytics={requestId,version}` for private case correlation. No SQL migration or response shape change. Period telemetry includes days/items, not only matches.
+- Keep raw queries/itineraries out of PostHog. Retain ph-no-capture on Ask DOM, SDK text/input/attribute masking, URL scrubbing, disabled console/network bodies/headers. Only production host initializes; sessionStorage strike_analytics_test=1 marks smoke tests. Filter is_test != true. Old guide success means 3-second dwell, not installation; donation/subscription events mean intent. 322 tests/typecheck pass. Preserve this PR in future UI releases; don't restore the lab console stub.
+
 # AI handoff
 
 ## Ask feedback triage registry

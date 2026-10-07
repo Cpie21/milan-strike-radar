@@ -1,3 +1,5 @@
+import { ANALYTICS_VERSION, readAnalyticsContext } from '../../../../lib/analyticsContract';
+import { requestAnalytics } from '../../../../lib/serverAnalytics';
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveCity } from '../../../../lib/cities';
 import { BodyError, objectRecord, readBoundedJson, requestIdentity, sharedLimit } from '../../../../lib/apiGuard';
@@ -47,29 +49,39 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await readBoundedJson(request, MAX_BYTES); }
   catch (error) { return NextResponse.json({ ok: false, error: error instanceof BodyError ? error.code : 'invalid_json' }, { status: error instanceof BodyError ? error.status : 400 }); }
+  const telemetry = requestAnalytics(body.analytics);
+  const respond = (error: string | null, status: number) => {
+    telemetry.capture(error ? 'ai_feedback_store_failed' : 'ai_feedback_stored', {
+      rating: body.rating === 'good' ? 'good' : body.rating === 'bad' ? 'bad' : 'invalid',
+      reason: typeof body.reason === 'string' && REASONS.has(body.reason) ? body.reason : null,
+      error_code: error, http_status: status,
+    });
+    telemetry.flush();
+    return NextResponse.json(error ? { ok: false, error } : { ok: true }, { status });
+  };
   const rating = body.rating === 'good' || body.rating === 'bad' ? body.rating : null;
   const query = typeof body.query === 'string' ? body.query.trim() : '';
-  if (!rating || !query || query.length > 200 || (body.reason !== undefined && body.reason !== null && (typeof body.reason !== 'string' || !REASONS.has(body.reason)))) return NextResponse.json({ ok: false, error: 'invalid' }, { status: 400 });
+  if (!rating || !query || query.length > 200 || (body.reason !== undefined && body.reason !== null && (typeof body.reason !== 'string' || !REASONS.has(body.reason)))) return respond('invalid', 400);
   const city = typeof body.city === 'string' ? resolveCity(body.city)?.tag : null;
-  if (body.city !== undefined && body.city !== null && !city) return NextResponse.json({ ok: false, error: 'unsupported_city' }, { status: 400 });
+  if (body.city !== undefined && body.city !== null && !city) return respond('unsupported_city', 400);
   try {
     const limit = await sharedLimit('ask_feedback', requestIdentity(request));
-    if (limit !== 'allowed') return NextResponse.json({ ok: false, error: limit === 'limited' ? 'rate_limited' : 'not_stored' }, { status: limit === 'limited' ? 429 : 503 });
+    if (limit !== 'allowed') return respond(limit === 'limited' ? 'rate_limited' : 'not_stored', limit === 'limited' ? 429 : 503);
     const row = {
       rating,
       reason: typeof body.reason === 'string' && REASONS.has(body.reason) ? body.reason : null,
       query,
       city,
-      answer: summariseAnswer(body.answer),
+      answer: { ...summariseAnswer(body.answer), ...(readAnalyticsContext(body.analytics) ? { analytics: { requestId: telemetry.id, version: ANALYTICS_VERSION } } : {}) },
       trace: summariseTrace(body.trace),
       client: 'lab',
     };
-    if (Buffer.byteLength(JSON.stringify(row.answer)) > 18000 || Buffer.byteLength(JSON.stringify(row.trace)) > 9000) return NextResponse.json({ ok: false, error: 'too_large' }, { status: 413 });
+    if (Buffer.byteLength(JSON.stringify(row.answer)) > 18000 || Buffer.byteLength(JSON.stringify(row.trace)) > 9000) return respond('too_large', 413);
     const { error } = await serverDatabase().from('ask_feedback').insert([row]);
     if (error) {
       console.error('[ask-feedback] not stored:', error.code || error.message);
-      return NextResponse.json({ ok: false, error: 'not_stored' }, { status: 503 });
+      return respond('not_stored', 503);
     }
-    return NextResponse.json({ ok: true });
-  } catch { return NextResponse.json({ ok: false, error: 'not_stored' }, { status: 503 }); }
+    return respond(null, 200);
+  } catch { return respond('not_stored', 503); }
 }

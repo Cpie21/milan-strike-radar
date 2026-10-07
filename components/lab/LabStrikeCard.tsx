@@ -12,6 +12,7 @@ import { LineBadge, ModeBadge, ModeGlyph } from './ui';
 import { C, EASE, FILLED, MODE_COLOR, NUM, R, SANS, TONAL, TYPE } from './theme';
 import { useDoodle } from './useDoodle';
 import { track } from './track';
+import { trackSource } from '../../utils/analytics';
 import PixelWall, { type WallLink } from './wall/PixelWall';
 
 const TITLE: Record<Mode, [string, string]> = { TRAIN: ['火车罢工', 'Train strike'], SUBWAY: ['地铁罢工', 'Metro strike'], BUS: ['公交罢工', 'Bus strike'], AIRPORT: ['机场罢工', 'Airport strike'] };
@@ -189,7 +190,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
               <Journey lang={lang} start={span.start} end={span.end} />
               {/* The notice says "end of service"; a timetable time is only a reference beside it */}
               {span.end === null && card.scheduledEnd && (
-                <a href={card.scheduledEnd.source} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
+                <a href={card.scheduledEnd.source} onClick={() => trackSource(card.scheduledEnd!.source, { source_type: 'schedule' })} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
                   {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.labelEn ?? card.scheduledEnd.label}`)}
                 </a>
               )}
@@ -367,7 +368,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
 
   return (
     <section className="mx-5 mb-5 rounded-[16px] overflow-hidden" style={{ background: C.surface2 }}>
-      <button onClick={() => setOpen(v => !v)} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+      <button onClick={() => { track('strike_sources_toggled', { transport_type: card.category.toLowerCase(), expanded: !open }); setOpen(v => !v); }} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
         <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: official1 ? C.okSoft : C.surface3 }}>
           {official1 ? <SealCheck size={18} weight="fill" color={C.ok} /> : <Info size={17} weight="fill" color={C.text2} />}
         </span>
@@ -399,7 +400,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
                   <p className={TYPE.caption} style={{ color: C.text3 }}>
                     {[RELEVANCE[g.relevance] ? tx(lang, ...RELEVANCE[g.relevance]) : g.relevance, g.area && say(g.area), g.mode && say(g.mode)].filter(Boolean).join(' · ')}
                   </p>
-                  <a href={g.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
+                  <a href={g.url} onClick={() => trackSource(g.url, { transport_type: card.category.toLowerCase() })} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
                     {tx(lang, `打开公示表，查找 ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`, `Open the list; look for ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`)}<ArrowUpRight size={12} weight="bold" />
                   </a>
                 </Group>
@@ -435,7 +436,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
               )}
 
               {!groups.length && !official.length && (
-                <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
+                <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} onClick={() => trackSource(card.sources.find(s => s.authority === 'official')?.url || MIT)} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
                   {tx(lang, '意大利交通部 罢工公示表', 'Ministry of Transport strike list')}<ArrowUpRight size={12} weight="bold" />
                 </a>
               )}
@@ -460,7 +461,7 @@ function Group({ title, aside, children }: { title: string; aside?: string; chil
 }
 
 function Link({ href, children }: { href: string; children: React.ReactNode }) {
-  return <a href={href} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
+  return <a href={href} onClick={() => trackSource(href)} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
 }
 
 // Two unions striking the same workforce are one register story.

@@ -103,8 +103,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     return () => { clearTimeout(first); clearInterval(timer); document.removeEventListener('visibilitychange', back); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, on arrival
 
+  useEffect(() => { if (sheet) track('tool_sheet_opened', { tool: sheet, region: city.tag }); }, [sheet, city.tag]);
+
   const select = (date: string) => {
     if (date === selected) return;
+    track('strike_date_selected', { region: city.tag, day_offset: daysBetween(today, date), card_count: (byDate.get(date) || []).length });
     holdWalls(520); // the walls hold still while the days slide
     setDirection(Math.sign(daysBetween(selected, date)));
     setSelected(date);
@@ -123,7 +126,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     if (path === city.path) select(date);
     else router.push(`${path}?date=${date}`);
   };
-  const changeLang = (l: Lang) => { setLang(l); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, l); } catch { /* ignore */ } };
+  const changeLang = (l: Lang) => { if (l !== lang) track('language_changed', { language: l, previous_language: lang }); setLang(l); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, l); } catch { /* ignore */ } };
 
   // Your city: remembered when you open a city's page yourself (or pick it
   // in the city list), so the next visit to the bare address (a Home Screen
