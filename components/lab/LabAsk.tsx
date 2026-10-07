@@ -8,6 +8,9 @@ import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/p
 import { dayLabel, modeName, statusLine, tx, windowsText, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
 import { translateProvider } from '../i18n';
+import { track } from './track';
+import { analyticsContext } from '../../utils/analytics';
+import { askResultProperties } from '../../lib/analyticsContract';
 
 // The backend names striking staff in Chinese; English reads its own words.
 const who = (provider: string, lang: Lang) => (lang === 'en' ? translateProvider(provider, 'en').replace(/^\w/, ch => ch.toUpperCase()) : provider);
@@ -82,12 +85,22 @@ function readQuota(today: string) {
 
 export function useAsk({ region, lang, today, onOpenDate }: { region: string; lang: Lang; today: string; onOpenDate: (date: string, path: string) => void }) {
   const [query, setQuery] = useState('');
+  const [requestId, setRequestId] = useState<string | null>(null);
+  const currentRequest = useRef<string | null>(null);
+  useEffect(() => { track('ai_surface_viewed', { region }); return () => abort.current?.abort(); }, [region]);
   const [asked, setAsked] = useState('');
   const [hints, setHints] = useState<Hints>({});
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [stages, setStages] = useState<StageEvent[]>([]);
   const [result, setResult] = useState<AskResult | null>(null);
+  const [resultMeta, setResultMeta] = useState<Record<string, unknown>>({});
+  const viewedRequests = useRef(new Set<string>());
+  useEffect(() => {
+    if (!open || busy || !result || !requestId || viewedRequests.current.has(requestId)) return;
+    viewedRequests.current.add(requestId);
+    track('ai_result_viewed', { ...resultMeta, request_id: requestId, ...askResultProperties(result) });
+  }, [open, busy, result, requestId, resultMeta]);
   const [error, setError] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -100,12 +113,12 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   useEffect(() => { const t = setTimeout(() => setUsed(readQuota(today)), 0); return () => clearTimeout(t); }, [today]);
   const left = Math.max(DAILY_QUESTIONS - used, 0);
 
-  const go = (date: string, path: string) => { setOpen(false); onOpenDate(date, path); };
+  const go = (date: string, path: string, originId: string | null = currentRequest.current) => { track('ai_result_day_opened', { request_id: originId, region }); setOpen(false); onOpenDate(date, path); };
 
   // Answers are kept for the session: asking the same thing again, or
   // reopening the last answer, never spends another question.
   const keyOf = (q: string, h: Hints) => `${region}|${q.toLowerCase().replace(/\s+/g, ' ')}|${JSON.stringify(h)}`;
-  const remember = (key: string, value: { stages: StageEvent[]; result: AskResult }) => {
+  const remember = (key: string, value: { stages: StageEvent[]; result: AskResult; requestId?: string }) => {
     try {
       const all = JSON.parse(sessionStorage.getItem(CACHE_KEY) || '{}');
       all[key] = value;
@@ -114,10 +127,10 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(all));
     } catch { /* storage blocked */ }
   };
-  const recall = (key: string): { stages: StageEvent[]; result: AskResult } | null => {
+  const recall = (key: string): { stages: StageEvent[]; result: AskResult; requestId?: string } | null => {
     try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '{}')[key] ?? null; } catch { return null; }
   };
-  const reopen = () => { if (result || error) setOpen(true); };
+  const reopen = () => { if (result || error) { track('ai_answer_reopened', { request_id: requestId, region }); setOpen(true); } };
   const [history, setHistory] = useState<PastAnswer[]>([]);
   useEffect(() => { const t = setTimeout(() => setHistory(readHistory(region)), 0); return () => clearTimeout(t); }, [region]);
   const keep = (entry: PastAnswer) => {
@@ -129,11 +142,21 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     setHistory(readHistory(region));
   };
 
-  async function ask(text: string, next: Hints = {}) {
+  async function ask(text: string, next: Hints = {}, source: 'typed' | 'example' | 'refinement' = 'typed', parentId: string | null = requestId) {
     const q = text.trim().slice(0, 200);
     if (!q) return;
+    const id = crypto.randomUUID();
+    const started = performance.now();
+    setRequestId(id);
+    track('ai_query_submitted', { request_id: id, region, language: lang, input_source: source, parent_request_id: source === 'refinement' ? parentId : null, query_length: q.length, has_date_hint: !!next.date, has_range_hint: !!next.range, has_mode_hint: !!next.modes?.length });
+    // Supersede an old stream before checking cache/quota too.
+    abort.current?.abort(); currentRequest.current = id;
     const cached = recall(keyOf(q, next));
     if (cached) {
+      track('ai_cache_hit', { request_id: id, answer_origin_id: cached.requestId ?? null, region });
+      const meta = { request_id: id, result_source: 'cache', duration_ms: 0 };
+      setResultMeta(meta);
+      track('ai_response_received', { ...meta, ...askResultProperties(cached.result) });
       setAsked(q); setHints(next); setStages(cached.stages); setResult(cached.result); setError(null); setTrace(false); setBusy(false); setOpen(true);
       (document.activeElement as HTMLElement | null)?.blur();
       return;
@@ -141,19 +164,21 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     // Answering a clarification continues the held question; anything else
     // is a new one, as the server counts it.
     const sent = q === asked && Object.keys(next).length ? token.current : null;
-    if (!sent && readQuota(today) >= DAILY_QUESTIONS) { setAsked(q); setOpen(true); setResult(null); setStages([]); setError('daily'); return; }
-    abort.current?.abort();
+    if (!sent && readQuota(today) >= DAILY_QUESTIONS) { track('ai_query_blocked', { request_id: id, error_code: 'device_daily_limit' }); setAsked(q); setOpen(true); setBusy(false); setResult(null); setStages([]); setError('daily'); return; }
     const controller = new AbortController();
     abort.current = controller;
     setAsked(q); setHints(next); setOpen(true); setBusy(true); setStages([]); setResult(null); setError(null); setTrace(false);
     (document.activeElement as HTMLElement | null)?.blur();
+    let terminal = false;
     try {
-      const post = (refineToken: string | null) => fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q, city: region, hints: next, refineToken }), signal: controller.signal });
+      const post = (refineToken: string | null) => fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: q, city: region, hints: next, refineToken, analytics: analyticsContext(id) }), signal: controller.signal });
       let res = await post(sent);
       // a held clarification expires after a while: ask afresh
-      if (sent && res.status === 400) { token.current = null; res = await post(null); }
+      if (sent && res.status === 400) { track('ai_refinement_expired', { request_id: id }); token.current = null; res = await post(null); }
+      if (controller.signal.aborted) return;
       if (!res.ok || !res.body) {
         const reason = res.status === 429 ? ((await res.json().catch(() => ({}))).error === 'daily_limit' ? 'daily' : 'rate') : 'down';
+        track('ai_query_error', { request_id: id, error_code: reason, http_status: res.status, duration_ms: Math.round(performance.now() - started) });
         setError(reason); setBusy(false); return;
       }
       const reader = res.body.getReader();
@@ -162,6 +187,7 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
       const seen: StageEvent[] = [];
       for (;;) {
         const { value, done } = await reader.read();
+        if (controller.signal.aborted) return;
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
@@ -170,6 +196,11 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
           const event = JSON.parse(line);
           if (event.type === 'stage') { seen.push(event); setStages(prev => [...prev, event]); }
           else if (event.type === 'final') {
+            terminal = true;
+            const meta = { request_id: id, result_source: 'network', duration_ms: Math.round(performance.now() - started) };
+            setResultMeta(meta);
+            track('ai_response_received', { ...meta, ...askResultProperties(event.result) });
+            if (event.result.kind === 'clarify') track('ai_clarification_shown', { request_id: id, missing: event.result.missing });
             const answered = event.result.kind === 'result' || event.result.kind === 'navigate';
             if (event.result.kind === 'clarify') { token.current = event.refineToken ?? null; counted.current = false; }
             else token.current = null;
@@ -181,25 +212,33 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
             }
             if (answered) counted.current = true;
             setResult(event.result);
-            if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result });
-            if (event.result.kind === 'result') keep({ key: keyOf(q, next), q, hints: next, result: event.result, stages: seen, at: Date.now() });
+            if (event.result.kind === 'result' || event.result.kind === 'clarify') remember(keyOf(q, next), { stages: seen, result: event.result, requestId: id });
+            if (event.result.kind === 'result') keep({ key: keyOf(q, next), q, hints: next, result: event.result, stages: seen, requestId: id, at: Date.now() });
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
-          } else if (event.type === 'error') setError(event.error === 'budget' ? 'budget' : 'down');
+          } else if (event.type === 'error') {
+            terminal = true;
+            track('ai_query_error', { request_id: id, error_code: event.error === 'budget' ? 'budget' : 'down', duration_ms: Math.round(performance.now() - started) });
+            setError(event.error === 'budget' ? 'budget' : 'down');
+          }
         }
       }
+      if (!terminal) { track('ai_query_error', { request_id: id, error_code: 'incomplete_stream' }); setError('down'); }
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') setError('down');
+      const cancelled = controller.signal.aborted || (err as Error).name === 'AbortError';
+      if (!cancelled && !terminal) track('ai_query_error', { request_id: id, error_code: 'network_or_stream', duration_ms: Math.round(performance.now() - started) });
+      if (!cancelled && currentRequest.current === id) setError('down');
     } finally {
-      setBusy(false);
+      if (controller.signal.aborted && !terminal) track('ai_query_cancelled', { request_id: id, error_code: 'superseded_or_unmounted', duration_ms: Math.round(performance.now() - started) });
+      if (currentRequest.current === id) setBusy(false);
     }
   }
   // Picked modes replace the guessed ones (a correction, not an addition).
-  const refine = (patch: Hints) => ask(asked, { ...hints, ...patch });
+  const refine = (patch: Hints) => { track('ai_refinement_selected', { request_id: requestId, refinement_type: patch.modes ? 'mode' : patch.date ? 'date' : 'range' }); return ask(asked, { ...hints, ...patch }, 'refinement'); };
 
   const verdict = verdictOf(result, lang);
   const groups = groupsOf(result);
 
-  return { lang, today, region, query, setQuery, asked, hints, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen, history, keyOf };
+  return { requestId, lang, today, region, query, setQuery, asked, hints, open, setOpen, busy, stages, result, error, trace, setTrace, focused, setFocused, ask, refine, go, verdict, groups, left, reopen, history, keyOf };
 }
 
 function verdictOf(result: AskResult | null, lang: Lang): string[] | null {
@@ -221,7 +260,7 @@ function groupsOf(result: AskResult | null): [Mode, Judged[]][] {
 // Earlier answers, kept on this device, newest last: the answer sheet shows
 // them to the left of the current one.
 const HISTORY_KEY = 'lab_ask_history';
-export type PastAnswer = { key: string; q: string; hints: Hints; result: AskResult; stages: StageEvent[]; at: number };
+export type PastAnswer = { key: string; q: string; hints: Hints; result: AskResult; stages: StageEvent[]; at: number; requestId?: string };
 function readHistory(region: string): PastAnswer[] {
   try { return (JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') as PastAnswer[]).filter(h => h.key.startsWith(`${region}|`)); } catch { return []; }
 }
@@ -285,13 +324,13 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
   const common = {
     value: query, maxLength: 200, enterKeyHint: 'send' as const, disabled: out,
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => setQuery(e.target.value.replace(/\n/g, ' ')),
-    onFocus: () => setFocused(true), onBlur: () => setFocused(false),
+    onFocus: () => { if (!focused) track('ai_input_focused', { region: a.region, input_layout: big ? 'module' : 'bar' }); setFocused(true); }, onBlur: () => setFocused(false),
     'aria-label': tx(lang, '用一句话问罢工', 'Ask about strikes'),
   };
   return (
     <motion.form layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
       onSubmit={e => { e.preventDefault(); send(); }}
-      className={`relative w-full ${big ? 'rounded-[26px] pl-4 pr-1.5 py-1.5 flex items-end gap-2' : 'h-[56px] rounded-full pl-[58px] pr-1.5 flex items-center gap-2'}`}
+      className={`ph-no-capture relative w-full ${big ? 'rounded-[26px] pl-4 pr-1.5 py-1.5 flex items-end gap-2' : 'h-[56px] rounded-full pl-[58px] pr-1.5 flex items-center gap-2'}`}
       style={big ? { background: C.surface2, boxShadow: `inset 0 0 0 1px ${focused ? 'rgba(242,163,58,0.45)' : C.line}` } : PILL}>
       {/* While it works, a slow warm light travels the edge: the board's glow. */}
       {big && busy && <span aria-hidden className="pointer-events-none absolute -inset-px rounded-[27px] overflow-hidden" style={{ WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude', padding: 1.5 }}>
@@ -399,11 +438,11 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
   const [traces, setTraces] = useState<Record<string, boolean>>({});
   const pages: AskState[] = [
     ...past.map(h => ({
-      ...a, asked: h.q, hints: h.hints, busy: false, error: null, result: h.result, stages: h.stages,
+      ...a, requestId: h.requestId ?? null, go: (date: string, path: string) => a.go(date, path, h.requestId ?? null), asked: h.q, hints: h.hints, busy: false, error: null, result: h.result, stages: h.stages,
       verdict: verdictOf(h.result, lang), groups: groupsOf(h.result),
       trace: !!traces[h.key],
       setTrace: ((v: boolean | ((x: boolean) => boolean)) => setTraces(t => ({ ...t, [h.key]: typeof v === 'function' ? v(!!t[h.key]) : v }))) as AskState['setTrace'],
-      refine: (patch: Hints) => a.ask(h.q, { ...h.hints, ...patch }),
+      refine: (patch: Hints) => a.ask(h.q, { ...h.hints, ...patch }, 'refinement', h.requestId ?? null),
     })),
     a,
   ];
@@ -417,9 +456,17 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
     return () => clearTimeout(t);
   }, [open, current, last]);
   const shown = pages[Math.min(index, last)];
+  const lastViewed = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open || index === last) return;
+    const h = past[index];
+    if (!h || lastViewed.current === h.key) return;
+    lastViewed.current = h.key;
+    track('ai_history_viewed', { request_id: h.requestId ?? null, ...askResultProperties(h.result) });
+  }, [open, index, last, past]);
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title={tx(lang, '回答', 'Answer')} tall fit expand={shown.trace}
-      header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(shown)} size={18} /><p className="text-[16px] font-semibold leading-snug line-clamp-2">“{shown.asked}”</p></div>}>
+    <Sheet open={open} onClose={() => { track('ai_answer_closed', { request_id: a.requestId, was_busy: a.busy }); setOpen(false); }} title={tx(lang, '回答', 'Answer')} tall fit expand={shown.trace}
+      header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(shown)} size={18} /><p className="ph-no-capture text-[16px] font-semibold leading-snug line-clamp-2">“{shown.asked}”</p></div>}>
       {pages.length > 1 && (
         // where you are among your answers: the newest is the rightmost
         <div className="pt-0.5 pb-1 flex items-center justify-center gap-[5px]" aria-hidden>
@@ -429,7 +476,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
       <div ref={strip} onScroll={e => { const el = e.currentTarget; setIndex(Math.round(el.scrollLeft / el.clientWidth)); }}
         className="-mx-5 flex items-start overflow-x-auto snap-x snap-mandatory overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {pages.map((p, i) => (
-          <div key={i === last ? 'now' : p.asked + i} data-sheet-page={i === index ? '' : undefined} className="w-full shrink-0 snap-center px-5" aria-hidden={i !== index}>
+          <div key={i === last ? 'now' : p.asked + i} data-sheet-page={i === index ? '' : undefined} className="ph-no-capture w-full shrink-0 snap-center px-5" aria-hidden={i !== index}>
             <AnswerBody a={p} active={i === index} />
           </div>
         ))}
@@ -483,7 +530,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
             : result.place
             ? tx(lang, `暂时不覆盖「${result.place}」，目前只有 20 个城市的数据`, `“${result.place}” isn't covered yet — only 20 cities for now`)
             : tx(lang, '我只能回答意大利交通罢工的问题', 'I can only answer questions about Italian transport strikes')}</p>
-          {!result.place && !result.coverage && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
+          {!result.place && !result.coverage && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q, {}, 'example'); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
         </div>
       )}
 
@@ -500,7 +547,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
                 {result.range.from === result.range.to ? dayLabel(result.range.from, lang) : `${dayLabel(result.range.from, lang)} – ${dayLabel(result.range.to, lang)}`}
                 {result.understanding.time ? ` · ${result.understanding.time}` : ''}
               </p>
-              <Feedback key={asked} ask={a} inline />
+              <Feedback key={a.requestId ?? asked} ask={a} inline />
             </div>
           </div>
 
@@ -571,11 +618,11 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
       )}
 
       {result?.kind === 'result' && <ShareAnswer ask={a} />}
-      {result?.kind === 'clarify' && <Feedback key={asked} ask={a} />}
+      {result?.kind === 'clarify' && <Feedback key={a.requestId ?? asked} ask={a} />}
 
       {stages.length > 0 && (
         <div className="mt-3 mb-1">
-          <button data-sheet-fit={active ? '' : undefined} onClick={e => { const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+          <button data-sheet-fit={active ? '' : undefined} onClick={e => { track('ai_trace_toggled', { request_id: a.requestId, expanded: !trace }); const el = e.currentTarget; setTrace(v => !v); if (!trace) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 380); }} aria-expanded={trace} className="w-full flex items-center justify-between rounded-[12px] px-3 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
             <span>{tx(lang, `完整判断过程 · ${stages.length} 步 · ${(stages.reduce((s, x) => s + x.ms, 0) / 1000).toFixed(1)} 秒`, `Full decision trace · ${stages.length} steps`)}</span>
             <motion.span animate={{ rotate: trace ? 180 : 0 }} className="flex"><CaretDown size={13} weight="bold" /></motion.span>
           </button>
@@ -635,6 +682,7 @@ function ShareAnswer({ ask: a }: { ask: AskState }) {
   const [copied, setCopied] = useState(false);
   if (result?.kind !== 'result') return null;
   const share = async () => {
+    track('ai_answer_share_clicked', { request_id: a.requestId });
     const day = result.range.from;
     const url = `${window.location.origin}${window.location.pathname}?date=${day}`;
     const head = verdict ? (verdict[1] ? tx(lang, verdict[0], verdict[1]) : verdict[0]) : '';
@@ -661,16 +709,23 @@ function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean 
   const [rating, setRating] = useState<'good' | 'bad' | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const pending = useRef(false);
   // Only say thanks when it was actually stored; otherwise offer a retry.
   const send = async (r: 'good' | 'bad', why: string | null = null) => {
+    if (pending.current) return;
+    pending.current = true; setSaving(true);
     setFailed(false);
+    track('ai_feedback_submitted', { request_id: a.requestId, rating: r, reason: why });
     try {
       const res = await fetch('/api/ask/feedback', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating: r, reason: why, query: asked, city: a.region, answer: result, trace: stages.map(s => ({ id: s.id, ms: s.ms, facts: s.facts })) }),
+        body: JSON.stringify({ rating: r, reason: why, analytics: a.requestId ? analyticsContext(a.requestId) : null, query: asked, city: a.region, answer: result, trace: stages.map(s => ({ id: s.id, ms: s.ms, facts: s.facts })) }),
       });
       if (!res.ok) throw new Error(String(res.status));
-    } catch { setFailed(true); setRating(null); setReason(null); }
+      track('ai_feedback_saved', { request_id: a.requestId, rating: r, reason: why });
+    } catch { track('ai_feedback_error', { request_id: a.requestId, rating: r, reason: why }); setFailed(true); setRating(null); setReason(null); }
+    finally { pending.current = false; setSaving(false); }
   };
   const chip = inline ? 'rgba(255,255,255,0.08)' : C.surface3;
   return (
@@ -678,8 +733,8 @@ function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean 
       {rating === null ? (
         <div className="flex items-center gap-2">
           <span className="flex-1 text-[13px]" style={{ color: failed ? C.stop : C.text2 }}>{failed ? tx(lang, '没提交成功，再点一次试试', 'Not sent — try again') : tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
-          <button onClick={() => { setRating('good'); send('good'); }} aria-label={tx(lang, '答得好', 'Good answer')} className="h-8 px-2.5 rounded-full flex items-center gap-1 text-[12.5px] font-medium" style={{ background: chip, color: C.text }}><ThumbsUp size={14} weight="bold" />{tx(lang, '答得好', 'Good')}</button>
-          <button onClick={() => setRating('bad')} aria-label={tx(lang, '答得不好', 'Bad answer')} className="h-8 px-2.5 rounded-full flex items-center gap-1 text-[12.5px] font-medium" style={{ background: chip, color: C.text }}><ThumbsDown size={14} weight="bold" />{tx(lang, '不好', 'Bad')}</button>
+          <button onClick={() => { track('ai_feedback_selected', { request_id: a.requestId, rating: 'good' }); setRating('good'); send('good'); }} aria-label={tx(lang, '答得好', 'Good answer')} className="h-8 px-2.5 rounded-full flex items-center gap-1 text-[12.5px] font-medium" style={{ background: chip, color: C.text }}><ThumbsUp size={14} weight="bold" />{tx(lang, '答得好', 'Good')}</button>
+          <button onClick={() => { track('ai_feedback_selected', { request_id: a.requestId, rating: 'bad' }); setRating('bad'); }} aria-label={tx(lang, '答得不好', 'Bad answer')} className="h-8 px-2.5 rounded-full flex items-center gap-1 text-[12.5px] font-medium" style={{ background: chip, color: C.text }}><ThumbsDown size={14} weight="bold" />{tx(lang, '不好', 'Bad')}</button>
         </div>
       ) : rating === 'bad' && reason === null ? (
         <div>
@@ -691,7 +746,7 @@ function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean 
           </div>
         </div>
       ) : (
-        <p className="text-[13.5px] flex items-center gap-1.5" style={{ color: C.text2 }}><Check size={14} weight="bold" color={C.ok} />{tx(lang, '谢谢，我们会用它改进回答', 'Thanks — this helps us improve')}</p>
+        <p className="text-[13.5px] flex items-center gap-1.5" style={{ color: C.text2 }}><Check size={14} weight="bold" color={C.ok} />{saving ? tx(lang, '正在提交…', 'Sending…') : tx(lang, '谢谢，我们会用它改进回答', 'Thanks — this helps us improve')}</p>
       )}
     </div>
   );

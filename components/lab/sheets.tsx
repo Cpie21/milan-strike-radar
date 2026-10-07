@@ -78,7 +78,7 @@ export function CitySheet({ cities, current, status, today, ...base }: Base & { 
       <div className="flex flex-col gap-2 pb-2">
         {list.map(city => (
           <a key={city.tag} href={city.path} aria-busy={going === city.tag}
-            onClick={e => { try { localStorage.setItem('italy_strike_city', city.path); } catch { /* storage blocked */ } if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
+            onClick={e => { if (city.tag !== current) track('city_selected', { region: city.tag, previous_region: current }); try { localStorage.setItem('italy_strike_city', city.path); } catch { /* storage blocked */ } if (city.tag === current) { e.preventDefault(); base.onClose(); return; } setGoing(city.tag); }}
             className="relative overflow-hidden flex items-center justify-between gap-3 h-[64px] px-4 rounded-[16px] active:scale-[0.99] transition-transform"
             style={{ background: city.tag === current || going === city.tag ? '#272A30' : '#1E2025', opacity: going && going !== city.tag ? 0.5 : 1 }}>
             {going === city.tag && <motion.span aria-hidden className="absolute inset-y-0 left-0 w-1/3" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} animate={{ x: ['-100%', '300%'] }} transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }} />}
@@ -119,7 +119,8 @@ export function CalendarSheet({ region, cityName, ...base }: Base & { region: st
     if (!types.size) return;
     const host = isLocal(window.location.host) ? PROD_HOST : window.location.host;
     const param = [...types].map(t => (t === 'AIRPORT' ? 'airport' : t.toLowerCase())).join(',');
-    track('calendar_sync_clicked', { region });
+    track('calendar_sync_clicked', { region, modes: [...types] });
+    track('calendar_subscription_requested', { region, modes: [...types] });
     window.location.assign(`webcal://${host}/api/calendar?types=${encodeURIComponent(param)}&region=${encodeURIComponent(region)}`);
   };
   return (
@@ -146,7 +147,12 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
   const copy = async () => {
     const origin = isLocal(window.location.host) ? `https://${PROD_HOST}` : window.location.origin;
     const code = buildLabWidgetScript({ origin, region, types: [...types], cityName, path: cityPath, lang: base.lang });
-    await navigator.clipboard?.writeText(code);
+    track('widget_copy_clicked', { region, modes: [...types] });
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(code);
+      track('widget_copy_succeeded', { region });
+    } catch { track('widget_copy_failed', { region }); return; }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
