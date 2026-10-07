@@ -94,6 +94,13 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
   const [busy, setBusy] = useState(false);
   const [stages, setStages] = useState<StageEvent[]>([]);
   const [result, setResult] = useState<AskResult | null>(null);
+  const [resultMeta, setResultMeta] = useState<Record<string, unknown>>({});
+  const viewedRequests = useRef(new Set<string>());
+  useEffect(() => {
+    if (!open || busy || !result || !requestId || viewedRequests.current.has(requestId)) return;
+    viewedRequests.current.add(requestId);
+    track('ai_result_viewed', { ...resultMeta, request_id: requestId, ...askResultProperties(result) });
+  }, [open, busy, result, requestId, resultMeta]);
   const [error, setError] = useState<string | null>(null);
   const [trace, setTrace] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -147,7 +154,9 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
     const cached = recall(keyOf(q, next));
     if (cached) {
       track('ai_cache_hit', { request_id: id, answer_origin_id: cached.requestId ?? null, region });
-      track('ai_result_viewed', { request_id: id, ...askResultProperties(cached.result), result_source: 'cache', duration_ms: 0 });
+      const meta = { request_id: id, result_source: 'cache', duration_ms: 0 };
+      setResultMeta(meta);
+      track('ai_response_received', { ...meta, ...askResultProperties(cached.result) });
       setAsked(q); setHints(next); setStages(cached.stages); setResult(cached.result); setError(null); setTrace(false); setBusy(false); setOpen(true);
       (document.activeElement as HTMLElement | null)?.blur();
       return;
@@ -188,7 +197,9 @@ export function useAsk({ region, lang, today, onOpenDate }: { region: string; la
           if (event.type === 'stage') { seen.push(event); setStages(prev => [...prev, event]); }
           else if (event.type === 'final') {
             terminal = true;
-            track('ai_result_viewed', { request_id: id, ...askResultProperties(event.result), result_source: 'network', duration_ms: Math.round(performance.now() - started) });
+            const meta = { request_id: id, result_source: 'network', duration_ms: Math.round(performance.now() - started) };
+            setResultMeta(meta);
+            track('ai_response_received', { ...meta, ...askResultProperties(event.result) });
             if (event.result.kind === 'clarify') track('ai_clarification_shown', { request_id: id, missing: event.result.missing });
             const answered = event.result.kind === 'result' || event.result.kind === 'navigate';
             if (event.result.kind === 'clarify') { token.current = event.refineToken ?? null; counted.current = false; }

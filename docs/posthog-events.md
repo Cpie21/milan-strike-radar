@@ -1,6 +1,6 @@
 # Production PostHog event contract
 
-Project 136776 (EU Cloud, existing project token confirmed against production). Version `analytics_version=1`. This release restores the redesigned site's events without changing strike parsing, AI decisions/models/budget, database schema or visual design.
+Project 136776 (EU Cloud, existing project token confirmed against production). Version `analytics_version=2`. This release restores the redesigned site's events without changing strike parsing, AI decisions/models/budget, database schema or visual design.
 
 ## Audit before repair (2026-10-07 08:18 UTC)
 
@@ -15,7 +15,7 @@ Root now renders LabRoute. `components/lab/track.ts` was a development-only cons
 - Browser QA can set sessionStorage `strike_analytics_test=1` **before reloading**. Filter `is_test != true` for real traffic. Older events have no version/test properties; don't require version on historical reports. Domain filtering remains useful for historical localhost traffic.
 - No keystroke events. No raw queries, answers, prompts, itinerary dates, named lines, stage fact values, IPs, refinement tokens or private traces are explicitly sent. SDK URL query/fragment is removed except utm_source/medium/campaign; nested initial URLs are scrubbed too. Autocapture masks text/attributes; recording masks inputs/text, disables console and request/response bodies/headers. Ask form, question heading and answer pages additionally use `ph-no-capture`.
 - Raw good/bad examples remain service-only in Supabase. New feedback `answer.analytics` stores `{requestId, version}` for linking a private evaluation to its PostHog flow; no identity or raw query is added to PostHog. Existing feedback rows remain readable. No SQL migration or feedback response change.
-- Analytics delivery failures do not change answers/ratings. Server events flush via `after()` with bounded SDK requests. Ad blockers/offline clients, opt-out, or platform termination can still prevent delivery. Server completions and client viewed results are separate facts.
+- Analytics delivery failures do not change answers/ratings. Server events flush via `after()` with bounded SDK requests. Ad blockers/offline clients, opt-out, or platform termination can still prevent delivery. Server completions, browser-received responses and answers displayed in an open sheet are separate facts.
 
 ## Legacy events restored
 
@@ -49,7 +49,8 @@ Each attempted ask has a random `request_id`; refinements carry `parent_request_
 | `ai_query_completed` | API | Answer/clarification/out-of-scope produced and session finalized; result summary, elapsed_ms, client_disconnected |
 | `ai_query_failed` | API | Pipeline/budget/session finalization failed; bounded error_code |
 | `ai_client_disconnected` | API | Stream cancelled; server may still finish independently |
-| `ai_result_viewed` | Browser | Final result received or cache loaded into current answer state; network/cache, duration_ms, summary |
+| `ai_response_received` | Browser | Final frame received or cache loaded, even if sheet was closed while waiting; network/cache, duration_ms, summary |
+| `ai_result_viewed` | Browser | Result rendered with answer sheet open and loading complete; once per attempt. A background answer counts here only when reopened |
 | `ai_clarification_shown` | Browser | Received clarification; missing date/mode |
 | `ai_refinement_selected` | Browser | Current answer's date/range/mode control chosen |
 | `ai_refinement_expired` | Browser | Held token rejected, retried as a new question; same attempt id |
@@ -84,6 +85,6 @@ Result summary: kind, intent, date/city method, modes/methods, fallback, named_l
 
 ## Validation
 
-322 regressions and TypeScript passed. Analytics tests cover malformed/PII identities, no-context/opt-out, period counts, nested URL redaction, legacy once/storage-blocked behavior, streaming completion, admission limits, session-finalization failure, disconnect, successful/failed feedback inserts, SDK outage isolation. Browser/PostHog production receipts are added after release verification.
+322 regressions and TypeScript passed. Analytics tests cover malformed/PII identities, no-context/opt-out, period counts, nested URL redaction, legacy once/storage-blocked behavior, streaming completion, admission limits, session-finalization failure, disconnect, successful/failed feedback inserts, SDK outage isolation. Initial runtime 9bc7800 / deployment dpl_F5VcpVUeThzyZ1yvbweHmpPEDAhZ was READY. At 08:32 UTC, PostHog ingested both client and server query events under one synthetic UUID, all marked is_test=true, including four server stages, completion and browser result. The single synthetic query cost $0.000029022 under the existing budget. Version 2 separates response receipt from actual display after noticing that a user can close the sheet while waiting. Final release receipts follow below.
 
 Implementation uses the already-installed SDKs and same project; no new LLM or hosting dependency. Reference: [PostHog Next.js server analytics](https://posthog.com/docs/libraries/next-js#server-side-analytics), [JavaScript configuration](https://posthog.com/docs/libraries/js/config).
