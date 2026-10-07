@@ -65,6 +65,7 @@ test('server completion, stages and browser correlation are emitted once after s
     await h.flush();
     assert.deepEqual(h.sent.map(e => e.event), ['ai_query_started', 'ai_stage_completed', 'ai_query_completed']);
     assert.ok(h.sent.every(e => e.properties.request_id === id && e.distinctId === distinct));
+    assert.ok(h.sent.every(e => Object.prototype.toString.call(e.timestamp) === '[object Date]'));
     assert.ok(!JSON.stringify(h.sent).includes('PRIVATE')); assert.ok(h.sent.every(e => e.properties.is_test));
   } finally { h.restore(); }
 });

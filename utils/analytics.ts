@@ -2,7 +2,7 @@
  * PostHog Analytics Helpers
  * 
  * captureOnce: fires `posthog.capture` only the FIRST time per device.
- * Uses localStorage as a deduplication store (best-effort IP-level dedup on client).
+ * Uses localStorage for per-browser-device deduplication; it is not IP deduplication.
  */
 import posthog from 'posthog-js';
 import { ANALYTICS_VERSION, readAnalyticsContext, type AnalyticsContext } from '../lib/analyticsContract';
