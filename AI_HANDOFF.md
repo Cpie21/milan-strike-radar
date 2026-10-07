@@ -1,5 +1,9 @@
 # AI handoff
 
+## Ask feedback triage registry
+
+See `docs/ai-case-status.md` before re-triaging submitted good/bad cases. October 7 check: private production has one bad (feedback4) and two good (3/5). Feedback4's observable explicit-English-date → unnecessary-clarification failure is RESOLVED_VERIFIED: Claude44fc534 fix, original-input production replay200 with rule date2026-10-07 and final result, and a named permanent regression. Preserve original bad ratings; record closure separately, reopen only with fresh evidence. Public repo uses anonymized descriptions/synthetic queries only. Good ratings are not certified facts. Existing summaries omit period `days`, request hints and runtime version, limiting retrospective diagnosis; no schema/API change or AI logic fix in this review. Future fixes should update the registry and regression in the same PR; no repeated paid replay of already-closed cases without new evidence.
+
 ## Regulator detail adoption follow-up (Codex)
 
 `codex/regulator-detail-fields` builds on Claude's `11b9969`. CGSSE readable Drupal detail pages were falling through the generic article parser: company labels merged into values and generic heading became geography, so October 16 easyJet failed matching despite access200. Parse the single labelled detail row with explicit event date, union, provider, geography and status; fail closed on malformed/duplicate views. Preserve existing date/operator/union/location fences. Equal clock windows now compare canonical values, avoiding false conflicts from DB JSON key order. CTM polls both comunicati and notizie. No schema/API/UI change or new AI stage. 313 tests/typecheck pass; actual detail fixture retained. See `docs/2026-10-06-source-detail-recheck.md` for checked scope and remaining gaps: Trenord generic rules/guaranteed-train list are real but NOT yet integrated, and old Toscana articles cannot enrich a 2026 strike. Access success is not passenger-detail adoption.
