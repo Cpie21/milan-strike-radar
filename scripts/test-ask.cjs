@@ -29,6 +29,18 @@ test('explicit dates, including the year rollover', () => {
   assert.equal(parseScope('2026-11-21', SUNDAY).date, '2026-11-21');
 });
 
+test('ASK-DATE-EN-ORDINAL-001: a specified ordinal month date never needs date clarification', () => {
+  // Synthetic equivalents of private feedback #4; preserve its reference day
+  // instead of allowing a future wall-clock date to change the expected year.
+  for (const today of ['2026-10-06', '2026-10-07']) {
+    for (const query of ['Is there a strike the 7th of October?', 'I have a trip the 7th of October.']) {
+      const parsed = parseQuery(query, today);
+      assert.equal(parsed.scope?.kind, 'day');
+      assert.equal(parsed.scope?.date, '2026-10-07');
+    }
+  }
+});
+
 test('on a Sunday "this week" means the coming week, not one day', () => {
   assert.equal(weekEnd(SUNDAY), '2026-10-11');
   const scope = parseScope('这周有罢工吗', SUNDAY);
