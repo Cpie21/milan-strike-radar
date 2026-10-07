@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { monthLabel, weekday, type Lang, type Mode, type RailTile } from '../../lib/lab/model';
 import { ModeBadge } from './ui';
+import { track } from './track';
+import { daysBetween } from '../../lib/lab/model';
 import { C, MODE_COLOR, NUM, SPRING } from './theme';
 
 const TILE_W = 54;
@@ -26,6 +28,7 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
   // The title follows the rail only when you scroll it yourself; placing the
   // selected day leaves it on the selected day's month.
   const browsing = useRef(false);
+  const browsed = useRef('');
   const reduce = useReducedMotion();
   const days = tiles.filter((t): t is Extract<RailTile, { kind: 'day' }> => t.kind === 'day');
   const past = days.filter(t => t.date < today);
@@ -64,7 +67,7 @@ export default function DateRail({ tiles, today, selected, lang, onSelect, onMon
     const anchor = strip.scrollLeft + PEEK + 12;
     const items = [...strip.querySelectorAll<HTMLElement>('[data-month]')];
     const hit = items.find(el => el.offsetLeft <= anchor && el.offsetLeft + el.offsetWidth + GAP > anchor);
-    if (hit?.dataset.month) onMonth(hit.dataset.month);
+    if (hit?.dataset.month) { const month = hit.dataset.month.slice(0, 7); if (browsed.current !== month) { browsed.current = month; track('date_rail_browsed', { month_offset: (Number(month.slice(0, 4)) - Number(today.slice(0, 4))) * 12 + Number(month.slice(5)) - Number(today.slice(5, 7)), day_offset: daysBetween(today, hit.dataset.month) }); } onMonth(hit.dataset.month); }
   };
 
   return (

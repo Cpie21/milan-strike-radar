@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, CalendarDots, CalendarPlus, CaretDown, CaretRight, CheckCircle, MapPin, PlusSquare } from '@phosphor-icons/react';
@@ -19,6 +19,8 @@ import { ModeBadge } from './ui';
 import MonthSheet from './MonthSheet';
 import { C, EASE, MODE_COLOR, NUM, R, SANS, SPRING, TONAL, TYPE } from './theme';
 import { track } from './track';
+import { setAnalyticsPageContext } from '../../utils/analytics';
+import { useAttention } from './useAttention';
 import { holdWalls } from './wall/PixelWall';
 
 type City = { tag: string; zh: string; en: string; path: string };
@@ -32,7 +34,7 @@ function romeMinutes() {
   return h * 60 + m;
 }
 
-export default function LabApp({ city, cities, cards, today, from, to, initialDate, initialMinutes, cityStatus, translations }: {
+export default function LabApp({ city, cities, cards, today, from, to, initialDate, initialMinutes, cityStatus, translations, lastSync }: {
   city: City; cities: City[]; cards: ModeCard[]; today: string; from: string; to: string; initialDate: string; lastSync: string | null; initialMinutes: number; cityStatus: CityStatus; translations: Record<string, Translation>;
 }) {
   const reduce = useReducedMotion();
@@ -45,6 +47,15 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   const [sheet, setSheet] = useState<SheetName>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [wechat, setWechat] = useState(false);
+  const pageId = useRef('');
+  const [preferencesReady, setPreferencesReady] = useState(false);
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (!preferencesReady) return;
+    if (!pageId.current) pageId.current = crypto.randomUUID();
+    setAnalyticsPageContext({ region: city.tag, language: lang, page_view_id: pageId.current, app_mode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser' });
+    if (!arrived.current) { arrived.current = true; track('product_page_viewed', { has_shared_date: new URLSearchParams(window.location.search).has('date'), has_sync_timestamp: !!lastSync }); }
+  }, [city.tag, lang, lastSync, preferencesReady]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, ModeCard[]>();
@@ -84,6 +95,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
         setLang(stored === 'en' || stored === 'zh' ? stored : detectBrowserLanguage());
       } catch { /* storage blocked */ }
+      setPreferencesReady(true);
       if (/MicroMessenger/i.test(navigator.userAgent)) { setWechat(true); track('wechat_jump_success'); }
       // The page is cached for everyone; the day a link points at is read here.
       const linked = new URLSearchParams(window.location.search).get('date');
@@ -97,7 +109,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     const back = () => {
       if (document.visibilityState !== 'visible') return;
       tick();
-      if (Date.now() - fetched > 10 * 60_000) { fetched = Date.now(); router.refresh(); }
+      if (Date.now() - fetched > 10 * 60_000) { fetched = Date.now(); track('product_refresh_requested', { reason: 'foreground_after_ten_minutes', region: city.tag }); router.refresh(); }
     };
     document.addEventListener('visibilitychange', back);
     return () => { clearTimeout(first); clearInterval(timer); document.removeEventListener('visibilitychange', back); };
@@ -105,9 +117,9 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
   useEffect(() => { if (sheet) track('tool_sheet_opened', { tool: sheet, region: city.tag }); }, [sheet, city.tag]);
 
-  const select = (date: string) => {
+  const select = (date: string, source = 'rail') => {
     if (date === selected) return;
-    track('strike_date_selected', { region: city.tag, day_offset: daysBetween(today, date), card_count: (byDate.get(date) || []).length });
+    track('strike_date_selected', { region: city.tag, day_offset: daysBetween(today, date), selection_source: source, card_count: (byDate.get(date) || []).length });
     holdWalls(520); // the walls hold still while the days slide
     setDirection(Math.sign(daysBetween(selected, date)));
     setSelected(date);
@@ -124,7 +136,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     setTimeout(() => setHighlight(null), 1200);
   };
   const openDate = (date: string, path: string) => {
-    if (path === city.path) select(date);
+    if (path === city.path) select(date, 'ai');
     else router.push(`${path}?date=${date}`);
   };
   const changeLang = (l: Lang) => { if (l !== lang) track('language_changed', { language: l, previous_language: lang }); setLang(l); try { localStorage.setItem(LANGUAGE_STORAGE_KEY, l); } catch { /* ignore */ } };
@@ -136,10 +148,11 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   useEffect(() => { try { if (!window.location.search) localStorage.setItem(CITY_KEY, city.path); } catch { /* storage blocked */ } }, [city.path]);
 
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
-  const ask = useAsk({ region: city.tag, lang, today, attentionActive: !sheet, onOpenDate: (date, path) => openDate(date, path) });
+  const ask = useAsk({ region: city.tag, lang, today, attentionActive: !sheet && !wechat, onOpenDate: (date, path) => openDate(date, path) });
   // A day whose strikes were all called off is a calm day too: the board and
   // its question field sit under the cancelled cards, and the bar goes away.
   const calm = active.length === 0;
+  const dayExposure = useAttention<HTMLDivElement>(`${city.tag}:${selected}`, 'day_summary_viewed', { region: city.tag, day_offset: daysBetween(today, selected), active_card_count: active.length, cancelled_card_count: dayCards.length - active.length, state: active.length ? 'strikes' : dayCards.length ? 'all_cancelled' : 'clear' }, preferencesReady && !sheet && !ask.open && !wechat, [1]);
   const neighbour = (iso: string, mode: Mode) => (byDate.get(iso) || []).find(c => c.category === mode);
   // Days sit side by side: the old one slides out as the new one slides in,
   // at the pace of the rail's own selection, with nothing fading first.
@@ -217,13 +230,13 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         </AnimatePresence>
 
         <div className="px-4 pt-3">
-          <div data-day-stage className="relative -mx-4 px-4" style={{ overflowX: 'clip' }}>
+          <div ref={dayExposure} data-day-stage className="relative -mx-4 px-4" style={{ overflowX: 'clip' }}>
           <AnimatePresence mode="popLayout" initial={false} custom={direction}>
             <motion.div key={selected} custom={direction} variants={variants} initial="enter" animate="center" exit="exit" transition={reduce ? { duration: 0.15 } : SPRING} className="flex flex-col gap-3">
               {dayCards.length ? dayCards.map(card => {
                 const prev = neighbour(addDaysIso(selected, -1), card.category);
                 const nxt = neighbour(addDaysIso(selected, 1), card.category);
-                return <LabStrikeCard key={card.id} card={card} ctx={ctx} highlighted={highlight === card.id} attentionActive={!sheet && !ask.open}
+                return <LabStrikeCard key={card.id} card={card} ctx={ctx} highlighted={highlight === card.id} attentionActive={!sheet && !ask.open && !wechat}
                   prev={continuesOvernight(prev, card) ? prev : undefined} next={continuesOvernight(card, nxt) ? nxt : undefined} />;
               }) : (
                 // The day's answer, then (as a footnote of it, not a sibling)
@@ -233,7 +246,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
                   <p className={`mt-3 ${TYPE.title}`}>{tx(lang, '无交通罢工', 'No transport strikes')}</p>
                   <p className={`mt-1 ${TYPE.body}`} style={{ color: C.text2 }}>{tx(lang, '安心出行', 'Travel with peace of mind')}</p>
                   {next && (
-                    <button onClick={() => select(next)} className={`mt-5 h-9 pl-3.5 pr-2.5 rounded-full flex items-center gap-2 ${TYPE.label}`} style={{ background: C.surface2 }}>
+                    <button onClick={() => select(next, 'next_strike')} className={`mt-5 h-9 pl-3.5 pr-2.5 rounded-full flex items-center gap-2 ${TYPE.label}`} style={{ background: C.surface2 }}>
                       <span style={{ color: C.text3 }}>{tx(lang, '下一次', 'Next')}</span>
                       <span className="font-semibold" style={{ color: C.text }}>{dayLabel(next, lang)}</span>
                       <span className="flex gap-1">{[...new Set((byDate.get(next) || []).filter(isActive).map(c => c.category))].map(m => <ModeBadge key={m} mode={m} size={16} />)}</span>
@@ -279,7 +292,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
           <motion.footer layout="position" transition={SPRING} className="mt-8 mb-2 px-6 flex flex-col items-center gap-1.5 text-center text-[11.5px] leading-[1.5]" style={{ color: C.text3 }}>
             <p>© {today.slice(0, 4)} 21°C · {tx(lang, '意大利罢工查询', 'Italy Strike Radar')}</p>
             <p className="max-w-[340px]" style={{ opacity: 0.8 }}>{tx(lang, '基于 MIT License 开源。信息来自意大利交通部与各运营方公告，重要出行请以官方为准。', 'Open source under the MIT License. Data from the Italian Ministry of Transport and operators; check official sources before important trips.')}</p>
-            <a href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-0.5 underline-offset-2 hover:underline" style={{ color: C.text2 }}>
+            <a onClick={() => track('social_link_clicked', { destination: 'xiaohongshu' })} href="https://xhslink.com/m/6T4mEqx0B1s" target="_blank" rel="noreferrer" className="mt-0.5 inline-flex items-center gap-0.5 underline-offset-2 hover:underline" style={{ color: C.text2 }}>
               {tx(lang, '关注 · 小红书', 'Follow on Xiaohongshu')}<ArrowUpRight size={11} weight="bold" />
             </a>
           </motion.footer>
@@ -292,7 +305,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
         {!calm && <AskField key="dock" ask={ask} />}
       </AnimatePresence>
       <AskSheet ask={ask} />
-      <MonthSheet open={sheet === 'month'} onClose={() => setSheet(null)} lang={lang} byDate={byDate} from={from} to={to} today={today} selected={selected} onSelect={select} />
+      <MonthSheet open={sheet === 'month'} onClose={() => setSheet(null)} lang={lang} byDate={byDate} from={from} to={to} today={today} selected={selected} onSelect={date => select(date, 'month')} />
 
       <CitySheet open={sheet === 'city'} onClose={() => setSheet(null)} lang={lang} cities={cities} current={city.tag} status={cityStatus} today={today} />
       <CalendarSheet open={sheet === 'calendar'} onClose={() => setSheet(null)} lang={lang} region={city.tag} cityName={name} />
@@ -302,7 +315,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
       <AnimatePresence>
         {wechat && (
-          <motion.div className="fixed inset-0 z-[120] flex flex-col items-end px-6 pt-6" style={{ background: 'rgba(5,6,8,0.88)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setWechat(false)}>
+          <motion.div className="fixed inset-0 z-[120] flex flex-col items-end px-6 pt-6" style={{ background: 'rgba(5,6,8,0.88)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { track('wechat_notice_dismissed'); setWechat(false); }}>
             <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden><path d="M12 64 C 30 50, 48 34, 60 12" stroke="white" strokeWidth="2.5" strokeLinecap="round" /><path d="M48 12 L 61 10 L 63 23" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             <div className="mt-4 self-center text-center max-w-[300px]">
               <p className="text-[21px] font-bold">{tx(lang, '点击右上角，在浏览器打开', 'Open in your browser')}</p>

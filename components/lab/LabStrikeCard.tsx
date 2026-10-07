@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { Observed } from './Telemetry';
 import { useAttention } from './useAttention';
 import { shareOutcome } from '../../utils/shareOutcome';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
@@ -121,7 +122,7 @@ function clauses(text: string) {
 
 export default function LabStrikeCard({ card, prev, next, ctx, highlighted, attentionActive = true }: { card: ModeCard; prev?: ModeCard; next?: ModeCard; ctx: CardContext; highlighted: boolean; attentionActive?: boolean }) {
   const { lang } = ctx;
-  const attention = useAttention<HTMLElement>(card.id, 'strike_card_attention', { region: ctx.region, transport_type: card.category, status: card.status, timing_known: !!card.windows.length, line_scope: card.lineScope, has_guarantees: !!card.guarantees.length }, attentionActive);
+  const attention = useAttention<HTMLElement>(card.id, 'strike_card_attention', { card_id: card.id, region: ctx.region, transport_type: card.category, status: card.status, timing_known: !!card.windows.length, line_scope: card.lineScope, has_guarantees: !!card.guarantees.length }, attentionActive);
   const reduce = useReducedMotion();
   const isToday = card.date === ctx.today;
   const mode = MODE_COLOR[card.category];
@@ -193,7 +194,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted, atte
               <Journey lang={lang} start={span.start} end={span.end} />
               {/* The notice says "end of service"; a timetable time is only a reference beside it */}
               {span.end === null && card.scheduledEnd && (
-                <a href={card.scheduledEnd.source} onClick={() => trackSource(card.scheduledEnd!.source, { source_type: 'schedule' })} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
+                <a href={card.scheduledEnd.source} onClick={() => trackSource(card.scheduledEnd!.source, { card_id: card.id, transport_type: card.category, source_type: 'schedule', source_authority: 'official' })} target="_blank" rel="noreferrer" className={`mt-1 ${TYPE.caption} underline underline-offset-2`} style={{ color: C.text3, fontFamily: SANS, textDecorationColor: C.lineStrong }}>
                   {tx(lang, `时刻表末班参考：${card.scheduledEnd.label}`, `Timetable last service: ${card.scheduledEnd.labelEn ?? card.scheduledEnd.label}`)}
                 </a>
               )}
@@ -234,7 +235,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted, atte
           ) : <Bar card={card} lang={lang} now={isToday ? nowPosition(ctx.nowMinutes) : null} />}
         </div>
 
-        <Details card={card} lang={lang} say={t => (lang === 'en' && ctx.tr[t.trim()] ? ctx.tr[t.trim()].en : t)} />
+        <Details active={attentionActive} card={card} lang={lang} say={t => (lang === 'en' && ctx.tr[t.trim()] ? ctx.tr[t.trim()].en : t)} />
 
         {card.indirect && (
           <p className={`mt-3 flex gap-2 rounded-[12px] px-3.5 py-2.5 ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>
@@ -245,7 +246,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted, atte
       </div>
 
       <Actions card={card} ctx={ctx} />
-      <Evidence card={card} ctx={ctx} />
+      <Evidence active={attentionActive} card={card} ctx={ctx} />
     </motion.article>
   );
 }
@@ -284,7 +285,7 @@ function Journey({ start, end, lang, startDay, endDay }: { start: string | null;
 // is boxed apart or left empty.
 
 
-function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: string) => string }) {
+function Details({ card, lang, say, active }: { active: boolean; card: ModeCard; lang: Lang; say: (text: string) => string }) {
   const impacts = card.impacts ?? [];
   const lineImpacts = impacts.filter(i => i.lines);
   // Named by the notice (certain), else the operator's lines (possible).
@@ -329,10 +330,10 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
     <div className="mt-5">
       <dl className="rounded-[16px] px-3.5" style={{ background: C.surface2 }}>
         {rows.map(([label, value, key], i) => (
-          <div key={key} className="flex items-start gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
+          <Observed key={key} event="strike_detail_viewed" identity={`${card.id}:${key}`} properties={{ card_id: card.id, section: key, transport_type: card.category, line_scope: card.lineScope, guarantee_source: card.guaranteeSource, scope_type: card.scopeType }} active={active} className="flex items-start gap-4 py-3" style={{ borderTop: i ? `1px solid ${C.line}` : undefined }}>
             <dt className={`shrink-0 ${TYPE.label} pt-[3px]`} style={{ color: C.text3 }}>{label}</dt>
             <dd className="flex-1 min-w-0 text-right text-[14.5px] font-medium leading-snug" style={{ color: value === null ? C.text3 : C.text }}>{typeof value === 'string' ? clauses(value) : value ?? tx(lang, '待核实', 'Unverified')}</dd>
-          </div>
+          </Observed>
         ))}
       </dl>
       {card.geography.map(g => <p key={g.zh} className={`mt-2 px-1 ${TYPE.caption}`} style={{ color: C.text3 }}>{tx(lang, g.zh, g.en)}</p>)}
@@ -346,7 +347,7 @@ function Details({ card, lang, say }: { card: ModeCard; lang: Lang; say: (text: 
 // groups by authority — the register, the operator, the press — each
 // announcement once. Italian is shown translated; the original is a tap.
 
-function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
+function Evidence({ card, ctx, active }: { active: boolean; card: ModeCard; ctx: CardContext }) {
   const { lang, tr } = ctx;
   const mode = MODE_COLOR[card.category];
   const [open, setOpen] = useState(false);
@@ -371,7 +372,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
 
   return (
     <section className="mx-5 mb-5 rounded-[16px] overflow-hidden" style={{ background: C.surface2 }}>
-      <button onClick={() => { track('strike_sources_toggled', { transport_type: card.category.toLowerCase(), expanded: !open }); setOpen(v => !v); }} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
+      <button onClick={() => { track('strike_sources_toggled', { card_id: card.id, transport_type: card.category.toLowerCase(), expanded: !open }); setOpen(v => !v); }} aria-expanded={open} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
         <span className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: official1 ? C.okSoft : C.surface3 }}>
           {official1 ? <SealCheck size={18} weight="fill" color={C.ok} /> : <Info size={17} weight="fill" color={C.text2} />}
         </span>
@@ -384,7 +385,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
       <AnimatePresence initial={false}>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.28, ease: EASE }} className="overflow-hidden">
-            <div className="flex flex-col gap-5 px-4 pt-1 pb-5" style={{ borderTop: `1px solid ${C.line}` }}>
+            <Observed event="strike_sources_viewed" identity={`${card.id}:sources`} properties={{ card_id: card.id, transport_type: card.category, official_count: groups.length + official.length, reported_count: press.length }} active={active && open} className="flex flex-col gap-5 px-4 pt-1 pb-5" style={{ borderTop: `1px solid ${C.line}` }}>
               {groups.map(g => (
                 <Group key={g.workforce + g.sector} title={tx(lang, '意大利交通部 · 罢工登记', 'Ministry of Transport · strike register')}>
                   {g.unions.map(u => {
@@ -403,7 +404,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
                   <p className={TYPE.caption} style={{ color: C.text3 }}>
                     {[RELEVANCE[g.relevance] ? tx(lang, ...RELEVANCE[g.relevance]) : g.relevance, g.area && say(g.area), g.mode && say(g.mode)].filter(Boolean).join(' · ')}
                   </p>
-                  <a href={g.url} onClick={() => trackSource(g.url, { transport_type: card.category.toLowerCase() })} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
+                  <a href={g.url} onClick={() => trackSource(g.url, { card_id: card.id, transport_type: card.category.toLowerCase(), source_authority: 'official', source_type: 'register' })} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
                     {tx(lang, `打开公示表，查找 ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`, `Open the list; look for ${day(card.date, lang)} · ${g.unions[0]?.name ?? ''}`)}<ArrowUpRight size={12} weight="bold" />
                   </a>
                 </Group>
@@ -416,7 +417,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
                       ? <mark key={i} className="rounded-[4px] px-[3px] font-semibold" style={{ background: mode.soft, color: mode.main }}>{p.text}</mark>
                       : <span key={i}>{p.text}</span>)}
                   </p>
-                  <a href={q.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{tx(lang, '打开公告', 'Open notice')}<ArrowUpRight size={12} weight="bold" /></a>
+                  <a onClick={() => trackSource(q.url, { card_id: card.id, transport_type: card.category, source_type: 'operator_notice', source_authority: 'official' })} href={q.url} target="_blank" rel="noreferrer" className={`self-start inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.caption}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{tx(lang, '打开公告', 'Open notice')}<ArrowUpRight size={12} weight="bold" /></a>
                 </Group>
               ))}
 
@@ -432,18 +433,18 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
               {(press.length > 0 || (card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE')) && (
                 <Group title={tx(lang, '其他参考', 'Also see')}>
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                    {card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE' && <Link href={ENAC}>{tx(lang, 'ENAC 常规保护规则', 'ENAC protection rules')}</Link>}
-                    {press.slice(0, 4).map(s => <Link key={s.url} href={s.url}>{s.name}</Link>)}
+                    {card.category === 'AIRPORT' && card.guaranteeSource === 'STANDARD_RULE' && <Link cardId={card.id} transportType={card.category} authority="official" href={ENAC}>{tx(lang, 'ENAC 常规保护规则', 'ENAC protection rules')}</Link>}
+                    {press.slice(0, 4).map(s => <Link cardId={card.id} transportType={card.category} key={s.url} href={s.url}>{s.name}</Link>)}
                   </div>
                 </Group>
               )}
 
               {!groups.length && !official.length && (
-                <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} onClick={() => trackSource(card.sources.find(s => s.authority === 'official')?.url || MIT)} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
+                <a href={card.sources.find(s => s.authority === 'official')?.url || MIT} onClick={() => trackSource(card.sources.find(s => s.authority === 'official')?.url || MIT, { card_id: card.id, source_authority: 'official', source_type: 'register' })} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>
                   {tx(lang, '意大利交通部 罢工公示表', 'Ministry of Transport strike list')}<ArrowUpRight size={12} weight="bold" />
                 </a>
               )}
-            </div>
+            </Observed>
           </motion.div>
         )}
       </AnimatePresence>
@@ -463,8 +464,8 @@ function Group({ title, aside, children }: { title: string; aside?: string; chil
   );
 }
 
-function Link({ href, children }: { href: string; children: React.ReactNode }) {
-  return <a href={href} onClick={() => trackSource(href)} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
+function Link({ href, children, authority = 'reported', cardId, transportType }: { cardId: string; transportType: Mode; authority?: string; href: string; children: React.ReactNode }) {
+  return <a href={href} onClick={() => trackSource(href, { card_id: cardId, transport_type: transportType, source_authority: authority })} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 underline underline-offset-2 ${TYPE.label}`} style={{ color: LINK, textDecorationColor: 'rgba(122,176,255,0.5)' }}>{children}<ArrowUpRight size={11} weight="bold" /></a>;
 }
 
 // Two unions striking the same workforce are one register story.
@@ -495,10 +496,10 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   const react = () => { if (!doodle.marked) { doodle.mark(); setSpray(true); } };
   const share = async () => {
     const url = `${window.location.origin}${ctx.sharePath}?date=${card.date}`;
-    track('share_intent_clicked', { strike_date: card.date, transport_type: card.category.toLowerCase() });
+    track('share_intent_clicked', { card_id: card.id, strike_date: card.date, transport_type: card.category.toLowerCase() });
     const didCopy = await shareOutcome({ title: `${ctx.cityName}${tx(lang, ...TITLE[card.category])}`, url }, url,
       !!navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent),
-      props => track('strike_share_outcome', { ...props, region: ctx.region, transport_type: card.category }));
+      props => track('strike_share_outcome', { ...props, card_id: card.id, region: ctx.region, transport_type: card.category }));
     if (!didCopy) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);

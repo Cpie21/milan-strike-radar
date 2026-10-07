@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { track } from './track';
+import { Observed, SheetTelemetryContext } from './Telemetry';
 import { Drawer } from 'vaul';
 import { AirplaneTilt, Bus, Subway, Train, X, type IconWeight } from '@phosphor-icons/react';
 import type { Mode } from '../../lib/lab/model';
@@ -110,13 +112,16 @@ function useContentGestures(node: HTMLDivElement | null, on: boolean, full: bool
   }, [node, on]);
 }
 
-export function Sheet({ open, onClose, title, children, tall = false, large = false, header, expand = false, fit = false }: {
-  open: boolean; onClose: () => void; title: string; children: ReactNode; tall?: boolean; large?: boolean; header?: ReactNode;
+export function Sheet({ open, onClose, telemetryId = 'unknown', title, children, tall = false, large = false, header, expand = false, fit = false }: {
+  open: boolean; onClose: () => void; telemetryId?: string; title: string; children: ReactNode; tall?: boolean; large?: boolean; header?: ReactNode;
   expand?: boolean; // content that needs room asks for full height itself
   // The first detent is the content's own height, down to the element marked
   // data-sheet-fit (or all of it), so the sheet shows exactly what matters.
   fit?: boolean;
 }) {
+  const closeSent = useRef(false);
+  useEffect(() => { if (!open) return; closeSent.current = false; track('ui_sheet_opened', { sheet: telemetryId }); return () => { if (!closeSent.current) { closeSent.current = true; track('ui_sheet_closed', { sheet: telemetryId, close_reason: 'state_or_navigation' }); } }; }, [open, telemetryId]);
+  const close = (reason: string) => { if (!closeSent.current) { closeSent.current = true; track('ui_sheet_closed', { sheet: telemetryId, close_reason: reason }); } onClose(); };
   // A callback ref: the drawer mounts its content after this renders.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const [fitPx, setFitPx] = useState<number | null>(null);
@@ -150,8 +155,8 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
   useEffect(() => { if (open && expand && detents) { const t = setTimeout(() => setSnap(1), 0); return () => clearTimeout(t); } }, [open, expand]); // eslint-disable-line react-hooks/exhaustive-deps
   const full = !detents || snap === 1;
   useContentGestures(scroller, !!detents && open, full, {
-    expand: () => setSnap(1),
-    collapse: onClose,
+    expand: () => { track('ui_sheet_expanded', { sheet: telemetryId, input: 'content_gesture' }); setSnap(1); },
+    collapse: () => close('content_gesture'),
   });
   const body = (
       <Drawer.Portal>
@@ -163,21 +168,21 @@ export function Sheet({ open, onClose, title, children, tall = false, large = fa
         <div className="flex items-center justify-between gap-3 px-5 pt-3 pb-3 select-none">
           {header ?? <Drawer.Title className="text-[18px] font-semibold tracking-tight">{title}</Drawer.Title>}
           {header && <Drawer.Title className="sr-only">{title}</Drawer.Title>}
-          <button onClick={onClose} aria-label="关闭 / Close" className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
+          <button onClick={() => close('button')} aria-label="关闭 / Close" className="w-[30px] h-[30px] shrink-0 rounded-full flex items-center justify-center active:scale-95 transition-transform" style={{ background: C.surface3 }}>
             <X size={14} weight="bold" color={C.text2} />
           </button>
         </div>
         <div ref={setScroller} data-vaul-no-drag={detents ? '' : undefined} className="flex-1 min-h-0 px-5 overscroll-contain" style={{ overflowY: full ? 'auto' : 'hidden', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
-          {children}
+          <SheetTelemetryContext.Provider value={{ id: telemetryId, open }}><Observed event="ui_sheet_viewed" identity={telemetryId} properties={{ sheet: telemetryId }} active={open}>{children}</Observed></SheetTelemetryContext.Provider>
         </div>
       </Drawer.Content>
     </Drawer.Portal>
   );
-  const change = (o: boolean) => { if (!o) onClose(); };
+  const change = (o: boolean) => { if (!o) close('dismiss'); };
   if (!detents) return <Drawer.Root open={open} onOpenChange={change}>{body}</Drawer.Root>;
   return (
     <Drawer.Root open={open} onOpenChange={change} snapPoints={detents} activeSnapPoint={snap} fadeFromIndex={0}
-      setActiveSnapPoint={next => { if (snap === 1 && next === low) { onClose(); return; } setSnap(next); }}>
+      setActiveSnapPoint={next => { if (snap === 1 && next === low) { close('drag'); return; } if (next === 1 && snap !== 1) track('ui_sheet_expanded', { sheet: telemetryId, input: 'drag' }); setSnap(next); }}>
       {body}
     </Drawer.Root>
   );

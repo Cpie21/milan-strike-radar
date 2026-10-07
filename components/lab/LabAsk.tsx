@@ -3,6 +3,7 @@
 import { useAttention } from './useAttention';
 import { shareOutcome } from '../../utils/shareOutcome';
 import { useEffect, useRef, useState } from 'react';
+import { Observed } from './Telemetry';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowCounterClockwise, ArrowUp, CaretDown, CaretRight, Check, Export, ThumbsDown, ThumbsUp } from '@phosphor-icons/react';
 import { LedBoard, LedFace, type Mood } from './Led';
@@ -98,6 +99,7 @@ export function useAsk({ region, lang, today, onOpenDate, attentionActive = true
   const [result, setResult] = useState<AskResult | null>(null);
   const [resultMeta, setResultMeta] = useState<Record<string, unknown>>({});
   const viewedRequests = useRef(new Set<string>());
+  const previousAttempt = useRef<{ id: string; failed: boolean } | null>(null);
   useEffect(() => {
     if (!open || busy || !result || !requestId || viewedRequests.current.has(requestId)) return;
     viewedRequests.current.add(requestId);
@@ -150,6 +152,9 @@ export function useAsk({ region, lang, today, onOpenDate, attentionActive = true
     if (!q) return;
     const id = crypto.randomUUID();
     const started = performance.now();
+    const prior = previousAttempt.current;
+    if (prior?.failed) track('ai_retry_submitted', { request_id: id, parent_request_id: prior.id });
+    previousAttempt.current = { id, failed: false };
     setRequestId(id);
     track('ai_query_submitted', { request_id: id, region, language: lang, input_source: source, parent_request_id: source === 'refinement' ? parentId : null, query_length: q.length, has_date_hint: !!next.date, has_range_hint: !!next.range, has_mode_hint: !!next.modes?.length });
     // Supersede an old stream before checking cache/quota too.
@@ -167,7 +172,7 @@ export function useAsk({ region, lang, today, onOpenDate, attentionActive = true
     // Answering a clarification continues the held question; anything else
     // is a new one, as the server counts it.
     const sent = q === asked && Object.keys(next).length ? token.current : null;
-    if (!sent && readQuota(today) >= DAILY_QUESTIONS) { track('ai_query_blocked', { request_id: id, error_code: 'device_daily_limit' }); setAsked(q); setOpen(true); setBusy(false); setResult(null); setStages([]); setError('daily'); return; }
+    if (!sent && readQuota(today) >= DAILY_QUESTIONS) { previousAttempt.current = { id, failed: true }; track('ai_query_blocked', { request_id: id, error_code: 'device_daily_limit' }); setAsked(q); setOpen(true); setBusy(false); setResult(null); setStages([]); setError('daily'); return; }
     const controller = new AbortController();
     abort.current = controller;
     setAsked(q); setHints(next); setOpen(true); setBusy(true); setStages([]); setResult(null); setError(null); setTrace(false);
@@ -181,17 +186,19 @@ export function useAsk({ region, lang, today, onOpenDate, attentionActive = true
       if (controller.signal.aborted) return;
       if (!res.ok || !res.body) {
         const reason = res.status === 429 ? ((await res.json().catch(() => ({}))).error === 'daily_limit' ? 'daily' : 'rate') : 'down';
-        track('ai_query_error', { request_id: id, error_code: reason, http_status: res.status, duration_ms: Math.round(performance.now() - started) });
+        if (currentRequest.current === id) previousAttempt.current = { id, failed: true }; track('ai_query_error', { request_id: id, error_code: reason, http_status: res.status, duration_ms: Math.round(performance.now() - started) });
         setError(reason); setBusy(false); return;
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       const seen: StageEvent[] = [];
+      let firstByte = false;
       for (;;) {
         const { value, done } = await reader.read();
         if (controller.signal.aborted) return;
         if (done) break;
+        if (!firstByte && value?.length) { firstByte = true; track('ai_stream_started', { request_id: id, duration_ms: Math.round(performance.now() - started) }); }
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
@@ -220,15 +227,15 @@ export function useAsk({ region, lang, today, onOpenDate, attentionActive = true
             if (event.result.kind === 'navigate') setTimeout(() => go(event.result.date, event.result.path), 700);
           } else if (event.type === 'error') {
             terminal = true;
-            track('ai_query_error', { request_id: id, error_code: event.error === 'budget' ? 'budget' : 'down', duration_ms: Math.round(performance.now() - started) });
+            if (currentRequest.current === id) previousAttempt.current = { id, failed: true }; track('ai_query_error', { request_id: id, error_code: event.error === 'budget' ? 'budget' : 'down', duration_ms: Math.round(performance.now() - started) });
             setError(event.error === 'budget' ? 'budget' : 'down');
           }
         }
       }
-      if (!terminal) { track('ai_query_error', { request_id: id, error_code: 'incomplete_stream' }); setError('down'); }
+      if (!terminal) { if (currentRequest.current === id) previousAttempt.current = { id, failed: true }; track('ai_query_error', { request_id: id, error_code: 'incomplete_stream' }); setError('down'); }
     } catch (err) {
       const cancelled = controller.signal.aborted || (err as Error).name === 'AbortError';
-      if (!cancelled && !terminal) track('ai_query_error', { request_id: id, error_code: 'network_or_stream', duration_ms: Math.round(performance.now() - started) });
+      if (!cancelled && !terminal) { if (currentRequest.current === id) previousAttempt.current = { id, failed: true }; track('ai_query_error', { request_id: id, error_code: 'network_or_stream', duration_ms: Math.round(performance.now() - started) }); }
       if (!cancelled && currentRequest.current === id) setError('down');
     } finally {
       if (controller.signal.aborted && !terminal) track('ai_query_cancelled', { request_id: id, error_code: 'superseded_or_unmounted', duration_ms: Math.round(performance.now() - started) });
@@ -301,8 +308,10 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
   const reduce = useReducedMotion();
   const { lang, query, setQuery, busy, setFocused, left, focused } = a;
   const out = left === 0;
-  const attention = useAttention<HTMLFormElement>(`${a.region}:${big ? 'module' : 'bar'}`, 'ai_input_attention', { region: a.region, input_layout: big ? 'module' : 'bar' }, a.attentionActive && !a.open);
+  const attentionRef = useAttention<HTMLFormElement>(`${a.region}:${big ? 'module' : 'bar'}`, 'ai_input_attention', { region: a.region, input_layout: big ? 'module' : 'bar' }, a.attentionActive && !a.open);
   const draft = useRef<number | null>(null);
+  const maxNoted = useRef(false);
+  const quotaNoticeRef = useAttention<HTMLFormElement>(`${a.region}:quota`, 'ai_quota_notice_viewed', { region: a.region, notice: 'device_daily_limit' }, out && a.attentionActive && !a.open, [1]);
   const send = () => { if (query.trim() && !busy && !out) { draft.current = null; a.ask(query); } };
   const blur = () => {
     if (draft.current !== null) {
@@ -337,6 +346,7 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
     value: query, maxLength: 200, enterKeyHint: 'send' as const, disabled: out,
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
       const text = e.target.value.replace(/\n/g, ' ');
+      if (text.length >= 200 && !maxNoted.current) { maxNoted.current = true; track('ai_input_limit_reached', { limit: 200 }); } if (text.length < 200) maxNoted.current = false;
       if (text.trim() && draft.current === null) { draft.current = performance.now(); track('ai_input_started', { region: a.region, input_layout: big ? 'module' : 'bar' }); }
       if (!text.trim() && draft.current !== null) { track('ai_input_cleared', { region: a.region }); draft.current = null; }
       setQuery(text);
@@ -345,7 +355,7 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
     'aria-label': tx(lang, '用一句话问罢工', 'Ask about strikes'),
   };
   return (
-    <motion.form ref={attention} layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
+    <motion.form ref={el => { attentionRef.current = el; quotaNoticeRef.current = el; }} layoutId="ask-input" transition={{ type: 'spring', stiffness: 300, damping: 34 }}
       onSubmit={e => { e.preventDefault(); send(); }}
       className={`ph-no-capture relative w-full ${big ? 'rounded-[26px] pl-4 pr-1.5 py-1.5 flex items-end gap-2' : 'h-[56px] rounded-full pl-[58px] pr-1.5 flex items-center gap-2'}`}
       style={big ? { background: C.surface2, boxShadow: `inset 0 0 0 1px ${focused ? 'rgba(242,163,58,0.45)' : C.line}` } : PILL}>
@@ -482,7 +492,7 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
     track('ai_history_viewed', { request_id: h.requestId ?? null, ...askResultProperties(h.result) });
   }, [open, index, last, past]);
   return (
-    <Sheet open={open} onClose={() => { track('ai_answer_closed', { request_id: a.requestId, was_busy: a.busy }); setOpen(false); }} title={tx(lang, '回答', 'Answer')} tall fit expand={shown.trace}
+    <Sheet telemetryId="ai" open={open} onClose={() => { track('ai_answer_closed', { request_id: shown.requestId, was_busy: shown.busy, history_page: index !== last }); setOpen(false); }} title={tx(lang, '回答', 'Answer')} tall fit expand={shown.trace}
       header={<div className="flex items-center gap-3 min-w-0"><LedFace mood={moodOf(shown)} size={18} /><p className="ph-no-capture text-[16px] font-semibold leading-snug line-clamp-2">“{shown.asked}”</p></div>}>
       {pages.length > 1 && (
         // where you are among your answers: the newest is the rightmost
@@ -505,9 +515,10 @@ export function AskSheet({ ask: a }: { ask: AskState }) {
 function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
   const { lang, today, asked, busy, stages, trace, setTrace, error, result, refine, go, verdict, groups, setQuery } = a;
   const ask = a.ask;
-  const attention = useAttention<HTMLDivElement>(a.requestId ?? 'legacy', 'ai_answer_attention', { request_id: a.requestId, region: a.region, ...(result ? askResultProperties(result) : {}) }, a.open && active && !busy && !!result);
+  const errorExposureRef = useAttention<HTMLDivElement>(`${a.requestId}:${error}`, 'ai_error_viewed', { request_id: a.requestId, error_code: error }, a.open && active && !busy && !!error, [1]);
+  const attentionRef = useAttention<HTMLDivElement>(a.requestId ?? 'legacy', 'ai_answer_attention', { request_id: a.requestId, region: a.region, ...(result ? askResultProperties(result) : {}) }, a.open && active && !busy && !!result);
   return (
-    <div ref={attention}>
+    <div ref={el => { attentionRef.current = el; errorExposureRef.current = el; }}>
       <AnimatePresence mode="wait" initial={false}>
       {busy ? (
         // Thinking is quick, so it says one thing at a time.
@@ -535,7 +546,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
               <Chip onClick={() => refine({ range: 'upcoming' })}>{tx(lang, '最近两周', 'Next 2 weeks')}</Chip>
             </> : null}
           </div>
-          {result.missing === 'mode' && <ModePicker lang={lang} initial={[]} onConfirm={modes => refine({ modes })} />}
+          {result.missing === 'mode' && <ModePicker requestId={a.requestId} lang={lang} initial={[]} onConfirm={modes => refine({ modes })} />}
         </div>
       )}
 
@@ -548,12 +559,12 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
             : result.place
             ? tx(lang, `暂时不覆盖「${result.place}」，目前只有 20 个城市的数据`, `“${result.place}” isn't covered yet — only 20 cities for now`)
             : tx(lang, '我只能回答意大利交通罢工的问题', 'I can only answer questions about Italian transport strikes')}</p>
-          {!result.place && !result.coverage && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map(e => <Chip key={e[0]} onClick={() => { const q = tx(lang, e[0], e[1]); setQuery(q); ask(q, {}, 'example'); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
+          {!result.place && !result.coverage && <div className="mt-3 flex flex-col items-start gap-2">{EXAMPLES.map((e, exampleIndex) => <Chip key={e[0]} onClick={() => { track('ai_example_selected', { request_id: a.requestId, example_index: exampleIndex }); const q = tx(lang, e[0], e[1]); setQuery(q); ask(q, {}, 'example'); }}>{tx(lang, e[0], e[1])}</Chip>)}</div>}
         </div>
       )}
 
       {result?.kind === 'result' && verdict && (
-        <div className="mt-4 flex flex-col gap-3">
+        <Observed event="ai_verdict_viewed" identity={`${a.requestId}:verdict`} properties={{ request_id: a.requestId, level: result.level, view: result.view }} active={a.open && active} className="mt-4 flex flex-col gap-3">
           {/* The answer is said by the face above: a speech bubble in the
               verdict's colour, its tail pointing up at the face, with "was this
               helpful?" as the bubble's last line. */}
@@ -565,16 +576,16 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
                 {result.range.from === result.range.to ? dayLabel(result.range.from, lang) : `${dayLabel(result.range.from, lang)} – ${dayLabel(result.range.to, lang)}`}
                 {result.understanding.time ? ` · ${result.understanding.time}` : ''}
               </p>
-              <Feedback key={a.requestId ?? asked} ask={a} inline />
+              <Feedback active={active} key={a.requestId ?? asked} ask={a} inline />
             </div>
           </div>
 
-          <Assumptions ask={a} result={result} />
+          <Observed event="ai_assumptions_viewed" identity={`${a.requestId}:assumptions`} properties={{ request_id: a.requestId, assumption_count: result.understanding.assumptions.length }} active={a.open && active && result.understanding.assumptions.length > 0}><Assumptions ask={a} result={result} /></Observed>
 
           {result.unchecked > 0 && (
-            <p className="rounded-[12px] px-3.5 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
+            <Observed event="ai_incomplete_notice_viewed" identity={`${a.requestId}:unchecked`} properties={{ request_id: a.requestId, unchecked_count: result.unchecked }} active={a.open && active}><p className="rounded-[12px] px-3.5 py-2.5 text-[13px]" style={{ background: C.surface2, color: C.text2 }}>
               {tx(lang, `还有 ${result.unchecked} 条记录没有逐条判断，结论可能不完整，请在日历里查看那天。`, `${result.unchecked} more records weren't checked one by one; see the day in the calendar.`)}
-            </p>
+            </p></Observed>
           )}
           {result.view === 'period' && result.days.map(day => (
             <button key={day.date} onClick={() => go(day.date, day.path)} className="flex items-center gap-3 rounded-[16px] px-4 py-3 text-left" style={{ background: C.surface2 }}>
@@ -625,18 +636,18 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
             </div>
           ))}
 
-          {result.level === 'clear' && <Checked ask={a} result={result} />}
+          {result.level === 'clear' && <Observed event="ai_checked_scope_viewed" identity={`${a.requestId}:checked`} properties={{ request_id: a.requestId, checked_city_count: result.checked?.cities.length ?? 0 }} active={a.open && active}><Checked ask={a} result={result} /></Observed>}
 
           {result.excluded.length > 0 && (
             <p className="text-[12.5px] px-1" style={{ color: C.text3 }}>
               {tx(lang, `已排除 ${result.excluded.length} 条无关记录：`, `Excluded ${result.excluded.length}: `)}{result.excluded.map(e => `${modeName(e.category, lang)} ${who(e.provider, lang)}`).join(tx(lang, '、', ', '))}
             </p>
           )}
-        </div>
+        </Observed>
       )}
 
       {result?.kind === 'result' && <ShareAnswer ask={a} />}
-      {result?.kind === 'clarify' && <Feedback key={a.requestId ?? asked} ask={a} />}
+      {result?.kind === 'clarify' && <Feedback active={active} key={a.requestId ?? asked} ask={a} />}
 
       {stages.length > 0 && (
         <div className="mt-3 mb-1">
@@ -647,7 +658,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
           <AnimatePresence initial={false}>
             {trace && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
-                <Stages stages={stages} lang={lang} />
+                <Observed event="ai_trace_viewed" identity={`${a.requestId}:trace`} properties={{ request_id: a.requestId, stage_count: stages.length }} active={a.open && active && trace}><Stages stages={stages} lang={lang} /></Observed>
               </motion.div>
             )}
           </AnimatePresence>
@@ -724,7 +735,7 @@ function ShareAnswer({ ask: a }: { ask: AskState }) {
 const BAD_REASONS: [string, string, string][] = [['misread', '理解错了', 'Misread'], ['irrelevant', '有无关结果', 'Irrelevant results'], ['wrong', '结论不对', 'Wrong answer'], ['missing', '漏了信息', 'Missing something']];
 const bubble = (color: string) => `color-mix(in srgb, ${color} 17%, ${C.surface})`;
 
-function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean }) {
+function Feedback({ ask: a, inline = false, active }: { ask: AskState; inline?: boolean; active: boolean }) {
   const { lang, asked, result, stages } = a;
   const [rating, setRating] = useState<'good' | 'bad' | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -749,7 +760,7 @@ function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean 
   };
   const chip = inline ? 'rgba(255,255,255,0.08)' : C.surface3;
   return (
-    <div className={inline ? 'mt-3 pt-2.5' : 'mt-4 rounded-[14px] px-4 py-3'} style={inline ? { borderTop: '1px solid rgba(255,255,255,0.08)' } : { background: C.surface2 }}>
+    <Observed event="ai_feedback_prompt_viewed" identity={`${a.requestId}:feedback`} properties={{ request_id: a.requestId }} active={a.open && active}><div className={inline ? 'mt-3 pt-2.5' : 'mt-4 rounded-[14px] px-4 py-3'} style={inline ? { borderTop: '1px solid rgba(255,255,255,0.08)' } : { background: C.surface2 }}>
       {rating === null ? (
         <div className="flex items-center gap-2">
           <span className="flex-1 text-[13px]" style={{ color: failed ? C.stop : C.text2 }}>{failed ? tx(lang, '没提交成功，再点一次试试', 'Not sent — try again') : tx(lang, '这个回答有帮助吗？', 'Was this helpful?')}</span>
@@ -761,22 +772,22 @@ function Feedback({ ask: a, inline = false }: { ask: AskState; inline?: boolean 
           <p className="text-[13.5px]" style={{ color: C.text2 }}>{tx(lang, '哪里不好？', 'What went wrong?')}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {BAD_REASONS.map(([key, zh, en]) => (
-              <button key={key} onClick={() => { setReason(key); send('bad', key); }} className="h-8 px-3 rounded-full text-[13px]" style={{ background: chip, color: C.text }}>{tx(lang, zh, en)}</button>
+              <button key={key} onClick={() => { track('ai_feedback_reason_selected', { request_id: a.requestId, reason: key }); setReason(key); send('bad', key); }} className="h-8 px-3 rounded-full text-[13px]" style={{ background: chip, color: C.text }}>{tx(lang, zh, en)}</button>
             ))}
           </div>
         </div>
       ) : (
         <p className="text-[13.5px] flex items-center gap-1.5" style={{ color: C.text2 }}><Check size={14} weight="bold" color={C.ok} />{saving ? tx(lang, '正在提交…', 'Sending…') : tx(lang, '谢谢，我们会用它改进回答', 'Thanks — this helps us improve')}</p>
       )}
-    </div>
+    </div></Observed>
   );
 }
 
 // Transport, several at once, then confirm: one tap per mode would send a
 // question for each.
-function ModePicker({ lang, initial, onConfirm }: { lang: Lang; initial: Mode[]; onConfirm: (modes: Mode[]) => void }) {
+function ModePicker({ lang, initial, onConfirm, requestId }: { requestId: string | null; lang: Lang; initial: Mode[]; onConfirm: (modes: Mode[]) => void }) {
   const [picked, setPicked] = useState<Mode[]>(initial);
-  const toggle = (m: Mode) => setPicked(p => (p.includes(m) ? p.filter(x => x !== m) : [...p, m]));
+  const toggle = (m: Mode) => { const next = picked.includes(m) ? picked.filter(x => x !== m) : [...picked, m]; track('ai_modes_changed', { request_id: requestId, modes: next }); setPicked(next); };
   return (
     <div className="mt-3">
       <div className="grid grid-cols-4 gap-2">
@@ -816,7 +827,7 @@ function Assumptions({ ask: a, result }: { ask: AskState; result: Extract<AskRes
           {local && part && tx(lang, '；', '; ')}
           {part && part.kind === 'day_part' && <>{tx(lang, `${part.zh}按 ${part.from}–${part.to} 算`, `${part.en} as ${part.from}–${part.to}`)}</>}
           {local && !editing && <button onClick={() => { track('ai_assumption_edit_opened', { request_id: a.requestId, field: 'modes' }); setEditing(true); }} className="ml-1.5 font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, '改交通', 'Change')}</button>}
-          {editing && local && local.kind === 'local_modes' && <ModePicker lang={lang} initial={local.modes} onConfirm={modes => { setEditing(false); a.refine({ modes }); }} />}
+          {editing && local && local.kind === 'local_modes' && <ModePicker requestId={a.requestId} lang={lang} initial={local.modes} onConfirm={modes => { setEditing(false); a.refine({ modes }); }} />}
         </div>
       )}
       {abroad && abroad.kind === 'abroad' && (

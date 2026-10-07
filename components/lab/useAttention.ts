@@ -5,16 +5,17 @@ import { attentionClock } from '../../lib/attention';
 import { track } from './track';
 
 /** Counts viewport + foreground exposure, pauses for sheets/background tabs. */
-export function useAttention<T extends HTMLElement>(key: string, event: string, properties: Record<string, unknown>, active = true) {
+export function useAttention<T extends HTMLElement>(key: string, event: string, properties: Record<string, unknown>, active = true, milestones: readonly number[] = [1, 5, 15]) {
   const ref = useRef<T>(null);
   const latest = useRef(properties);
   useEffect(() => { latest.current = properties; });
   const clock = useRef<ReturnType<typeof attentionClock> | null>(null);
   const identity = useRef('');
+  const milestoneKey = milestones.join(',');
   useEffect(() => {
-    if (identity.current !== key) {
-      identity.current = key;
-      clock.current = attentionClock(seconds => track(event, { ...latest.current, milestone_seconds: seconds }));
+    if (identity.current !== `${key}:${event}:${milestoneKey}`) {
+      identity.current = `${key}:${event}:${milestoneKey}`;
+      clock.current = attentionClock(seconds => track(event, { ...latest.current, milestone_seconds: seconds }), undefined, milestoneKey.split(',').map(Number));
     }
     const el = ref.current;
     if (!el || !active || !window.IntersectionObserver) return;
@@ -35,6 +36,6 @@ export function useAttention<T extends HTMLElement>(key: string, event: string, 
       clearInterval(timer); observer.disconnect();
       document.removeEventListener('visibilitychange', update);
     };
-  }, [active, key, event]);
+  }, [active, key, event, milestoneKey]);
   return ref;
 }
