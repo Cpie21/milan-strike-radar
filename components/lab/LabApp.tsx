@@ -119,6 +119,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
     const card = active.find(c => c.category === mode);
     if (!card) return;
     document.getElementById(`card-${card.id}`)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    track('strike_mode_jumped', { region: city.tag, transport_type: mode });
     setHighlight(card.id);
     setTimeout(() => setHighlight(null), 1200);
   };
@@ -135,7 +136,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
   useEffect(() => { try { if (!window.location.search) localStorage.setItem(CITY_KEY, city.path); } catch { /* storage blocked */ } }, [city.path]);
 
   const ctx: CardContext = { today, nowMinutes: now, lang, region: city.tag, cityName: name, sharePath: city.path, tr: translations };
-  const ask = useAsk({ region: city.tag, lang, today, onOpenDate: (date, path) => openDate(date, path) });
+  const ask = useAsk({ region: city.tag, lang, today, attentionActive: !sheet, onOpenDate: (date, path) => openDate(date, path) });
   // A day whose strikes were all called off is a calm day too: the board and
   // its question field sit under the cancelled cards, and the bar goes away.
   const calm = active.length === 0;
@@ -222,7 +223,7 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
               {dayCards.length ? dayCards.map(card => {
                 const prev = neighbour(addDaysIso(selected, -1), card.category);
                 const nxt = neighbour(addDaysIso(selected, 1), card.category);
-                return <LabStrikeCard key={card.id} card={card} ctx={ctx} highlighted={highlight === card.id}
+                return <LabStrikeCard key={card.id} card={card} ctx={ctx} highlighted={highlight === card.id} attentionActive={!sheet && !ask.open}
                   prev={continuesOvernight(prev, card) ? prev : undefined} next={continuesOvernight(card, nxt) ? nxt : undefined} />;
               }) : (
                 // The day's answer, then (as a footnote of it, not a sibling)

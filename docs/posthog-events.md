@@ -51,7 +51,7 @@ Each attempted ask has a random `request_id`; refinements carry `parent_request_
 | `ai_client_disconnected` | API | Stream cancelled; server may still finish independently |
 | `ai_response_received` | Browser | Final frame received or cache loaded, even if sheet was closed while waiting; network/cache, duration_ms, summary |
 | `ai_result_viewed` | Browser | Result rendered with answer sheet open and loading complete; once per attempt. A background answer counts here only when reopened |
-| `ai_clarification_shown` | Browser | Received clarification; missing date/mode |
+| `ai_clarification_shown` | Browser | Clarification rendered in an open sheet (including cache); missing date/mode |
 | `ai_refinement_selected` | Browser | Current answer's date/range/mode control chosen |
 | `ai_refinement_expired` | Browser | Held token rejected, retried as a new question; same attempt id |
 | `ai_query_error` | Browser | HTTP/network/budget/stream error or no terminal frame |
@@ -69,7 +69,7 @@ Each attempted ask has a random `request_id`; refinements carry `parent_request_
 | `ai_feedback_saved` | Browser | Received successful feedback response |
 | `ai_feedback_error` | Browser | Failed response/network, retry offered |
 
-Result summary: kind, intent, date/city method, modes/methods, fallback, named_line_count, assumption_count; clarification missing field; result view/level, matches/excluded/unchecked, strike_day_count and period_item_count, checked_city_count, cost_usd and presence of sync timestamp. **Period results are counted through days/items**, not only `matches`. Cached cost is the original result's cost, never fresh spend; use API completion `cost_usd` for successful-call cost observations (failed calls can spend, shared ledger is financial truth).
+Result summary: result_kind, intent, date/city method, modes/methods, fallback, named_line_count, assumption_count; clarification missing field; result view/level, matches/excluded/unchecked, strike_day_count and period_item_count, checked_city_count, cost_usd and presence of sync timestamp. **Period results are counted through days/items**, not only `matches`. Cached cost is the original result's cost, never fresh spend; use API completion `cost_usd` for successful-call cost observations (failed calls can spend, shared ledger is financial truth).
 
 ## Other explicit interactions
 
@@ -99,3 +99,34 @@ Implementation uses the already-installed SDKs and same project; no new LLM or h
 - All synthetic traffic is is_test=true. Browser delay shim was restored. Keep test exclusion in reports; receipts do not prove every future visitor will bypass blockers or stay online.
 
 Final runtime 01bd3d4 deployed READY to www.theitalystrike.com: deployment dpl_7KNWecXL8L21dTDQHWB2tmzFfDb3. Version2 optional validation probe returned400/invalid_query, without entering the model pipeline. Server timestamps are stamped at occurrence and preserve lifecycle ordering despite batched post-response delivery.
+
+
+## Detailed behavior and saved AI dashboard (October 7)
+
+Dashboard: https://eu.posthog.com/project/136776/dashboard/1004559 · Project136776. The previous dashboard555663 is preserved. Reproducible query definitions and existing insight IDs live in `posthog-ai-dashboard.json`; reuse them when editing, do not create duplicates.
+
+Eleven saved tiles cover daily usage, user adoption, exact request-ID delivery/action receipts, result type versus stored feedback, parent-ID clarification follow-ups, network P50/P95, errors/limits, cache, input editing, visible answer dwell and strike/tool interactions. Native trends/funnels are retained; only cross-event request/parent correlation uses SQL. All queries exclude QA and require analytics_version >=2. Project timezone remains UTC. Three correlation SQL tables use a fixed rolling30-day window; changing the dashboard date control does not change those SQL windows. These are exploratory project definitions: this connection has no accessible governed metric catalog; they are not certified business metrics.
+
+| New event | Meaning / properties |
+|---|---|
+| `ai_input_attention` | Visible input; module/bar and region; milestone_seconds=1/5/15 |
+| `ai_input_started` | First nonempty change in an editing episode; no text or per-keystroke event |
+| `ai_input_cleared` | Episode text cleared to empty |
+| `ai_input_abandoned` | Edited input lost focus without sending; query_length, editing_ms; a focus episode, **not** whole-visit abandonment |
+| `ai_answer_attention` | Current open answer page visible and not busy; request_id, summary, milestones |
+| `ai_assumption_edit_opened` | Opened mode correction; request_id and bounded field enum |
+| `ai_answer_share_outcome` | Browser share/copy API completed/cancelled/failed; method, request_id; never raw share payload |
+| `strike_card_attention` | Visible card; region, transport_type, status, timing_known, line_scope, has_guarantees, milestones |
+| `strike_mode_jumped` | Selected mode jump from day summary |
+| `strike_original_toggled` | Original announcement text opened/closed |
+| `strike_share_outcome` | Same bounded share receipt as AI; region and mode |
+| `tool_modes_changed` | Calendar/widget mode selection; tool, region, modes |
+| `widget_preview_selected` | calm/strike/many preview selection |
+| `widget_app_store_opened` | Scriptable link intent, not installation |
+| `support_feedback_submitted/saved/failed` | Existing support form request/acknowledgement; length and name-presence only, no name/content |
+
+Attention requires at least25% of the smaller of element/viewport height inside the viewport and a foreground document. Offscreen, background, covered site sheets and noncurrent history pages pause the clock. Exposure accumulates to1/5/15 seconds with at most3 events per mounted identity; re-entry does not duplicate a crossed threshold, while a new mount starts a new viewing episode. Old browsers without IntersectionObserver skip attention events. This measures an opportunity to read, not comprehension. Timer resolution is about1 second. No scroll/keystroke stream. Ask remains masked and ph-no-capture.
+
+A closed answer received in the background is not a clarification impression; this release aligns clarification visibility with result visibility, including cached clarifications. Share success means browser API resolved, not delivery to a friend. Missing clipboard now records failed and does not falsely show “Copied”. Input send clears its draft before submit; pointer submit doesn't falsely count the blur as abandonment. Support network rejection now returns the form to a retryable error rather than leaving it sending.
+
+The request receipt table separates caches from network requests; caches don't require server starts/completions. The table uses event presence on one request_id, not a chronological funnel or inferred failure rate. Missing telemetry is not failure. The standard user funnel is a separate30-minute person-level ordered flow; it cannot certify all events belong to the same question. Stored rating is the latest observed receipt per request in the window, not proof of factual correctness. Period results use days/items; cached old cost is never fresh spend. New behavior has no historical backfill. Baseline real data at creation:3 attempts/3 displayed,1 stored rating; two people in the user funnel. Far too little to assess quality.

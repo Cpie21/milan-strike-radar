@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useAttention } from './useAttention';
+import { shareOutcome } from '../../utils/shareOutcome';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, CaretDown, Check, Clock, Export, Info, SealCheck, ShieldCheck, SprayBottle, Translate } from '@phosphor-icons/react';
 import {
@@ -117,15 +119,16 @@ function clauses(text: string) {
 //   → does it hit me → the wall and what to do → why we believe it.
 // Every fact appears once.
 
-export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { card: ModeCard; prev?: ModeCard; next?: ModeCard; ctx: CardContext; highlighted: boolean }) {
+export default function LabStrikeCard({ card, prev, next, ctx, highlighted, attentionActive = true }: { card: ModeCard; prev?: ModeCard; next?: ModeCard; ctx: CardContext; highlighted: boolean; attentionActive?: boolean }) {
   const { lang } = ctx;
+  const attention = useAttention<HTMLElement>(card.id, 'strike_card_attention', { region: ctx.region, transport_type: card.category, status: card.status, timing_known: !!card.windows.length, line_scope: card.lineScope, has_guarantees: !!card.guarantees.length }, attentionActive);
   const reduce = useReducedMotion();
   const isToday = card.date === ctx.today;
   const mode = MODE_COLOR[card.category];
 
   if (card.status === 'CANCELLED') {
     return (
-      <div id={`card-${card.id}`} className="flex items-center gap-3 px-4 py-3.5" style={{ background: C.surface, borderRadius: R.card }}>
+      <div ref={attention as React.RefObject<HTMLDivElement>} id={`card-${card.id}`} className="flex items-center gap-3 px-4 py-3.5" style={{ background: C.surface, borderRadius: R.card }}>
         <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.surface2 }}><ModeGlyph mode={card.category} size={18} color={C.cancel} /></span>
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-semibold line-through" style={{ color: C.text3 }}>{tx(lang, ...TITLE[card.category])}</span>
@@ -161,7 +164,7 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted }: { 
       : { text: `${relativeDay(card.date, ctx.today, lang)}${pending ? '' : ` · ${overnight ? tx(lang, '跨夜', 'Overnight') : hoursText(card, lang)}`}`, color: C.text2, bg: C.surface3, dot: false };
 
   return (
-    <motion.article id={`card-${card.id}`} className="relative overflow-hidden"
+    <motion.article ref={attention} id={`card-${card.id}`} className="relative overflow-hidden"
       style={{ background: C.surface, borderRadius: R.card }}
       animate={{ boxShadow: highlighted ? [`0 0 0 0px ${mode.main}`, `0 0 0 3px ${mode.main}`, `0 0 0 0px ${mode.main}`] : '0 0 0 0px rgba(0,0,0,0)' }}
       transition={{ duration: 1.1, ease: EASE }}>
@@ -419,7 +422,7 @@ function Evidence({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
 
               {/* After the text it applies to, as translated posts do it */}
               {translated && (
-                <button onClick={() => setOriginal(v => !v)} className={`-mt-2 self-start flex items-center gap-1.5 ${TYPE.caption}`} style={{ color: C.text3 }}>
+                <button onClick={() => { track('strike_original_toggled', { region: ctx.region, transport_type: card.category, expanded: !original }); setOriginal(v => !v); }} className={`-mt-2 self-start flex items-center gap-1.5 ${TYPE.caption}`} style={{ color: C.text3 }}>
                   <Translate size={13} weight="bold" />
                   {original ? tx(lang, '意大利语原文 · ', 'Italian original · ') : tx(lang, '译自意大利语 · ', 'Translated from Italian · ')}
                   <span className="font-semibold underline underline-offset-2" style={{ color: C.text2, textDecorationColor: C.lineStrong }}>{original ? tx(lang, '看译文', 'Show translation') : tx(lang, '看原文', 'Show original')}</span>
@@ -493,11 +496,10 @@ function Actions({ card, ctx }: { card: ModeCard; ctx: CardContext }) {
   const share = async () => {
     const url = `${window.location.origin}${ctx.sharePath}?date=${card.date}`;
     track('share_intent_clicked', { strike_date: card.date, transport_type: card.category.toLowerCase() });
-    if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
-      try { await navigator.share({ title: `${ctx.cityName}${tx(lang, ...TITLE[card.category])}`, url }); } catch { /* dismissed */ }
-      return;
-    }
-    await navigator.clipboard?.writeText(url);
+    const didCopy = await shareOutcome({ title: `${ctx.cityName}${tx(lang, ...TITLE[card.category])}`, url }, url,
+      !!navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent),
+      props => track('strike_share_outcome', { ...props, region: ctx.region, transport_type: card.category }));
+    if (!didCopy) return;
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
