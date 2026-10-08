@@ -1,4 +1,5 @@
 import { CITIES, resolveCity } from './cities';
+import { normalizeOfficialGeography } from './officialGeography';
 const AFFECTED_LINE_BLACKLIST = [
   '语言环境',
   'ambiente linguistico',
@@ -187,7 +188,7 @@ export type RegionInput = { regionText?: string; provinceText?: string; sectorTe
 export function affectedScopeText(text: string) {
   return (text || '').split(/(?:\bESCLUS[OAIE]\b|\bGARANTIT[IOEA]\b|\bNON\s+(?:INTERESS|COINVOLT)|\bECCETTO\b)/i)[0];
 }
-export function classifyRegionTags(input: RegionInput): string[] {
+function projectSupportedRegionTags(input: RegionInput): string[] {
   const region=(input.regionText || '').trim().toLowerCase();
   const province=(input.provinceText || '').trim().toLowerCase();
   const provider=affectedScopeText(input.providerText || '');
@@ -217,6 +218,20 @@ export function classifyRegionTags(input: RegionInput): string[] {
     if(cities.length) return cities;
   }
   return ['UNKNOWN'];
+}
+export function classifyRegionTags(input: RegionInput): string[] {
+  const projected = projectSupportedRegionTags(input);
+  const declared = normalizeOfficialGeography(input.regionText, input.provinceText);
+  if (!projected.includes('UNKNOWN')) return projected;
+  // Keep a concrete official province even when no corresponding city page
+  // exists. Airports retain their existing explicit affected-airport fences.
+  if (declared.province && !resolveCity(declared.province.tag)) {
+    const provider = affectedScopeText(input.providerText || '');
+    const explicitAirports = /aereo/i.test(input.sectorText || '') && detectAirports(provider).length;
+    if (!explicitAirports) return [declared.province.tag];
+  }
+  if (declared.administrativeRegion && /^(?:regionale|interregionale)$/i.test(input.relevanceText || '') && /^tutte$/i.test((input.provinceText || '').trim())) return [declared.administrativeRegion.tag];
+  return projected;
 }
 export function classifyRegionTag(input: RegionInput) {
   const tags=classifyRegionTags(input);

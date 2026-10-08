@@ -15,6 +15,41 @@ const { classifyRegionTag } = require('../lib/strikeNormalization.ts');
 const headers = ['Inizio', 'Fine', 'Sindacati', 'Settore*', 'Categoria', 'Modalità', 'Rilevanza', 'Note', 'Data proclamazione', 'Regione', 'Provincia'];
 const row = ['09/10/2026', '09/10/2026', 'AL-COBAS', 'Trasporto pubblico locale', 'PERSONALE SOCC. GRUPPO ATM DI MILANO', '24 ORE: VARIE MODALITA', 'Provinciale', '', '27/07/2026', 'Lombardia', 'Tutte'];
 const table = (rows) => `<table><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+test('all official local provinces normalize independently of the twenty page cities',async()=>{
+ const {CITIES,resolveCity}=require('../lib/cities.ts');
+ const {filterStrikesForRegion}=require('../components/utils.ts');
+ for(const [province,region,provider,tag] of [
+  ['Foggia','Puglia','PERSONALE SOC. ATAF DI FOGGIA','FOGGIA'],
+  ['Udine','Friuli-Venezia Giulia','PERSONALE SOC. ARRIVA UDINE DI UDINE','UDINE'],
+  ["Forli\u0027-Cesena",'Emilia-Romagna',"PERSONALE SOC. START ROMAGNA DEI BACINI DI FORLI\u0027-CESENA, RAVENNA E RIMINI",'FORLI_CESENA'],
+  ['Savona','Liguria','PERSONALE SOC. TPL LINEA DI SAVONA','SAVONA'],
+  ['Lecco','Lombardia','PERSONALE AZIENDA LOCALE','LECCO'],
+  ['Lecce','Puglia','PERSONALE AZIENDA LOCALE','LECCE'],
+ ]) {
+  const r=[...row];r[4]=provider;r[5]='24 ORE';r[6]='Locale';r[9]=region;r[10]=province;
+  const parsed=parseStrikeHtml(table([r])); assert.deepEqual(parsed.map(x=>x.region),[tag]);
+  assert.equal(parsed[0].rawRegion,region);assert.equal(parsed[0].province,province);
+  const [record]=await transformRows(parsed),fields=record.timing_evidence.fields;
+  assert.equal(record.region,tag);assert.equal(record.status,'CONFIRMED');assert.equal(record.category,'BUS');
+  assert.equal(fields.normalizedGeography.value.province.tag,tag);
+  assert.equal(fields.normalizedGeography.source,'MIT');assert.equal(fields.locationStatus,'UNSUPPORTED_CITY');
+  assert.deepEqual(fields.supportedCityProjection.value,[]);assert.equal(resolveCity(tag),undefined);
+  for(const city of CITIES)assert.deepEqual(filterStrikesForRegion([record],city.tag),[]);
+  const replay=await transformRows([{...parsed[0],region:'UNKNOWN'}]);
+  assert.equal(replay[0].region,tag);assert.equal(replay[0].source_key,record.source_key);
+  assert.deepEqual(replay[0].strike_windows,record.strike_windows);
+ }
+});
+test('canonical official administrative IDs handle punctuation without inventing cities or nationwide scope',()=>{
+ const {normalizeOfficialGeography}=require('../lib/officialGeography.ts');
+ const {classifyRegionTags}=require('../lib/strikeNormalization.ts');
+ assert.equal(normalizeOfficialGeography('Emilia-Romagna','Forlì–Cesena').province.tag,'FORLI_CESENA');
+ assert.equal(normalizeOfficialGeography('Lombardia','Monza e della Brianza').province.tag,'MONZA_E_DELLA_BRIANZA');
+ for(const p of ['', 'Tutte','Italia','unknown','n/d','Da definire','Territorio nazionale','123','<script>'])assert.equal(normalizeOfficialGeography('unknown',p).province,null);
+ assert.deepEqual(classifyRegionTags({regionText:'Italia',provinceText:'Tutte',sectorText:'Aereo',providerText:'Personale aviation support',relevanceText:'Interregionale'}),['UNKNOWN']);
+ assert.deepEqual(classifyRegionTags({regionText:'Abruzzo',provinceText:'Tutte',providerText:'Personale regionale',relevanceText:'Regionale'}),['REGION_ABRUZZO']);
+ assert.deepEqual(classifyRegionTags({regionText:'Abruzzo',provinceText:'Tutte',providerText:'Unknown local operator',relevanceText:'Locale'}),['UNKNOWN']);
+});
 test('EAV DTF overrides the TPL bus fallback without inventing its affected network',async()=>{
  for(const [provider,modes] of [['PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI',['TRAIN']],['PERSONALE DTA SOC. EAV DI NAPOLI',['BUS']],['PERSONALE DTF/DTA SOC. EAV DI NAPOLI',['BUS','TRAIN']]]) {
   const input=[...row];input[4]=provider;input[5]='4 ORE: DALLE 19.40 ALLE 23.40';input[9]='Campania';input[10]='Napoli';

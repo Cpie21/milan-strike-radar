@@ -17,7 +17,7 @@ test('Arriva Bergamo remains independent of Milan in ingestion and every city vi
  assert.deepEqual(records[0].affected_lines,[]);assert.equal(records[0].timing_evidence.fields.affectedLines.value,'UNKNOWN');
 });
 test('Monza, Varese and an unidentified Lombardia operator never become Milan',()=>{
- for(const place of ['Monza','Varese','Lecco']) assert.deepEqual(classifyRegionTags({regionText:'Lombardia',provinceText:place,providerText:'Personale Arriva Italia',sectorText:'Trasporto pubblico locale',relevanceText:'Locale'}),['UNKNOWN']);
+ for(const place of ['Monza','Varese','Lecco']) assert.deepEqual(classifyRegionTags({regionText:'Lombardia',provinceText:place,providerText:'Personale Arriva Italia',sectorText:'Trasporto pubblico locale',relevanceText:'Locale'}),[place.toUpperCase()]);
  assert.deepEqual(classifyRegionTags({regionText:'Lombardia',provinceText:'Tutte',providerText:'Personale azienda sconosciuta',relevanceText:'Locale'}),['UNKNOWN']);
  assert.deepEqual(filterStrikesForRegion([{date:'2026-10-16',category:'BUS',provider:'Arriva Italia',region:'UNKNOWN'}],'MILANO'),[]);
  assert.deepEqual(classifyRegionTags({regionText:'Italia',provinceText:'Tutte',providerText:'Arriva Italia',relevanceText:'Locale'}),['UNKNOWN']);

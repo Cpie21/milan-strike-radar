@@ -527,6 +527,10 @@ function getCategoryDateSpan(row: RawStrikeRow, category: StrikeRecord['category
 }
 
 export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeRecord[]> {
+  // Reprocessing a previously persisted UNKNOWN must use the same official
+  // geography normalization as fresh HTML ingestion, rather than keep its old
+  // page-coverage placeholder forever.
+  rawRows = rawRows.flatMap(row => ['UNKNOWN', 'OTHER'].includes(row.region) && row.rawRegion ? classifyRegionTags({regionText:row.rawRegion,provinceText:row.province,sectorText:row.sector,providerText:row.provider,noteText:row.note,relevanceText:row.rilevanza}).map(region => ({...row,region})) : [row]);
   // The status-search snapshot follows the upcoming snapshot and is authoritative
   // for revisions. Deduplicate before translations and transformations.
   rawRows = [...new Map(rawRows.map(row => [`${row.sourceKey || JSON.stringify(row)}|${row.region}`, row])).values()];

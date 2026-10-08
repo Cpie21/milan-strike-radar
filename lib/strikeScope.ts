@@ -2,6 +2,7 @@ import type { TimingEvidence, TimingSource } from './strikeEvidence';
 import { CITIES, resolveCity } from './cities';
 import { scopeTiming, timingSections } from './strikeTiming';
 import { affectedScopeText, classifyRegionTags, normalizeAirportAffectedLines } from './strikeNormalization';
+import { normalizeOfficialGeography, type NormalizedOfficialGeography } from './officialGeography';
 import { parseLineScope } from './lineScope';
 import { intersectGuaranteeEvidence, identifyOperators } from './operatorGuaranteeProfiles';
 import { eavDepartmentModes, EAV_DEPARTMENT_SOURCE } from './operatorDepartments';
@@ -18,6 +19,7 @@ export type ScopeEvidence = {
   officialGeography?: FieldEvidence<{region:string;province:string;relevance:string}>;
   supportedCityProjection?: FieldEvidence<string[]>;
   locationStatus?: 'SUPPORTED_PROJECTION' | 'UNSUPPORTED_CITY' | 'UNSUPPORTED_REGION' | 'UNPROJECTED_GEOGRAPHY' | 'UNKNOWN_LOCATION';
+  normalizedGeography?: FieldEvidence<NormalizedOfficialGeography>;
   railSections?: FieldEvidence<{subject:'RAIL_SERVICE'|'RAIL_CONTRACTORS'|'RAIL_FREIGHT';text:string;representedByThisEvent:boolean}[]>;
   serviceSchedule?: FieldEvidence<import('./serviceSchedule').ServiceSchedule>;
   serviceClassification?: FieldEvidence<{operator:string;department:string;mode:string}>;
@@ -107,15 +109,16 @@ export function makeScopeEvidence(row: {provider:string; note:string; sector:str
   const projected=classifyRegionTags({regionText:row.rawRegion,provinceText:row.province,providerText:row.provider,sectorText:row.sector,noteText:row.note,relevanceText:row.rilevanza});
   const projection=projected.includes('NATIONAL') ? CITIES.map(c=>c.tag) : projected.filter(tag=>Boolean(resolveCity(tag)));
   const declared={region:row.rawRegion || '',province:row.province || '',relevance:row.rilevanza || ''};
-  const hasProvince=Boolean(declared.province) && !/^(tutte|italia|nazionale|n\/?d|unknown)$/i.test(declared.province);
-  const geographyKnown=Boolean(declared.region && !/^(unknown|n\/?d)$/i.test(declared.region) || hasProvince);
-  const locationStatus:ScopeEvidence['locationStatus']=region!=='UNKNOWN' ? 'SUPPORTED_PROJECTION' : hasProvince&&!resolveCity(declared.province)?'UNSUPPORTED_CITY':geographyKnown?(CITIES.some(c=>c.region===declared.region.toLowerCase()) || /^italia$/i.test(declared.region)?'UNPROJECTED_GEOGRAPHY':'UNSUPPORTED_REGION'):'UNKNOWN_LOCATION';
+  const normalizedGeography=normalizeOfficialGeography(declared.region,declared.province);
+  const hasProvince=Boolean(normalizedGeography.province);
+  const geographyKnown=Boolean(normalizedGeography.administrativeRegion || hasProvince || /^italia$/i.test(declared.region));
+  const locationStatus:ScopeEvidence['locationStatus']=Boolean(resolveCity(region)) || region==='NATIONAL' ? 'SUPPORTED_PROJECTION' : hasProvince&&!resolveCity(declared.province)?'UNSUPPORTED_CITY':geographyKnown?(CITIES.some(c=>c.region===declared.region.toLowerCase()) || /^italia$/i.test(declared.region)?'UNPROJECTED_GEOGRAPHY':'UNSUPPORTED_REGION'):'UNKNOWN_LOCATION';
   const lines=extractLineScope(row.note);
   const lineScope=parseLineScope(row.note,identifyOperators({provider:row.provider,region,category:category as import('./strikeSync').StrikeRecord['category']}));
   const airports=category==='AIRPORT' && !['AIRLINE','AIRLINE_CREW','CARGO'].includes(scope) ? normalizeAirportAffectedLines([],{contextText:affectedScopeText(row.provider)+' '+affectedScopeText(row.note)}) : [];
   return {
     ...(eavDepartmentModes(row.provider).includes(category as 'TRAIN'|'BUS')?{serviceClassification:{value:{operator:'EAV',department:category==='TRAIN'?'DTF':'DTA',mode:category},confidence:'HIGH' as const,source:'OPERATOR_OFFICIAL' as const,method:'CODE' as const,url:EAV_DEPARTMENT_SOURCE,excerpt:'Verified department meaning; does not establish this event’s exact lines or guaranteed services.'}}:{}),
-    officialGeography:{...fact(declared,geographyKnown,[declared.region,declared.province,declared.relevance].join(' | ')),method:'OFFICIAL'}, supportedCityProjection:fact(projection,geographyKnown), locationStatus,
+    officialGeography:{...fact(declared,geographyKnown,[declared.region,declared.province,declared.relevance].join(' | ')),method:'OFFICIAL'}, normalizedGeography:fact(normalizedGeography,Boolean(normalizedGeography.province || normalizedGeography.administrativeRegion),[declared.region,declared.province].join(' | ')), supportedCityProjection:fact(projection,geographyKnown), locationStatus,
     ...(category==='TRAIN'?{railSections:fact(timingSections(row.modalita).filter(s=>/FERROVIAR|MERCI.*ROTAIA/.test(s.label)).map(s=>({subject:/APPALTI/.test(s.label)?'RAIL_CONTRACTORS' as const:/MERCI/.test(s.label)?'RAIL_FREIGHT' as const:'RAIL_SERVICE' as const,text:s.body.trim().replace(/\s*\/\s*$/,''),representedByThisEvent:/^(?:SETTORE\s+)?FERROVIARIO$/.test(s.label)})),timingSections(row.modalita).length>0,row.modalita)}:{}),
     location:fact(region,region!=='UNKNOWN',[row.rawRegion,row.province,row.rilevanza,row.provider].filter(Boolean).join(' | ')), passengerImpact:fact(indirectRail(scope)?'INDIRECT_OR_UNCONFIRMED':scope==='RAIL_GENERAL'||scope==='RAIL_OPERATOR'||scope==='RAIL_CREW'?'DIRECT_SERVICE':'UNKNOWN',scope.startsWith('RAIL_')), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN',scope==='RAIL_GENERAL'?scopeTiming(row.modalita,'TRAIN'):row.provider),
     affectedLines:fact(lines,lines!=='UNKNOWN',row.note), lineScope:fact(lineScope,lineScope.kind!=='UNKNOWN',row.note),affectedAirports:fact(airports,!!airports.length),

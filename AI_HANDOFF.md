@@ -1,3 +1,8 @@
+## Known official geography normalization (Codex)
+
+- `codex/known-geography-normalization` stacks on PR24/40de9cc and preserves Claude03ddb0b. The20-city UI registry no longer decides whether an official province is known: fresh MIT ingestion and UNKNOWN raw-row replay retain FOGGIA, UDINE, FORLI_CESENA etc. Additive `timing_evidence.fields.normalizedGeography` contains canonical administrative region/province IDs; raw official names and supported-city projection remain separate. No schema migration or model/budget change.
+- Unsupported geography retains `UNSUPPORTED_CITY` and empty supportedCityProjection; don't treat a new region tag as an enabled page or proof only the province capital is affected. Existing UI/Ask/API supported-city fences remain. Frontend city expansion is not part of this backend correction. Every existing supported projection must remain unchanged. Audit, tests and production receipts: `docs/2026-10-08-known-geography.md`.
+
 ## Complete current-product instrumentation (Codex)
 
 - `codex/full-product-analytics` stacks on PR23/f41ae1a and preserves Claude03ddb0b. Contract version3 adds current page/language/device/anonymous page context, day/empty/cancelled exposures, city search metadata, date/month discovery, sheet lifecycle/actual exposure, tutorial step exposure, neutral source authority, card detail exposure, reaction persistence receipts, support attempt IDs, AI first-byte/errors/retry/mode/feedback-reason/subsection exposures. Coverage and metric boundaries: `docs/posthog-coverage.md`; saved dashboard queries remain in manifests.
