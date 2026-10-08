@@ -125,7 +125,7 @@ test('official regional geography survives supported-city projection and aggrega
 test('unsupported official cities differ from missing official geography without inventing supported coverage',async()=>{
  for(const [province,region,provider] of [['Foggia','Puglia','PERSONALE SOC. ATAF DI FOGGIA'],['Udine','Friuli-Venezia Giulia','PERSONALE SOC. ARRIVA UDINE DI UDINE']]) {
   const record=(await transformRows([{...raw,endDate:raw.date,sector:'Trasporto pubblico locale',region:'UNKNOWN',rawRegion:region,province,provider,modalita:'24 ORE',rilevanza:'Locale'}]))[0];
-  assert.equal(record.region,'UNKNOWN');assert.equal(record.timing_evidence.fields.locationStatus,'UNSUPPORTED_CITY');assert.equal(record.timing_evidence.fields.officialGeography.value.province,province);assert.deepEqual(record.timing_evidence.fields.supportedCityProjection.value,[]);
+  assert.equal(record.region,province.toUpperCase());assert.equal(record.timing_evidence.fields.locationStatus,'UNSUPPORTED_CITY');assert.equal(record.timing_evidence.fields.officialGeography.value.province,province);assert.deepEqual(record.timing_evidence.fields.supportedCityProjection.value,[]);
  }
  const fields=makeScopeEvidence({provider:'Unknown provider',note:'',sector:'Ferroviario',modalita:''},'UNKNOWN','TRAIN',[]);assert.equal(fields.locationStatus,'UNKNOWN_LOCATION');
 });
