@@ -2,6 +2,7 @@
 
 - `codex/known-geography-normalization` stacks on PR24/40de9cc and preserves Claude03ddb0b. The20-city UI registry no longer decides whether an official province is known: fresh MIT ingestion and UNKNOWN raw-row replay retain FOGGIA, UDINE, FORLI_CESENA etc. Additive `timing_evidence.fields.normalizedGeography` contains canonical administrative region/province IDs; raw official names and supported-city projection remain separate. No schema migration or model/budget change.
 - Unsupported geography retains `UNSUPPORTED_CITY` and empty supportedCityProjection; don't treat a new region tag as an enabled page or proof only the province capital is affected. Existing UI/Ask/API supported-city fences remain. Frontend city expansion is not part of this backend correction. Every existing supported projection must remain unchanged. Audit, tests and production receipts: `docs/2026-10-08-known-geography.md`.
+- Live runtime9bf6766/READY `dpl_6aELWxpZNRBmX9LrS5kNocv2mufZ`;331 tests/typecheck/focused lint passed. Normal production sync `d0962e19-8df5-45ff-8e0a-00461465fa81` succeeded72/56 and retained the four repaired row IDs and original windows/status; today's new Savona normalized automatically. All20 current city APIs pass geographic exclusion. Quality remains PARTIAL (12 unresolved timings/22 enrichment warnings); do not describe these as fully confirmed operational details.
 
 ## Complete current-product instrumentation (Codex)
 
