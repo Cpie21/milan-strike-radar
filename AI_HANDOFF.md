@@ -1,3 +1,8 @@
+## Past strike evidence preservation (Codex)
+
+- `codex/past-strike-evidence` stacks on PR25/7c74377, UI untouched. MIT status history and operator enrichment now share seven previous Rome dates. Exact identity/unchanged primary declaration allows saved past timings/guarantees/line and schedule evidence to survive an unavailable notice; current official corrections/cancellations/conflicts win, today/future behavior unchanged. No API/schema/model/budget change.
+- Runtime a4bc222/READY dpl_HYvQ13TL1g6oPAkCF7JLxDQHPs6r;340 tests/typecheck/runtime lint/build pass. Four October9 ATM rows repaired from archived public proof with original evidence dates; full-row digest of today's/future55 rows unchanged. Browser yesterday cards show known timings and guarantees. Details: `docs/2026-10-10-past-strike-evidence.md`. Preserve this backend fix in subsequent Claude UI releases.
+
 ## Known official geography normalization (Codex)
 
 - `codex/known-geography-normalization` stacks on PR24/40de9cc and preserves Claude03ddb0b. The20-city UI registry no longer decides whether an official province is known: fresh MIT ingestion and UNKNOWN raw-row replay retain FOGGIA, UDINE, FORLI_CESENA etc. Additive `timing_evidence.fields.normalizedGeography` contains canonical administrative region/province IDs; raw official names and supported-city projection remain separate. No schema migration or model/budget change.
