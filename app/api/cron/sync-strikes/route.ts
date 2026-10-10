@@ -1,4 +1,5 @@
 import { attachFollowUpPlans } from '../../../../lib/recordFollowUp';
+import { preserveHistoricalEvidence } from '../../../../lib/strikeHistory';
 import { optionalSyncStage } from '../../../../lib/syncStageBudget';
 import { attachLineImpacts } from '../../../../lib/lineImpact';
 import { revalidatePath, revalidateTag } from 'next/cache';
@@ -32,15 +33,17 @@ export async function GET(request: Request): Promise<NextResponse> {
     const run = runs?.[0];
     if (!run) return NextResponse.json({ success: false, error: 'A synchronization is already running' }, { status: 409 });
     runId = run.id;
-    const window = syncDateWindow(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(run.started_at)));
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(run.started_at));
+    const window = syncDateWindow(today);
     const [upcoming, recent] = await Promise.all([fetchAndFilter(), fetchRecentRows()]);
     const rawRows = [...upcoming, ...recent];
     // Processing an empty valid table is successful, unlike a missing/error table.
     let records: StrikeRecord[] = rawRows.length ? (await transformRows(rawRows)).map(record => ({ ...record, last_seen_at: run.started_at })) : [];
     const warnings: string[] = [];
-    // Retain article addresses for active identities, never reuse their old facts.
-    // A failed lookup cannot stop the fresh primary snapshot from being written.
-    const {data:prior,error:priorError}=await db.from('strikes').select('source_key,date,region,category,timing_evidence').gte('date',window.start).limit(1000);
+    // Future facts are always rechecked. Past operational snapshots may survive
+    // a source outage only when the exact identity and MIT declaration match.
+    const {data:prior,error:priorError}=await db.from('strikes').select('source_key,date,region,category,provider,status,display_time,duration_hours,strike_windows,guarantee_windows,affected_lines,data_source,raw_payload,timing_evidence').gte('date',window.start).limit(1000);
+    if ((priorError || prior?.length === 1000) && records.some(r => r.date < today)) throw new Error('Historical evidence lookup incomplete; refusing to overwrite past records');
     if(priorError || prior?.length===1000)warnings.push('Previous notice address lookup incomplete; current indexes still checked');
     const enrichment = await optionalSyncStage('operator notices',optionalDeadline,100000,warnings,()=>enrichStrikeTiming(records,warnings,new Date(),Math.min(Date.now()+90000,optionalDeadline),prior || []),()=>{
 
@@ -57,7 +60,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     records=semantic.records;
     const schedules=await optionalSyncStage('scheduled times',optionalDeadline,105000,warnings,()=>enrichScheduledServiceTimes(records,warnings),()=>({records,complete:0,feeds:0}));
     const memberships=await optionalSyncStage('route membership',optionalDeadline,85000,warnings,()=>enrichPotentialRouteCatalogs(schedules.records,warnings),()=>({records:schedules.records,catalogs:0,projected:0}));
-    records=attachFollowUpPlans(attachLineImpacts(memberships.records));
+    records=attachFollowUpPlans(attachLineImpacts(preserveHistoricalEvidence(memberships.records,prior || [],today)));
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
     const unknownTiming = records.filter(record => record.status !== 'CANCELLED' && !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
     const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {

@@ -220,11 +220,12 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     if (exactDate(title, d) || exactDate(text.slice(0,2500), d)) return true;
     if (!/scioper|\bstrike\b|industrial action/i.test(title)) return false;
     if (!published && fromCurrentOfficialIndex && official) {
-      const event=Date.parse(d),stamp=Date.parse(checkedAt);
+      const checkedDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(checkedAt));
+      const event=Date.parse(d),stamp=Date.parse(checkedDay);
       const yearless=new RegExp(`\\b${Number(d.slice(8))}\\s+(?:${MONTHS[Number(d.slice(5,7))-1]}|${ENGLISH_MONTHS[Number(d.slice(5,7))-1]})(?!\\s+20\\d{2})`,'i').test(title);
       const weekdays=['domenica','lunedi','martedi','mercoledi','giovedi','venerdi','sabato'];
       const weekday=weekdays.findIndex(w=>normalize(title).includes(w));
-      return yearless && event>=stamp-86400000 && event<=stamp+90*86400000 && weekday>=0 && new Date(d).getUTCDay()===weekday;
+      return yearless && event>=stamp-7*86400000 && event<=stamp+90*86400000 && weekday>=0 && new Date(d).getUTCDay()===weekday;
     }
     if(!published) return false;
     const [year,month,day]=d.split('-').map(Number);
@@ -505,7 +506,10 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
 export async function enrichStrikeTiming(records: StrikeRecord[], warnings: string[], now = new Date(),deadline = Date.now() + 160_000, priorRecords:Pick<StrikeRecord,'source_key'|'date'|'region'|'category'|'timing_evidence'>[] = []) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(now);
   const horizon = new Date(now.getTime() + 90 * 86400000).toISOString().slice(0, 10);
-  const targets = records.filter(r => r.status !== 'CANCELLED' && r.date >= today && r.date <= horizon && r.raw_payload);
+  // MIT keeps the previous seven days in its status search. Enrichment must use
+  // the same lower bound or yesterday is rewritten from coarse MIT data alone.
+  const recentStart = new Date(Date.parse(today + 'T12:00:00Z') - 7 * 86400000).toISOString().slice(0, 10);
+  const targets = records.filter(r => r.status !== 'CANCELLED' && r.date >= recentStart && r.date <= horizon && r.raw_payload);
   const output = records.map(r => ({...r,timing_evidence:r.timing_evidence?{...r.timing_evidence,fields:r.timing_evidence.fields?{...r.timing_evidence.fields}:undefined}:undefined} as StrikeRecord));
   if (!targets.length) return { records: output, enriched: 0, sourcesChecked: 0, conflicts: 0 };
   const dates = [...new Set(targets.map(r => r.date))].sort();
