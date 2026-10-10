@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { test } = require('node:test');
 require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 } }).outputText, filename);
 const { parseExternalNotices, parseExternalWindows, matchesNotice, applyTimingEvidence, allowedSourceUrl, enrichStrikeTiming } = require('../lib/strikeEnrichment.ts');
+const { preserveHistoricalEvidence } = require('../lib/strikeHistory.ts');
 const { aggregateStrikes } = require('../components/utils.ts');
 const record = (override = {}) => ({ date:'2026-10-09', region:'MILANO', category:'SUBWAY', provider:'米兰交通局人员', status:'UNCERTAIN', display_time:'具体时段待公布', duration_hours:'24小时（时段待公布）', strike_windows:[], guarantee_windows:[], affected_lines:['全部线路'], source_key:'same-mit-identity', source_url:'https://scioperi.mit.gov.it/mit2/public/scioperi', raw_payload:{ provider:'PERSONALE GRUPPO ATM DI MILANO', unions:'CONFIAL TRASPORTI', sector:'Trasporto pubblico locale', modalita:"24 ORE: VARIE MODALITA'", sourceStatus:'Programmato' }, ...override });
 const source = (url = 'https://sciopero.net/123-event/') => ({ url, name:'Report', authority:'reported', checked_at:'2026-10-04T14:00:00Z', content_hash:'hash', excerpt:'timing' });
@@ -136,4 +137,94 @@ test('scheduled discovery finds a new article from the current index, then notic
 test('source outage clears previous supplemental evidence instead of keeping obsolete hours', async () => {
   const original=global.fetch;global.fetch=async()=>new Response('outage',{status:503});
   try {const warnings=[];const r=await enrichStrikeTiming([record({timing_evidence:{windows:expected}})],warnings,new Date('2026-10-04T12:00:00Z'));assert.ok(warnings.length);assert.deepEqual(r.records[0].timing_evidence.windows,[]);assert.deepEqual(r.records[0].timing_evidence.sources,[]);assert.equal(r.records[0].status,'UNCERTAIN');}finally{global.fetch=original;}
+});
+
+test('a strike moving from today into yesterday still rereads its dated operator article', async () => {
+  const original=global.fetch, url='https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx';
+  const article='<main><h1>Sciopero 9 ottobre 2026</h1><p>Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dalle 18 a fine servizio.</p></main>';
+  const fetched=[];
+  global.fetch=async input=>{fetched.push(String(input));return new Response(String(input)===url?article:'<main>News</main>',{headers:{'content-type':'text/html'}});};
+  try {
+    const saved=applyTimingEvidence(record(),[notice({source:{...source(url),authority:'official'}})]);
+    const today=await enrichStrikeTiming([record()],[],new Date('2026-10-09T12:00:00Z'),Date.now()+10000,[saved]);
+    const yesterday=await enrichStrikeTiming([record({raw_payload:{...record().raw_payload,sourceStatus:'Effettuato'}})],[],new Date('2026-10-10T12:00:00Z'),Date.now()+10000,[saved]);
+    assert.deepEqual(yesterday.records[0].timing_evidence.windows,today.records[0].timing_evidence.windows);
+    assert.deepEqual(yesterday.records[0].timing_evidence.windows,expected);
+    assert.equal(yesterday.records[0].status,'CONFIRMED');assert.ok(fetched.includes(url));
+  } finally {global.fetch=original;}
+});
+
+const historical = () => applyTimingEvidence(record(),[notice({source:{...source('https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx'),authority:'official'},field_text:'Le nostre linee',guarantee_windows:[{start:'15:00',end:'18:00'}]})]);
+const yesterdayRaw = () => applyTimingEvidence(record({raw_payload:{...record().raw_payload,sourceStatus:'Effettuato'},last_seen_at:'2026-10-10T05:10:00Z'}),[]);
+
+test('past source outage retains timing, symbolic endpoint, guarantees and lines with original proof timestamps', () => {
+  const old=historical(), fresh=yesterdayRaw(), frozen=structuredClone(old);
+  fresh.timing_evidence.fields.noticeDiscovery={checkedAt:'2026-10-10T05:10:00Z',status:'UNAVAILABLE',sources:[]};
+  const kept=preserveHistoricalEvidence([fresh],[old],'2026-10-10')[0];
+  for(const k of ['status','display_time','duration_hours','strike_windows','guarantee_windows','affected_lines']) assert.deepEqual(kept[k],old[k]);
+  assert.deepEqual(kept.timing_evidence.windows,expected);
+  assert.deepEqual(kept.timing_evidence.fields.lineScope,old.timing_evidence.fields.lineScope);
+  assert.deepEqual(kept.timing_evidence.fields.guaranteeEvidenceWindows,old.timing_evidence.fields.guaranteeEvidenceWindows);
+  assert.equal(kept.last_seen_at,fresh.last_seen_at);assert.equal(kept.raw_payload.sourceStatus,'Effettuato');
+  assert.equal(kept.timing_evidence.sources[0].checked_at,old.timing_evidence.sources[0].checked_at);
+  assert.equal(kept.timing_evidence.fields.noticeDiscovery.status,'UNAVAILABLE');assert.deepEqual(old,frozen);
+});
+
+test('today/future source outages keep the existing refresh behavior, not saved historical facts', () => {
+  for(const today of ['2026-10-08','2026-10-09']) {
+    const fresh=yesterdayRaw();assert.strictEqual(preserveHistoricalEvidence([fresh],[historical()],today)[0],fresh);
+  }
+});
+
+test('past corrections, cancellations and differing identity never inherit the previous snapshot', () => {
+  const old=historical();
+  const revised=yesterdayRaw();revised.raw_payload.modalita='DALLE 09.00 ALLE 13.00';
+  const noted=yesterdayRaw();noted.raw_payload.note='Nuove modalita';
+  for(const fresh of [revised,noted,{...yesterdayRaw(),status:'CANCELLED'}, {...yesterdayRaw(),source_key:'other'}, {...yesterdayRaw(),region:'ROMA'}, {...yesterdayRaw(),category:'BUS'}, {...yesterdayRaw(),date:'2026-10-08'}]) assert.strictEqual(preserveHistoricalEvidence([fresh],[old],'2026-10-10')[0],fresh);
+  for(const invalid of [{...old,status:'CANCELLED'},{...old,status:'STALE'},{...old,raw_payload:undefined},{...old,source_key:undefined}]) {
+    const fresh=yesterdayRaw();assert.strictEqual(preserveHistoricalEvidence([fresh],[invalid],'2026-10-10')[0],fresh);
+  }
+});
+
+test('a newly matched official past timing revision wins without clearing unpublished guarantees or lines', () => {
+  const old=historical();
+  const fresh=applyTimingEvidence(yesterdayRaw(),[notice({timing:'Atm Milano 9.15-13.30',source:{...source('https://www.atm.it/it/new-notice'),authority:'official'}})]);
+  const result=preserveHistoricalEvidence([fresh],[old],'2026-10-10')[0];
+  assert.deepEqual(result.timing_evidence.windows,[{start:'09:15',end:'13:30',end_kind:'clock'}]);
+  assert.deepEqual(result.guarantee_windows,old.guarantee_windows);
+  assert.deepEqual(result.timing_evidence.fields.lineScope,old.timing_evidence.fields.lineScope);
+});
+
+test('current past evidence conflicts and genuinely unknown past records are not made confirmed', () => {
+  const old=historical();
+  const conflict=applyTimingEvidence(yesterdayRaw(),[notice(),notice({timing:'Atm Milano 10.00-13.00',source:source('https://www.virgilio.it/notizie/test')})]);
+  assert.equal(conflict.timing_evidence.confidence,'conflict');assert.strictEqual(preserveHistoricalEvidence([conflict],[old],'2026-10-10')[0],conflict);
+  const unknown=yesterdayRaw();assert.strictEqual(preserveHistoricalEvidence([unknown],[yesterdayRaw()],'2026-10-10')[0],unknown);
+});
+
+test('a rechecked unchanged past line scope retains its previously verified route membership and schedule', () => {
+  const old=historical();old.timing_evidence.fields.routeMembership={value:{status:'COMPLETE'},source:'OPERATOR_OFFICIAL'};
+  old.timing_evidence.fields.serviceSchedule={value:{status:'COMPLETE'},source:'OPERATOR_OFFICIAL'};
+  const fresh=applyTimingEvidence(yesterdayRaw(),[notice({source:{...source('https://www.atm.it/it/new-notice'),authority:'official'},field_text:'Le nostre linee'})]);
+  const result=preserveHistoricalEvidence([fresh],[old],'2026-10-10')[0];
+  assert.deepEqual(result.timing_evidence.fields.routeMembership,old.timing_evidence.fields.routeMembership);
+  assert.deepEqual(result.timing_evidence.fields.serviceSchedule,old.timing_evidence.fields.serviceSchedule);
+});
+
+test('yearless official index notices use the same Rome seven-day history window after midnight', () => {
+  const html=fs.readFileSync(__dirname+'/fixtures/atm-2026-10-09.html','utf8'),url='https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx';
+  for(const checked of ['2026-10-10T05:10:00Z','2026-10-16T20:00:00Z']) assert.ok(parseExternalNotices(html,url,['2026-10-09'],checked,true).length);
+  assert.equal(parseExternalNotices(html,url,['2026-10-09'],'2026-10-17T05:10:00Z',true).length,0);
+  assert.equal(parseExternalNotices(html,url,['2026-10-09'],'2026-10-10T05:10:00Z',false).length,0);
+  assert.equal(parseExternalNotices(html,url,['2027-10-09'],'2026-10-10T05:10:00Z',true).length,0);
+});
+
+test('past sourced operator guarantee profiles survive even without a secondary timing article', () => {
+  const {applyGuaranteeProfile}=require('../lib/operatorGuaranteeProfiles.ts');
+  const fresh=applyTimingEvidence(record({status:'CONFIRMED',strike_windows:[{start:'00:00',end:'24:00'}],raw_payload:{...record().raw_payload,modalita:'24 ORE'}}),[]);
+  const old=applyGuaranteeProfile(fresh);assert.equal(old.timing_evidence.sources.length,0);
+  assert.equal(old.timing_evidence.fields.guaranteeSource,'OPERATOR_RULE');
+  const result=preserveHistoricalEvidence([fresh],[old],'2026-10-10')[0];
+  assert.deepEqual(result.guarantee_windows,old.guarantee_windows);
+  assert.deepEqual(result.timing_evidence.fields.guaranteeEvidenceWindows,old.timing_evidence.fields.guaranteeEvidenceWindows);
 });
