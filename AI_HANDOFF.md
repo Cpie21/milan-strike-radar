@@ -1,3 +1,8 @@
+## Shorter out-of-questions copy (Claude)
+
+- Production runtime `83da63b` (`claude/shorter-quota-copy`, dpl_AmjjSLtAB5rwEsSWYDdGQ6nftSno, READY, 2026-10-23) = live `a4bc222` / `b06b292` + two strings in `components/lab/LabAsk.tsx`: field placeholder "今天的次数用完了" / "None left today", answer message "今天的 5 次用完了，明天再来". No logic, API, schema, model or budget change. Merge this branch (or keep the two strings) before your next production deploy.
+- Separate, not deployed: `claude/screenshot-trip` (screenshot → on-device OCR → rule extraction → Jev only for ambiguous fields via `/api/ask/ticket`, shared ledger and `ask` rate bucket). It adds local-only `ASK_UNLIMITED` switches that production builds ignore.
+
 ## Past strike evidence preservation (Codex)
 
 - `codex/past-strike-evidence` stacks on PR25/7c74377, UI untouched. MIT status history and operator enrichment now share seven previous Rome dates. Exact identity/unchanged primary declaration allows saved past timings/guarantees/line and schedule evidence to survive an unavailable notice; current official corrections/cancellations/conflicts win, today/future behavior unchanged. No API/schema/model/budget change.
