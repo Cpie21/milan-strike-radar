@@ -35,7 +35,7 @@ const STAGE_LABEL: Record<StageEvent['id'], [string, string]> = {
 const FACT: Record<string, [string, string]> = {
   intent: ['类型', 'Intent'], date: ['日期', 'Date'], time: ['时间', 'Time'], city: ['城市', 'City'], mode: ['交通', 'Mode'], line: ['线路', 'Line'],
   range: ['范围', 'Range'], records: ['记录', 'Records'], candidates: ['候选', 'Candidates'], judged: ['已判断', 'Judged'], skipped: ['未判断', 'Skipped'],
-  cost: ['花费', 'Cost'], matches: ['相关', 'Relevant'], excluded: ['排除', 'Excluded'], sync: ['更新', 'Synced'],
+  cost: ['花费', 'Cost'], matches: ['相关', 'Relevant'], excluded: ['排除', 'Excluded'], sync: ['更新', 'Synced'], purpose: ['目的', 'Purpose'],
 };
 const INTENT: Record<string, [string, string]> = { trip_check: ['行程影响', 'Trip'], day_check: ['某一天', 'One day'], period_check: ['一段时间', 'Period'], claim_check: ['核实消息', 'Verify'], other: ['无关', 'Off topic'] };
 const LEVEL: Record<string, [string, string, string]> = {
@@ -68,6 +68,12 @@ const asCard = (j: Judged): ModeCard => ({
   lines: j.lines, lineLabels: j.lineLabels, scheduledEnd: null, unknownTiming: !j.windows.length, confidence: '', sources: j.sources, events: [],
   scopeType: j.scopeType, indirect: j.indirect, lineScope: j.lineScope, geography: [], records: [], quotes: [],
 });
+
+// How the record relates to what was asked, and how sure: quiet, beside the heading.
+function Relevance({ item, lang }: { item: Judged; lang: Lang }) {
+  if (!item.reason || item.status === 'CANCELLED') return null;
+  return <span className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-normal" style={{ color: C.text3 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></span>;
+}
 
 function Tag({ by, p, lang }: { by: Fact['by']; p?: number | null; lang: Lang }) {
   const label = by === 'jev' ? (p != null ? tx(lang, `把握 ${Math.round(p * 100)}%`, `${Math.round(p * 100)}% sure`) : 'Jev') : by === 'db' ? tx(lang, '数据库', 'DB') : by === 'default' ? tx(lang, '默认', 'Default') : tx(lang, '规则', 'Rule');
@@ -606,24 +612,30 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
 
           {groups.map(([mode, items]) => (
             <div key={mode} className="rounded-[18px] overflow-hidden" style={{ background: C.surface2 }}>
-              <div className="flex items-center gap-2 px-4 pt-3 pb-1 text-[13px] font-medium" style={{ color: C.text3 }}>
-                <ModeBadge mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
-                {linesFor(mode, result.understanding.lines).length > 0 && <span className="flex gap-1">{linesFor(mode, result.understanding.lines).map(l => <LineBadge key={l} line={l} />)}</span>}
+              {/* what you mentioned, and (for a single record) how sure the match is, top right */}
+              <div className="min-h-[44px] flex items-center justify-between gap-3 px-4 py-2.5 text-[13px] font-medium" style={{ color: C.text3 }}>
+                <span className="min-w-0 flex items-center gap-2">
+                  <ModeBadge mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
+                  {linesFor(mode, result.understanding.lines).length > 0 && <span className="flex gap-1">{linesFor(mode, result.understanding.lines).map(l => <LineBadge key={l} line={l} />)}</span>}
+                </span>
+                {items.length === 1 && <Relevance item={items[0]} lang={lang} />}
               </div>
               {items.map(item => {
                 const card = asCard(item);
                 const status = statusLine(card, today, -1, lang);
+                const overlap = item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED';
                 return (
-                  <div key={item.key} className="px-4 py-3" style={{ borderTop: `1px solid ${C.line}` }}>
-                    <p className="text-[15px] font-semibold leading-snug">{who(item.provider, lang)}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
-                    {item.reason && item.status !== 'CANCELLED' && <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
-                    <p className="mt-1 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
-                    {item.guarantees.length > 0 && <p className="text-[12.5px] tabular-nums" style={{ color: C.run }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
-                    <div className="mt-2.5"><Bar card={card} lang={lang} /></div>
-                    {item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED' && (
-                      <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium">{result.understanding.span && item.overlap === 'strike' ? tx(lang, '你说的时段里有一部分在罢工时段内', 'Part of the time you gave is inside the strike') : tx(lang, ...OVERLAP[item.overlap])}<Tag by="rule" lang={lang} /></p>
-                    )}
-                    <button onClick={() => go(item.date, item.path)} className="mt-2 text-[13px] font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, `查看 ${dayLabel(item.date, lang)} 全部 →`, `See all of ${dayLabel(item.date, lang)} →`)}</button>
+                  <div key={item.key} className="px-4 pt-4 pb-4" style={{ borderTop: `1px solid ${C.line}` }}>
+                    <p className="text-[15px] font-semibold leading-snug">{who(item.provider, lang)}{item.national && <span className="ml-1.5 inline-block whitespace-nowrap align-[1px] text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
+                    {items.length > 1 && <p className="mt-1"><Relevance item={item} lang={lang} /></p>}
+                    <p className="mt-2 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
+                    {item.guarantees.length > 0 && <p className="mt-0.5 text-[12.5px] tabular-nums" style={{ color: C.run }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
+                    <div className="mt-4"><Bar card={card} lang={lang} /></div>
+                    {/* what it means for your time, and the way to the whole day, on one line */}
+                    <div className={`mt-3.5 flex items-center gap-3 ${overlap ? 'justify-between' : 'justify-end'}`}>
+                      {overlap && <p className="min-w-0 text-[13px] font-medium">{result.understanding.span && item.overlap === 'strike' ? tx(lang, '你说的时段里有一部分在罢工时段内', 'Part of the time you gave is inside the strike') : tx(lang, ...OVERLAP[item.overlap!])}</p>}
+                      <button onClick={() => go(item.date, item.path)} aria-label={tx(lang, `查看 ${dayLabel(item.date, lang)} 全部`, `See all of ${dayLabel(item.date, lang)}`)} className="shrink-0 flex items-center gap-0.5 text-[13px] font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, '查看这一天', 'Whole day')}<CaretRight size={11} weight="bold" /></button>
+                    </div>
                   </div>
                 );
               })}
@@ -649,7 +661,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
       )}
 
       {result?.kind === 'result' && <ShareAnswer ask={a} />}
-      {result?.kind === 'clarify' && <Feedback active={active} key={a.requestId ?? asked} ask={a} />}
+      {/* "was this helpful?" belongs to an answer: not while it is still asking which day or transport */}
 
       {stages.length > 0 && (
         <div className="mt-3 mb-1">
@@ -673,31 +685,46 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
   );
 }
 
+// The reasoning, step by step, strung on one rod down the left (the same
+// metal as the rods the board hangs from): a node per step, so the four read
+// as one line of thought rather than four boxes.
+const ROD = 'linear-gradient(90deg,#26282D,#73777F,#26282D)';
+const PURPOSE: Record<string, [string, string]> = { daily: ['日常出行', 'Everyday travel'], airport: ['去机场', 'To the airport'], intercity: ['城际出行', 'Between cities'], abroad: ['出国', 'Abroad'] };
+
 function Stages({ stages, busy = false, lang }: { stages: StageEvent[]; busy?: boolean; lang: Lang }) {
+  const shown = (['understand', 'retrieve', 'judge', 'evidence'] as const)
+    .map((id, i) => ({ id, stage: stages.find(s => s.id === id), pending: !stages.find(s => s.id === id) && busy && i === stages.length }))
+    .filter(x => x.stage || x.pending);
   return (
-    <ol className="mt-3 flex flex-col gap-1.5">
-      {(['understand', 'retrieve', 'judge', 'evidence'] as const).map((id, i) => {
-        const stage = stages.find(s => s.id === id);
-        const pending = !stage && busy && i === stages.length;
-        if (!stage && !pending) return null;
+    <ol className="mt-3">
+      {shown.map(({ id, stage }, i) => {
+        const last = i === shown.length - 1;
         return (
-          <motion.li key={id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-[12px] px-3 py-2" style={{ background: C.surface2 }}>
-            <div className="flex items-center gap-2 text-[13px] font-medium">
-              {stage ? <Check size={13} weight="bold" color={C.ok} /> : <motion.span className="w-[7px] h-[7px] rounded-full" style={{ background: '#9FD8FF' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} />}
-              {tx(lang, ...STAGE_LABEL[id])}
-              {stage && <span className="ml-auto text-[11.5px] tabular-nums" style={{ color: C.text3 }}>{stage.ms} ms</span>}
-            </div>
-            {stage && stage.facts.some(f => f.value) && (
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {stage.facts.filter(f => f.value).map((f, k) => (
-                  <span key={k} className="flex items-center gap-1 text-[11.5px] rounded-[7px] px-1.5 py-[2px]" style={{ background: C.surface2 }}>
-                    <span style={{ color: C.text3 }}>{tx(lang, ...(FACT[f.label] || [f.label, f.label]))}</span>
-                    <span>{f.label === 'intent' ? tx(lang, ...(INTENT[f.value] || [f.value, f.value])) : f.label === 'sync' ? f.value.slice(5, 16).replace('T', ' ') : f.value}</span>
-                    <Tag by={f.by} p={f.p} lang={lang} />
-                  </span>
-                ))}
+          <motion.li key={id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="relative flex gap-2.5">
+            <span aria-hidden className="relative w-5 shrink-0 flex justify-center">
+              {/* the rod on to the next step */}
+              {!last && <span className="absolute top-[30px] -bottom-[12px] w-[3px] rounded-full" style={{ background: ROD }} />}
+              <span className="relative mt-[10px] w-5 h-5 rounded-full flex items-center justify-center" style={{ background: stage ? C.okSoft : C.surface3, boxShadow: `0 0 0 3px ${C.surface}, inset 0 0 0 1px ${stage ? 'rgba(80,200,120,0.35)' : C.lineStrong}` }}>
+                {stage ? <Check size={10} weight="bold" color={C.ok} /> : <motion.span className="w-[6px] h-[6px] rounded-full" style={{ background: '#9FD8FF' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1 }} />}
+              </span>
+            </span>
+            <div className={`flex-1 min-w-0 rounded-[12px] px-3 py-2.5 ${last ? '' : 'mb-2'}`} style={{ background: C.surface2 }}>
+              <div className="flex items-center gap-2 text-[13px] font-medium">
+                {tx(lang, ...STAGE_LABEL[id])}
+                {stage && <span className="ml-auto text-[11.5px] tabular-nums" style={{ color: C.text3 }}>{stage.ms} ms</span>}
               </div>
-            )}
+              {stage && stage.facts.some(f => f.value) && (
+                <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-1">
+                  {stage.facts.filter(f => f.value).map((f, k) => (
+                    <span key={k} className="flex items-center gap-1 text-[11.5px] py-[2px]">
+                      <span style={{ color: C.text3 }}>{tx(lang, ...(FACT[f.label] || [f.label, f.label]))}</span>
+                      <span>{f.label === 'intent' ? tx(lang, ...(INTENT[f.value] || [f.value, f.value])) : f.label === 'purpose' ? tx(lang, ...(PURPOSE[f.value] || [f.value, f.value])) : f.label === 'sync' ? f.value.slice(5, 16).replace('T', ' ') : f.value}</span>
+                      <Tag by={f.by} p={f.p} lang={lang} />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.li>
         );
       })}
