@@ -69,12 +69,6 @@ const asCard = (j: Judged): ModeCard => ({
   scopeType: j.scopeType, indirect: j.indirect, lineScope: j.lineScope, geography: [], records: [], quotes: [],
 });
 
-// How the record relates to what was asked, and how sure: quiet, beside the heading.
-function Relevance({ item, lang }: { item: Judged; lang: Lang }) {
-  if (!item.reason || item.status === 'CANCELLED') return null;
-  return <span className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-normal" style={{ color: C.text3 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></span>;
-}
-
 function Tag({ by, p, lang }: { by: Fact['by']; p?: number | null; lang: Lang }) {
   const label = by === 'jev' ? (p != null ? tx(lang, `把握 ${Math.round(p * 100)}%`, `${Math.round(p * 100)}% sure`) : 'Jev') : by === 'db' ? tx(lang, '数据库', 'DB') : by === 'default' ? tx(lang, '默认', 'Default') : tx(lang, '规则', 'Rule');
   const color = by === 'jev' ? '#9FD8FF' : by === 'rule' ? C.ok : C.text3;
@@ -612,30 +606,24 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
 
           {groups.map(([mode, items]) => (
             <div key={mode} className="rounded-[18px] overflow-hidden" style={{ background: C.surface2 }}>
-              {/* what you mentioned, and (for a single record) how sure the match is, top right */}
-              <div className="min-h-[44px] flex items-center justify-between gap-3 px-4 py-2.5 text-[13px] font-medium" style={{ color: C.text3 }}>
-                <span className="min-w-0 flex items-center gap-2">
-                  <ModeBadge mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
-                  {linesFor(mode, result.understanding.lines).length > 0 && <span className="flex gap-1">{linesFor(mode, result.understanding.lines).map(l => <LineBadge key={l} line={l} />)}</span>}
-                </span>
-                {items.length === 1 && <Relevance item={items[0]} lang={lang} />}
+              <div className="flex items-center gap-2 px-4 py-3 text-[13px] font-medium" style={{ color: C.text3 }}>
+                <ModeBadge mode={mode} size={14} />{tx(lang, '你提到的：', 'You mentioned: ')}{modeName(mode, lang)}
+                {linesFor(mode, result.understanding.lines).length > 0 && <span className="flex gap-1">{linesFor(mode, result.understanding.lines).map(l => <LineBadge key={l} line={l} />)}</span>}
               </div>
               {items.map(item => {
                 const card = asCard(item);
                 const status = statusLine(card, today, -1, lang);
-                const overlap = item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED';
                 return (
-                  <div key={item.key} className="px-4 pt-4 pb-4" style={{ borderTop: `1px solid ${C.line}` }}>
-                    <p className="text-[15px] font-semibold leading-snug">{who(item.provider, lang)}{item.national && <span className="ml-1.5 inline-block whitespace-nowrap align-[1px] text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
-                    {items.length > 1 && <p className="mt-1"><Relevance item={item} lang={lang} /></p>}
-                    <p className="mt-2 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
+                  <div key={item.key} className="px-4 pt-3.5 pb-3.5" style={{ borderTop: `1px solid ${C.line}` }}>
+                    <p className="text-[15px] font-semibold leading-snug">{who(item.provider, lang)}{item.national && <span className="ml-1.5 text-[11px] px-1.5 rounded-[5px]" style={{ background: C.surface3, color: C.text2 }}>{tx(lang, '全国', 'National')}</span>}</p>
+                    {item.reason && item.status !== 'CANCELLED' && <p className="mt-1 flex items-center gap-1.5 text-[12.5px]" style={{ color: C.text2 }}>{tx(lang, ...REASON[item.reason])}<Tag by="jev" p={item.relevance} lang={lang} /></p>}
+                    <p className="mt-2.5 text-[14.5px] font-medium tabular-nums" style={{ color: TONE[status.tone] }}>{status.text}</p>
                     {item.guarantees.length > 0 && <p className="mt-0.5 text-[12.5px] tabular-nums" style={{ color: C.run }}>{tx(lang, '保障', 'Guaranteed')} {windowsText(item.guarantees, lang)}</p>}
-                    <div className="mt-4"><Bar card={card} lang={lang} /></div>
-                    {/* what it means for your time, and the way to the whole day, on one line */}
-                    <div className={`mt-3.5 flex items-center gap-3 ${overlap ? 'justify-between' : 'justify-end'}`}>
-                      {overlap && <p className="min-w-0 text-[13px] font-medium">{result.understanding.span && item.overlap === 'strike' ? tx(lang, '你说的时段里有一部分在罢工时段内', 'Part of the time you gave is inside the strike') : tx(lang, ...OVERLAP[item.overlap!])}</p>}
-                      <button onClick={() => go(item.date, item.path)} aria-label={tx(lang, `查看 ${dayLabel(item.date, lang)} 全部`, `See all of ${dayLabel(item.date, lang)}`)} className="shrink-0 flex items-center gap-0.5 text-[13px] font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, '查看这一天', 'Whole day')}<CaretRight size={11} weight="bold" /></button>
-                    </div>
+                    <div className="mt-3"><Bar card={card} lang={lang} /></div>
+                    {item.overlap && item.overlap !== 'unknown' && item.status !== 'CANCELLED' && (
+                      <p className="mt-3 text-[13px] font-medium">{result.understanding.span && item.overlap === 'strike' ? tx(lang, '你说的时段里有一部分在罢工时段内', 'Part of the time you gave is inside the strike') : tx(lang, ...OVERLAP[item.overlap])}</p>
+                    )}
+                    <button onClick={() => go(item.date, item.path)} className="mt-2.5 text-[13px] font-semibold" style={{ color: '#9FD8FF' }}>{tx(lang, `查看 ${dayLabel(item.date, lang)} 全部 →`, `See all of ${dayLabel(item.date, lang)} →`)}</button>
                   </div>
                 );
               })}
