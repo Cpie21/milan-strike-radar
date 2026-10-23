@@ -19,6 +19,10 @@ test('primary outage keeps bounded retries and reports the failed official endpo
  const before=global.fetch;let attempts=0;global.fetch=async()=>{attempts++;throw new TypeError('fetch failed',{cause:{code:'UND_ERR_CONNECT_TIMEOUT'}});};
  try{await assert.rejects(fetchAndFilter(),/MIT \/mit2\/public\/scioperi unavailable after 3 attempts: fetch failed \(UND_ERR_CONNECT_TIMEOUT\)/);assert.equal(attempts,3);}finally{global.fetch=before;}
 });
+test('health database GET bypasses Next fetch cache while the existing row cache stays explicit',async()=>{
+ const before=global.fetch,url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY,calls=[];process.env.NEXT_PUBLIC_SUPABASE_URL='https://example.supabase.co';process.env.SUPABASE_SERVICE_ROLE_KEY='test-service-key';global.fetch=async(u,o)=>{calls.push(o.cache);return new Response('[]',{headers:{'Content-Type':'application/json'}});};
+ try{const {serverDatabase}=require('../lib/strikeQuery.ts');await serverDatabase({fresh:true}).from('strike_sync_runs').select('status');await serverDatabase().from('strikes').select('id');assert.deepEqual(calls,['no-store',undefined]);}finally{global.fetch=before;if(url===undefined)delete process.env.NEXT_PUBLIC_SUPABASE_URL;else process.env.NEXT_PUBLIC_SUPABASE_URL=url;if(key===undefined)delete process.env.SUPABASE_SERVICE_ROLE_KEY;else process.env.SUPABASE_SERVICE_ROLE_KEY=key;}
+});
 test('later union sector clauses fill only that mode; guarantees, assemblies, exclusions and other years do not donate clocks',async()=>{
  const rows=await records(),html=article('<h2>Trasporto ferroviario:</h2><p>CGIL: astensione dalle 09:01 alle 17:00.</p><h2>Trasporto aereo:</h2><p>Modalita da comunicare.</p><h2>TPL:</h2><p>Modalita territoriali da definire.</p><h2>Manifestazione ferroviaria</h2><p>Concentramento dalle 08:00 alle 10:00.</p>');
  const notices=parseExternalNotices(html,cgUrl,['2026-11-20'],now.toISOString());const train=rows.find(r=>r.category==='TRAIN');

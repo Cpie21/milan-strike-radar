@@ -1,8 +1,10 @@
 ## Union proclamation follow-up (Codex)
 
-- `codex/union-notice-followup` stacks on PR28/797bb4f and preserves Claude PR27's already-live quota copy. Verified CGIL/FILT and SGB indexes join normal daily discovery, selected by the actual declaring union. No UI/schema/model/budget/schedule change. Additive sync diagnostic: `verification.acquisition.unionDocuments`.
+- `codex/union-notice-followup` stacks on PR28/797bb4f and preserves Claude PR27's already-live quota copy. Verified CGIL/FILT and SGB indexes join normal daily discovery, selected by the actual declaring union. No layout/schema/model/budget/schedule change. Additive sync diagnostic: `verification.acquisition.unionDocuments`.
 - Unresolved official article addresses now survive leaving the index and are re-fetched; only URLs are reused. Explicit dated transport clauses, union identity, mode, geography and operator fences are mandatory. Union affiliation never acts as an operator-wide day notice. Dated operator > regulator/MIT explicit hours > union > media; disagreements remain traceable. General workday wording, assemblies and guarantees do not become numeric strike hours.
-- October23 direct public fetch reads CGIL's November20 proclamation successfully, but no sector clocks were published in that text. The separate CUB/SGB rail21:00 November20–20:00 November21 stays confirmed. Six new regression suites/full356 tests pass; details and investigation boundaries in `docs/2026-10-23-union-notice-followup.md`. Preserve these follow-up and evidence contracts through Claude's next UI release.
+- October23 direct public fetch reads CGIL's November20 proclamation successfully, but no sector clocks were published in that text. The separate CUB/SGB rail21:00 November20–20:00 November21 stays confirmed. Seven new regression suites/full357 tests pass; details and investigation boundaries in `docs/2026-10-23-union-notice-followup.md`. Preserve these follow-up and evidence contracts through Claude's next UI release.
+
+- Health GETs now explicitly bypass Next fetch caching via `serverDatabase({fresh:true})` in `readCityStrikes`. A real recovery was hidden by a cached failed status during build. Pages reading health become request-rendered; the explicit ten-minute row cache remains. Initial cloud primary fetch failures did not write data; local recovery ee25bbd9 succeeded71/67 and is documented separately from cloud scheduler validation. Keep health live when integrating frontend changes.
 
 ## National source coverage and general declarations (Codex)
 

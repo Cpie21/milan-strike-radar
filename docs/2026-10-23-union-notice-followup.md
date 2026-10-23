@@ -22,12 +22,20 @@ Only explicit, dated transport clauses can supply hours. Union publishing affili
 
 Priority: dated operator operating notice, regulator/MIT explicit hours, union sector detail, reported sources. Lower-priority timing disagreements remain in the conflict evidence. A valid sector clarification can promote only its matching pending mode; an undifferentiated workday remains pending.
 
-No UI, database migration, AI model, translation, AI budget or scheduler change. Persisted evidence fields retain their shape. The sync response adds `verification.acquisition.unionDocuments`; discovery arrays can now contain union sources. Nominal schedule remains daily `0 5 * * *` UTC; runtime start may be later.
+No UI layout, database migration, AI model, translation, AI budget or scheduler change. Persisted evidence fields retain their shape. The sync response adds `verification.acquisition.unionDocuments`; discovery arrays can now contain union sources. Nominal schedule remains daily `0 5 * * *` UTC; runtime start may be later.
 
 ## Validation
 
-- 356 tests passed, including six new scenario suites for actual proclamation facts, later sector clarification, local/national and union separation, source priority, and unresolved-article/attachment follow-up across three successive cycles and bounded primary-outage diagnostics. Future hours in these tests are synthetic, not November 20 facts.
+- 357 tests passed, including seven new scenario suites for actual proclamation facts, later sector clarification, local/national and union separation, source priority, and unresolved-article/attachment follow-up across three successive cycles and bounded primary-outage diagnostics. Future hours in these tests are synthetic, not November 20 facts.
 - TypeScript, focused ESLint and production build passed.
 - A real, read-only CGIL discovery run fetched 59 documents in the bounded run, including the original proclamation and FILT indexes; all ten CGIL candidates retained empty windows and `UNCERTAIN`. This proves successful acquisition without usable clocks, not universal absence of published instructions.
 
-Production receipts will be appended after the committed release and normal synchronization.
+## Recovery and health-cache correction
+
+The first cloud verification runs (`2d8b6adc-c61f-4524-a5c6-beb703a33af0` and `089017f9-c9a9-408d-a96b-0922038e1056`) failed during primary MIT fetch before any data writes. Both only recorded `fetch failed`; primary errors now preserve the fixed endpoint and safe transport cause code after the same three bounded attempts.
+
+An explicit local recovery ran the committed route 0888149 against real current MIT pages and the production database. Run `ee25bbd9-ab28-4375-8020-ea666b9506ba` succeeded, fetched71/upserted67, with no model calls. Only Next cache invalidation was unavailable outside the server. This was manual recovery, not proof of cloud scheduler recovery.
+
+Inspection proved `.next/cache/fetch-cache` still contained the failed11:19 run after the13:24 recovery. `readCityStrikes` now establishes request-time rendering with `connection()` before the SDK can catch Next dynamic control flow, then uses `serverDatabase({fresh:true})` with `cache:no-store` for health GETs. Health cannot be frozen into a prerender/build response. Pages that read live health render at request time; the explicit ten-minute row cache remains. No layout or public record shape changes. This matches the existing intention that health is checked outside the row cache.
+
+Final cloud deployment/synchronization receipts follow below.
