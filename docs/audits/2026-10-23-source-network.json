@@ -1,0 +1,370 @@
+{
+  "checkedDate": "2026-10-23",
+  "purpose": "Read-only network diagnosis; not a production data sync or an official access-policy statement",
+  "cloud": {
+    "checkedAt": "2026-10-23T14:47:00.972Z",
+    "region": "fra1",
+    "results": [
+      {
+        "source": "MIT_HTTPS",
+        "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+        "elapsedMs": 12010,
+        "dnsAddress": "2.42.233.179",
+        "family": 4,
+        "dnsMs": 37,
+        "failedAt": "TCP",
+        "failure": "NETWORK_PHASE_TIMEOUT"
+      },
+      {
+        "source": "MIT_TLS12",
+        "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+        "elapsedMs": 12002,
+        "dnsAddress": "2.42.233.179",
+        "family": 4,
+        "dnsMs": 26,
+        "failedAt": "TCP",
+        "failure": "NETWORK_PHASE_TIMEOUT"
+      },
+      {
+        "source": "MIT_HTTP_REDIRECT",
+        "url": "http://scioperi.mit.gov.it/mit2/public/scioperi",
+        "elapsedMs": 12001,
+        "dnsAddress": "2.42.233.179",
+        "family": 4,
+        "dnsMs": 25,
+        "failedAt": "TCP",
+        "failure": "NETWORK_PHASE_TIMEOUT"
+      },
+      {
+        "source": "MINISTRY_CONTROL",
+        "url": "https://www.mit.gov.it/",
+        "elapsedMs": 133,
+        "dnsAddress": "34.8.59.39",
+        "family": 4,
+        "dnsMs": 111,
+        "tcpMs": 113,
+        "failedAt": "TLS",
+        "failure": "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+      },
+      {
+        "source": "UNION_CONTROL",
+        "url": "https://www.cgil.it/strumenti/scioperi-e-vertenze",
+        "elapsedMs": 160,
+        "dnsAddress": "54.192.35.27",
+        "family": 4,
+        "dnsMs": 49,
+        "tcpMs": 51,
+        "tlsMs": 56,
+        "tlsProtocol": "TLSv1.3",
+        "tlsAuthorized": true,
+        "http": 200,
+        "httpMs": 160
+      }
+    ]
+  },
+  "local": {
+    "checkedAt": "2026-10-23T14:41:52.232Z",
+    "region": "local",
+    "results": [
+      {
+        "source": "MIT_HTTPS",
+        "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+        "elapsedMs": 190,
+        "dnsAddress": "2.42.233.179",
+        "family": 4,
+        "dnsMs": 14,
+        "tcpMs": 42,
+        "tlsMs": 124,
+        "tlsProtocol": "TLSv1.2",
+        "tlsAuthorized": true,
+        "http": 200,
+        "httpMs": 190
+      },
+      {
+        "source": "MIT_TLS12",
+        "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+        "elapsedMs": 192,
+        "dnsAddress": "2.42.233.179",
+        "family": 4,
+        "dnsMs": 5,
+        "tcpMs": 33,
+        "tlsMs": 116,
+        "tlsProtocol": "TLSv1.2",
+        "tlsAuthorized": true,
+        "http": 200,
+        "httpMs": 192
+      },
+      {
+        "source": "MIT_HTTP_REDIRECT",
+        "url": "http://scioperi.mit.gov.it/mit2/public/scioperi",
+        "elapsedMs": 101,
+        "dnsAddress": "2.42.233.179",
+        "family": 4,
+        "dnsMs": 4,
+        "tcpMs": 72,
+        "http": 301,
+        "httpMs": 101
+      },
+      {
+        "source": "MINISTRY_CONTROL",
+        "url": "https://www.mit.gov.it/",
+        "elapsedMs": 78,
+        "dnsAddress": "34.8.59.39",
+        "family": 4,
+        "dnsMs": 35,
+        "tcpMs": 44,
+        "failedAt": "TLS",
+        "failure": "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+      },
+      {
+        "source": "UNION_CONTROL",
+        "url": "https://www.cgil.it/strumenti/scioperi-e-vertenze",
+        "elapsedMs": 151,
+        "dnsAddress": "13.32.220.34",
+        "family": 4,
+        "dnsMs": 18,
+        "tcpMs": 26,
+        "tlsMs": 40,
+        "tlsProtocol": "TLSv1.3",
+        "tlsAuthorized": true,
+        "http": 200,
+        "httpMs": 151
+      }
+    ]
+  },
+  "measurements": [
+    {
+      "id": "2bDxKsvMY08X8PIDd00021N0V",
+      "createdAt": "2026-10-23T14:43:18.456Z",
+      "target": "scioperi.mit.gov.it",
+      "status": "finished",
+      "results": [
+        {
+          "country": "IT",
+          "city": "Milan",
+          "network": "Akamai Connected Cloud",
+          "asn": 63949,
+          "tags": [
+            "eyeball-network"
+          ],
+          "status": "finished",
+          "resolvedAddress": "2.42.233.179",
+          "http": 200,
+          "timings": {
+            "total": 115,
+            "dns": 25,
+            "tcp": 12,
+            "tls": 30,
+            "firstByte": 48,
+            "download": 0
+          }
+        },
+        {
+          "country": "DE",
+          "city": "Falkenstein",
+          "network": "Hetzner Online",
+          "asn": 24940,
+          "tags": [
+            "datacenter-network"
+          ],
+          "status": "failed",
+          "resolvedAddress": "2.42.233.179",
+          "http": null,
+          "timings": {
+            "total": 15000,
+            "dns": 23,
+            "tcp": null,
+            "tls": null,
+            "firstByte": null,
+            "download": null
+          },
+          "error": "Request timed out while establishing the TCP connection."
+        },
+        {
+          "country": "US",
+          "city": "Buffalo",
+          "network": "HostPapa",
+          "asn": 36352,
+          "tags": [
+            "datacenter-network",
+            "u-zGato"
+          ],
+          "status": "failed",
+          "resolvedAddress": "2.42.233.179",
+          "http": null,
+          "timings": {
+            "total": 15000,
+            "dns": 250,
+            "tcp": null,
+            "tls": null,
+            "firstByte": null,
+            "download": null
+          },
+          "error": "Request timed out while establishing the TCP connection."
+        }
+      ]
+    },
+    {
+      "id": "2J5IXJcfpVsXyPvNP00021N0W",
+      "createdAt": "2026-10-23T14:44:27.608Z",
+      "target": "scioperi.mit.gov.it",
+      "status": "finished",
+      "results": [
+        {
+          "country": "IT",
+          "city": "Milan",
+          "network": "Akamai Connected Cloud",
+          "asn": 63949,
+          "tags": [
+            "datacenter-network"
+          ],
+          "status": "finished",
+          "resolvedAddress": "2.42.233.179",
+          "http": 200,
+          "timings": {
+            "total": 137,
+            "dns": 18,
+            "tcp": 12,
+            "tls": 48,
+            "firstByte": 59,
+            "download": 0
+          }
+        },
+        {
+          "country": "DE",
+          "city": "Frankfurt",
+          "network": "Akamai Connected Cloud",
+          "asn": 63949,
+          "tags": [
+            "datacenter-network"
+          ],
+          "status": "failed",
+          "resolvedAddress": "2.42.233.179",
+          "http": null,
+          "timings": {
+            "total": 15002,
+            "dns": 39,
+            "tcp": null,
+            "tls": null,
+            "firstByte": null,
+            "download": null
+          },
+          "error": "Request timed out while establishing the TCP connection."
+        },
+        {
+          "country": "DE",
+          "city": "Frankfurt",
+          "network": "Ian David Klemm",
+          "asn": 200461,
+          "tags": [
+            "eyeball-network",
+            "u-Decicus"
+          ],
+          "status": "failed",
+          "resolvedAddress": "2.42.233.179",
+          "http": null,
+          "timings": {
+            "total": 15001,
+            "dns": 19,
+            "tcp": null,
+            "tls": null,
+            "firstByte": null,
+            "download": null
+          },
+          "error": "Request timed out while establishing the TCP connection."
+        },
+        {
+          "country": "IT",
+          "city": "Piacenza",
+          "network": "XeniaGroup",
+          "asn": 213791,
+          "tags": [
+            "datacenter-network",
+            "u-JohnFilch123"
+          ],
+          "status": "finished",
+          "resolvedAddress": "2.42.233.179",
+          "http": 200,
+          "timings": {
+            "total": 246,
+            "dns": 2,
+            "tcp": 45,
+            "tls": 113,
+            "firstByte": 85,
+            "download": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "23QtItPLVRFrhGmAK00021N0W",
+      "createdAt": "2026-10-23T14:44:27.590Z",
+      "target": "www.cgil.it",
+      "status": "finished",
+      "results": [
+        {
+          "country": "IT",
+          "city": "Milan",
+          "network": "Akamai Connected Cloud",
+          "asn": 63949,
+          "tags": [
+            "eyeball-network"
+          ],
+          "status": "finished",
+          "resolvedAddress": "13.32.220.37",
+          "http": 403,
+          "timings": {
+            "total": 40,
+            "dns": 33,
+            "tcp": 0,
+            "tls": 4,
+            "firstByte": 2,
+            "download": 1
+          }
+        },
+        {
+          "country": "DE",
+          "city": "Falkenstein",
+          "network": "Hetzner Online",
+          "asn": 24940,
+          "tags": [
+            "datacenter-network"
+          ],
+          "status": "finished",
+          "resolvedAddress": "54.192.35.74",
+          "http": 403,
+          "timings": {
+            "total": 84,
+            "dns": 57,
+            "tcp": 8,
+            "tls": 11,
+            "firstByte": 7,
+            "download": 1
+          }
+        },
+        {
+          "country": "US",
+          "city": "Buffalo",
+          "network": "HostPapa",
+          "asn": 36352,
+          "tags": [
+            "datacenter-network",
+            "u-zGato"
+          ],
+          "status": "finished",
+          "resolvedAddress": "54.192.55.73",
+          "http": 200,
+          "timings": {
+            "total": 561,
+            "dns": 168,
+            "tcp": 12,
+            "tls": 22,
+            "firstByte": 359,
+            "download": 0
+          }
+        }
+      ]
+    }
+  ],
+  "interpretation": "The sampled Italian networks reach MIT; sampled German/US networks fail before TCP connection. Same-provider Milan/Frankfurt pair rules out a blanket ban on all cloud providers. Geographic ingress filtering or international routing is strongly indicated; exact owner-side rule remains unverified."
+}

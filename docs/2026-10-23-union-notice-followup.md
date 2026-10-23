@@ -26,7 +26,7 @@ No UI layout, database migration, AI model, translation, AI budget or scheduler 
 
 ## Validation
 
-- 359 tests passed, including nine new scenario suites for actual proclamation facts, later sector clarification, local/national and union separation, source priority, and unresolved-article/attachment follow-up across three successive cycles and bounded primary-outage diagnostics. Future hours in these tests are synthetic, not November 20 facts.
+- All364 tests passed, including the relay-candidate security scenario. Coverage includes actual proclamation facts, later sector clarification, local/national and union separation, source priority, unresolved-article/attachment follow-up across three successive cycles, bounded primary-outage diagnostics and request-time health. Future hours in these tests are synthetic, not November 20 facts.
 - TypeScript, focused ESLint and production build passed.
 - A real, read-only CGIL discovery run fetched 59 documents in the bounded run, including the original proclamation and FILT indexes; all ten CGIL candidates retained empty windows and `UNCERTAIN`. This proves successful acquisition without usable clocks, not universal absence of published instructions.
 
@@ -48,6 +48,40 @@ The next cloud run (`c2f82ea8-73f9-4a93-b7d9-14d465d09241`) isolated the failing
 The authenticated source-access diagnostic now includes fixed MIT upcoming/history IPv4 checks and validates that each response is an actual parseable table. It remains read-only and never calls a model or writes the database. Tests cover form preservation, correct TLS/family options, three-attempt exhaustion and invalid targets. Local real IPv4 requests read27 upcoming/44 historical announcements.
 
 
-Frankfurt read-only diagnostics also timed out for both native IPv4 endpoints, so IPv4 alone is not recorded as a successful fix. Region-specific egress is being verified by configuring only the sync and authenticated diagnostic functions in Paris (`cdg1`); the application's default remains Frankfurt. This is one region per function, not paid multi-region replication. Final runtime checks below determine whether this route works.
+Frankfurt, Paris and Virginia read-only diagnostics all timed out for both native IPv4 endpoints. IPv4 and those region changes did not fix the outage. The temporary function-region overrides and GitHub diagnostic workflow have been removed; production is back on its existing Frankfurt configuration. There is no extra cron or paid multi-region replication.
 
 Union articles with a dated headline now reject hours belonging to another date mentioned in the body; a retrospective reference cannot donate hours to a different strike.
+
+## Network root-cause evidence
+
+Switching providers was insufficient because it kept testing international egress. The authenticated `/api/admin/source-access?network=1` diagnostic now separates DNS, TCP, TLS and HTTP, with fixed HEAD-only targets, no caller URL, no response bodies/cookies, no database/model calls and 12-second bounds. Production runtime e5b07a3 is READY at `dpl_2C5EULSPVbYVqnkvjAonoCVquaPG`; default region remains fra1.
+
+The actual local and production measurements, plus independent Globalping tests, are retained in [the sanitized network receipt](audits/2026-10-23-source-network.json):
+
+| Sample | DNS | TCP / HTTP result |
+| --- | --- | --- |
+| Local Italy | 2.42.233.179 | TLS verified, HTTP 200 in 190 ms |
+| Vercel Frankfurt | Same address | TCP never connects; HTTPS, TLS1.2-only and HTTP-port80 checks time out |
+| Akamai Milan | Same address | HTTP 200 in 137 ms |
+| Akamai Frankfurt, same ASN63949 | Same address | TCP connection timeout after 15 s |
+| XeniaGroup Piacenza, datacenter | Same address | HTTP 200 in 246 ms |
+| Germany non-datacenter-tagged probe | Same address | TCP connection timeout |
+| US Buffalo | Same address | TCP connection timeout |
+
+The same German/US probes completed TCP/TLS to CGIL (HTTP200/403), so general Internet access works. Vercel also completes CGIL TCP/TLS/HTTP200. The Ministry home page is a separate control: both local and Vercel reach TCP but reject its incomplete certificate chain; this is NOT the strike subdomain's TCP timeout and certificate validation stays enabled.
+
+This strongly points to geographic ingress filtering or an international routing issue at/near the MIT service. It is not a parser problem, a wrong DNS address, a requirement for JavaScript, a missing session cookie, or a blanket ban on every cloud provider. Exact firewall policy, location of packet drops and policy-change time cannot be established without owner-side network/firewall logs. Do not state that MIT officially announced geoblocking.
+
+Additional observed failures: private Supabase/Deno15-second requests, GitHub Linux/native macOS/browser runners, Jina's no-cache public reader, and Google Apps Script all timed out. Google was authorized by the owner and its bounded run logged upcoming14,428ms/history14,525ms failures. None is wired as a successful fallback. `ops/google-mit-source` retains only the reproducible diagnostic; there is no Google schedule or database credential.
+
+Past errors must remain separate: production logs contain successful daily runs from October9 through October23 morning; the latter is `7d80409d-ff1f-4dbc-880e-c4056bdc9421` at05:10UTC, fetched65/upserted56. Current connection failures do not explain every historic omission. The original November20 CGIL omission was transport applicability/parser coverage while source synchronization was working.
+
+## Current data recovery and remaining work
+
+Latest real manual recovery `69170711-de9b-45c5-ade5-a30ef641ad44` fetched71/upserted67 with zero model calls; it is explicitly a workstation recovery, not a healthy cloud-scheduler receipt. It leaves48 active future business rows. The independent live MIT-to-DB and DB-to-MIT audit found29 official announcement identities,23 modeled passenger announcements,3 explicit passenger exclusions,3 outside-product declarations, and zero unexplained gaps/field mismatches/orphans. All20 city APIs, calendars and pages returned200. Health remains PARTIAL:19 unresolved timings and34 warnings, not100% verified operational detail.
+
+`ops/cloudflare-mit-source` is a concrete, unconnected candidate with a Milan placement hint (`aws:eu-south-1`). It preserves raw MIT HTML, dates, all-state form, hash, TLS and bounds through the existing transport handler. Its public `/probe` returns metadata only; `/source` is503 until a dedicated transport token exists. No database service key belongs there. Cloudflare documents placement as nearby, not a guaranteed Italian egress IP, so real requests and normal Vercel synchronization must pass before adoption. Existing Cloudflare CLI login is expired; owner login/authorization is the remaining prerequisite to test this candidate. No paid upgrade or new LLM is authorized.
+
+Wrangler4.152.0 dry-run bundles the candidate successfully (5.60KiB, no bindings). TypeScript and focused ESLint pass. This checks deployability only; the worker has not been deployed to an owned Cloudflare account or connected to Vercel.
+
+The cloud automatic-refresh outage remains OPEN. Do not equate the deployed parser, passing tests, a placement hint, or manual recovery with restored daily cloud acquisition.

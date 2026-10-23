@@ -2,6 +2,11 @@
 const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict'),{test}=require('node:test');
 require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:1,esModuleInterop:true,target:9}}).outputText,f);
 const {parseStrikeHtml,transformRows,fetchAndFilter}=require('../lib/strikeSync.ts');
+test('the Italy relay candidate keeps raw HTML private, uses only fixed sources and has no database credential',async()=>{
+ const worker=require('../ops/cloudflare-mit-source/worker.ts').default,original=global.fetch,calls=[];
+ global.fetch=async(u,o)=>{calls.push(String(u));assert.ok(['https://scioperi.mit.gov.it/mit2/public/scioperi','https://scioperi.mit.gov.it/mit2/public/scioperi/ricerca'].includes(String(u)));assert.equal(o.headers.authorization,undefined);return new Response('<table>Provincia Categoria PRIVATE_UPSTREAM_TEXT</table>',{headers:{'Content-Type':'text/html'}});};
+ try{assert.equal((await worker.fetch(new Request('https://relay.test/source',{method:'POST'}),{})).status,503);assert.equal(calls.length,0);assert.equal((await worker.fetch(new Request('https://relay.test/source',{method:'POST'}),{MIT_RELAY_TOKEN:'x'.repeat(32)})).status,401);assert.equal(calls.length,0);const response=await worker.fetch(new Request('https://relay.test/probe?url=https://evil.test'),{}),result=await response.json();assert.equal(calls.length,2);assert.ok(result.results.every(r=>r.validTable&&/^[a-f0-9]{64}$/.test(r.sha256)));assert.ok(!JSON.stringify(result).includes('PRIVATE_UPSTREAM_TEXT'));assert.equal(response.headers.get('cache-control'),'no-store');assert.equal((await worker.fetch(new Request('https://relay.test/other'),{})).status,404);}finally{global.fetch=original;}
+});
 const {parseExternalNotices,enrichStrikeTiming,applyTimingEvidence}=require('../lib/strikeEnrichment.ts');
 const {noticeRootsForRecord}=require('../lib/operatorAdapters.ts');
 const {attachFollowUpPlans}=require('../lib/recordFollowUp.ts');

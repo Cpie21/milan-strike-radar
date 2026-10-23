@@ -1,0 +1,7 @@
+{
+  "name": "italystrike-mit-source",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-23",
+  "placement": { "region": "aws:eu-south-1" },
+  "observability": { "enabled": false }
+}
