@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const fs=require('node:fs'),ts=require('typescript'),assert=require('node:assert/strict'),{test}=require('node:test');
 require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:1,esModuleInterop:true,target:9}}).outputText,f);
-const {parseStrikeHtml,transformRows}=require('../lib/strikeSync.ts');
+const {parseStrikeHtml,transformRows,fetchAndFilter}=require('../lib/strikeSync.ts');
 const {parseExternalNotices,enrichStrikeTiming,applyTimingEvidence}=require('../lib/strikeEnrichment.ts');
 const {noticeRootsForRecord}=require('../lib/operatorAdapters.ts');
 const {attachFollowUpPlans}=require('../lib/recordFollowUp.ts');
@@ -14,6 +14,10 @@ const article=body=>'<main><article><h1>CGIL sciopero generale nazionale 20 nove
 test('actual CGIL proclamation confirms a workday, not operational transport clocks',async()=>{
   const rows=await records();assert.match(live,/comunicheranno al pi/);const notices=parseExternalNotices(live,cgUrl,['2026-11-20'],now.toISOString());assert.deepEqual(notices,[]);
   for(const r of rows){assert.equal(applyTimingEvidence(r,notices).status,'UNCERTAIN');assert.deepEqual(applyTimingEvidence(r,notices).strike_windows,[]);assert.ok(noticeRootsForRecord(r).includes(cgRoot));assert.equal(attachFollowUpPlans([r],now)[0].timing_evidence.fields.followUp.notice,'SCHEDULED');}
+});
+test('primary outage keeps bounded retries and reports the failed official endpoint instead of empty data',async()=>{
+ const before=global.fetch;let attempts=0;global.fetch=async()=>{attempts++;throw new TypeError('fetch failed',{cause:{code:'UND_ERR_CONNECT_TIMEOUT'}});};
+ try{await assert.rejects(fetchAndFilter(),/MIT \/mit2\/public\/scioperi unavailable after 3 attempts: fetch failed \(UND_ERR_CONNECT_TIMEOUT\)/);assert.equal(attempts,3);}finally{global.fetch=before;}
 });
 test('later union sector clauses fill only that mode; guarantees, assemblies, exclusions and other years do not donate clocks',async()=>{
  const rows=await records(),html=article('<h2>Trasporto ferroviario:</h2><p>CGIL: astensione dalle 09:01 alle 17:00.</p><h2>Trasporto aereo:</h2><p>Modalita da comunicare.</p><h2>TPL:</h2><p>Modalita territoriali da definire.</p><h2>Manifestazione ferroviaria</h2><p>Concentramento dalle 08:00 alle 10:00.</p>');
@@ -41,8 +45,8 @@ test('operator and regulator hours outrank union evidence with lower-priority co
 });
 test('discovery rereads an initially unresolved union article after it leaves the index and follows same-publisher attachments',async()=>{
  const rows=await records(),train=rows.find(r=>r.category==='TRAIN'),before=global.fetch,calls=[];let phase=0;
- global.fetch=async u=>{u=String(u);calls.push(u);let html='<main>No current links</main>';if(u===cgRoot&&phase===0)html=`<a href="${cgUrl}">CGIL sciopero 20 novembre 2026</a>`;if(u===cgUrl)html=phase===0?live:article('<h2>Trasporto ferroviario:</h2><p>CGIL dalle 09:01 alle 17:00.</p>');return new Response(html,{headers:{'Content-Type':'text/html'}});};
- try{const a=await enrichStrikeTiming([train],[],now);assert.deepEqual(a.records[0].strike_windows,[]);assert.ok(a.records[0].timing_evidence.fields.noticeDiscovery.sources.some(s=>s.url===cgUrl&&s.status==='FETCHED'));phase=1;calls.length=0;const b=await enrichStrikeTiming([train],[],now,Date.now()+10000,a.records);assert.ok(calls.includes(cgUrl));assert.deepEqual(b.records[0].strike_windows,[{start:'09:01',end:'17:00'}]);
+ global.fetch=async u=>{u=String(u);calls.push(u);let html='<main>No current links</main>';if(u===cgRoot&&phase===0)html=`<a href="${cgUrl}">CGIL sciopero 20 novembre 2026</a>`;if(u===cgUrl)html=phase<2?live:article('<h2>Trasporto ferroviario:</h2><p>CGIL dalle 09:01 alle 17:00.</p>');return new Response(html,{headers:{'Content-Type':'text/html'}});};
+ try{const a=await enrichStrikeTiming([train],[],now);assert.deepEqual(a.records[0].strike_windows,[]);assert.ok(a.records[0].timing_evidence.fields.noticeDiscovery.sources.some(s=>s.url===cgUrl&&s.status==='FETCHED'));phase=1;calls.length=0;const b=await enrichStrikeTiming([train],[],now,Date.now()+10000,a.records);assert.ok(calls.includes(cgUrl));assert.deepEqual(b.records[0].strike_windows,[]);assert.ok(b.records[0].timing_evidence.fields.noticeDiscovery.sources.some(s=>s.url===cgUrl));phase=2;calls.length=0;const updated=await enrichStrikeTiming([train],[],now,Date.now()+10000,b.records);assert.ok(calls.includes(cgUrl));assert.deepEqual(updated.records[0].strike_windows,[{start:'09:01',end:'17:00'}]);
  phase=0;const attachment='https://www.cgil.it/download/settore-trasporti';global.fetch=async u=>new Response(String(u)===cgRoot?`<a href="${cgUrl}">Sciopero 20 novembre 2026</a>`:String(u)===cgUrl?article(`<a href="${attachment}">Allegato modalita trasporti</a><a href="https://evil.test/file.pdf">allegato</a>`):String(u)===attachment?article('<h2>Trasporto ferroviario:</h2><p>CGIL dalle 10:00 alle 14:00.</p>'):'<main>News</main>',{headers:{'Content-Type':'text/html'}});const c=await enrichStrikeTiming([train],[],now);assert.deepEqual(c.records[0].strike_windows,[{start:'10:00',end:'14:00'}]);assert.ok(c.records[0].timing_evidence.fields.noticeDiscovery.sources.some(s=>s.url===attachment));
  }finally{global.fetch=before;}
 });

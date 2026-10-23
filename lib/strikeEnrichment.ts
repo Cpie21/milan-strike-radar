@@ -575,13 +575,14 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     ...AVIATION_STRIKE_SOURCES.filter(o=>targets.some(r=>r.category==='AIRPORT' && (o.cities.includes(r.region) || recordOperators(r).some(op=>o.aliases.includes(op))))).flatMap(o=>o.urls),
     ...NATIONAL_STRIKE_SOURCES.filter(o=>targets.some(r=>recordOperators(r).some(op=>o.aliases.includes(op)) || r.region === 'NATIONAL' && (r.category === 'TRAIN' || r.category === 'AIRPORT'))).flatMap(o=>o.urls),
   ];
+  const previousDiscovery=(old:typeof priorRecords[number])=>old.timing_evidence?.fields?.noticeDiscovery?.sources.filter(s=>allowedSourceUrl(s.url)&&OFFICIAL_HOSTS.has(new URL(s.url).hostname)&&!operatorIndexes.includes(s.url)).map(s=>s.url) || [];
   // Once an article is known, keep rereading it after it leaves the news index.
   // Only URLs are reused: facts must be extracted again and pass current matching.
   const knownNotices=priorRecords.filter(old=>targets.some(r=>r.source_key===old.source_key&&r.date===old.date&&r.category===old.category)).flatMap(old=>[
     ...(old.timing_evidence?.sources.filter(source=>source.authority==='official'&&source.url!== 'https://scioperi.mit.gov.it/mit2/public/scioperi'&&allowedSourceUrl(source.url)).map(source=>source.url)||[]),
-    // A verified discovery with no hours must be rechecked after leaving its
-    // index too. Reuse URLs, never previously extracted future facts.
-    ...(old.timing_evidence?.fields?.noticeDiscovery?.sources.filter(s=>isUnionSource(s.url)&&allowedSourceUrl(s.url)).map(s=>s.url)||[]),
+    // Discovered official detail pages with no hours must be rechecked after
+    // leaving any registered publisher's index. Reuse URLs, never old facts.
+    ...previousDiscovery(old),
   ]);
   await collect(knownNotices,25,phaseDeadline(0.20));
   await collect(operatorIndexes,45,phaseDeadline(0.45));
@@ -666,7 +667,8 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   for (const r of [...enrichedRecords,...cityVariants]) {
     if(!targets.some(t=>t.source_key===r.source_key&&t.date===r.date) || !r.timing_evidence?.fields)continue;
     const roots=noticeRootsForRecord(r);
-    const discoveryUrls=[...new Set([...roots,...priorRecords.filter(old=>old.source_key===r.source_key&&old.date===r.date&&old.category===r.category).flatMap(old=>old.timing_evidence?.sources.filter(s=>s.authority==='official'&&s.url!==r.source_url&&allowedSourceUrl(s.url)).map(s=>s.url)||[]),...discoveryLinks.filter(link=>roots.includes(link.root) && (!link.dates.length || link.dates.includes(r.date))).map(link=>link.url)])];
+    const previous=priorRecords.filter(old=>old.source_key===r.source_key&&old.date===r.date&&old.category===r.category);
+    const discoveryUrls=[...new Set([...roots,...previous.flatMap(old=>old.timing_evidence?.sources.filter(s=>s.authority==='official'&&s.url!==r.source_url&&allowedSourceUrl(s.url)).map(s=>s.url)||[]),...previous.flatMap(previousDiscovery).filter(url=>roots.some(root=>new URL(root).hostname===new URL(url).hostname)),...discoveryLinks.filter(link=>roots.includes(link.root) && (!link.dates.length || link.dates.includes(r.date))).map(link=>link.url)])];
     const sources=discoveryUrls.map(url=>({url,status:documents.has(url)?'FETCHED' as const:failed.has(url)?'FAILED' as const:'DEFERRED' as const,firstDiscoveredAt:attemptHistory.get(url)?.firstDiscoveredAt || now.toISOString(),...((documents.has(url)||failed.has(url))?{lastAttemptedAt:now.toISOString()}:attemptHistory.get(url)?.lastAttemptedAt?{lastAttemptedAt:attemptHistory.get(url)!.lastAttemptedAt}:{})}));
     const matched=r.timing_evidence.sources.some(source=>source.authority==='official'&&roots.some(root=>new URL(root).hostname===new URL(source.url).hostname));
     const status=matched?'MATCHED':!sources.length?'NOT_CHECKED':sources.every(s=>s.status==='FAILED')?'UNAVAILABLE':sources.some(s=>s.status!=='FETCHED')?'PARTIAL':'NO_MATCH';

@@ -150,7 +150,9 @@ async function fetchOfficial(url: string, options: RequestInit = {}) {
       if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
     }
   }
-  throw lastError;
+  const message=lastError instanceof Error?lastError.message:'request failed';
+  const code=(lastError as {cause?:{code?:unknown}})?.cause?.code;
+  throw new Error(`MIT ${new URL(url).pathname} unavailable after 3 attempts: ${message}${typeof code==='string'&&/^[A-Z0-9_]+$/.test(code)?` (${code})`:''}`);
 }
 
 export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
