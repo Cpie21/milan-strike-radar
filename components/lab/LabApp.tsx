@@ -10,6 +10,7 @@ import {
 } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
 import { detectBrowserLanguage, LANGUAGE_STORAGE_KEY } from '../i18n';
+import { Roll } from './Roll';
 import DateRail from './DateRail';
 import LabStrikeCard, { type CardContext } from './LabStrikeCard';
 import { AskField, AskModule, AskSheet, useAsk } from './LabAsk';
@@ -201,7 +202,10 @@ export default function LabApp({ city, cities, cards, today, from, to, initialDa
 
         {/* Title left, the way out to the full calendar right, on one baseline */}
         <div className="flex items-end justify-between gap-3 pl-5 pr-4 pt-7 mb-3">
-          <h1 className={TYPE.page}>{lang === 'en' ? `${MONTH_EN[Number(month.slice(5, 7)) - 1]} strikes` : `${Number(month.slice(5, 7))}月罢工信息`}</h1>
+          {/* the month rolls as the rail scrolls past it (Roll), forward up, back down */}
+          <h1 className={TYPE.page}>{lang === 'en'
+            ? <><Roll value={MONTH_EN[Number(month.slice(5, 7)) - 1]} order={Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7))} /> strikes</>
+            : <><Roll value={Number(month.slice(5, 7))} order={Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7))} />月罢工信息</>}</h1>
           <button onClick={() => setSheet('month')} className={`mb-0.5 h-[34px] pl-2.5 pr-3 rounded-full flex items-center gap-1.5 shrink-0 ${TYPE.label}`} style={{ background: C.surface2, color: C.text }}>
             <CalendarDots size={16} weight="bold" />{tx(lang, '全部日期', 'All dates')}
           </button>

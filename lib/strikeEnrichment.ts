@@ -15,6 +15,7 @@ import { extractLineScope, sourceFact, makeScopeEvidence } from './strikeScope';
 import type { StrikeRecord } from './strikeSync';
 import { officialLineScope, parseLineScope, lineTextForMode } from './lineScope';
 import { eavDepartmentModes } from './operatorDepartments';
+import { UNION_STRIKE_SOURCES, isUnionSource, unionClauseScope } from './unionStrikeSources';
 import { evidenceTimeLabel, type EvidenceWindow, type TimingEvidence, type TimingSource } from './strikeEvidence';
 
 // Discovery follows current indexes, never a hard-coded event/article URL.
@@ -32,7 +33,7 @@ const unionKey = (s: string) => normalize(s).replace(/\bal[\s-]*cobas\b/g, 'alco
 const matchingUnion = (raw: string, other: string) => {
   const canon=unionKey(raw).replace(/\builtransporti\b|\built\b/g,'uil').replace(/\busb lavoro privato\b/g,'usb').replace(/\bconfial trasporti\b/g,'confial').replace(/\bosr\s+/g,'');
   const text=` ${unionKey(other).replace(/\builtransporti\b|\built\b/g,'uil').replace(/\bconfial trasporti\b/g,'confial').replace(/\busb lavoro privato\b/g,'usb')} `;
-  const names=canon.match(/\balcobas\b|\bcobas\b|\bconfial\b|\busb\b|\bcub\b|\bcgil\b|\bcisl\b|\buil\b|\bugl\b|\bfaisa\b|\bfast\b|\borsa\b|\bsul\b/g);
+  const names=canon.match(/\balcobas\b|\bcobas\b|\bconfial\b|\busb\b|\bcub\b|\bsgb\b|\bcgil\b|\bcisl\b|\buil\b|\bugl\b|\bfaisa\b|\bfast\b|\borsa\b|\bsul\b/g);
   return names?.length ? names.every(n=>text.includes(` ${n} `)) : Boolean(canon) && text.includes(` ${canon} `);
 };
 const sameUnionContext = (a:string,b:string) => a===b || matchingUnion(a,b) && matchingUnion(b,a);
@@ -58,6 +59,7 @@ export interface ExternalNotice {
   field_text?: string;
   guarantee_clauses?: string[];
   section_heading?: string;
+  union_scope?: ReturnType<typeof unionClauseScope>;
 }
 
 export function allowedSourceUrl(input: string) {
@@ -203,7 +205,7 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
   });
   // Index pages contain several unrelated announcements. Follow their dated
   // links, never treat the entire list as one operator-wide strike notice.
-  if (!output.length && [...CITY_STRIKE_SOURCES,...SUPPLEMENTAL_OPERATOR_SOURCES,...AVIATION_STRIKE_SOURCES,...NATIONAL_STRIKE_SOURCES].some(s=>s.urls.includes(url)) && !$('article[data-public-operator-card]').length) return [];
+  if (!output.length && [...CITY_STRIKE_SOURCES,...SUPPLEMENTAL_OPERATOR_SOURCES,...AVIATION_STRIKE_SOURCES,...NATIONAL_STRIKE_SOURCES,...UNION_STRIKE_SOURCES].some(s=>s.urls.includes(url)) && !$('article[data-public-operator-card]').length) return [];
   // Article dates may be in the body, or omit the year in a title. A
   // publication date anchors yearless dates and rejects old recurring notices.
   const title = $('h1,h2').filter((_,el)=>/scioper|\bstrike\b|industrial action/i.test($(el).text())).first().text() || $('h1').first().text();
@@ -233,7 +235,7 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     return Number.isFinite(stamp) && event >= stamp-7*86400000 && event <= stamp+90*86400000 && new RegExp(`\\b${day}\\s+(?:${MONTHS[month-1]}|${ENGLISH_MONTHS[month-1]})(?!\\s+20\\d{2})`, 'i').test(title) && year >= new Date(stamp).getUTCFullYear();
   });
   if (!output.length && eventDates.length && /scioper|\bstrike\b|industrial action/i.test(title + ' ' + text.slice(0,1500)) && !/\brevocat|\bdifferit|\bsospes|annullat|(?:strike|industrial action)[^.]{0,60}\b(?:cancelled|postponed|withdrawn)\b/i.test(text)) {
-    const names = /\b(?:alcobas|al[ -]cobas|confial|usb|cub|cobas|cgil|cisl|uiltransporti|uilt|uil|ugl|faisa|fast|orsa|sul)\b/i;
+    const names = /\b(?:alcobas|al[ -]cobas|confial|usb|cub|sgb|cobas|cgil|cisl|uiltransporti|uilt|uil|ugl|faisa|fast|orsa|sul)\b/i;
     const parts: {text:string;heading:string;unions:string;dates:string[]}[]=[];
     let heading=title, unionContext=names.test(title)?title:'', dateContext=eventDates;
     let sectionCities=knownCities;
@@ -308,6 +310,17 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
     }
   }
 
+  if(isUnionSource(url))return output.flatMap(n=>{
+    const datedTitle=new RegExp(`\\b\\d{1,2}[/.-]\\d{1,2}[/.-]20\\d{2}\\b|\\b\\d{1,2}\\s+(?:${MONTHS.join('|')})\\b`,'i').test(title);
+    const [,month,day]=n.date.split('-').map(Number);
+    if(datedTitle&&!exactDate(title,n.date)&&!new RegExp(`\\b${day}\\s+${MONTHS[month-1]}(?!\\s+20\\d{2})`,'i').test(title))return [];
+    const scope=unionClauseScope(n.section_heading || '',n.timing,n.provider);
+    if(OPERATORS.some(op=>hasWord((n.section_heading || '')+' '+n.timing,op)))scope.national=false;
+    // No sector clause means no operational claim. Office/assembly times and
+    // an undifferentiated workday must never fill pending transport hours.
+    if(!scope.categories.length || /assemblea|corteo|manifestazione|concentramento|orari (?:sede|ufficio)|precedent[ei] scioperi/i.test((n.section_heading || '')+' '+n.timing))return [];
+    return [{...n,operator_day:false,union_scope:scope,cities:scope.cities,territory:scope.national?'Nazionale':scope.cities.join(' ')}];
+  });
   return output;
 }
 
@@ -345,6 +358,16 @@ export function matchesNotice(notice: ExternalNotice, record: StrikeRecord) {
   const ignored = new Set(['personale','soc','socc','societa','gruppo','trasporto','trasporti','pubblico','locale','settore','del','della','delle','degli','dello','dei','per','con','tutti','tutte','italia','spa','srl','aeroporto','aeroporti','azienda','aziende','esercizio','viaggiante', ...CITIES.flatMap(c=>[c.slug,c.region])]);
   const identifiers = normalize(record.raw_payload?.provider || '').split(/[^a-z0-9]+/).filter(t=>t.length>2&&!ignored.has(t));
   const companyMatch = operators.length ? operators.some(op=>hasWord(notice.provider+' '+notice.timing,op)) : identifiers.length && identifiers.every(t=>hasWord(notice.provider,t));
+  if(isUnionSource(notice.source.url)) {
+    const scope=notice.union_scope;
+    if(!scope?.categories.includes(record.category))return false;
+    // An operator's local clause cannot set the nationwide umbrella's hours.
+    if(record.region==='NATIONAL' && !scope.national)return false;
+    const localOperator=city && scope.cities.includes(city.tag) && CITY_STRIKE_SOURCES.some(s=>s.cities.includes(city.tag) && s.aliases.some(alias=>hasWord((notice.section_heading || '')+' '+notice.timing,alias)));
+    const clause=(notice.section_heading || '')+' '+notice.timing;
+    const scopedCompany=operators.length ? operators.some(op=>hasWord(clause,op)) : identifiers.length>0 && identifiers.every(t=>hasWord(clause,t));
+    return Boolean(scopedCompany || generic && (scope.national || localOperator));
+  }
   if (!companyMatch && !(generic && officialCity && ['BUS','SUBWAY'].includes(record.category))) return false;
   const sector = normalize(notice.sector);
   if (record.category === 'TRAIN' && !/ferroviar|tren|rfi|italo/.test(sector + ' ' + notice.provider.toLowerCase()) && !(recordOperators(record).includes('eav') && eavDepartmentModes(notice.provider+' '+(notice.field_text||'')).includes('TRAIN'))) return false;
@@ -477,20 +500,24 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   // Matching date/operator/geography checks already ran above. Do not vote
   // away disagreements between two operator documents of equal authority.
   const operators = officials.filter(c => Boolean(sourceOperatorNames(c.notice.source.url)));
-  const pool = operators.length ? operators : officials.length ? officials : candidates;
+  const regulators=officials.filter(c=>!isUnionSource(c.notice.source.url));
+  let pool = operators.length ? operators : regulators.length ? regulators : officials.length ? officials : candidates;
+  const genericFullDay = record.strike_windows.length === 1 && record.strike_windows[0].start === '00:00' && record.strike_windows[0].end === '24:00' && !/\d{1,2}[.:]\d{2}/.test(record.raw_payload?.modalita || '');
+  const mitKnown = record.strike_windows.length > 0 && !genericFullDay;
+  const primaryWindows: EvidenceWindow[] = record.strike_windows.map(w => ({ ...w, end_kind: 'clock' }));
+  // Union documents add missing sector hours; explicit MIT hours remain above
+  // them. Conflicting lower-priority evidence is retained below for review.
+  if(mitKnown && !operators.length && !regulators.length && officials.length)pool=[{notice:{...pool[0].notice,source:sourceFor(record.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',record.raw_payload?.modalita || '',pool[0].notice.source.checked_at)},windows:primaryWindows}];
   const groups = new Map<string, typeof candidates>();
   pool.forEach(c => { const key = timeKey(c.windows); groups.set(key, [...(groups.get(key) || []), c]); });
   // A conflict at the same authority cannot be resolved by vote or article order.
   const selected = groups.size === 1 ? pool[0] : null;
-  const genericFullDay = record.strike_windows.length === 1 && record.strike_windows[0].start === '00:00' && record.strike_windows[0].end === '24:00' && !/\d{1,2}[.:]\d{2}/.test(record.raw_payload?.modalita || '');
-  const mitKnown = record.strike_windows.length > 0 && !genericFullDay;
-  const primaryWindows: EvidenceWindow[] = record.strike_windows.map(w => ({ ...w, end_kind: 'clock' }));
   if (!selected || !officials.length && mitKnown && timeKey(selected.windows) !== timeKey(primaryWindows)) {
     result.timing_evidence = { fields:updatedFields?{...updatedFields,timing:{...updatedFields.timing,value:primaryWindows,confidence:'CONFLICT'}}:undefined, windows: primaryWindows, confidence: 'conflict', sources: candidates.map(c => c.notice.source), unions: record.raw_payload?.unions || '', conflicts: candidates.map(c => ({ url: c.notice.source.url, windows: c.windows })) };
     return result;
   }
   const aligned = candidates.filter(c => timeKey(c.windows) === timeKey(selected.windows));
-  const sources = [...new Map(aligned.map(c => [c.notice.source.url, c.notice.source])).values()];
+  const sources = [...new Map([...aligned.map(c=>c.notice.source),selected.notice.source].map(s=>[s.url,s])).values()];
   // Matching hosts corroborate the transcription; they may share an upstream source.
   const evidence: TimingEvidence = { fields:updatedFields, windows: selected.windows, confidence: officials.length || mitKnown ? 'official' : new Set(sources.map(s => new URL(s.url).hostname)).size > 1 ? 'corroborated' : 'reported', sources:[...new Map([...verificationSources,...sources].map(s=>[s.url,s])).values()], unions: record.raw_payload?.unions || '', conflicts: [...candidates.filter(c => timeKey(c.windows) !== timeKey(selected.windows)).map(c => ({ url: c.notice.source.url, windows: c.windows })), ...(mitKnown && timeKey(primaryWindows)!==timeKey(selected.windows) ? [{url:record.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',windows:primaryWindows}] : [])] };
   result.timing_evidence = evidence;
@@ -551,9 +578,15 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     ...AVIATION_STRIKE_SOURCES.filter(o=>targets.some(r=>r.category==='AIRPORT' && (o.cities.includes(r.region) || recordOperators(r).some(op=>o.aliases.includes(op))))).flatMap(o=>o.urls),
     ...NATIONAL_STRIKE_SOURCES.filter(o=>targets.some(r=>recordOperators(r).some(op=>o.aliases.includes(op)) || r.region === 'NATIONAL' && (r.category === 'TRAIN' || r.category === 'AIRPORT'))).flatMap(o=>o.urls),
   ];
+  const previousDiscovery=(old:typeof priorRecords[number])=>old.timing_evidence?.fields?.noticeDiscovery?.sources.filter(s=>allowedSourceUrl(s.url)&&OFFICIAL_HOSTS.has(new URL(s.url).hostname)&&!operatorIndexes.includes(s.url)).map(s=>s.url) || [];
   // Once an article is known, keep rereading it after it leaves the news index.
   // Only URLs are reused: facts must be extracted again and pass current matching.
-  const knownNotices=priorRecords.filter(old=>targets.some(r=>r.source_key===old.source_key&&r.date===old.date&&r.category===old.category)).flatMap(old=>old.timing_evidence?.sources.filter(source=>source.authority==='official'&&source.url!== 'https://scioperi.mit.gov.it/mit2/public/scioperi'&&allowedSourceUrl(source.url)).map(source=>source.url)||[]);
+  const knownNotices=priorRecords.filter(old=>targets.some(r=>r.source_key===old.source_key&&r.date===old.date&&r.category===old.category)).flatMap(old=>[
+    ...(old.timing_evidence?.sources.filter(source=>source.authority==='official'&&source.url!== 'https://scioperi.mit.gov.it/mit2/public/scioperi'&&allowedSourceUrl(source.url)).map(source=>source.url)||[]),
+    // Discovered official detail pages with no hours must be rechecked after
+    // leaving any registered publisher's index. Reuse URLs, never old facts.
+    ...previousDiscovery(old),
+  ]);
   await collect(knownNotices,25,phaseDeadline(0.20));
   await collect(operatorIndexes,45,phaseDeadline(0.45));
   await collect([...MEDIA_INDEXES, ...search],25,phaseDeadline(0.60));
@@ -601,7 +634,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     $('a[href]').each((_,a)=>{
       const href=$(a).attr('href') || '',u=linkUrl(href,url);
       const datedLink=dates.some(d=>exactDate(($(a).text()+' '+href).replace(/-/g,' '),d));
-      if(u && /\.pdf(?:$|\?)/i.test(u) && (eventPage || datedLink)) attachments.push(u);
+      if(u && (/\.pdf(?:$|\?)/i.test(u) || isUnionSource(url)&&/allegat|proclamazione|modalit/i.test($(a).text())) && (eventPage || datedLink)) {attachments.push(u);if(isUnionSource(url))discoveryLinks.push({root:operatorIndexes.find(root=>new URL(root).hostname===new URL(url).hostname) || url,url:u,dates:dates.filter(d=>exactDate($('h1,h2').text(),d)||datedLink&&exactDate($(a).text()+' '+href,d))});}
     });
   }
   await collect(attachments,10,phaseDeadline(0.95));
@@ -620,7 +653,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   const cityVariants: StrikeRecord[]=[];
   for (const record of targets.filter(r=>r.region==='NATIONAL' && ['BUS','SUBWAY'].includes(r.category))) {
     for (const city of CITIES) {
-      const scoped=notices.filter(n=>n.source.authority==='official' && sourceCities(n.source.url).includes(city.tag));
+      const scoped=notices.filter(n=>n.source.authority==='official' && (sourceCities(n.source.url).includes(city.tag) || n.union_scope?.cities.includes(city.tag)));
       const general=/sciopero generale|categorie pubbliche|plurisettorial/i.test(record.raw_payload?.provider || '');
       const categories = record.category === 'BUS' && general && METRO_CITY_TAGS.has(city.tag) ? ['BUS','SUBWAY'] as const : [record.category];
       for (const category of categories) {
@@ -637,14 +670,15 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   for (const r of [...enrichedRecords,...cityVariants]) {
     if(!targets.some(t=>t.source_key===r.source_key&&t.date===r.date) || !r.timing_evidence?.fields)continue;
     const roots=noticeRootsForRecord(r);
-    const discoveryUrls=[...new Set([...roots,...priorRecords.filter(old=>old.source_key===r.source_key&&old.date===r.date&&old.category===r.category).flatMap(old=>old.timing_evidence?.sources.filter(s=>s.authority==='official'&&s.url!==r.source_url&&allowedSourceUrl(s.url)).map(s=>s.url)||[]),...discoveryLinks.filter(link=>roots.includes(link.root) && (!link.dates.length || link.dates.includes(r.date))).map(link=>link.url)])];
+    const previous=priorRecords.filter(old=>old.source_key===r.source_key&&old.date===r.date&&old.category===r.category);
+    const discoveryUrls=[...new Set([...roots,...previous.flatMap(old=>old.timing_evidence?.sources.filter(s=>s.authority==='official'&&s.url!==r.source_url&&allowedSourceUrl(s.url)).map(s=>s.url)||[]),...previous.flatMap(previousDiscovery).filter(url=>roots.some(root=>new URL(root).hostname===new URL(url).hostname)),...discoveryLinks.filter(link=>roots.includes(link.root) && (!link.dates.length || link.dates.includes(r.date))).map(link=>link.url)])];
     const sources=discoveryUrls.map(url=>({url,status:documents.has(url)?'FETCHED' as const:failed.has(url)?'FAILED' as const:'DEFERRED' as const,firstDiscoveredAt:attemptHistory.get(url)?.firstDiscoveredAt || now.toISOString(),...((documents.has(url)||failed.has(url))?{lastAttemptedAt:now.toISOString()}:attemptHistory.get(url)?.lastAttemptedAt?{lastAttemptedAt:attemptHistory.get(url)!.lastAttemptedAt}:{})}));
     const matched=r.timing_evidence.sources.some(source=>source.authority==='official'&&roots.some(root=>new URL(root).hostname===new URL(source.url).hostname));
     const status=matched?'MATCHED':!sources.length?'NOT_CHECKED':sources.every(s=>s.status==='FAILED')?'UNAVAILABLE':sources.some(s=>s.status!=='FETCHED')?'PARTIAL':'NO_MATCH';
     r.timing_evidence.fields.noticeDiscovery={checkedAt:now.toISOString(),status,sources};
   }
   let enriched = 0, conflicts = 0;
-  const verification={operatorOfficial:0,reported:0,mitOnly:0,acquisition:{cgsseDocuments:[...documents.keys()].filter(u=>['cgsse.it','www.cgsse.it'].includes(new URL(u).hostname)).length,toscanaApiDocuments:[...documents.keys()].filter(u=>new URL(u).hostname==='www.toscana-aeroporti.com'&&new URL(u).pathname.startsWith('/it/news/')).length}};
+  const verification={operatorOfficial:0,reported:0,mitOnly:0,acquisition:{cgsseDocuments:[...documents.keys()].filter(u=>['cgsse.it','www.cgsse.it'].includes(new URL(u).hostname)).length,toscanaApiDocuments:[...documents.keys()].filter(u=>new URL(u).hostname==='www.toscana-aeroporti.com'&&new URL(u).pathname.startsWith('/it/news/')).length,unionDocuments:[...documents.keys()].filter(isUnionSource).length}};
   enrichedRecords.forEach((r, i) => {
     if(r.status!=='CANCELLED' && r.date>=today && r.region!=='UNKNOWN') {
       if(r.timing_evidence?.sources.some(s=>s.authority==='official')) verification.operatorOfficial++;

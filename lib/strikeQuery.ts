@@ -1,14 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { resolveCity } from './cities';
 import { unstable_cache } from 'next/cache';
+import { connection } from 'next/server';
 import { syncHealth } from './syncHealth';
 import { withOfficialRecord } from './officialStrikeRecord';
 
-export function serverDatabase() {
+export function serverDatabase(options:{fresh?:boolean}={}) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Missing server Supabase configuration');
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createClient(url, key, { auth: { persistSession: false },...(options.fresh?{global:{fetch:(input,init)=>fetch(input,{...init,cache:'no-store'})}}:{}) });
 }
 
 export function romeToday() {
@@ -33,7 +34,12 @@ const cachedCityStrikes = unstable_cache(async (tag: string, startDate: string) 
 // Validate freshness outside the cache: a failed background refresh must not
 // allow stale cached data to masquerade as a healthy synchronization.
 export async function readCityStrikes(tag: string, startDate: string) {
-  const db = serverDatabase();
+  // Establish request-time rendering before the SDK can catch Next's dynamic
+  // control-flow exception and turn it into an apparent database failure.
+  await connection();
+  // Next can cache auto GETs during prerendering across builds. This health
+  // read must observe recovery/failure immediately, outside the row cache.
+  const db = serverDatabase({fresh:true});
   const [latest, success] = await Promise.all([
     db.from('strike_sync_runs').select('status,started_at').order('started_at', { ascending: false }).limit(1).maybeSingle(),
     db.from('strike_sync_runs').select('completed_at').eq('status', 'success').order('completed_at', { ascending: false }).limit(1).maybeSingle(),

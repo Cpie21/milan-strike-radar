@@ -2,6 +2,10 @@ import { SOURCE_USER_AGENT } from '../../../../lib/sourceRequest';
 import { NextResponse } from 'next/server';
 import { fetchCgsse } from '../../../../lib/cgsseTls';
 import { fetchToscanaNotice } from '../../../../lib/toscanaAirportNotices';
+import { fetchMitIpv4 } from '../../../../lib/mitTransport';
+import { parseStrikeHtml, syncDateWindow } from '../../../../lib/strikeSync';
+import { probeSourceNetwork } from '../../../../lib/sourceNetworkProbe';
+import { fetchMitRelay } from '../../../../lib/mitRelay';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +13,8 @@ export const maxDuration = 40;
 
 // Fixed public sources only. This read-only diagnostic never touches the DB or AI.
 const sources = [
+  ['MIT_UPCOMING_IPV4','https://scioperi.mit.gov.it/mit2/public/scioperi'],
+  ['MIT_HISTORY_IPV4','https://scioperi.mit.gov.it/mit2/public/scioperi/ricerca'],
   ['CGSSE', 'https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381401'],
   ['TOSCANA_AEROPORTI', 'https://www.toscana-aeroporti.com/it/news/'],
   ['CTM', 'https://www.ctmcagliari.it/comunicati/'],
@@ -23,9 +29,35 @@ export async function GET(request: Request) {
   if (!secret) return NextResponse.json({ error: 'Diagnostic authorization is not configured' }, { status: 503 });
   if (request.headers.get('authorization') !== `Bearer ${secret}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const checkedAt = new Date().toISOString();
+  if (new URL(request.url).searchParams.get('relay') === '1') {
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const window=syncDateWindow(today),it=(date:string)=>date.split('-').reverse().join('/');
+    const results=await Promise.all(['upcoming','history'].map(async kind=>{
+      const began=Date.now();
+      try {
+        const url='https://scioperi.mit.gov.it/mit2/public/scioperi'+(kind==='history'?'/ricerca':'');
+        const options:RequestInit=kind==='history'?{method:'POST',body:new URLSearchParams({dataInizio:it(window.start),dataFine:it(window.end),settore:'0',rilevanza:'0',stato:'0',categoria:'',sindacato:'',submit:'Ricerca'})}:{};
+        const receipt=await fetchMitRelay(url,options,today),records=parseStrikeHtml(receipt.html).length;
+        return {kind,status:'READABLE',records,sha256:receipt.sha256,fetchedAt:receipt.fetchedAt,elapsedMs:Date.now()-began};
+      } catch {return {kind,status:'UNAVAILABLE',elapsedMs:Date.now()-began};}
+    }));
+    return NextResponse.json({checkedAt,region:process.env.VERCEL_REGION||'local',results},{headers:{'Cache-Control':'private, no-store'}});
+  }
+  if (new URL(request.url).searchParams.get('network') === '1') {
+    return NextResponse.json({ checkedAt, region: process.env.VERCEL_REGION || 'local', results: await probeSourceNetwork() }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
   const results = await Promise.all(sources.map(async ([source, url]) => {
     const start = Date.now();
     try {
+      if(source==='MIT_UPCOMING_IPV4'||source==='MIT_HISTORY_IPV4') {
+        const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+        const window=syncDateWindow(today),it=(date:string)=>date.split('-').reverse().join('/');
+        const options:RequestInit=source==='MIT_HISTORY_IPV4'?{method:'POST',body:new URLSearchParams({dataInizio:it(window.start),dataFine:it(window.end),settore:'0',rilevanza:'0',stato:'0',categoria:'',sindacato:'',submit:'Ricerca'})}:{};
+        const response=await fetchMitIpv4(url,options,AbortSignal.timeout(12000));
+        if(!response.ok)return {source,url,status:'HTTP_ERROR',http:response.status,elapsedMs:Date.now()-start};
+        const html=await response.text(),rows=parseStrikeHtml(html);
+        return {source,url,status:'READABLE',records:rows.length,bytes:Buffer.byteLength(html),elapsedMs:Date.now()-start};
+      }
       if (source === 'TOSCANA_AEROPORTI') {
         const html = await fetchToscanaNotice(url, start + 25000);
         return { source, url, status: 'READABLE', bytes: Buffer.byteLength(html), elapsedMs: Date.now() - start };

@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { fetchMitIpv4, mitConnectionFailure } from './mitTransport';
+import { fetchMitRelay, mitRelayConfigured, type MitAcquisition } from './mitRelay';
 import { excludedPassengerModes, generalModesPending, isGeneralDeclaration, restrictedTpl } from './transportDeclaration';
 import { METRO_CITY_TAGS } from './strikeSources';
 import { eavDepartmentModes } from './operatorDepartments';
@@ -138,32 +140,42 @@ function normalizeHeader(header: string) {
   return header.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\*/g, '').replace(/\s+/g, ' ').trim();
 }
 
-async function fetchOfficial(url: string, options: RequestInit = {}) {
+async function fetchOfficial(url: string, options: RequestInit = {}, today=getRomeTodayIso(), acquired?:(receipt:MitAcquisition)=>void) {
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const response = await fetch(url, { ...options, cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+      const signal=AbortSignal.timeout(15_000);
+      if(attempt>0 && mitRelayConfigured()) {
+        const result=await fetchMitRelay(url,options,today),rows=parseStrikeHtml(result.html);
+        acquired?.({transport:'ITALY_RELAY',kind:url.endsWith('/ricerca')?'history':'upcoming',fetchedAt:result.fetchedAt,sha256:result.sha256,records:rows.length});
+        return rows;
+      }
+      const response = attempt===1&&mitConnectionFailure(lastError)?await fetchMitIpv4(url,options,signal):await fetch(url, { ...options, cache: 'no-store', signal });
       if (!response.ok) throw new Error(`MIT returned HTTP ${response.status}`);
-      return parseStrikeHtml(await response.text());
+      const html=await response.text(),rows=parseStrikeHtml(html);
+      acquired?.({transport:attempt===1&&mitConnectionFailure(lastError)?'IPV4':'DIRECT',kind:url.endsWith('/ricerca')?'history':'upcoming',fetchedAt:new Date().toISOString(),sha256:createHash('sha256').update(html).digest('hex'),records:rows.length});
+      return rows;
     } catch (error) {
       lastError = error;
       if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
     }
   }
-  throw lastError;
+  const message=lastError instanceof Error?lastError.message:'request failed';
+  const code=(lastError as {cause?:{code?:unknown}})?.cause?.code;
+  throw new Error(`MIT ${new URL(url).pathname} unavailable after 3 attempts: ${message}${typeof code==='string'&&/^[A-Z0-9_]+$/.test(code)?` (${code})`:''}`);
 }
 
-export async function fetchAndFilter(): Promise<RawStrikeRow[]> {
-  return fetchOfficial(MIT_URL);
+export async function fetchAndFilter(todayIso=getRomeTodayIso(),acquired?:(receipt:MitAcquisition)=>void): Promise<RawStrikeRow[]> {
+  return fetchOfficial(MIT_URL,{},todayIso,acquired);
 }
 
 // The upcoming list drops yesterday's records and withdrawn future events.
 // Search all states so both late changes and upcoming cancellations are seen.
-export async function fetchRecentRows(todayIso = getRomeTodayIso()): Promise<RawStrikeRow[]> {
+export async function fetchRecentRows(todayIso = getRomeTodayIso(),acquired?:(receipt:MitAcquisition)=>void): Promise<RawStrikeRow[]> {
   const { start, end } = syncDateWindow(todayIso);
   const italianDate = (iso: string) => iso.split('-').reverse().join('/');
   const body = new URLSearchParams({ dataInizio: italianDate(start), dataFine: italianDate(end), settore: '0', rilevanza: '0', stato: '0', categoria: '', sindacato: '', submit: 'Ricerca' });
-  return fetchOfficial(`${MIT_URL}/ricerca`, { method: 'POST', body });
+  return fetchOfficial(`${MIT_URL}/ricerca`, { method: 'POST', body },todayIso,acquired);
 }
 
 export function syncDateWindow(todayIso = getRomeTodayIso()) {
