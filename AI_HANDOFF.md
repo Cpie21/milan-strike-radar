@@ -1,3 +1,9 @@
+## National source coverage and general declarations (Codex)
+
+- `codex/national-strike-coverage` stacks on PR26/b06b292. Runtime0b6007f/READY dpl_9D34NrVUYfjZXZmvLAiL4r61xfXr. General declarations without transport words now remain pending; additive `fields.modeApplicability` distinguishes GENERAL_NOTICE_PENDING/EXPLICIT_TRANSPORT. Do not render a workday or pending mode as confirmed00–24, all lines, or every airport. Existing JSON columns only; no migration. `operatorRestriction` keeps a TPL-only company list separate from nationwide rail.
+- Co-headed rail/freight timing is shared; independent clauses remain fenced. November20 rail21–24/November21 rail00–20 is confirmed; TPL is only November21 in supported operator areas Torino/Napoli/Bari, shift clocks unknown. Explicit October30 exclusions still remove passenger cards. Techno Sky national scope and road-division false train rows corrected.350 tests/typecheck/lint/build pass; actual sync69/65 retires4 bad variants. All20 city APIs/calendars pass. Live28-announcement forward/reverse audit has0 current unexplained gaps; quality is still PARTIAL for timing/source incompleteness. Every sync adds mode/day/geography coverage warnings; no added model stage/frequency/budget.
+- Keep this backend contract when integrating Claude screenshot-trip317147c; that branch's UI/scan work is untouched and not part of this production release. Detailed boundaries and receipts: `docs/2026-10-23-national-strike-coverage.md`.
+
 ## Past strike evidence preservation (Codex)
 
 - `codex/past-strike-evidence` stacks on PR25/7c74377, UI untouched. MIT status history and operator enrichment now share seven previous Rome dates. Exact identity/unchanged primary declaration allows saved past timings/guarantees/line and schedule evidence to survive an unavailable notice; current official corrections/cancellations/conflicts win, today/future behavior unchanged. No API/schema/model/budget change.
