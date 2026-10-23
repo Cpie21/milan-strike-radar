@@ -1,0 +1,32 @@
+name: Official source connectivity
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/union-notice-followup]
+    paths: [.github/workflows/official-source-connectivity.yml]
+permissions:
+  contents: read
+jobs:
+  official-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read the two official MIT tables without database or model access
+        shell: bash
+        run: |
+          node <<'NODE'
+          const {createHash}=require('node:crypto');
+          (async()=>{
+            const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+            const date=new Date(today+'T12:00:00Z'),it=n=>new Date(date.getTime()+n*86400000).toISOString().slice(0,10).split('-').reverse().join('/');
+            for(const kind of ['upcoming','history']){
+              const url='https://scioperi.mit.gov.it/mit2/public/scioperi'+(kind==='history'?'/ricerca':'');
+              const options=kind==='history'?{method:'POST',body:new URLSearchParams({dataInizio:it(-7),dataFine:it(90),settore:'0',rilevanza:'0',stato:'0',categoria:'',sindacato:'',submit:'Ricerca'})}:{};
+              const start=Date.now(),r=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(20000),headers:{'User-Agent':'ItalyStrike/1.0',Accept:'text/html'}});
+              if(!r.ok)throw Error(kind+' HTTP '+r.status);
+              const html=await r.text(),table=(html.match(/<table\b[\s\S]*?<\/table>/gi)||[]).find(t=>/Inizio/.test(t)&&/Provincia/.test(t)&&/Categoria/.test(t));
+              if(!table)throw Error(kind+' official table missing');
+              console.log(JSON.stringify({kind,status:r.status,fetchedAt:new Date().toISOString(),rows:(table.match(/<tr\b/gi)||[]).length-1,sha256:createHash('sha256').update(table).digest('hex'),elapsedMs:Date.now()-start}));
+            }
+          })().catch(e=>{console.error(e.name+': '+e.message);process.exitCode=1});
+          NODE
