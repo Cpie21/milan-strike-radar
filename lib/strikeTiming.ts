@@ -6,7 +6,11 @@ export type TimingCategory = 'TRAIN' | 'SUBWAY' | 'BUS' | 'AIRPORT';
 export function timingSections(text: string) {
   const labels = /(?:SETTORE\s+)?(?:APPALTI\s+FERROVIARI|TRASPORTO\s+MERCI\s+SU\s+ROTAIA|TRASPORTO\s+PUBBLICO\s+LOCALE|FERROVIARIO|TPL|AUTOFERROTRANVIARIO|MARITTIMO|AUTOSTRADE|AEREO)\b\s*:?/gi;
   const matches=[...text.matchAll(labels)];
-  return matches.map((match,index)=>({label:match[0].trim().replace(/:$/,'').trim().toUpperCase(),body:text.slice(match.index!+match[0].length,matches[index+1]?.index ?? text.length)}));
+  const sections = matches.map((match,index)=>({label:match[0].trim().replace(/:$/,'').trim().toUpperCase(),body:text.slice(match.index!+match[0].length,matches[index+1]?.index ?? text.length)}));
+  // "FERROVIARIO, TRASPORTO MERCI ... 21–20" has co-headed sectors sharing
+  // one interval. A colon/independent contractor clause is not such a heading.
+  for (let i=sections.length-2;i>=0;i--) if (!matches[i][0].trim().endsWith(':') && /^\s*(?:,|\/|e|ed)\s*$/i.test(sections[i].body)) sections[i].body=sections[i+1].body;
+  return sections;
 }
 export function scopeTiming(text: string, category?: TimingCategory) {
   if (!category) return text;
@@ -61,6 +65,10 @@ export function parseStrikeTiming(text: string, category?: TimingCategory, dateI
   const range = /(?:DALLE?\s+(?:ORE\s+)?)?\b(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?\s*(?:ALLE?\s+(?:ORE\s+)?|-)\s*(\d{1,2})(?:[.:](\d{2}))?(?:\s+DEL\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?)?(?![\d:]|\.\d)/g;
   let dateSpecific = false;
   let attemptedRange = false;
+  // A whole work shift identifies a day, not numeric operating hours.
+  for (const match of scoped.matchAll(/\b(?:INTERA\s+(?:PRESTAZIONE|GIORNATA(?:\s+DI\s+LAVORO)?)|INTERO\s+TURNO)\s+(?:DEL|IL)\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/g)) {
+    const day=iso(match[1],match[2],match[3]);if(day){explicitDates.add(day);dateSpecific=true;}
+  }
   for (const match of scoped.matchAll(range)) {
     attemptedRange = true;
     let start = `${match[1].padStart(2, '0')}:${match[2] || '00'}`;

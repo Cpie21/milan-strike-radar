@@ -192,7 +192,10 @@ function projectSupportedRegionTags(input: RegionInput): string[] {
   const region=(input.regionText || '').trim().toLowerCase();
   const province=(input.provinceText || '').trim().toLowerCase();
   const provider=affectedScopeText(input.providerText || '');
-  const text=provider+' '+affectedScopeText(input.noteText || '');
+  // A company/locality list explicitly limited to TPL does not narrow the
+  // separate nationwide rail workforce. TPL is projected per clause later.
+  const geographyNote=(input.noteText || '').replace(/\*?\bper\s+(?:il\s+)?tpl\s+(?:socc?\.?|aziende)\s*:?\s*[^;\n]+/gi,'');
+  const text=provider+' '+affectedScopeText(geographyNote);
   const named=CITIES.filter(city=>[city.tag,city.en,city.zh,...city.aliases].some(alias=>containsAlias(text,alias))).map(c=>c.tag);
   // Named airports override generic administrative national fields.
   const airports=(/aereo/i.test(input.sectorText || '') || /aeroport|airport|\bAPT\b|\bENAV\b/i.test(provider)) ? (/\b(?:DOIT|DTP|ACC)\b/i.test(provider) && !/aeroport|airport|\bAPT\b|malpensa|linate|marco polo|fiumicino/i.test(provider) ? [] : detectAirports(provider).map(a=>a.tag)) : [];
@@ -209,8 +212,8 @@ function projectSupportedRegionTags(input: RegionInput): string[] {
   const provinces=CITIES.filter(c=>containsAlias(province,c.slug)).map(c=>c.tag);
   if(provinces.length) return provinces;
   if(province && !['tutte','italia','nazionale'].includes(province)) return ['UNKNOWN'];
-  const broad=/sciopero (?:generale|plurisettoriale)|categorie pubbliche|settori pubblici|personale.*(?:settore|trasporto)\s+(?:aereo|ferroviario)/i.test(provider);
-  const nationalEntity=/\b(?:ENAV|EASYJET|RYANAIR|WIZZ|ITA AIRWAYS|TRENITALIA|ITALO|RFI|POSTE AIR CARGO)\b/i.test(provider);
+  const broad=/sciopero (?:generale|plurisettoriale)|categorie pubbliche|settori pubblici|personale.*(?:settore|trasporto)\s+(?:aereo|ferroviario)|imprese che svolgono attivit[aà]'?\s+ferroviaria/i.test(provider);
+  const nationalEntity=/\b(?:ENAV|EASYJET|RYANAIR|WIZZ|ITA AIRWAYS|TRENITALIA|ITALO|RFI|POSTE AIR CARGO|TECHNO\s*SKY)\b/i.test(provider);
   if (['italia','nazionale'].includes(region) && (/^nazionale$/i.test(relevance) && (broad || nationalEntity) || broad && !relevance)) return ['NATIONAL'];
   // 'Tutte' is only regional scope with an explicit regional relevance.
   if(province==='tutte' && /regionale/i.test(relevance)) {

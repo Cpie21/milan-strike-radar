@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { excludedPassengerModes, generalModesPending, isGeneralDeclaration, restrictedTpl } from './transportDeclaration';
+import { METRO_CITY_TAGS } from './strikeSources';
 import { eavDepartmentModes } from './operatorDepartments';
 import { parseStrikeTiming, scopeTiming } from './strikeTiming';
 import * as cheerio from 'cheerio';
@@ -251,6 +253,7 @@ function isTransportRelevantRow(row: RawStrikeRow) {
   const combined = `${row.sector} ${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
 
 
+  if (isGeneralDeclaration(row)) return true;
   if (isCommuterIrrelevantFreightRailRow(row)) return false;
   if (TRANSPORT_SECTORS.some((sector) => sectorLow.includes(sector))) return true;
 
@@ -464,7 +467,8 @@ function getProviderFallback(category: StrikeRecord['category']) {
   return CATEGORY_PROVIDER_FALLBACKS[category];
 }
 
-function resolveCategories(provider: string, sector: string, context = ''): StrikeRecord['category'][] {
+function resolveCategories(provider: string, sector: string, modalita = '', note = '', relevance = ''): StrikeRecord['category'][] {
+  const context=[modalita,note,relevance].join('\n');
   const providerLow = provider.toLowerCase();
   const sectorLow = sector.toLowerCase();
   const combinedLow = `${provider} ${sector} ${context}`.toLowerCase();
@@ -473,6 +477,7 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
   const specificMode = /metropolitan|\bmetro\b|autobus|\bbus\b|superficie|\btram\b/.test(providerLow);
 
   const categories = new Set<StrikeRecord['category']>();
+  generalModesPending({provider,sector,modalita,note}).forEach(mode=>categories.add(mode));
   if (
     providerLow.includes('trenord') ||
     providerLow.includes('trenitalia') ||
@@ -508,10 +513,10 @@ function resolveCategories(provider: string, sector: string, context = ''): Stri
     departments.forEach(mode => categories.add(mode));
   }
   // An excluded mode does not exclude the other transport modes of a general strike.
-  const excluded = combinedLow.match(/esclus[oaie]\s+(?:il\s+)?settor[ei]\s+([^.;]+)/)?.[1] || '';
-  if (/aereo/.test(excluded)) categories.delete('AIRPORT');
-  if (/ferroviario/.test(excluded)) categories.delete('TRAIN');
-  if (/trasporto pubblico|tpl/.test(excluded)) { categories.delete('BUS'); categories.delete('SUBWAY'); }
+  for (const mode of excludedPassengerModes(context)) categories.delete(mode);
+  // A railway company may also run buses. A named road-transport division is
+  // not evidence that its train crews are striking.
+  if (localTransit && /autolinee|automobilistic|\bGOA\b|operatori di esercizio/i.test(provider) && !/ferroviari[oa]|\bDTF\b/i.test(provider)) categories.delete('TRAIN');
   return Array.from(categories);
 }
 
@@ -546,7 +551,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
   const batch = rawRows.slice(offset, offset + 6);
   rawRecordGroups.push(...await Promise.all(batch.map(async (row) => {
     const baseProviderNorm = row.region === 'MESSINA' && /\bATM\b/i.test(row.provider) ? 'ATM Messina人员' : await normalizeProvider(row.provider, translate);
-    const categories = resolveCategories(row.provider, row.sector, `${row.modalita} ${row.note} ${row.rilevanza}`);
+    const categories = resolveCategories(row.provider, row.sector, row.modalita, row.note, row.rilevanza);
     const dateSpan = getDateSpan(row.date, row.endDate);
 
     let status: StrikeStatus = 'CONFIRMED';
@@ -559,16 +564,18 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
 
     const recordInputs = categories.flatMap((category) => {
       const categoryDateSpan = getCategoryDateSpan(row, category, dateSpan);
-      return categoryDateSpan.map((dateIso, dateIndex) => ({ dateIso, dateIndex, category, dateSpan: categoryDateSpan }));
+      const restriction = ['BUS','SUBWAY'].includes(category) ? restrictedTpl(row.note) : null;
+      const regions = restriction ? restriction.cities.filter(city=>category!=='SUBWAY'||METRO_CITY_TAGS.has(city)) : category==='SUBWAY' && row.region==='NATIONAL' && generalModesPending(row).includes('SUBWAY') ? [...METRO_CITY_TAGS] : [row.region];
+      return regions.flatMap(region=>categoryDateSpan.map((dateIso, dateIndex) => ({ dateIso, dateIndex, category, dateSpan: categoryDateSpan, row:{...row,region} })));
     });
 
-    return Promise.all(recordInputs.map(async ({ dateIso, dateIndex, category, dateSpan }) => {
+    return Promise.all(recordInputs.map(async ({ dateIso, dateIndex, category, dateSpan, row }) => {
       const providerNorm = baseProviderNorm || getProviderFallback(category);
       let resolvedStatus: StrikeStatus = status;
       if (resolvedStatus === 'CONFIRMED' && shouldTreatAsPending(row, category, dateIso)) {
         resolvedStatus = 'REQUIRES_DETAIL';
       }
-      const parsedTimeInfo = parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso);
+      const parsedTimeInfo = generalModesPending(row).includes(category) ? {windows:[],hours:'时段待公布',display:'具体时段待公布',dateSpecific:false} : parseTimeWindows(row.modalita, row.note, row.rilevanza, category, dateIso);
       const timeInfo = splitTimeInfoForDate(parsedTimeInfo, dateSpan, dateIndex);
       // Only aviation's protected flight bands are a documented general rule.
       // A city is not an operator, so never donate ATM/ATAC/GTT guarantees.
@@ -642,6 +649,30 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
   });
 
   return Array.from(recordsMap.values());
+}
+
+// Completeness is a separate check from a successful HTTP request/upsert. Keep
+// legitimate exclusions visible in counts, and log each unexplained omission.
+export function auditSourceCoverage(rawRows: RawStrikeRow[], records: StrikeRecord[]) {
+  const announcements=[...new Map(rawRows.map(r=>[r.sourceKey || JSON.stringify(r),r])).values()];
+  const issues:string[]=[];let modeled=0,excluded=0;
+  for(const row of announcements) {
+    const found=records.filter(r=>row.sourceKey && r.source_key===row.sourceKey);
+    const modes=resolveCategories(row.provider,row.sector,row.modalita,row.note,row.rilevanza);
+    if(found.length) {
+      modeled++;
+      const unresolved=found.filter(r=>r.region==='UNKNOWN'||r.region==='OTHER');
+      if(unresolved.length) issues.push(`Unprojected passenger geography: ${row.sourceKey} | ${row.provider} | ${row.rawRegion} / ${row.province} | ${unresolved.map(r=>r.category+':'+r.date).join(',')}`);
+      for(const mode of modes) {
+        const dates=getCategoryDateSpan(row,mode,getDateSpan(row.date,row.endDate));
+        for(const date of dates) if(!found.some(r=>r.category===mode&&r.date===date)) issues.push(`Unmodeled passenger mode/day: ${row.sourceKey} | ${mode} | ${date} | ${row.provider}`);
+      }
+      continue;
+    }
+    if(!modes.length && excludedPassengerModes(row.note).size) {excluded++;continue;}
+    issues.push(`Unmodeled passenger declaration: ${row.sourceKey || 'no identity'} | ${row.provider} | ${row.sector}`);
+  }
+  return {announcements:announcements.length,modeled,excluded,issues};
 }
 
 function mergeWindows(windows: StrikeWindow[]) {

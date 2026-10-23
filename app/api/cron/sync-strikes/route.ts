@@ -4,7 +4,7 @@ import { optionalSyncStage } from '../../../../lib/syncStageBudget';
 import { attachLineImpacts } from '../../../../lib/lineImpact';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase, type StrikeRecord } from '../../../../lib/strikeSync';
+import { fetchAndFilter, fetchRecentRows, syncDateWindow, transformRows, upsertToSupabase, auditSourceCoverage, type StrikeRecord } from '../../../../lib/strikeSync';
 import { serverDatabase } from '../../../../lib/strikeQuery';
 import { enrichStrikeTiming } from '../../../../lib/strikeEnrichment';
 import { reviewStrikeSemantics } from '../../../../lib/strikeSemanticReview';
@@ -61,6 +61,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     const schedules=await optionalSyncStage('scheduled times',optionalDeadline,105000,warnings,()=>enrichScheduledServiceTimes(records,warnings),()=>({records,complete:0,feeds:0}));
     const memberships=await optionalSyncStage('route membership',optionalDeadline,85000,warnings,()=>enrichPotentialRouteCatalogs(schedules.records,warnings),()=>({records:schedules.records,catalogs:0,projected:0}));
     records=attachFollowUpPlans(attachLineImpacts(preserveHistoricalEvidence(memberships.records,prior || [],today)));
+    const coverage=auditSourceCoverage(rawRows,records);
+    warnings.push(...coverage.issues);
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;
     const unknownTiming = records.filter(record => record.status !== 'CANCELLED' && !record.strike_windows.length && !record.timing_evidence?.windows.length).length;
     const { data: retired, error: finishError } = await db.rpc('finish_strike_sync', {
@@ -74,8 +76,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/api/strikes');
     revalidatePath('/api/calendar');
     revalidateTag('strikes', { expire: 0 });
-    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, transit:{profilesApplied:transit.profilesApplied,routeCatalogs:transit.routeCatalogs,serviceSchedules:schedules.complete,scheduleFeeds:schedules.feeds,membershipCatalogs:memberships.catalogs,membershipProjections:memberships.projected},semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
+    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, coverage, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
+    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, coverage, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, transit:{profilesApplied:transit.profilesApplied,routeCatalogs:transit.routeCatalogs,serviceSchedules:schedules.complete,scheduleFeeds:schedules.feeds,membershipCatalogs:memberships.catalogs,membershipProjections:memberships.projected},semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);
