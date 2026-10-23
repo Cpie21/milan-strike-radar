@@ -1,3 +1,9 @@
+## Union proclamation follow-up (Codex)
+
+- `codex/union-notice-followup` stacks on PR28/797bb4f and preserves Claude PR27's already-live quota copy. Verified CGIL/FILT and SGB indexes join normal daily discovery, selected by the actual declaring union. No UI/schema/model/budget/schedule change. Additive sync diagnostic: `verification.acquisition.unionDocuments`.
+- Unresolved union article addresses now survive leaving the index and are re-fetched; only URLs are reused. Explicit dated transport clauses, union identity, mode, geography and operator fences are mandatory. Union affiliation never acts as an operator-wide day notice. Dated operator > regulator/MIT explicit hours > union > media; disagreements remain traceable. General workday wording, assemblies and guarantees do not become numeric strike hours.
+- October23 direct public fetch reads CGIL's November20 proclamation successfully, but no sector clocks were published in that text. The separate CUB/SGB rail21:00 November20–20:00 November21 stays confirmed. Five new regression suites/full355 tests pass; details and investigation boundaries in `docs/2026-10-23-union-notice-followup.md`. Preserve these follow-up and evidence contracts through Claude's next UI release.
+
 ## National source coverage and general declarations (Codex)
 
 - `codex/national-strike-coverage` stacks on PR26/b06b292. Final runtime c81b4c7/READY dpl_AWrBdS1TP2ayLmmJd8mwd8QXvTyE includes backend0b6007f and Claude PR27's quota-copy commit83da63b (cherry-picked as c81b4c7). Preserve both. General declarations without transport words now remain pending; additive `fields.modeApplicability` distinguishes GENERAL_NOTICE_PENDING/EXPLICIT_TRANSPORT. Do not render a workday or pending mode as confirmed00–24, all lines, or every airport. Existing JSON columns only; no migration. `operatorRestriction` keeps a TPL-only company list separate from nationwide rail.

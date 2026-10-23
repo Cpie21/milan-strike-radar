@@ -1,4 +1,5 @@
 import { CITIES } from './cities';
+import { UNION_STRIKE_SOURCES } from './unionStrikeSources';
 
 // Sources are registered independently of particular dates or strikes. Shared
 // operators list every served city, and homonymous ATM operators stay scoped.
@@ -55,6 +56,7 @@ export const METRO_CITY_TAGS = new Set(['MILANO','ROMA','TORINO','NAPOLI','GENOV
 
 export const OFFICIAL_STRIKE_HOSTS = new Set([
   'cgsse.it','www.cgsse.it','scioperi.mit.gov.it',
+  ...UNION_STRIKE_SOURCES.flatMap(s=>s.urls.map(url=>new URL(url).hostname)),
   ...[...CITY_STRIKE_SOURCES,...SUPPLEMENTAL_OPERATOR_SOURCES,...AVIATION_STRIKE_SOURCES,...NATIONAL_STRIKE_SOURCES].flatMap(s=>s.urls.map(url=>new URL(url).hostname)),
 ]);
 

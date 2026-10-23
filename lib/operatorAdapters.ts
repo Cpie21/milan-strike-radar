@@ -1,5 +1,6 @@
 import { CITY_STRIKE_SOURCES, SUPPLEMENTAL_OPERATOR_SOURCES, NATIONAL_STRIKE_SOURCES, AVIATION_STRIKE_SOURCES } from './strikeSources';
 import type { StrikeRecord } from './strikeSync';
+import { unionRootsForRecord } from './unionStrikeSources';
 
 // Source capabilities are independent: an official notice does not imply a
 // timetable or a live feed exists. City membership is never operator evidence.
@@ -60,5 +61,5 @@ export function noticeRootsForRecord(record:Pick<StrikeRecord,'region'|'category
   const operatorIds=identifyOperatorIds(record);
   const general=/sciopero generale|settori pubblici|categorie pubbliche|plurisettorial/i.test(record.raw_payload?.provider || record.provider);
   const otherRoots=[...NATIONAL_STRIKE_SOURCES,...(record.category==='AIRPORT'?AVIATION_STRIKE_SOURCES:[])].filter(s=>s.aliases.some(a=>mentions(record.raw_payload?.provider || record.provider,a))).flatMap(s=>s.urls);
-  return [...new Set([...otherRoots,...operatorAdapters.filter(a=>operatorIds.includes(a.id) || general&&['BUS','SUBWAY'].includes(record.category)&&(record.region==='NATIONAL'||a.cities.includes(record.region))).flatMap(a=>a.urls)])];
+  return [...new Set([...otherRoots,...operatorAdapters.filter(a=>operatorIds.includes(a.id) || general&&['BUS','SUBWAY'].includes(record.category)&&(record.region==='NATIONAL'||a.cities.includes(record.region))).flatMap(a=>a.urls),...unionRootsForRecord(record)])];
 }
