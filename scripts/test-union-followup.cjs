@@ -37,6 +37,7 @@ test('later union sector clauses fill only that mode; guarantees, assemblies, ex
  for(const r of rows.filter(r=>r.category!=='TRAIN'))assert.deepEqual(applyTimingEvidence(r,notices).strike_windows,[]);
  for(const body of ['<h2>Trasporto ferroviario:</h2><p>Servizi garantiti dalle 06:00 alle 09:00.</p>','<h2>Trasporto ferroviario escluso:</h2><p>Dalle 09:01 alle 17:00.</p>','<h2>Appalti ferroviari:</h2><p>Dalle 09:01 alle 17:00.</p>'])assert.deepEqual(applyTimingEvidence(train,parseExternalNotices(article(body),cgUrl,[train.date])).strike_windows,[]);
  assert.deepEqual(parseExternalNotices(html.replaceAll('2026','2025'),cgUrl,['2026-11-20']),[]);
+ const unrelated=article('<p>La CGIL aveva scioperato il 20 novembre 2026.</p><h2>Trasporto ferroviario:</h2><p>CGIL dalle 10:00 alle 14:00.</p>').replace('20 novembre 2026</h1>','4 dicembre 2026</h1>');assert.deepEqual(applyTimingEvidence(train,parseExternalNotices(unrelated,cgUrl,['2026-11-20','2026-12-04'])).strike_windows,[]);
  const foreign=article('<h2>Trasporto ferroviario 21 novembre 2026:</h2><p>Dalle 10:00 alle 14:00.</p>');assert.deepEqual(applyTimingEvidence(train,parseExternalNotices(foreign,cgUrl,['2026-11-20','2026-11-21'])).strike_windows,[]);
 });
 test('local union notice never becomes nationwide or another city; publisher alone is not proof of a union',async()=>{

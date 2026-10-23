@@ -46,3 +46,8 @@ Final cloud deployment/synchronization receipts follow below.
 The next cloud run (`c2f82ea8-73f9-4a93-b7d9-14d465d09241`) isolated the failing endpoint: MIT `/mit2/public/scioperi/ricerca`, `UND_ERR_CONNECT_TIMEOUT` after three attempts. Local Node could read both MIT endpoints. `lib/mitTransport.ts` now uses one IPv4 native HTTPS connection on the second attempt after a connection error. It preserves the official host/path, full POST date/state filters, certificate verification and the original three-attempt/time bounds. HTTP refusals and TLS validation are not bypassed; no proxy, credential forwarding or alternate facts are used. Native bodies have a2MB bound.
 
 The authenticated source-access diagnostic now includes fixed MIT upcoming/history IPv4 checks and validates that each response is an actual parseable table. It remains read-only and never calls a model or writes the database. Tests cover form preservation, correct TLS/family options, three-attempt exhaustion and invalid targets. Local real IPv4 requests read27 upcoming/44 historical announcements.
+
+
+Frankfurt read-only diagnostics also timed out for both native IPv4 endpoints, so IPv4 alone is not recorded as a successful fix. Region-specific egress is being verified by configuring only the sync and authenticated diagnostic functions in Paris (`cdg1`); the application's default remains Frankfurt. This is one region per function, not paid multi-region replication. Final runtime checks below determine whether this route works.
+
+Union articles with a dated headline now reject hours belonging to another date mentioned in the body; a retrospective reference cannot donate hours to a different strike.

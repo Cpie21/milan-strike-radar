@@ -311,6 +311,9 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
   }
 
   if(isUnionSource(url))return output.flatMap(n=>{
+    const datedTitle=new RegExp(`\\b\\d{1,2}[/.-]\\d{1,2}[/.-]20\\d{2}\\b|\\b\\d{1,2}\\s+(?:${MONTHS.join('|')})\\b`,'i').test(title);
+    const [,month,day]=n.date.split('-').map(Number);
+    if(datedTitle&&!exactDate(title,n.date)&&!new RegExp(`\\b${day}\\s+${MONTHS[month-1]}(?!\\s+20\\d{2})`,'i').test(title))return [];
     const scope=unionClauseScope(n.section_heading || '',n.timing,n.provider);
     if(OPERATORS.some(op=>hasWord((n.section_heading || '')+' '+n.timing,op)))scope.national=false;
     // No sector clause means no operational claim. Office/assembly times and
