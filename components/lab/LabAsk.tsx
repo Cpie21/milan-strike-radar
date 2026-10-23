@@ -328,7 +328,7 @@ function AskInput({ a, big }: { a: AskState; big?: boolean }) {
     const t = setInterval(() => setN(k => k + 1), 3600);
     return () => clearInterval(t);
   }, [big, focused, query, reduce]);
-  const example = out ? tx(lang, '今天的提问次数用完了，明天再来', 'No questions left today') : tx(lang, ...EXAMPLES[n % EXAMPLES.length]);
+  const example = out ? tx(lang, '今天的次数用完了', 'None left today') : tx(lang, ...EXAMPLES[n % EXAMPLES.length]);
   // Grow with the text, up to three lines.
   useEffect(() => {
     const el = field.current;
@@ -533,7 +533,7 @@ function AnswerBody({ a, active }: { a: AskState; active: boolean }) {
       ) : (
       <motion.div key="done" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
 
-      {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.surface2, color: C.text }}>{error === 'daily' ? tx(lang, `今天的 ${DAILY_QUESTIONS} 次提问已经用完了，明天再来。日历里的信息不受影响。`, `You've used today's ${DAILY_QUESTIONS} questions. The calendar still has everything.`) : error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : error === 'budget' ? tx(lang, '这个月的问答额度用完了，日历里的信息不受影响。', 'This month\'s answers are used up; the calendar still has everything.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
+      {error && <p className="mt-4 rounded-[12px] px-3 py-2.5 text-[14px]" style={{ background: C.surface2, color: C.text }}>{error === 'daily' ? tx(lang, `今天的 ${DAILY_QUESTIONS} 次用完了，明天再来`, `Today's ${DAILY_QUESTIONS} questions are used up`) : error === 'rate' ? tx(lang, '问得太频繁了，请稍等一分钟。', 'Too many questions — wait a minute.') : error === 'budget' ? tx(lang, '这个月的问答额度用完了，日历里的信息不受影响。', 'This month\'s answers are used up; the calendar still has everything.') : tx(lang, '暂时回答不了，请直接查看日历。', 'Unavailable right now — use the calendar.')}</p>}
 
       {result?.kind === 'clarify' && (
         <div className="mt-4">
