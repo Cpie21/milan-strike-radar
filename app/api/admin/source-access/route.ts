@@ -4,6 +4,7 @@ import { fetchCgsse } from '../../../../lib/cgsseTls';
 import { fetchToscanaNotice } from '../../../../lib/toscanaAirportNotices';
 import { fetchMitIpv4 } from '../../../../lib/mitTransport';
 import { parseStrikeHtml, syncDateWindow } from '../../../../lib/strikeSync';
+import { probeSourceNetwork } from '../../../../lib/sourceNetworkProbe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,9 @@ export async function GET(request: Request) {
   if (!secret) return NextResponse.json({ error: 'Diagnostic authorization is not configured' }, { status: 503 });
   if (request.headers.get('authorization') !== `Bearer ${secret}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const checkedAt = new Date().toISOString();
+  if (new URL(request.url).searchParams.get('network') === '1') {
+    return NextResponse.json({ checkedAt, region: process.env.VERCEL_REGION || 'local', results: await probeSourceNetwork() }, { headers: { 'Cache-Control': 'private, no-store' } });
+  }
   const results = await Promise.all(sources.map(async ([source, url]) => {
     const start = Date.now();
     try {

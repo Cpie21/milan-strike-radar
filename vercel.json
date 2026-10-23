@@ -1,10 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["fra1"],
-  "functions": {
-    "app/api/cron/sync-strikes/route.ts": { "regions": ["iad1"] },
-    "app/api/admin/source-access/route.ts": { "regions": ["iad1"] }
-  },
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/cron/sync-strikes",
