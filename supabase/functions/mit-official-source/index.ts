@@ -27,6 +27,10 @@ export async function handleMitSource(req:Request,deps:Dependencies):Promise<Res
     const html=await boundedText(response,2_000_000),bytes=new TextEncoder().encode(html);
     const sha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
     return reply({version:1,kind:payload.kind,date:today,url,method,form:form?Object.fromEntries(form):null,fetchedAt:deps.now().toISOString(),sha256,html});
-  } catch {return reply({error:'Official source unavailable'},502);}
+  } catch(error) {
+    const failure=error instanceof Error?error.name:'Error';
+    console.error('MIT source transport failed',payload.kind,failure,error instanceof Error?error.message:'request failed');
+    return reply({error:'Official source unavailable',failure},502);
+  }
 }
 if(typeof Deno!=='undefined')Deno.serve(req=>handleMitSource(req,{serviceKey:Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',fetcher:fetch,now:()=>new Date()}));
