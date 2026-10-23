@@ -1,3 +1,10 @@
+## Live UI fixes on top of e5b07a3 (Claude)
+
+- `claude/live-fixes` (fdb73c9…6de8c17) stacks on Codex `e5b07a3` and is **live in production since 2026-10-23 ~20:10 Rome (latest 6de8c17 ~20:35)** (dpl `milan-strike-radar-29vzwwoqc`). Merge it into `codex/union-notice-followup` before the next production deploy, or that deploy rolls these fixes back. Backend untouched: no API/schema/sync/model/budget change.
+- `lib/providerZh.ts`: registry wording the sync's synonyms miss ("SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI人员", "IMPRESE CHE SVOLGONO ATTIVITA' FERROVIARIA人员", ANM/ACTV/GEST…) is named in Chinese and English by rule at display time (`LabRoute` provider/providerEn/events, Ask `who()`). Unknown parts pass through unchanged. Free, no model. Adding the same phrases to `PROVIDER_SYNONYMS` in the sync would fix stored rows too.
+- Support sheet no longer `tall`: it fits its content instead of opening at 62% cut off. Month title rolls (`components/lab/Roll.tsx`, framer-motion, no new dependency); quota count too. Ask tags no longer wrap.
+- `claude/screenshot-trip` (not live) carries the same changes plus the screenshot feature and the static demo (`italy-strike-demo.vercel.app`, a separate Vercel project).
+
 ## Union proclamation follow-up (Codex)
 
 - `codex/union-notice-followup` stacks on PR28/797bb4f and preserves Claude PR27's already-live quota copy. Verified CGIL/FILT and SGB indexes join normal daily discovery, selected by the actual declaring union. No layout/schema/model/budget/schedule change. Additive sync diagnostic: `verification.acquisition.unionDocuments`.
