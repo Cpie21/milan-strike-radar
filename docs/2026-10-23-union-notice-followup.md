@@ -80,8 +80,20 @@ Past errors must remain separate: production logs contain successful daily runs 
 
 Latest real manual recovery `69170711-de9b-45c5-ade5-a30ef641ad44` fetched71/upserted67 with zero model calls; it is explicitly a workstation recovery, not a healthy cloud-scheduler receipt. It leaves48 active future business rows. The independent live MIT-to-DB and DB-to-MIT audit found29 official announcement identities,23 modeled passenger announcements,3 explicit passenger exclusions,3 outside-product declarations, and zero unexplained gaps/field mismatches/orphans. All20 city APIs, calendars and pages returned200. Health remains PARTIAL:19 unresolved timings and34 warnings, not100% verified operational detail.
 
-`ops/cloudflare-mit-source` is a concrete, unconnected candidate with a Milan placement hint (`aws:eu-south-1`). It preserves raw MIT HTML, dates, all-state form, hash, TLS and bounds through the existing transport handler. Its public `/probe` returns metadata only; `/source` is503 until a dedicated transport token exists. No database service key belongs there. Cloudflare documents placement as nearby, not a guaranteed Italian egress IP, so real requests and normal Vercel synchronization must pass before adoption. Existing Cloudflare CLI login is expired; owner login/authorization is the remaining prerequisite to test this candidate. No paid upgrade or new LLM is authorized.
+`ops/cloudflare-mit-source` is now deployed in the owner's authorized account,
+using the Milan placement hint. Real upcoming/history requests both returned
+200 in 327/322ms at18:22UTC. The first deployment exposed a Workers API
+compatibility issue (`redirect: error` is unsupported); `manual` plus HTTP-status
+rejection fixes this while still refusing redirects. Both endpoints now require
+a dedicated secret; no DB or cron credential is forwarded.
 
-Wrangler4.152.0 dry-run bundles the candidate successfully (5.60KiB, no bindings). TypeScript and focused ESLint pass. This checks deployability only; the worker has not been deployed to an owned Cloudflare account or connected to Vercel.
+The optional Vercel fallback retains direct-first acquisition and at most three
+attempts. It verifies the fixed source/method, exact all-state form and Rome
+dates, request nonce, timestamp freshness, SHA256 and real table before adopting
+HTML. Acquisition receipts are included in the protected sync response/log.
+`/api/admin/source-access?relay=1` is a read-only protected Vercel-to-Worker check.
+No schema, frontend, model, translation, budget ceiling or daily schedule change.
 
-The cloud automatic-refresh outage remains OPEN. Do not equate the deployed parser, passing tests, a placement hint, or manual recovery with restored daily cloud acquisition.
+All366 tests, TypeScript and focused ESLint pass. End-to-end Vercel sync and
+production database validation are pending the deployment of this integration;
+a successful Worker probe alone is not that proof.

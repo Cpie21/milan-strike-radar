@@ -5,6 +5,7 @@ import { fetchToscanaNotice } from '../../../../lib/toscanaAirportNotices';
 import { fetchMitIpv4 } from '../../../../lib/mitTransport';
 import { parseStrikeHtml, syncDateWindow } from '../../../../lib/strikeSync';
 import { probeSourceNetwork } from '../../../../lib/sourceNetworkProbe';
+import { fetchMitRelay } from '../../../../lib/mitRelay';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,20 @@ export async function GET(request: Request) {
   if (!secret) return NextResponse.json({ error: 'Diagnostic authorization is not configured' }, { status: 503 });
   if (request.headers.get('authorization') !== `Bearer ${secret}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const checkedAt = new Date().toISOString();
+  if (new URL(request.url).searchParams.get('relay') === '1') {
+    const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const window=syncDateWindow(today),it=(date:string)=>date.split('-').reverse().join('/');
+    const results=await Promise.all(['upcoming','history'].map(async kind=>{
+      const began=Date.now();
+      try {
+        const url='https://scioperi.mit.gov.it/mit2/public/scioperi'+(kind==='history'?'/ricerca':'');
+        const options:RequestInit=kind==='history'?{method:'POST',body:new URLSearchParams({dataInizio:it(window.start),dataFine:it(window.end),settore:'0',rilevanza:'0',stato:'0',categoria:'',sindacato:'',submit:'Ricerca'})}:{};
+        const receipt=await fetchMitRelay(url,options,today),records=parseStrikeHtml(receipt.html).length;
+        return {kind,status:'READABLE',records,sha256:receipt.sha256,fetchedAt:receipt.fetchedAt,elapsedMs:Date.now()-began};
+      } catch {return {kind,status:'UNAVAILABLE',elapsedMs:Date.now()-began};}
+    }));
+    return NextResponse.json({checkedAt,region:process.env.VERCEL_REGION||'local',results},{headers:{'Cache-Control':'private, no-store'}});
+  }
   if (new URL(request.url).searchParams.get('network') === '1') {
     return NextResponse.json({ checkedAt, region: process.env.VERCEL_REGION || 'local', results: await probeSourceNetwork() }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
