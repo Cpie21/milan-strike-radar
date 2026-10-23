@@ -5,6 +5,7 @@ import { windowsDisplay, type StrikeEvent } from '../../lib/strikePresentation';
 import type { TimingEvidence } from '../../lib/strikeEvidence';
 import { geographyContext, indirectRail, railTitle, scopeOf, scopeTitle } from '../../lib/strikeScope';
 import { translateProvider } from '../i18n';
+import { providerEnRule, providerZh } from '../../lib/providerZh';
 import { aggregateStrikes, filterStrikesForRegion } from '../utils';
 import { cardGuaranteeWindows, lineScopeLabels } from '../../lib/strikeCardEvidence';
 import { scheduleClockLabel, scheduledEndpoint, type ServiceSchedule } from '../../lib/serviceSchedule';
@@ -127,8 +128,8 @@ export default async function LabRoute({ tag }: { tag: string }) {
       geography,
       category: day.category,
       status: day.status,
-      provider: day.provider || '',
-      providerEn: day.provider ? translateProvider(day.provider, 'en').replace(/^\w/, ch => ch.toUpperCase()) : '',
+      provider: providerZh(day.provider || ''),
+      providerEn: day.provider ? (providerEnRule(day.provider) ?? translateProvider(day.provider, 'en')).replace(/^\w/, ch => ch.toUpperCase()) : '',
       national: events.some(e => nationalKeys.has(e.source_key)),
       windows: day.timing_evidence?.windows || [],
       // Guarantees with their real source and symbolic edges (service start/end).
@@ -141,7 +142,7 @@ export default async function LabRoute({ tag }: { tag: string }) {
       unknownTiming: Boolean(day.has_unknown_timing),
       confidence: day.timing_evidence?.confidence || 'official',
       sources: unique(events.flatMap(toSources)),
-      events: events.map(e => ({ provider: e.provider || '', status: e.status || '', display: e.windows.length ? windowsDisplay(e.windows) : '', sources: unique(toSources(e)) })),
+      events: events.map(e => ({ provider: providerZh(e.provider || ''), status: e.status || '', display: e.windows.length ? windowsDisplay(e.windows) : '', sources: unique(toSources(e)) })),
       records: recordsFor(events.filter(e => e.status !== 'CANCELLED')),
       quotes: quotesFor(events.filter(e => e.status !== 'CANCELLED')),
     };

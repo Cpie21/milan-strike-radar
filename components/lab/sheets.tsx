@@ -362,7 +362,7 @@ export function SupportSheet(base: Base) {
     } catch { track('support_feedback_failed', { submission_id, reason: 'network' }); setState('error'); setError(tx(base.lang, '提交失败，请稍后再试', 'Couldn’t send. Try again later.')); } finally { pending.current = false; }
   };
   return (
-    <Sheet telemetryId="support" open={base.open} onClose={base.onClose} title={tx(base.lang, '支持与反馈', 'Support & feedback')} tall>
+    <Sheet telemetryId="support" open={base.open} onClose={base.onClose} title={tx(base.lang, '支持与反馈', 'Support & feedback')}>
       <p className="text-[14.5px] leading-relaxed" style={{ color: C.text2 }}>{tx(base.lang, '感谢您愿意点进这个界面！独立开发不易，如果对你有用请支持一杯奶茶。', 'Thanks for opening this panel! If the tool helps you, consider buying a bubble tea.')}</p>
       <div className="mt-4 rounded-[18px] p-4" style={{ background: '#1E2025' }}>
         <div className="flex items-center justify-between">

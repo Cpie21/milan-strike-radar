@@ -10,13 +10,15 @@ import { LedBoard, LedFace, type Mood } from './Led';
 import type { AskResult, Fact, Hints, Judged, StageEvent } from '../../lib/ask/pipeline';
 import { dayLabel, modeName, statusLine, tx, windowsText, type Lang, type Mode, type ModeCard } from '../../lib/lab/model';
 import { addDaysIso } from '../../lib/romeDate';
+import { providerEnRule, providerZh } from '../../lib/providerZh';
+import { Roll } from './Roll';
 import { translateProvider } from '../i18n';
 import { track } from './track';
 import { analyticsContext } from '../../utils/analytics';
 import { askResultProperties } from '../../lib/analyticsContract';
 
 // The backend names striking staff in Chinese; English reads its own words.
-const who = (provider: string, lang: Lang) => (lang === 'en' ? translateProvider(provider, 'en').replace(/^\w/, ch => ch.toUpperCase()) : provider);
+const who = (provider: string, lang: Lang) => (lang === 'en' ? (providerEnRule(provider) ?? translateProvider(provider, 'en')).replace(/^\w/, ch => ch.toUpperCase()) : providerZh(provider));
 import { Bar } from './LabStrikeCard';
 import { LineBadge, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C, EASE, TYPE } from './theme';
@@ -70,7 +72,7 @@ const asCard = (j: Judged): ModeCard => ({
 function Tag({ by, p, lang }: { by: Fact['by']; p?: number | null; lang: Lang }) {
   const label = by === 'jev' ? (p != null ? tx(lang, `把握 ${Math.round(p * 100)}%`, `${Math.round(p * 100)}% sure`) : 'Jev') : by === 'db' ? tx(lang, '数据库', 'DB') : by === 'default' ? tx(lang, '默认', 'Default') : tx(lang, '规则', 'Rule');
   const color = by === 'jev' ? '#9FD8FF' : by === 'rule' ? C.ok : C.text3;
-  return <span className="text-[10.5px] font-semibold px-1.5 py-[1px] rounded-[5px]" style={{ color, background: C.surface3 }}>{label}</span>;
+  return <span className="shrink-0 whitespace-nowrap text-[10.5px] font-semibold px-1.5 py-[1px] rounded-[5px]" style={{ color, background: C.surface3 }}>{label}</span>;
 }
 
 export type AskState = ReturnType<typeof useAsk>;
@@ -421,7 +423,7 @@ export function AskField({ ask: a }: { ask: AskState }) {
         </div>
         {a.left <= 2 && (
           <p className="mt-1.5 text-center text-[11.5px] font-medium" style={{ color: C.text3 }}>
-            {a.left === 0 ? tx(a.lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : tx(a.lang, `今天还可以问 ${a.left} 次`, `${a.left} question${a.left === 1 ? '' : 's'} left today`)}
+            {a.left === 0 ? tx(a.lang, `每天可以问 ${DAILY_QUESTIONS} 次`, `${DAILY_QUESTIONS} questions a day`) : (a.lang === 'zh' ? <>今天还可以问 <Roll value={a.left} order={a.left} /> 次</> : <><Roll value={a.left} order={a.left} /> question{a.left === 1 ? '' : 's'} left today</>)}
           </p>
         )}
       </div>
