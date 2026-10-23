@@ -26,7 +26,7 @@ No UI layout, database migration, AI model, translation, AI budget or scheduler 
 
 ## Validation
 
-- 357 tests passed, including seven new scenario suites for actual proclamation facts, later sector clarification, local/national and union separation, source priority, and unresolved-article/attachment follow-up across three successive cycles and bounded primary-outage diagnostics. Future hours in these tests are synthetic, not November 20 facts.
+- 359 tests passed, including nine new scenario suites for actual proclamation facts, later sector clarification, local/national and union separation, source priority, and unresolved-article/attachment follow-up across three successive cycles and bounded primary-outage diagnostics. Future hours in these tests are synthetic, not November 20 facts.
 - TypeScript, focused ESLint and production build passed.
 - A real, read-only CGIL discovery run fetched 59 documents in the bounded run, including the original proclamation and FILT indexes; all ten CGIL candidates retained empty windows and `UNCERTAIN`. This proves successful acquisition without usable clocks, not universal absence of published instructions.
 
@@ -39,3 +39,10 @@ An explicit local recovery ran the committed route 0888149 against real current 
 Inspection proved `.next/cache/fetch-cache` still contained the failed11:19 run after the13:24 recovery. `readCityStrikes` now establishes request-time rendering with `connection()` before the SDK can catch Next dynamic control flow, then uses `serverDatabase({fresh:true})` with `cache:no-store` for health GETs. Health cannot be frozen into a prerender/build response. Pages that read live health render at request time; the explicit ten-minute row cache remains. No layout or public record shape changes. This matches the existing intention that health is checked outside the row cache.
 
 Final cloud deployment/synchronization receipts follow below.
+
+
+## Primary cloud connection fallback
+
+The next cloud run (`c2f82ea8-73f9-4a93-b7d9-14d465d09241`) isolated the failing endpoint: MIT `/mit2/public/scioperi/ricerca`, `UND_ERR_CONNECT_TIMEOUT` after three attempts. Local Node could read both MIT endpoints. `lib/mitTransport.ts` now uses one IPv4 native HTTPS connection on the second attempt after a connection error. It preserves the official host/path, full POST date/state filters, certificate verification and the original three-attempt/time bounds. HTTP refusals and TLS validation are not bypassed; no proxy, credential forwarding or alternate facts are used. Native bodies have a2MB bound.
+
+The authenticated source-access diagnostic now includes fixed MIT upcoming/history IPv4 checks and validates that each response is an actual parseable table. It remains read-only and never calls a model or writes the database. Tests cover form preservation, correct TLS/family options, three-attempt exhaustion and invalid targets. Local real IPv4 requests read27 upcoming/44 historical announcements.

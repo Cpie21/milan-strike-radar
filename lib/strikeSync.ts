@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { fetchMitIpv4, mitConnectionFailure } from './mitTransport';
 import { excludedPassengerModes, generalModesPending, isGeneralDeclaration, restrictedTpl } from './transportDeclaration';
 import { METRO_CITY_TAGS } from './strikeSources';
 import { eavDepartmentModes } from './operatorDepartments';
@@ -142,7 +143,8 @@ async function fetchOfficial(url: string, options: RequestInit = {}) {
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const response = await fetch(url, { ...options, cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+      const signal=AbortSignal.timeout(15_000);
+      const response = attempt===1&&mitConnectionFailure(lastError)?await fetchMitIpv4(url,options,signal):await fetch(url, { ...options, cache: 'no-store', signal });
       if (!response.ok) throw new Error(`MIT returned HTTP ${response.status}`);
       return parseStrikeHtml(await response.text());
     } catch (error) {
