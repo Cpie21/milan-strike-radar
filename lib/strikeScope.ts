@@ -6,11 +6,14 @@ import { normalizeOfficialGeography, type NormalizedOfficialGeography } from './
 import { parseLineScope } from './lineScope';
 import { intersectGuaranteeEvidence, identifyOperators } from './operatorGuaranteeProfiles';
 import { eavDepartmentModes, EAV_DEPARTMENT_SOURCE } from './operatorDepartments';
+import { generalModesPending, restrictedTpl } from './transportDeclaration';
 
 export type ScopeType = 'AIRPORT' | 'AIRLINE' | 'AIRLINE_CREW' | 'GROUND_HANDLING' | 'CARGO' | 'NATIONAL_AVIATION' | 'MIXED_AIRPORT_SERVICES' | 'RAIL_GENERAL' | 'RAIL_OPERATOR' | 'RAIL_CREW' | 'RAIL_INFRASTRUCTURE' | 'RAIL_SECURITY' | 'RAIL_SUPPORT' | 'RAIL_CUSTOMER_SERVICE' | 'UNKNOWN';
 export type GuaranteeSource = 'OFFICIAL_STRIKE_NOTICE' | 'STANDARD_RULE' | 'OPERATOR_RULE' | 'UNKNOWN';
 export type FieldEvidence<T> = { value: T; confidence: 'HIGH' | 'MEDIUM' | 'UNKNOWN' | 'CONFLICT'; source: 'MIT' | 'OPERATOR_OFFICIAL' | 'STANDARD_RULE' | 'REPORTED' | 'UNKNOWN'; url?: string; excerpt?: string; method?: 'OFFICIAL' | 'CODE' | 'JEV' };
 export type ScopeEvidence = {
+  modeApplicability?: FieldEvidence<'EXPLICIT_TRANSPORT'|'GENERAL_NOTICE_PENDING'>;
+  operatorRestriction?: FieldEvidence<string>;
   followUp?: { checkedAt:string; frequency:'DAILY'; primary:'SCHEDULED'|'HISTORICAL'; notice:'SCHEDULED'|'PRIMARY_ONLY'|'WAITING_FOR_HORIZON'|'PRIMARY_STATUS_ONLY'|'HISTORICAL'; noticeEligibleFrom:string };
   noticeDiscovery?: { checkedAt:string; status:'MATCHED'|'PARTIAL'|'UNAVAILABLE'|'NO_MATCH'|'NOT_CHECKED'; sources:{url:string;status:'FETCHED'|'FAILED'|'DEFERRED';firstDiscoveredAt?:string;lastAttemptedAt?:string}[] };
   lineImpact?: import('./lineImpact').DeclaredLineImpact;
@@ -49,12 +52,13 @@ export function aviationScope(text: string, region: string): ScopeType {
   const airline=/easyjet|ryanair|wizz|ITA AIRWAYS|alitalia|airlines|compagnia aerea|航空/i.test(text);
   if(airline && /navigante|piloti|pilot|crew|assistenti di volo|机组|飞行员/i.test(text)) return 'AIRLINE_CREW';
   if(airline) return 'AIRLINE';
-  if(region==='NATIONAL' && /\bENAV\b|sciopero generale|settore aereo|trasporto aereo/i.test(text)) return 'NATIONAL_AVIATION';
+  if(region==='NATIONAL' && /\bENAV\b|\bTECHNO\s*SKY\b|sciopero generale|settore aereo|trasporto aereo/i.test(text)) return 'NATIONAL_AVIATION';
   if(/aeroport|airport|\bAPT\b|security|sicuritalia|\bENAV\b|\bSEA\b/i.test(text)) return 'AIRPORT';
   return 'UNKNOWN';
 }
 
 export function railScope(text: string, context: {modalita?:string;note?:string} = {}): ScopeType {
+  if (/imprese che svolgono attivit[aà]'?\s+ferroviaria/i.test(text) && scopeTiming(context.modalita || '', 'TRAIN').trim()) return 'RAIL_GENERAL';
   // A general strike has separately scoped rail and contractor clauses. Classify
   // the same FERROVIARIO section used by the clock parser, not its broad title.
   if (/sciopero generale|plurisettorial/i.test(text)) {
@@ -105,9 +109,11 @@ export function extractLineScope(text: string): string[] | 'ALL_LINES' | 'UNKNOW
 export function makeScopeEvidence(row: {provider:string; note:string; sector:string; modalita:string; sourceUrl?:string; rawRegion?:string; province?:string; rilevanza?:string}, region: string, category: string, windows: {start:string;end:string}[], guarantees: {start:string;end:string}[] = []): ScopeEvidence {
   const url=row.sourceUrl || 'https://scioperi.mit.gov.it/mit2/public/scioperi';
   const fact=<T>(value:T, known=true, excerpt=row.provider):FieldEvidence<T>=>({value,confidence:known?'HIGH':'UNKNOWN',source:known?'MIT':'UNKNOWN',method:'CODE',...(known?{url,excerpt}:{})});
-  const scope=category==='AIRPORT'?aviationScope(row.provider,region):category==='TRAIN'?railScope(row.provider,row):'UNKNOWN';
+  const pendingMode=generalModesPending(row).includes(category as import('./transportDeclaration').PassengerMode);
+  const restriction=['BUS','SUBWAY'].includes(category)?restrictedTpl(row.note):null;
+  const scope=pendingMode?'UNKNOWN':category==='AIRPORT'?aviationScope(row.provider,region):category==='TRAIN'?railScope(row.provider,row):'UNKNOWN';
   const projected=classifyRegionTags({regionText:row.rawRegion,provinceText:row.province,providerText:row.provider,sectorText:row.sector,noteText:row.note,relevanceText:row.rilevanza});
-  const projection=projected.includes('NATIONAL') ? CITIES.map(c=>c.tag) : projected.filter(tag=>Boolean(resolveCity(tag)));
+  const projection=restriction ? restriction.cities : pendingMode && category==='SUBWAY' && resolveCity(region) ? [region] : projected.includes('NATIONAL') ? CITIES.map(c=>c.tag) : projected.filter(tag=>Boolean(resolveCity(tag)));
   const declared={region:row.rawRegion || '',province:row.province || '',relevance:row.rilevanza || ''};
   const normalizedGeography=normalizeOfficialGeography(declared.region,declared.province);
   const hasProvince=Boolean(normalizedGeography.province);
@@ -117,13 +123,15 @@ export function makeScopeEvidence(row: {provider:string; note:string; sector:str
   const lineScope=parseLineScope(row.note,identifyOperators({provider:row.provider,region,category:category as import('./strikeSync').StrikeRecord['category']}));
   const airports=category==='AIRPORT' && !['AIRLINE','AIRLINE_CREW','CARGO'].includes(scope) ? normalizeAirportAffectedLines([],{contextText:affectedScopeText(row.provider)+' '+affectedScopeText(row.note)}) : [];
   return {
+    modeApplicability:fact(pendingMode?'GENERAL_NOTICE_PENDING':'EXPLICIT_TRANSPORT',!pendingMode,[row.sector,row.provider,row.modalita].join(' | ')),
+    ...(restriction?{operatorRestriction:fact(restriction.declaration,true,row.note)}:{}),
     ...(eavDepartmentModes(row.provider).includes(category as 'TRAIN'|'BUS')?{serviceClassification:{value:{operator:'EAV',department:category==='TRAIN'?'DTF':'DTA',mode:category},confidence:'HIGH' as const,source:'OPERATOR_OFFICIAL' as const,method:'CODE' as const,url:EAV_DEPARTMENT_SOURCE,excerpt:'Verified department meaning; does not establish this event’s exact lines or guaranteed services.'}}:{}),
     officialGeography:{...fact(declared,geographyKnown,[declared.region,declared.province,declared.relevance].join(' | ')),method:'OFFICIAL'}, normalizedGeography:fact(normalizedGeography,Boolean(normalizedGeography.province || normalizedGeography.administrativeRegion),[declared.region,declared.province].join(' | ')), supportedCityProjection:fact(projection,geographyKnown), locationStatus,
     ...(category==='TRAIN'?{railSections:fact(timingSections(row.modalita).filter(s=>/FERROVIAR|MERCI.*ROTAIA/.test(s.label)).map(s=>({subject:/APPALTI/.test(s.label)?'RAIL_CONTRACTORS' as const:/MERCI/.test(s.label)?'RAIL_FREIGHT' as const:'RAIL_SERVICE' as const,text:s.body.trim().replace(/\s*\/\s*$/,''),representedByThisEvent:/^(?:SETTORE\s+)?FERROVIARIO$/.test(s.label)})),timingSections(row.modalita).length>0,row.modalita)}:{}),
     location:fact(region,region!=='UNKNOWN',[row.rawRegion,row.province,row.rilevanza,row.provider].filter(Boolean).join(' | ')), passengerImpact:fact(indirectRail(scope)?'INDIRECT_OR_UNCONFIRMED':scope==='RAIL_GENERAL'||scope==='RAIL_OPERATOR'||scope==='RAIL_CREW'?'DIRECT_SERVICE':'UNKNOWN',scope.startsWith('RAIL_')), exclusions:fact(/esclus|eccetto/i.test(row.note)?[row.note]:[],/esclus|eccetto/i.test(row.note),row.note), scopeType:fact(scope,scope!=='UNKNOWN',scope==='RAIL_GENERAL'?scopeTiming(row.modalita,'TRAIN'):row.provider),
     affectedLines:fact(lines,lines!=='UNKNOWN',row.note), lineScope:fact(lineScope,lineScope.kind!=='UNKNOWN',row.note),affectedAirports:fact(airports,!!airports.length),
     // Do not treat a list of all staff as a list of all operators.
-    affectedOperators:fact(/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)?[]:row.provider?[row.provider]:[],!!row.provider && !/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)),
+    affectedOperators:restriction?fact(restriction.operators(region),true,row.note):fact(/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)?[]:row.provider?[row.provider]:[],!!row.provider && !/sciopero generale|categorie pubbliche|settori pubblici|plurisettorial/i.test(row.provider)),
     timing:fact(windows,!!windows.length,row.modalita),
     guaranteeSource:category==='AIRPORT' && /\bENAV\b/i.test(row.provider)?'STANDARD_RULE':guarantees.length?'STANDARD_RULE':'UNKNOWN', guaranteeType:category==='AIRPORT'?'PROTECTED_FLIGHTS':'GUARANTEED_SERVICE',
     ...(category==='AIRPORT' && /\bENAV\b/i.test(row.provider)?{guaranteeEvidenceWindows:{value:[{start:'07:00',end:'10:00',end_kind:'clock' as const},{start:'18:00',end:'21:00',end_kind:'clock' as const}],confidence:'MEDIUM' as const,source:'STANDARD_RULE' as const,method:'CODE' as const,url:'https://www.enac.gov.it/trasporto-aereo/diritto-alla-mobilita/scioperi-nel-trasporto-aereo/voli-garantiti',excerpt:'General protected departure bands; not event-specific flight confirmation.'},guaranteeDuringStrike:{value:intersectGuaranteeEvidence([[{start:'07:00',end:'10:00',end_kind:'clock'},{start:'18:00',end:'21:00',end_kind:'clock'}],windows.map(w=>({...w,end_kind:'clock' as const}))]),confidence:windows.length?'HIGH' as const:'UNKNOWN' as const,source:'STANDARD_RULE' as const,method:'CODE' as const}}:{}),

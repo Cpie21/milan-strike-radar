@@ -312,7 +312,9 @@ export function parseExternalNotices(html: string, url: string, dates: string[],
 }
 
 function recordOperators(record: StrikeRecord) {
-  return OPERATORS.filter(op => hasWord(record.raw_payload?.provider || record.provider, op));
+  const restriction=record.timing_evidence?.fields?.operatorRestriction;
+  const scoped=restriction ? record.timing_evidence?.fields?.affectedOperators.value.join(' ') || '' : '';
+  return OPERATORS.filter(op => hasWord((record.raw_payload?.provider || record.provider)+' '+scoped, op));
 }
 export function matchesNotice(notice: ExternalNotice, record: StrikeRecord) {
   if (notice.date !== record.date || record.status === 'CANCELLED' || /revocat|differit|sospes/i.test(notice.status)) return false;
@@ -493,6 +495,7 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   const evidence: TimingEvidence = { fields:updatedFields, windows: selected.windows, confidence: officials.length || mitKnown ? 'official' : new Set(sources.map(s => new URL(s.url).hostname)).size > 1 ? 'corroborated' : 'reported', sources:[...new Map([...verificationSources,...sources].map(s=>[s.url,s])).values()], unions: record.raw_payload?.unions || '', conflicts: [...candidates.filter(c => timeKey(c.windows) !== timeKey(selected.windows)).map(c => ({ url: c.notice.source.url, windows: c.windows })), ...(mitKnown && timeKey(primaryWindows)!==timeKey(selected.windows) ? [{url:record.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi',windows:primaryWindows}] : [])] };
   result.timing_evidence = evidence;
   if(evidence.fields && (officials.length || !mitKnown)) evidence.fields={...evidence.fields,timing:sourceFact(selected.windows,selected.notice.source)};
+  if(evidence.fields?.modeApplicability?.value==='GENERAL_NOTICE_PENDING' && officials.length) evidence.fields={...evidence.fields,modeApplicability:sourceFact('EXPLICIT_TRANSPORT',selected.notice.source)};
   if (mitKnown && !officials.length) return result;
   result.strike_windows = numericWindows(selected.windows);
   result.display_time = selected.windows.map(w => evidenceTimeLabel(w)).join(', ');
