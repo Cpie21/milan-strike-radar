@@ -8,7 +8,11 @@ permissions:
   contents: read
 jobs:
   official-read-only:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 3
     steps:
       - name: Read the two official MIT tables without database or model access
@@ -29,4 +33,18 @@ jobs:
               console.log(JSON.stringify({kind,status:r.status,fetchedAt:new Date().toISOString(),rows:(table.match(/<tr\b/gi)||[]).length-1,sha256:createHash('sha256').update(table).digest('hex'),elapsedMs:Date.now()-start}));
             }
           })().catch(e=>{console.error(e.name+': '+e.message);process.exitCode=1});
+          NODE
+  real-browser-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read the official page using the installed real Chromium browser
+        shell: bash
+        run: |
+          timeout 40s google-chrome --headless --disable-gpu --no-sandbox --dump-dom https://scioperi.mit.gov.it/mit2/public/scioperi > /tmp/mit-browser.html 2>/tmp/mit-browser-errors.txt
+          node <<'NODE'
+          const html=require('node:fs').readFileSync('/tmp/mit-browser.html','utf8');
+          const table=(html.match(/<table\b[\s\S]*?<\/table>/gi)||[]).find(t=>/Inizio/.test(t)&&/Provincia/.test(t)&&/Categoria/.test(t));
+          if(!table)throw Error('Actual browser did not reach the official table');
+          console.log(JSON.stringify({transport:'real-chrome',fetchedAt:new Date().toISOString(),rows:(table.match(/<tr\b/gi)||[]).length-1}));
           NODE
