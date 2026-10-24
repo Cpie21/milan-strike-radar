@@ -1,3 +1,9 @@
+## Relevance judged without the clock (Claude)
+
+- `claude/relevance-hours` = production `codex/publish-home-guide` 9ff788c + one fix, live in production since 2026-10-24. Merge it into the next production branch, or that deploy brings the bug back.
+- Bug: Jev's `relevant` question also received `computed_by_code.user_time_vs_strike`, so a same-mode general strike outside the user's hours (Oct 29 rail 21:00–24:00 vs. an afternoon trip) was judged irrelevant and listed under "已排除 … 无关记录". Hours belong to code: the payload no longer carries the overlap, and the instruction says to judge operator/mode/place, not the clock. The strike now stays a match with impact `none` (「你的时间不在罢工时段内」).
+- Regression `ASK-RELEVANCE-HOURS-001` in `scripts/test-ask.cjs`; 374 tests + typecheck pass. Preview replay: afternoon trip → level none, relevance 0.87, nothing excluded; 22:00 train → high 0.96; afternoon M1 → clear. No schema/API/model/budget change.
+
 ## Live UI fixes on top of e5b07a3 (Claude)
 
 - `claude/live-fixes` (fdb73c9…b06109b) stacks on Codex `e5b07a3` and is **live in production since 2026-10-23 ~20:10 Rome (latest b06109b ~20:50)** (dpl `milan-strike-radar-29vzwwoqc`). Merge it into `codex/union-notice-followup` before the next production deploy, or that deploy rolls these fixes back. Backend untouched: no API/schema/sync/model/budget change.
