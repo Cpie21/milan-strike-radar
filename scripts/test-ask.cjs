@@ -140,3 +140,15 @@ test('clocks, counts and line names are not misread as dates', () => {
   assert.deepEqual(parseQuery('3号线明天', TUE).lines, ['M3']);
   assert.equal(parseTime('明天8.30坐地铁'), '08:30');
 });
+
+test('ASK-RELEVANCE-HOURS-001: relevance is judged without the clock, so an off-hours strike is "outside", not excluded', () => {
+  // Observed 2026-10-24: an afternoon train trip on a day with a 21:00–24:00
+  // general rail strike listed that strike under "excluded" because Jev was
+  // told the user's time was outside the hours. Hours belong to code.
+  const src = fs.readFileSync(require.resolve('../lib/ask/pipeline.ts'), 'utf8');
+  const call = src.slice(src.indexOf('result = await decide({'), src.indexOf('judgeQuestions(view'));
+  assert.ok(call.length > 0);
+  assert.doesNotMatch(call, /overlap|user_time_vs_strike|computed_by_code/);
+  const relevant = src.slice(src.indexOf('function judgeQuestions('), src.indexOf('reason: {'));
+  assert.match(relevant, /not the clock/);
+});

@@ -146,7 +146,7 @@ function judgeQuestions(claim: boolean) {
   return {
     relevant: {
       type: 'noul' as const,
-      instructions: 'Would this strike plausibly disrupt the journey or answer the question the user described? Judge operator, line, transport mode and place. A strike by a different operator than the one the user relies on (for example a regional Trenord strike for a high-speed Frecciarossa trip) is not relevant; a national or general strike of the same mode is relevant. For a trip that crosses the border, an Italian strike only affects the Italian part of the route: a Trenord or national rail strike is relevant to a train from Milan to Switzerland (Trenord and Trenitalia run the Italian section), while an airport strike is not relevant to a train trip.',
+      instructions: 'Would this strike plausibly disrupt the journey or answer the question the user described? Judge operator, line, transport mode and place, not the clock: whether the user\'s time falls inside the strike hours is computed by code afterwards, so a strike of the right operator, mode and place is relevant even when the user travels outside its hours. A strike by a different operator than the one the user relies on (for example a regional Trenord strike for a high-speed Frecciarossa trip) is not relevant; a national or general strike of the same mode is relevant. For a trip that crosses the border, an Italian strike only affects the Italian part of the route: a Trenord or national rail strike is relevant to a train from Milan to Switzerland (Trenord and Trenitalia run the Italian section), while an airport strike is not relevant to a train trip.',
       criteria: { true: 'The strike can affect what the user asked about', false: 'The strike does not concern what the user asked about' },
     },
     reason: {
@@ -488,9 +488,6 @@ export async function runAsk(query: string, pageCity: string, hints: Hints, emit
           staff_scope: candidate.scopeType || 'unknown',
           passenger_impact: candidate.indirect ? 'staff strike; passenger train impact unconfirmed' : 'direct service',
           official_geography: candidate.geography,
-        },
-        computed_by_code: {
-          user_time_vs_strike: overlap === 'strike' ? 'inside strike hours' : overlap === 'guarantee' ? 'inside guaranteed service hours' : overlap === 'outside' ? 'outside strike hours' : overlap === 'unknown' ? 'strike hours unknown' : 'user gave no time',
         },
       }, judgeQuestions(view === 'claim'));
       cost += result.cost;
