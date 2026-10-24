@@ -297,10 +297,10 @@ function Lanes({ rows, lane, gap }: { rows: [Mode, [number, number][], [number, 
 
 // Tutorial shots keep their place while they load: a shimmering skeleton of
 // the right shape, then the picture fades in over it, so nothing below jumps.
-const SHOT_RATIO: Record<string, number> = { tutorial: 585 / 351, widget: 972 / 297 };
+const SHOT_RATIO: Record<string, number> = { tutorial: 585 / 351, home: 660 / 438, widget: 972 / 297 };
 function Shot({ src }: { src: string }) {
   const [loaded, setLoaded] = useState(false);
-  const ratio = SHOT_RATIO[src.includes('widget') ? 'widget' : 'tutorial'];
+  const ratio = SHOT_RATIO[src.includes('widget') ? 'widget' : src.includes('home-step') ? 'home' : 'tutorial'];
   return (
     <div className="relative w-full max-w-[300px] mx-auto rounded-[14px] overflow-hidden" style={{ aspectRatio: ratio, background: C.surface2, boxShadow: '0 0 0 1px rgba(255,255,255,0.08)' }}>
       {!loaded && <motion.span aria-hidden className="absolute inset-y-0 w-1/2" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent)' }} animate={{ x: ['-100%', '220%'] }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }} />}
@@ -335,17 +335,17 @@ export function HomeScreenSheet(base: Base) {
     <Sheet telemetryId="home" open={base.open} onClose={base.onClose} title={tx(base.lang, '添加网站到桌面', 'Add website to Home Screen')}>
       <p className="text-[14.5px] leading-relaxed mb-1" style={{ color: C.text2 }}>{tx(base.lang, '像 App 一样从桌面一键打开，不用每次搜索。', 'Open it from your Home Screen like an app.')}</p>
       {!safari && (
-        <Observed event="home_browser_notice_viewed" identity="safari" active={base.open}><div className="my-3 rounded-[14px] p-3.5" style={{ background: 'rgba(245,181,68,0.13)' }}>
-          <p className="text-[14px] font-medium" style={{ color: C.pend }}>{tx(base.lang, '需要在 Safari 中操作', 'This works in Safari')}</p>
-          <button onClick={async () => { track('home_link_copy_clicked'); try { if (!navigator.clipboard) throw new Error('Unavailable'); await navigator.clipboard.writeText(window.location.origin + window.location.pathname); track('home_link_copy_succeeded'); setCopied(true); } catch { track('home_link_copy_failed'); } }} className="mt-2 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
-            {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}{copied ? tx(base.lang, '已复制，去 Safari 粘贴', 'Copied — paste in Safari') : tx(base.lang, '复制链接', 'Copy link')}
+        <Observed event="home_browser_notice_viewed" identity="safari" active={base.open}><div className="my-3 rounded-[14px] py-3 pl-3.5 pr-3 flex items-center justify-between gap-3" style={{ background: 'rgba(245,181,68,0.13)' }}>
+          <p className="min-w-0 text-[14px] font-medium" style={{ color: C.pend }}>{tx(base.lang, '需要在 Safari 中操作', 'This works in Safari')}</p>
+          <button onClick={async () => { track('home_link_copy_clicked'); try { if (!navigator.clipboard) throw new Error('Unavailable'); await navigator.clipboard.writeText(window.location.origin + window.location.pathname); track('home_link_copy_succeeded'); setCopied(true); } catch { track('home_link_copy_failed'); } }} className="shrink-0 h-9 px-3 rounded-[10px] text-[13.5px] font-semibold flex items-center gap-1.5" style={{ background: '#272A30' }}>
+            {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}{copied ? tx(base.lang, '已复制', 'Copied') : tx(base.lang, '复制网址', 'Copy URL')}
           </button>
         </div></Observed>
       )}
-      <Step n={1} title={tx(base.lang, '点击底部的分享按钮', 'Tap Share')}><Shot src="/assets/tutorial-step-1.png" /></Step>
-      <Step n={2} title={tx(base.lang, '向上滑，展开更多选项', 'Scroll for more options')}><Shot src="/assets/tutorial-step-2.png" /></Step>
-      <Step n={3} title={tx(base.lang, '选择“添加到主屏幕”', 'Choose “Add to Home Screen”')}><Shot src="/assets/tutorial-step-3.png" /></Step>
-      <Step n={4} title={tx(base.lang, '点右上角“添加”', 'Tap Add')}><Shot src="/assets/tutorial-step-4.png" /></Step>
+      <Step n={1} title={tx(base.lang, '点右下角的按钮', 'Tap the button at the bottom right')}><Shot src="/assets/home-step-1.png" /></Step>
+      <Step n={2} title={tx(base.lang, '点“共享”', 'Tap Share')}><Shot src="/assets/home-step-2.png" /></Step>
+      <Step n={3} title={tx(base.lang, '点“查看更多”，展开更多选项', 'Tap View More')}><Shot src="/assets/home-step-3.png" /></Step>
+      <Step n={4} title={tx(base.lang, '选择“添加到主屏幕”', 'Choose “Add to Home Screen”')}><Shot src="/assets/home-step-4.png" /></Step>
     </Sheet>
   );
 }

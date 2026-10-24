@@ -235,7 +235,7 @@ test('home guide clipboard failure records failure without showing copied', asyn
   const h = sheetHarness([false, false]);
   const sheets = loadJsx('components/lab/sheets.tsx', h.mock, { navigator: {}, window: { location: { origin: 'https://www.theitalystrike.com', pathname: '/' } } });
   const tree = sheets.HomeScreenSheet({ open: true, onClose() {}, lang: 'en' });
-  const copy = elements(tree).find(e => e.type === 'button' && Array.isArray(e.props.children) && e.props.children.includes('Copy link')).props.onClick;
+  const copy = elements(tree).find(e => e.type === 'button' && Array.isArray(e.props.children) && e.props.children.includes('Copy URL')).props.onClick;
   await copy(); assert.deepEqual(h.sent.map(e => e.event), ['home_link_copy_clicked','home_link_copy_failed']);
   assert.ok(!h.updates.some(e => e.value === true));
 });
