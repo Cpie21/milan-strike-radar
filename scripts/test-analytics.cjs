@@ -200,6 +200,7 @@ function sheetHarness(states = []) {
     react, '@phosphor-icons/react': { ArrowSquareOut: 'icon', Check: 'icon', Copy: 'icon', MagnifyingGlass: 'icon' }, 'framer-motion': { motion: { span: 'span' } },
     '../../app/actions': { submitFeedback: async () => ({ success: true }) },
     '../../lib/lab/widgetScript': { buildLabWidgetScript: () => 'private-script' }, './Led': { LedFace: 'led' },
+    '../../lib/subscriptions': require('../lib/subscriptions.ts'),
     '../../lib/lab/model': { MODES: [], tx: (lang, zh, en) => en }, './ui': { Sheet: 'sheet', Button: 'button' },
     './theme': { C: {} }, './track': { track: (event, properties) => sent.push({ event, properties }) },
     './Telemetry': { GuideStep: 'guide', Observed: 'observed' },
@@ -237,4 +238,43 @@ test('home guide clipboard failure records failure without showing copied', asyn
   const copy = elements(tree).find(e => e.type === 'button' && Array.isArray(e.props.children) && e.props.children.includes('Copy link')).props.onClick;
   await copy(); assert.deepEqual(h.sent.map(e => e.event), ['home_link_copy_clicked','home_link_copy_failed']);
   assert.ok(!h.updates.some(e => e.value === true));
+});
+
+test('calendar offers a public HTTPS copy link alongside the native subscription and reports clipboard failures', async () => {
+  for (const clipboardWorks of [true, false]) {
+    let copied, assigned;
+    const h = sheetHarness([new Set(['TRAIN', 'AIRPORT']), 'idle']);
+    const sheets = loadJsx('components/lab/sheets.tsx', h.mock, {
+      navigator: { clipboard: { writeText: async value => { if (!clipboardWorks) throw new Error('denied'); copied = value; } } },
+      window: { location: { host: 'private-preview.vercel.app', assign: value => { assigned = value; } } },
+    });
+    const tree = sheets.CalendarSheet({ open: true, onClose() {}, lang: 'en', region: 'ROMA', cityName: 'Rome' });
+    const nodes = elements(tree);
+    await nodes.find(e => e.type === 'button' && e.props.children === 'Copy subscription URL').props.onClick();
+    assert.ok(h.updates.some(e => e.value === (clipboardWorks ? 'copied' : 'failed')));
+    if (clipboardWorks) {
+      const url = new URL(copied); assert.equal(url.origin, 'https://www.theitalystrike.com'); assert.equal(url.searchParams.get('region'), 'ROMA'); assert.equal(url.searchParams.get('types'), 'train,airport');
+    }
+    nodes.find(e => e.type === 'button' && e.props.children === 'Add to Calendar').props.onClick();
+    assert.ok(assigned.startsWith('webcal://www.theitalystrike.com/'));
+    assert.equal(new URL(assigned).searchParams.get('region'), 'ROMA');
+  }
+});
+
+test('widget copy uses the public origin even from a protected preview and reports rejected clipboard writes', async () => {
+  for (const clipboardWorks of [true, false]) {
+    const h = sheetHarness([new Set(['SUBWAY']), false, false]);
+    let options;
+    h.mock['../../lib/lab/widgetScript'].buildLabWidgetScript = value => { options = value; return 'script'; };
+    const sheets = loadJsx('components/lab/sheets.tsx', h.mock, {
+      navigator: { clipboard: { writeText: async () => { if (!clipboardWorks) throw new Error('denied'); } } },
+      window: { location: { origin: 'https://private-preview.vercel.app', host: 'private-preview.vercel.app' } },
+    });
+    const tree = sheets.WidgetSheet({ open: true, onClose() {}, lang: 'en', region: 'ROMA', cityName: 'Rome', cityPath: '/roma' });
+    const copy = elements(tree).find(e => e.type === 'button' && Array.isArray(e.props.children) && e.props.children.includes('Copy code')).props.onClick;
+    await copy();
+    assert.equal(options.origin, 'https://www.theitalystrike.com'); assert.equal(options.region, 'ROMA');
+    assert.ok(h.sent.some(e => e.event === (clipboardWorks ? 'widget_copy_succeeded' : 'widget_copy_failed')));
+    assert.equal(h.updates.some(e => e.i === 1 && e.value === true), clipboardWorks);
+  }
 });

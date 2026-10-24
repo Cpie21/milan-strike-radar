@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { captureOnce, getDeviceType } from '../utils/analytics';
 import { AppLanguage, categoryLabels, pickText, regionLabels } from './i18n';
+import { calendarSubscriptionUrl } from '../lib/subscriptions';
 
-type StrikeRecord = any;
+type StrikeRecord = { id?: string | number };
 
 interface CalendarSyncModalProps {
     isOpen: boolean;
@@ -58,18 +59,7 @@ export default function CalendarSyncModal({ isOpen, onClose, strikes, isDark, on
             return;
         }
 
-        // Use the native webcal protocol so iOS / macOS prompts to subscribe to the calendar
-        const host = window.location.host;
-
-        // Apple Calendar strictly blocks webcal:// links pointing to localhost or local network IPs.
-        // If testing locally, we point to the production domain so it doesn't fail.
-        let targetHost = host;
-        if (host.includes('localhost') || host.match(/^[0-9.]+(:[0-9]+)?$/)) {
-            targetHost = 'theitalystrike.com';
-        }
-
-        // Always try webcal first for subscriptions instead of hardcoded blobs
-        const subscribeUrl = `webcal://${targetHost}/api/calendar?types=${encodeURIComponent(typesStr)}&region=${encodeURIComponent(normalizedRegion)}`;
+        const subscribeUrl = calendarSubscriptionUrl(normalizedRegion, [...selectedTypes], 'webcal');
 
         // Track the event once per device
         captureOnce('calendar_sync_clicked', {

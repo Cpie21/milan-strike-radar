@@ -5,23 +5,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aggregateStrikes, categoryMap, filterStrikesForRegion } from '../../../components/utils';
 import { escapeCalendarText, serializeCalendar } from '../../../lib/ical';
 import { evidenceTimeLabel } from '../../../lib/strikeEvidence';
+import { addDaysIso } from '../../../lib/romeDate';
+import { calendarTypes, SUBSCRIPTION_ORIGIN } from '../../../lib/subscriptions';
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
-    const typesParam = searchParams.get('types') || 'train,subway,bus,airport';
-    const selectedTypes = new Set(typesParam.toLowerCase().split(','));
+    const selectedTypes = calendarTypes(searchParams.get('types'));
+    if (!selectedTypes) return NextResponse.json({ error: 'Unsupported or empty strike types' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
     const city = resolveCity(searchParams.get('region') || 'MILANO');
     if (!city) return NextResponse.json({ error: 'Unsupported city' }, { status: 400 });
     const regionTag = city.tag;
     const regionLabel = city.zh;
     const pagePath = cityPath(regionTag);
 
-    const date = new Date(`${romeToday()}T12:00:00Z`);
+    // Keep recent events (and cancellation updates) across midnight instead
+    // of dropping yesterday from subscribers' calendars every morning.
+    const since = addDaysIso(romeToday(), -30);
     let strikes;
     try {
-      strikes = await readCityStrikes(regionTag, date.toISOString().slice(0, 10));
+      strikes = await readCityStrikes(regionTag, since);
     } catch {
-      return NextResponse.json({ error: 'Strike data unavailable' }, { status: 503 });
+      return NextResponse.json({ error: 'Strike data unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // Process strikes using the same regional logic as the main app
@@ -49,7 +53,7 @@ export async function GET(request: NextRequest) {
         const nextDateStr = nextDate.toISOString().slice(0, 10).replace(/-/g, '');
         const labels: Record<string, string> = { TRAIN: '火车', SUBWAY: '地铁', BUS: '公交', AIRPORT: '机场' };
         const catDisplay = strike.category==='AIRPORT'?scopeTitle(scopeOf(strike)):strike.category==='TRAIN'?railTitle(scopeOf(strike)):labels[strike.category] || categoryMap[strike.category] || strike.category;
-        const detailUrl = `https://theitalystrike.com${pagePath}?date=${strike.date}`;
+        const detailUrl = `${SUBSCRIPTION_ORIGIN}${pagePath}?date=${strike.date}`;
         const description = [
             `城市: ${regionLabel}`, `罢工主体: ${strike.provider}`,
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
