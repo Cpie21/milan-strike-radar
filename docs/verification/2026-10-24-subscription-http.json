@@ -1,0 +1,205 @@
+{
+  "at": "2026-10-24T08:03:24.376Z",
+  "results": [
+    {
+      "region": "MILANO",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 29,
+      "uniqueUids": 29,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "ROMA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 26,
+      "uniqueUids": 26,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "TORINO",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 24,
+      "uniqueUids": 24,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "NAPOLI",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 33,
+      "uniqueUids": 33,
+      "firstDate": "20260928",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "FIRENZE",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 28,
+      "uniqueUids": 28,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "BOLOGNA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 28,
+      "uniqueUids": 28,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "VENEZIA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 25,
+      "uniqueUids": 25,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "GENOVA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 27,
+      "uniqueUids": 27,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "PALERMO",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 25,
+      "uniqueUids": 25,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "CATANIA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 26,
+      "uniqueUids": 26,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "BARI",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 28,
+      "uniqueUids": 28,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "VERONA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 23,
+      "uniqueUids": 23,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "PADOVA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 22,
+      "uniqueUids": 22,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "TRIESTE",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 22,
+      "uniqueUids": 22,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "CAGLIARI",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 22,
+      "uniqueUids": 22,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "BERGAMO",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 23,
+      "uniqueUids": 23,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "BRESCIA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 23,
+      "uniqueUids": 23,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "PISA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 27,
+      "uniqueUids": 27,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "MESSINA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 25,
+      "uniqueUids": 25,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    },
+    {
+      "region": "PERUGIA",
+      "status": 200,
+      "mime": "text/calendar; charset=utf-8",
+      "events": 22,
+      "uniqueUids": 22,
+      "firstDate": "20260930",
+      "validEnvelope": true,
+      "validFolds": true
+    }
+  ]
+}
