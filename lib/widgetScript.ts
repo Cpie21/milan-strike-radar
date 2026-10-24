@@ -14,7 +14,7 @@ export function buildWidgetScript({ targetOrigin, normalizedRegion, typesJson, r
 const SELECTED_TYPES = ${typesJson};
 const REGION_LABEL = "${regionLabel}";
 const L = ${widgetLabelsJson};
-const OPEN_URL = "${targetOrigin}${regionPagePath}";
+const OPEN_URL = "${targetOrigin}${regionPagePath}?from=widget";
 const widget = new ListWidget();
 const LEFT_COL_WIDTH = 90;
 const RIGHT_COL_WIDTH = 198;
@@ -42,12 +42,11 @@ function getMinutes(v) {
 function formatTime(item) {
   if (item && item.timing_evidence && item.timing_evidence.windows.length) {
     return item.timing_evidence.windows.map(function(w) {
-      return (w.start === null ? "start of service" : w.start) + " - " + (w.end_kind === "end_of_service" ? "end of service" : w.end);
+      return (w.start === null ? (L.start || "start of service") : w.start) + " - " + (w.end_kind === "end_of_service" ? (L.end || "end of service") : w.end);
     }).join(", ");
   }
-  if (!item || !item.strike_windows || !item.strike_windows.length) return "Time to be confirmed";
-  const w = item.strike_windows[0];
-  return String(w.start || "00:00") + " - " + String(w.end || "24:00");
+  if (!item || !item.strike_windows || !item.strike_windows.length) return L.pending || "Time to be confirmed";
+  return item.strike_windows.map(w => String(w.start || "00:00") + " - " + String(w.end || "24:00")).join(", ");
 }
 
 function getTimeKey(item) {
@@ -174,15 +173,20 @@ function addOneRow(parent, item, nowMin, dotColorOverride, showTime) {
 
 widget.backgroundColor = C.bg;
 widget.url = OPEN_URL;
+widget.refreshAfterDate = new Date(Date.now() + 20 * 60 * 1000);
 
 try {
   const req = new Request(API_URL);
+  req.timeoutInterval = 15;
   const allStrikes = JSON.parse(await req.loadString());
+  if (req.response && req.response.statusCode !== 200) throw new Error("data unavailable");
   if (!Array.isArray(allStrikes)) throw new Error("bad-data");
+  if (!SELECTED_TYPES.length) throw new Error("no transport selected");
   const now = new Date();
-  const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const todayStrikes = dedupeStrikes(allStrikes.filter(x => x && x.date === today && SELECTED_TYPES.includes(x.category)));
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const clock = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now).split(":");
+  const nowMin = Number(clock[0]) * 60 + Number(clock[1]);
+  const todayStrikes = dedupeStrikes(allStrikes.filter(x => x && x.status !== "CANCELLED" && x.date === today && SELECTED_TYPES.includes(x.category)));
   const count = todayStrikes.length;
 
   if (count === 0) {
@@ -211,7 +215,7 @@ try {
     right.layoutVertically();
     right.size = new Size(RIGHT_COL_WIDTH, 0);
     right.addSpacer(14);
-    addOneRow(right, todayStrikes[0], nowMin, C.red, true);
+    addOneRow(right, todayStrikes[0], nowMin, getDotColor(todayStrikes[0], nowMin), true);
   } else {
     widget.setPadding(15, 16, 14, 16);
     const root = widget.addStack();
@@ -248,7 +252,7 @@ try {
 }
 
 Script.setWidget(widget);
-widget.presentMedium();
+if (config.runsInApp) widget.presentMedium();
 Script.complete();
 `;
 }

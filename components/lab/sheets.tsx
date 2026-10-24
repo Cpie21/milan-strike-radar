@@ -11,12 +11,10 @@ import { Button, ModeBadge, ModeGlyph, Sheet } from './ui';
 import { C, MODE_COLOR } from './theme';
 import { track } from './track';
 import { GuideStep, Observed } from './Telemetry';
+import { calendarSubscriptionUrl, SUBSCRIPTION_ORIGIN } from '../../lib/subscriptions';
 
 type City = { tag: string; zh: string; en: string; path: string };
 type Base = { open: boolean; onClose: () => void; lang: Lang };
-
-const PROD_HOST = 'theitalystrike.com';
-const isLocal = (host: string) => host.includes('localhost') || /^[0-9.]+(:[0-9]+)?$/.test(host);
 
 // Opening a guide for three seconds counts as "seen", as on the live page.
 function useSeen(open: boolean, event: string) {
@@ -116,26 +114,36 @@ function CityHeadline({ s, today, lang, current }: { s?: { today: Mode[]; next: 
 
 export function CalendarSheet({ region, cityName, ...base }: Base & { region: string; cityName: string }) {
   const [types, setTypes] = useState<Set<Mode>>(new Set(MODES));
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const feedUrl = calendarSubscriptionUrl(region, [...types]);
   useSeen(base.open, 'CalendarSync_tutorial_success');
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(feedUrl);
+      setCopyState('copied');
+    } catch { setCopyState('failed'); }
+  };
   const subscribe = () => {
     if (!types.size) { track('calendar_subscription_blocked', { reason: 'no_modes', region }); return; }
-    const host = isLocal(window.location.host) ? PROD_HOST : window.location.host;
-    const param = [...types].map(t => (t === 'AIRPORT' ? 'airport' : t.toLowerCase())).join(',');
     track('calendar_sync_clicked', { region, modes: [...types] });
     track('calendar_subscription_requested', { region, modes: [...types] });
-    window.location.assign(`webcal://${host}/api/calendar?types=${encodeURIComponent(param)}&region=${encodeURIComponent(region)}`);
+    window.location.assign(calendarSubscriptionUrl(region, [...types], 'webcal'));
   };
   return (
     <Sheet telemetryId="calendar" open={base.open} onClose={base.onClose} title={tx(base.lang, '同步到本地日历', 'Sync to calendar')}>
       <p className="text-[14.5px] leading-relaxed mb-4" style={{ color: C.text2 }}>
-        {tx(base.lang, `把${cityName}的罢工加入手机日历。新公布、改期或取消的罢工会自动同步，不用再回来查。`, `Add ${cityName} strikes to your calendar. New, moved or cancelled strikes update automatically.`)}
+        {tx(base.lang, `订阅${cityName}的罢工日历，保留最近 30 天及已公布的后续事件。以全天提醒显示，具体时段见事件详情；更新频率由日历应用决定。`, `Subscribe to ${cityName} strikes, including the past 30 days and announced upcoming events. All-day reminders include strike hours in their details. Your calendar app controls refresh timing.`)}
       </p>
       <p className="text-[13px] mb-2" style={{ color: C.text3 }}>{tx(base.lang, '同步哪些交通', 'Which transport')}</p>
-      <ModeToggles value={types} onChange={v => { track('tool_modes_changed', { tool: 'calendar', region, modes: [...v] }); setTypes(v); }} lang={base.lang} />
+      <ModeToggles value={types} onChange={v => { setCopyState('idle'); track('tool_modes_changed', { tool: 'calendar', region, modes: [...v] }); setTypes(v); }} lang={base.lang} />
       <div className="mt-5">
         <Button className="w-full" onClick={subscribe}>{types.size ? tx(base.lang, '添加到日历', 'Add to Calendar') : tx(base.lang, '至少选择一种交通', 'Choose at least one')}</Button>
       </div>
-      <p className="mt-3 text-[12.5px] text-center" style={{ color: C.text3 }}>{tx(base.lang, 'iPhone 和 Mac 会弹出订阅确认；安卓可在 Google 日历中通过网址添加。', 'iPhone and Mac ask to confirm; on Android, add the URL in Google Calendar.')}</p>
+      <div className="mt-3 space-y-2">
+        <button onClick={copyUrl} disabled={!types.size} className="w-full h-11 rounded-[12px] text-[14px] font-semibold disabled:opacity-40" style={{ background: '#272A30' }}>{copyState === 'copied' ? tx(base.lang, '已复制订阅网址', 'Subscription URL copied') : tx(base.lang, '复制订阅网址', 'Copy subscription URL')}</button>
+        {copyState === 'failed' && <><p role="status" className="text-[13px]" style={{ color: C.text2 }}>{tx(base.lang, '复制失败，请长按下方网址复制。', 'Copy failed. Select and copy the URL below.')}</p><input aria-label={tx(base.lang, '日历订阅网址', 'Calendar subscription URL')} readOnly value={feedUrl} onFocus={event => event.target.select()} className="w-full bg-transparent text-[12px]" /></>}
+      </div>
+      <p className="mt-3 text-[12.5px] text-center" style={{ color: C.text3 }}>{tx(base.lang, 'iPhone 和 Mac 会弹出订阅确认；Google 日历请在电脑网页版的「其他日历 → 通过网址」中粘贴订阅网址，再同步到手机。', 'iPhone and Mac ask to confirm. In Google Calendar on a computer, paste the subscription URL under Other calendars → From URL, then sync to your phone.')}</p>
     </Sheet>
   );
 }
@@ -145,16 +153,19 @@ export function CalendarSheet({ region, cityName, ...base }: Base & { region: st
 export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { region: string; cityName: string; cityPath: string }) {
   const [types, setTypes] = useState<Set<Mode>>(new Set(MODES));
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
   useSeen(base.open, 'Widgets_tutorial_success');
   const copy = async () => {
-    const origin = isLocal(window.location.host) ? `https://${PROD_HOST}` : window.location.origin;
-    const code = buildLabWidgetScript({ origin, region, types: [...types], cityName, path: cityPath, lang: base.lang });
+    if (!types.size) return;
+    const code = buildLabWidgetScript({ origin: SUBSCRIPTION_ORIGIN, region, types: [...types], cityName, path: cityPath, lang: base.lang });
+    setCopied(false);
+    setCopyFailed(false);
     track('widget_copy_clicked', { region, modes: [...types] });
     try {
       if (!navigator.clipboard) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(code);
       track('widget_copy_succeeded', { region });
-    } catch { track('widget_copy_failed', { region }); return; }
+    } catch { setCopyFailed(true); track('widget_copy_failed', { region }); return; }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -164,7 +175,7 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
         {tx(base.lang, `在桌面上直接看到${cityName}今天和最近的罢工。借助免费的 Scriptable 实现，只需设置一次。`, `See ${cityName} strikes on your Home Screen, via the free Scriptable app. Set it up once.`)}
       </p>
       <WidgetPreview lang={base.lang} cityName={cityName} />
-      <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={v => { track('tool_modes_changed', { tool: 'widget', region, modes: [...v] }); setTypes(v); }} lang={base.lang} /></Step>
+      <Step n={1} title={tx(base.lang, '选择要显示的交通', 'Choose transport')}><ModeToggles value={types} onChange={v => { setCopied(false); setCopyFailed(false); track('tool_modes_changed', { tool: 'widget', region, modes: [...v] }); setTypes(v); }} lang={base.lang} /></Step>
       <Step n={2} title={tx(base.lang, '复制代码，并安装 Scriptable', 'Copy the code and get Scriptable')}>
         <div className="flex gap-2">
           <button onClick={copy} disabled={!types.size} className="flex-1 h-11 rounded-[12px] flex items-center justify-center gap-1.5 text-[14.5px] font-semibold disabled:opacity-40" style={{ background: '#454A54', color: '#FFFFFF' }}>
@@ -174,6 +185,7 @@ export function WidgetSheet({ region, cityName, cityPath, ...base }: Base & { re
             Scriptable<ArrowSquareOut size={14} />
           </a>
         </div>
+        {copyFailed && <p role="status" className="mt-2 text-[13px]" style={{ color: C.text2 }}>{tx(base.lang, '复制失败，请允许剪贴板权限后重试。', 'Copy failed. Allow clipboard access and try again.')}</p>}
       </Step>
       <Step n={3} title={tx(base.lang, '在 Scriptable 右上角点 +，粘贴代码', 'In Scriptable, tap + and paste')}><Shot src="/assets/widget-step-1.png" /></Step>
       <Step n={4} title={tx(base.lang, '回到桌面，添加 Scriptable 小组件', 'Add a Scriptable widget to your Home Screen')}><Shot src="/assets/widget-step-2.png" /></Step>

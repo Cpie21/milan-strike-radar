@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { captureOnce } from '../utils/analytics';
 import { buildWidgetScript } from '../lib/widgetScript';
+import { SUBSCRIPTION_ORIGIN } from '../lib/subscriptions';
 import { cityPath } from '../lib/cities';
 import { AppLanguage, categoryLabels, pickText, regionLabels } from './i18n';
 
@@ -52,6 +53,10 @@ export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 
     };
 
     const handleCopyCode = async () => {
+        if (!selectedTypes.size) {
+            alert(pickText(language, '请至少选择一种交通。', 'Please choose at least one transport type.'));
+            return;
+        }
         // Map frontend IDs to API categories
         const typeMap: Record<string, string> = {
             'train': 'TRAIN',
@@ -70,6 +75,7 @@ export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 
                 safeTravel: 'All clear',
                 noStrikeToday: 'No strikes today',
                 dataError: 'Data error',
+                pending: 'Time to be confirmed', start: 'start of service', end: 'end of service',
             }
             : {
                 titleMap: { TRAIN: '火车罢工', SUBWAY: '地铁罢工', BUS: '公交罢工', AIRPORT: '机场罢工' },
@@ -78,11 +84,9 @@ export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 
                 safeTravel: '安心出行',
                 noStrikeToday: '今日无罢工',
                 dataError: '数据错误',
+                pending: '时段待公布', start: '运营开始', end: '运营结束',
             });
-        const host = window.location.host;
-        const targetOrigin = (host.includes('localhost') || host.match(/^[0-9.]+(:[0-9]+)?$/))
-            ? 'https://theitalystrike.com'
-            : window.location.origin;
+        const targetOrigin = SUBSCRIPTION_ORIGIN;
 
         const code = buildWidgetScript({ targetOrigin, normalizedRegion, typesJson, regionLabel, widgetLabelsJson, regionPagePath });
 
@@ -100,11 +104,10 @@ export default function WidgetGuideModal({ isOpen, onClose, isDark, regionTag = 
                 textArea.focus();
                 textArea.select();
                 try {
-                    document.execCommand('copy');
-                } catch (err) {
-                    throw new Error("Fallback copy failed");
+                    if (!document.execCommand('copy')) throw new Error('Fallback copy failed');
+                } finally {
+                    document.body.removeChild(textArea);
                 }
-                document.body.removeChild(textArea);
             }
             setCopyState('copied');
             setTimeout(() => setCopyState('idle'), 2000);

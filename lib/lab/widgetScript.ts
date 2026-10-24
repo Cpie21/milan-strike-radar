@@ -56,7 +56,7 @@ const oneText = names => names + " strike today";
 const cellState = st => st.kind === "inside" ? "to " + st.until : st.kind === "later" ? "from " + st.from : st.kind === "past" ? "over" : "pending";`;
   return `// ${cityName} · strike radar widget. Medium is the main size; small and large work too.
 const API_URL = ${JSON.stringify(`${origin}/api/strikes?region=${region}`)};
-const OPEN_URL = ${JSON.stringify(`${origin}${path}`)};
+const OPEN_URL = ${JSON.stringify(`${origin}${path}?from=widget`)};
 const TYPES = ${JSON.stringify(types)};
 const CITY = ${JSON.stringify(cityName)};
 const T = ${JSON.stringify(text)};
@@ -127,6 +127,9 @@ const spanOf = w => [w.start === null ? 300 : mins(w.start), w.end === null ? 15
 
 // Today's state, from the planned hours: inside, later, over, or unknown.
 function todayState(items, now) {
+  // Unknown announcements and service-relative endpoints cannot establish
+  // that every strike has finished, even alongside a precise clock window.
+  if (items.some(item => item.has_unknown_timing || !windowsOf(item).length || windowsOf(item).some(w => w.start === null || w.end === null))) return { kind: "pending" };
   const ws = items.flatMap(windowsOf);
   if (!ws.length) return { kind: "pending" };
   const inside = ws.find(w => { const [a, b] = spanOf(w); return now >= a && now < b; });
@@ -140,7 +143,7 @@ function todayState(items, now) {
 function groupsOf(items) {
   const map = new Map();
   items.forEach(x => {
-    const k = JSON.stringify([windowsOf(x), guaranteesOf(x)]);
+    const k = JSON.stringify([windowsOf(x), guaranteesOf(x), !!x.has_unknown_timing]);
     const g = map.get(k) || { modes: [], items: [] };
     if (!g.modes.includes(x.category)) g.modes.push(x.category);
     g.items.push(x); map.set(k, g);
@@ -282,8 +285,12 @@ widget.url = OPEN_URL;
 widget.refreshAfterDate = new Date(Date.now() + 20 * 60 * 1000);
 widget.setPadding(14, 14, 14, 16);
 try {
-  const all = JSON.parse(await new Request(API_URL).loadString());
+  const request = new Request(API_URL);
+  request.timeoutInterval = 15;
+  const all = JSON.parse(await request.loadString());
+  if (request.response && request.response.statusCode !== 200) throw new Error("data unavailable");
   if (!Array.isArray(all)) throw new Error("bad data");
+  if (!TYPES.length) throw new Error("no transport selected");
   const today = romeToday(), now = romeMinutes();
   const live = all.filter(x => x && TYPES.includes(x.category) && x.status !== "CANCELLED");
   const byDate = {};
