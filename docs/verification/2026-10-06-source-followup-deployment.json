@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-06T14:45:23.320Z",
+  "id": "dpl_4LZrBk5HwTpNWE6Q6rpUy6aDu8s9",
+  "sha": "6527caa6f29c3be35e3eaf4c79467eaf308af3c1",
+  "readyState": "READY",
+  "target": "production",
+  "url": "www.theitalystrike.com",
+  "region": "fra1",
+  "cron": "0 5 * * *",
+  "verification": "Vercel CLI inspect on live alias and authorized live source diagnostic",
+  "regressionTests": 311,
+  "anonymousDiagnosticStatus": 401
+}

@@ -1,0 +1,297 @@
+{
+  "checkedAt": "2026-10-06T12:24:43.810Z",
+  "origin": "https://www.theitalystrike.com",
+  "health": {
+    "healthy": true,
+    "stale": false,
+    "timedOut": false,
+    "data_quality": "PARTIAL",
+    "latest": {
+      "started_at": "2026-10-06T12:21:55.32531+00:00",
+      "completed_at": "2026-10-06T12:24:01.844204+00:00",
+      "status": "success",
+      "fetched": 73,
+      "upserted": 58,
+      "unknown_timing": 8,
+      "warning_count": 26
+    },
+    "last_success": {
+      "started_at": "2026-10-06T12:21:55.32531+00:00",
+      "completed_at": "2026-10-06T12:24:01.844204+00:00",
+      "status": "success",
+      "fetched": 73,
+      "upserted": 58,
+      "unknown_timing": 8,
+      "warning_count": 26
+    }
+  },
+  "checks": [
+    {
+      "path": "/api/sync-status",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=MILANO",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=ROMA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=TORINO",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=NAPOLI",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=MILANO",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=TORINO",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=NAPOLI",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=ROMA",
+      "http": 200
+    },
+    {
+      "path": "/napoli",
+      "http": 200
+    },
+    {
+      "path": "/roma",
+      "http": 200
+    },
+    {
+      "path": "/",
+      "http": 200
+    },
+    {
+      "path": "/torino",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=VENEZIA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=FIRENZE",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=BOLOGNA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=GENOVA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=BOLOGNA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=VENEZIA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=FIRENZE",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=GENOVA",
+      "http": 200
+    },
+    {
+      "path": "/bologna",
+      "http": 200
+    },
+    {
+      "path": "/venezia",
+      "http": 200
+    },
+    {
+      "path": "/firenze",
+      "http": 200
+    },
+    {
+      "path": "/genova",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=PALERMO",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=CATANIA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=BARI",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=VERONA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=CATANIA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=PALERMO",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=BARI",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=VERONA",
+      "http": 200
+    },
+    {
+      "path": "/catania",
+      "http": 200
+    },
+    {
+      "path": "/palermo",
+      "http": 200
+    },
+    {
+      "path": "/bari",
+      "http": 200
+    },
+    {
+      "path": "/verona",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=TRIESTE",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=PADOVA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=BERGAMO",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=CAGLIARI",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=PADOVA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=TRIESTE",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=BERGAMO",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=CAGLIARI",
+      "http": 200
+    },
+    {
+      "path": "/trieste",
+      "http": 200
+    },
+    {
+      "path": "/padova",
+      "http": 200
+    },
+    {
+      "path": "/bergamo",
+      "http": 200
+    },
+    {
+      "path": "/cagliari",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=PISA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=BRESCIA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=PERUGIA",
+      "http": 200
+    },
+    {
+      "path": "/api/strikes?region=MESSINA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=PISA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=BRESCIA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=PERUGIA",
+      "http": 200
+    },
+    {
+      "path": "/api/calendar?region=MESSINA",
+      "http": 200
+    },
+    {
+      "path": "/perugia",
+      "http": 200
+    },
+    {
+      "path": "/pisa",
+      "http": 200
+    },
+    {
+      "path": "/brescia",
+      "http": 200
+    },
+    {
+      "path": "/messina",
+      "http": 200
+    },
+    {
+      "path": "/api/line-impact?region=FIRENZE&date=2026-10-10&category=BUS&line=T1",
+      "http": 200
+    },
+    {
+      "path": "/api/line-impact?region=FIRENZE&date=2026-10-10&category=BUS&line=T2",
+      "http": 200
+    },
+    {
+      "path": "/lab",
+      "http": 200
+    },
+    {
+      "path": "/",
+      "http": 200
+    }
+  ],
+  "budget": [
+    {
+      "month": "2026-10-01",
+      "charged_micro_usd": 27572,
+      "disabled": false
+    }
+  ]
+}

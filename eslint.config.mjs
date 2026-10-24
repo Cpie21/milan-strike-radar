@@ -9,6 +9,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // the promo video project (Remotion) has its own toolchain
+    "promo/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

@@ -1,0 +1,71 @@
+<!doctype html><meta charset="utf-8">
+<script src="../node_modules/tone/build/Tone.js"></script>
+<script>
+// The film's sound, rendered offline with Tone.js (open source). Calm, in the
+// references' manner: warm pads, a soft pulse, a few felt-piano notes, and
+// every interface sound placed on the frame it happens in the recording.
+// One cycle = the film's length, rendered twice and the second kept, so the
+// reverb and tails wrap across the loop.
+const FPS = 30;
+window.renderFilm = async ({ frames, starts, typing, lang }) => {
+  const CYCLE = frames / FPS, BEATS = 26, BEAT = CYCLE / BEATS;
+  const buffer = await Tone.Offline(() => {
+    const out = new Tone.Gain(0.8).connect(new Tone.Limiter(-1.5).toDestination());
+    const bus = new Tone.Compressor({ threshold: -20, ratio: 2.5, attack: 0.02, release: 0.3 }).connect(out);
+    const verb = new Tone.Reverb({ decay: 4.5, wet: 1 }).connect(bus);
+    const wet = (node, amount) => { const g = new Tone.Gain(amount); node.connect(g); g.connect(verb); return node; };
+    const padF = new Tone.Filter(900, 'lowpass').connect(bus);
+    const pad = wet(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'fattriangle', count: 3, spread: 18 }, envelope: { attack: 1.4, decay: 0.5, sustain: 0.7, release: 2.4 } }).connect(padF), 0.5); pad.volume.value = -19;
+    const sub = new Tone.MembraneSynth({ pitchDecay: 0.06, octaves: 3, envelope: { attack: 0.004, decay: 0.45, sustain: 0 } }).connect(new Tone.Filter(160, 'lowpass').connect(bus)); sub.volume.value = -14;
+    const keys = wet(new Tone.PolySynth(Tone.FMSynth, { harmonicity: 2, modulationIndex: 1.4, oscillator: { type: 'sine' }, envelope: { attack: 0.004, decay: 1.6, sustain: 0, release: 1.2 }, modulationEnvelope: { attack: 0.002, decay: 0.3, sustain: 0 } }).connect(bus), 0.4); keys.volume.value = -17;
+    const tick = wet(new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 } }).connect(bus), 0.2); tick.volume.value = -24;
+    const typeN = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.018, sustain: 0 } });
+    const typeF = new Tone.Filter({ type: 'bandpass', frequency: 3400, Q: 1.4 }).connect(bus); typeN.connect(typeF); typeN.volume.value = -23;
+    const air = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.12, decay: 0.35, sustain: 0, release: 0.2 } });
+    const airF = new Tone.Filter({ type: 'bandpass', frequency: 700, Q: 0.9 }).connect(bus); air.connect(airF); air.volume.value = -20;
+    const hiss = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.03, decay: 0.2, sustain: 0.6, release: 0.15 } });
+    const hissF = new Tone.Filter({ type: 'bandpass', frequency: 5600, Q: 0.7 }).connect(bus); hiss.connect(hissF); hiss.volume.value = -24;
+    const shimmer = wet(new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.002, decay: 0.12, sustain: 0, release: 0.1 } }).connect(bus), 0.6); shimmer.volume.value = -27;
+
+    const F = (c, frame) => c * CYCLE + frame / FPS;
+    const B = (c, beat) => c * CYCLE + beat * BEAT;
+    const CHORDS = [['A3', 'C4', 'E4', 'B4'], ['F3', 'A3', 'C4', 'E4'], ['C3', 'G3', 'C4', 'E4'], ['G3', 'B3', 'D4', 'A4']];
+    const MOTIF = [[0, 'E5'], [1.5, 'B4'], [3, 'C5'], [6.5, 'A4'], [8, 'E5'], [13, 'G5'], [14.5, 'E5'], [19.5, 'D5'], [21, 'B4']];
+    const S = starts;
+    for (let c = 0; c < 2; c++) {
+      CHORDS.forEach((ch, i) => pad.triggerAttackRelease(ch, BEAT * 6.3, B(c, i * 6.5)));
+      // a soft pulse once the question is asked, every two beats, resting on the ending
+      for (let b = 4; b < 23; b += 2) sub.triggerAttackRelease('A1', 0.4, B(c, b));
+      MOTIF.forEach(([b, n]) => keys.triggerAttackRelease(n, 1.2, B(c, b)));
+      // the dots lighting: tiny rising ticks
+      for (let i = 0; i < 9; i++) shimmer.triggerAttackRelease(['A5', 'C6', 'E6', 'A6'][i % 4], 0.05, F(c, 2 + i * 1.6));
+      // typing, each character where it appears
+      typing.forEach(fr => typeN.triggerAttackRelease(0.02, F(c, S.ask + fr)));
+      tick.triggerAttackRelease('E6', 0.04, F(c, S.ask + 52)); air.triggerAttackRelease(0.3, F(c, S.ask + 53)); // send
+      // the checklist: a tick for each [x]
+      [16, 25, 34, 43].forEach((fr, i) => { tick.triggerAttackRelease(['A5', 'C6', 'E6', 'A6'][i], 0.05, F(c, S.process + fr)); });
+      air.triggerAttackRelease(0.4, F(c, S.answer + 1)); // the sheet rising
+      keys.triggerAttackRelease(['A4', 'E5'], 1.4, F(c, S.answer + 14)); // the verdict
+      tick.triggerAttackRelease('C6', 0.04, F(c, S.day + 6)); air.triggerAttackRelease(0.3, F(c, S.day + 8)); // tap the 9th
+      air.triggerAttackRelease(0.35, F(c, S.cities)); for (let i = 0; i < 6; i++) tick.triggerAttackRelease('G5', 0.02, F(c, S.cities + 30 + i * 5));
+      hiss.triggerAttackRelease(0.8, F(c, S.spray + 8)); hiss.triggerAttackRelease(0.72, F(c, S.spray + 38));
+      keys.triggerAttackRelease(['A3', 'E4', 'A4', 'C5'], 2.2, F(c, S.end + 2)); // the name
+      for (let i = 0; i < 6; i++) shimmer.triggerAttackRelease(['E6', 'A6'][i % 2], 0.05, F(c, frames - 14 + i * 2)); // dots returning
+    }
+  }, CYCLE * 2 + 0.2, 2, 48000);
+  const sr = buffer.sampleRate, n = Math.round(CYCLE * sr);
+  const out = new OfflineAudioContext(2, n, sr).createBuffer(2, n, sr);
+  for (let ch = 0; ch < 2; ch++) out.getChannelData(ch).set(buffer.getChannelData(ch).slice(n, 2 * n));
+  return wavB64(out);
+};
+function wavB64(buffer) {
+  const ch = buffer.numberOfChannels, len = buffer.length, sr = buffer.sampleRate;
+  const dv = new DataView(new ArrayBuffer(44 + len * ch * 2)); const w = (o, s) => [...s].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); dv.setUint32(4, 36 + len * ch * 2, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, len * ch * 2, true);
+  const data = [...Array(ch)].map((_, c) => buffer.getChannelData(c)); let o = 44;
+  for (let i = 0; i < len; i++) for (let c = 0; c < ch; c++) { const v = Math.max(-1, Math.min(1, data[c][i])); dv.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2; }
+  let s = ''; const bytes = new Uint8Array(dv.buffer); for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+</script>

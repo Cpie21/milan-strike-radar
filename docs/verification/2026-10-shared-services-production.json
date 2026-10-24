@@ -1,0 +1,228 @@
+{
+  "checkedAt": "2026-10-06T08:25:14.557Z",
+  "base": "https://www.theitalystrike.com",
+  "checks": [
+    {
+      "name": "/api/ask null",
+      "ok": true,
+      "detail": {
+        "error": "invalid_json"
+      }
+    },
+    {
+      "name": "/api/ask body bound",
+      "ok": true,
+      "detail": {
+        "error": "too_large"
+      }
+    },
+    {
+      "name": "/api/ask/feedback null",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "error": "invalid_json"
+      }
+    },
+    {
+      "name": "/api/ask/feedback body bound",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "error": "too_large"
+      }
+    },
+    {
+      "name": "/api/doodles/wall null",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "error": "invalid_json"
+      }
+    },
+    {
+      "name": "/api/doodles/wall body bound",
+      "ok": true,
+      "detail": {
+        "ok": false,
+        "error": "too_large"
+      }
+    },
+    {
+      "name": "mode validation",
+      "ok": true,
+      "detail": {
+        "error": "invalid_hints"
+      }
+    },
+    {
+      "name": "calendar validation",
+      "ok": true,
+      "detail": {
+        "error": "invalid_hints"
+      }
+    },
+    {
+      "name": "feedback HTTP stored",
+      "ok": true,
+      "detail": {
+        "ok": true
+      }
+    },
+    {
+      "name": "feedback actually persisted",
+      "ok": true,
+      "detail": {
+        "rating": "good",
+        "city": "MILANO"
+      }
+    },
+    {
+      "name": "server claim",
+      "ok": true,
+      "detail": {
+        "available": true,
+        "done": false,
+        "slot": 0,
+        "colour": "#B6F23A"
+      }
+    },
+    {
+      "name": "reject outside panel",
+      "ok": true,
+      "detail": {
+        "error": "bad_strokes"
+      }
+    },
+    {
+      "name": "piece saved pending",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "approvalPending": true
+      }
+    },
+    {
+      "name": "no second save",
+      "ok": true,
+      "detail": {
+        "error": "already_painted"
+      }
+    },
+    {
+      "name": "owner sees pending piece",
+      "ok": true,
+      "detail": {
+        "pieces": 1
+      }
+    },
+    {
+      "name": "public cannot see unapproved piece",
+      "ok": true,
+      "detail": {
+        "publicPieces": 0
+      }
+    },
+    {
+      "name": "actual private wall row",
+      "ok": true,
+      "detail": {
+        "slot": 0,
+        "colour": "#B6F23A",
+        "approved": false,
+        "active": true,
+        "saved_at": "2026-10-06T08:25:10.670557+00:00"
+      }
+    },
+    {
+      "name": "Ask stream available",
+      "ok": true,
+      "detail": {
+        "status": 200
+      }
+    },
+    {
+      "name": "Ask final official data",
+      "ok": true,
+      "detail": {
+        "eventTypes": [
+          "stage",
+          "stage",
+          "stage",
+          "final"
+        ],
+        "kind": "result",
+        "view": "period",
+        "days": 1,
+        "reportedCost": 2.8938e-05
+      }
+    },
+    {
+      "name": "actual cap retained",
+      "ok": true,
+      "detail": {
+        "before": 25892,
+        "after": 25921
+      }
+    },
+    {
+      "name": "actual provider call durably settled",
+      "ok": true,
+      "detail": [
+        {
+          "call_key": "ask:bb7afb1b-14d7-40a6-9c21-388da7500024",
+          "reserved_micro_usd": 2000,
+          "actual_micro_usd": 29,
+          "created_at": "2026-10-06T08:25:13.169076+00:00",
+          "settled_at": "2026-10-06T08:25:13.530629+00:00"
+        }
+      ]
+    },
+    {
+      "name": "strike sync still healthy",
+      "ok": true,
+      "detail": {
+        "healthy": true,
+        "stale": false,
+        "timedOut": false,
+        "latest": {
+          "started_at": "2026-10-06T07:51:07.790675+00:00",
+          "completed_at": "2026-10-06T07:52:51.16464+00:00",
+          "status": "success",
+          "fetched": 76,
+          "upserted": 58,
+          "unknown_timing": 8
+        },
+        "last_success": {
+          "started_at": "2026-10-06T07:51:07.790675+00:00",
+          "completed_at": "2026-10-06T07:52:51.16464+00:00",
+          "status": "success",
+          "fetched": 76,
+          "upserted": 58,
+          "unknown_timing": 8
+        }
+      }
+    }
+  ],
+  "liveAskCalls": 1,
+  "budget": {
+    "month": "2026-10-01",
+    "charged_micro_usd": 25921,
+    "disabled": false
+  },
+  "testFeedbackQuery": "[release-check da598402-f49f-4a4e-abcf-7172e57283c7]",
+  "testWall": {
+    "key": "doodled_MILANO|2026-10-09|BUS|",
+    "holder": "883fbcca09a74db6981b552c706a1031"
+  },
+  "testRowsCleaned": true,
+  "afterCleanup": {
+    "testFeedbackRows": 0,
+    "testWallRows": 0,
+    "futureActive": 39,
+    "budgetMicroUsd": 25921,
+    "latestSyncStatus": "success",
+    "fetched": 76,
+    "upserted": 58
+  }
+}

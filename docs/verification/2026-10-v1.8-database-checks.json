@@ -1,0 +1,1581 @@
+{
+  "checked_at": "2026-10-05T10:27:44.438Z",
+  "allAssertionsPassed": true,
+  "activeRows": 38,
+  "guaranteeSources": {
+    "UNKNOWN": 27,
+    "OPERATOR_RULE": 5,
+    "OFFICIAL_STRIKE_NOTICE": 1,
+    "STANDARD_RULE": 5
+  },
+  "lineScopes": {
+    "UNKNOWN": 33,
+    "ALL_OPERATOR_LINES": 5
+  },
+  "selectedRecords": [
+    {
+      "date": "2026-10-08",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "provider": "FS SECURITY REGIONE SICILIA人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_SECURITY",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-08",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "provider": "FS SECURITY REGIONE SICILIA人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_SECURITY",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-08",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "provider": "FS SECURITY REGIONE SICILIA人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_SECURITY",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "provider": "米兰交通局人员",
+      "status": "CONFIRMED",
+      "guarantee": [
+        {
+          "end": "18:00",
+          "start": "15:00"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Lombardia",
+            "province": "Tutte",
+            "relevance": "Provinciale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Lombardia | Tutte | Provinciale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "MILANO"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "OPERATOR_RULE",
+        "guaranteePolicy": {
+          "mode": "BUS",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "source": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "service": "URBAN_SUBURBAN",
+          "validTo": "2026-11-04",
+          "windows": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-05",
+          "validFrom": "2026-10-05",
+          "qualification": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "validityBasis": "REVIEW_WINDOW"
+        },
+        "guaranteeEvidenceWindows": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "guaranteedServiceWindow": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "18:00",
+              "start": "15:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "lineScope": {
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.",
+          "confidence": "HIGH"
+        }
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "provider": "米兰交通局人员",
+      "status": "CONFIRMED",
+      "guarantee": [
+        {
+          "end": "18:00",
+          "start": "15:00"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Lombardia",
+            "province": "Tutte",
+            "relevance": "Provinciale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Lombardia | Tutte | Provinciale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "MILANO"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "OPERATOR_RULE",
+        "guaranteePolicy": {
+          "mode": "SUBWAY",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "source": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "service": "URBAN_SUBURBAN",
+          "validTo": "2026-11-04",
+          "windows": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-05",
+          "validFrom": "2026-10-05",
+          "qualification": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "validityBasis": "REVIEW_WINDOW"
+        },
+        "guaranteeEvidenceWindows": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "guaranteedServiceWindow": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "18:00",
+              "start": "15:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "lineScope": {
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.",
+          "confidence": "HIGH"
+        }
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "provider": "米兰交通局人员",
+      "status": "CONFIRMED",
+      "guarantee": [
+        {
+          "end": "18:00",
+          "start": "15:00"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Lombardia",
+            "province": "Tutte",
+            "relevance": "Provinciale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Lombardia | Tutte | Provinciale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "MILANO"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "OPERATOR_RULE",
+        "guaranteePolicy": {
+          "mode": "BUS",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "source": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "service": "URBAN_SUBURBAN",
+          "validTo": "2026-11-04",
+          "windows": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-05",
+          "validFrom": "2026-10-05",
+          "qualification": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "validityBasis": "REVIEW_WINDOW"
+        },
+        "guaranteeEvidenceWindows": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "guaranteedServiceWindow": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "18:00",
+              "start": "15:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "lineScope": {
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.",
+          "confidence": "HIGH"
+        }
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "provider": "米兰交通局人员",
+      "status": "CONFIRMED",
+      "guarantee": [
+        {
+          "end": "18:00",
+          "start": "15:00"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Lombardia",
+            "province": "Tutte",
+            "relevance": "Provinciale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Lombardia | Tutte | Provinciale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "MILANO"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "OPERATOR_RULE",
+        "guaranteePolicy": {
+          "mode": "SUBWAY",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "source": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "service": "URBAN_SUBURBAN",
+          "validTo": "2026-11-04",
+          "windows": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "operator": "ATM_MILANO",
+          "checkedAt": "2026-10-05",
+          "validFrom": "2026-10-05",
+          "qualification": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "validityBasis": "REVIEW_WINDOW"
+        },
+        "guaranteeEvidenceWindows": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "08:45",
+              "start": null,
+              "end_kind": "clock"
+            },
+            {
+              "end": "18:00",
+              "start": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "guaranteedServiceWindow": {
+          "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "value": [
+            {
+              "end": "18:00",
+              "start": "15:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line.",
+          "confidence": "MEDIUM"
+        },
+        "lineScope": {
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.",
+          "confidence": "HIGH"
+        }
+      }
+    },
+    {
+      "date": "2026-10-12",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "provider": "RFI基础设施维护人员 / DOIT PALERMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_INFRASTRUCTURE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-12",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "provider": "RFI基础设施维护人员 / DOIT PALERMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_INFRASTRUCTURE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-12",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "provider": "RFI基础设施维护人员 / DOIT PALERMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_INFRASTRUCTURE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-13",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "provider": "RFI基础设施维护人员 / DOIT PALERMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_INFRASTRUCTURE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-13",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "provider": "RFI基础设施维护人员 / DOIT PALERMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_INFRASTRUCTURE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-13",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "provider": "RFI基础设施维护人员 / DOIT PALERMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_INFRASTRUCTURE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "INDIRECT_OR_UNCONFIRMED",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Sicilia",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Sicilia | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PALERMO",
+            "CATANIA",
+            "MESSINA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-15",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "provider": "ATAF FOGGIA人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "UNSUPPORTED_CITY",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Puglia",
+            "province": "Foggia",
+            "relevance": "Locale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Puglia | Foggia | Locale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ATAF DI FOGGIA",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-16",
+      "region": "BERGAMO",
+      "category": "BUS",
+      "provider": "ARRIVA ITALIA UNITA' PRODUTTIVA BERGAMO人员",
+      "status": "CONFIRMED",
+      "guarantee": [
+        {
+          "end": "08:30",
+          "start": "06:00"
+        },
+        {
+          "end": "16:00",
+          "start": "12:30"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Lombardia",
+            "province": "Bergamo",
+            "relevance": "Locale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Lombardia | Bergamo | Locale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "BERGAMO"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ARRIVA ITALIA UNITA' PRODUTTIVA DI BERGAMO",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "OPERATOR_RULE",
+        "guaranteePolicy": {
+          "mode": "BUS",
+          "modes": [
+            "BUS"
+          ],
+          "source": "https://arriva.it/app/uploads/sites/7/2026/09/BERGAMO-Carta-della-mobilita-2026.pdf",
+          "service": "BERGAMO_CONSORTIA",
+          "validTo": "2026-11-04",
+          "windows": [
+            {
+              "end": "08:30",
+              "start": "06:00",
+              "end_kind": "clock"
+            },
+            {
+              "end": "16:00",
+              "start": "12:30",
+              "end_kind": "clock"
+            }
+          ],
+          "operator": "ARRIVA_BERGAMO",
+          "checkedAt": "2026-10-05",
+          "validFrom": "2026-10-05",
+          "qualification": "Bergamo Trasporti Est/Ovest/Sud: guaranteed departures in these bands, based on the 2026 service charter. Excludes airport shuttles and Lecco services.",
+          "validityBasis": "REVIEW_WINDOW"
+        },
+        "guaranteeEvidenceWindows": {
+          "url": "https://arriva.it/app/uploads/sites/7/2026/09/BERGAMO-Carta-della-mobilita-2026.pdf",
+          "value": [
+            {
+              "end": "08:30",
+              "start": "06:00",
+              "end_kind": "clock"
+            },
+            {
+              "end": "16:00",
+              "start": "12:30",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Bergamo Trasporti Est/Ovest/Sud: guaranteed departures in these bands, based on the 2026 service charter. Excludes airport shuttles and Lecco services.",
+          "confidence": "MEDIUM"
+        },
+        "guaranteedServiceWindow": {
+          "url": "https://arriva.it/app/uploads/sites/7/2026/09/BERGAMO-Carta-della-mobilita-2026.pdf",
+          "value": [
+            {
+              "end": "08:30",
+              "start": "06:00"
+            },
+            {
+              "end": "16:00",
+              "start": "12:30"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Bergamo Trasporti Est/Ovest/Sud: guaranteed departures in these bands, based on the 2026 service charter. Excludes airport shuttles and Lecco services.",
+          "confidence": "MEDIUM"
+        },
+        "lineScope": {
+          "url": "https://bergamo.arriva.it/notice/sciopero-di-24-ore-del-16-10-2026-arriva-italia/",
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ARRIVA_BERGAMO"
+            ],
+            "networkNames": [
+              "BERGAMO TRASPORTI SUD",
+              "BERGAMO TRASPORTI EST",
+              "BERGAMO TRASPORTI OVEST"
+            ],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Si avvisa la gentile clientela, che nella giornata di venerdì 16 ottobre 2026 è stato indotto dalle sigle sindalcali Filt Cgil, Fit Cisl, Faisa Cisal e UILTransporti, uno sciopero aziendale per i dipendenti di Arriva Italia di 24 ore. In tale giornata NON saranno garantiti i servizi di linea gestiti da BERGAMO TRASPORTI SUD, BERGAMO TRASPORTI EST, BERGAMO TRASPORTI OVEST s.c. a r.l. nelle fasce orarie: Da inizio servizio alle ore 05:59- dalle ore 08:31 alle ore 12:29 e dalle ore 16:01 sino a termine servizio.",
+          "confidence": "HIGH"
+        }
+      }
+    },
+    {
+      "date": "2026-10-20",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "provider": "ARRIVA UDINE UDINE人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "locationStatus": "UNSUPPORTED_CITY",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Friuli-Venezia Giulia",
+            "province": "Udine",
+            "relevance": "Locale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Friuli-Venezia Giulia | Udine | Locale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    },
+    {
+      "date": "2026-10-29",
+      "region": "BOLOGNA",
+      "category": "TRAIN",
+      "provider": "意大利国家铁路人员 / REGGIO EMILIA STORICA ED AV MEDIOPADANA人员 / RIMINI人员",
+      "status": "CONFIRMED",
+      "guarantee": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_OPERATOR",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "DIRECT_SERVICE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Emilia-Romagna",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Emilia-Romagna | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "BOLOGNA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        }
+      }
+    }
+  ],
+  "retired": [
+    {
+      "id": "40c13eeb-a21a-4c41-995a-ab7533c6930b",
+      "provider": "公共交通人员",
+      "status": "STALE"
+    }
+  ],
+  "budget": [
+    {
+      "month": "2026-10-01",
+      "charged_micro_usd": 6122,
+      "disabled": false
+    }
+  ],
+  "latestSync": {
+    "id": "cee25515-3d3e-4754-9d9e-47414f206cec",
+    "started_at": "2026-10-05T10:23:50.513226+00:00",
+    "completed_at": "2026-10-05T10:24:47.079429+00:00",
+    "status": "success",
+    "fetched": 76,
+    "upserted": 57,
+    "unknown_timing": 7,
+    "error": null,
+    "warnings": [
+      "Supplement unavailable: www.ctmcagliari.it/comunicati/: HTTP 403",
+      "Supplement unavailable: www.bresciamobilita.it/: HTTP 403",
+      "Supplement unavailable: www.toscana-aeroporti.com/it/news/: HTTP 403",
+      "Supplement unavailable: www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio: HTTP 403",
+      "Supplement unavailable: www.trenord.it/news/trenord-informa/avvisi/: HTTP 403",
+      "Supplement unavailable: www.veneziaairport.it/it_it/news.html: HTTP 403",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381231: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380241: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380322: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381296: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381220: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381112: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381401: The operation was aborted due to timeout",
+      "Timing conflict requires review: 2026-10-09 MILANO BUS AL-COBAS",
+      "Timing conflict requires review: 2026-10-09 MILANO SUBWAY AL-COBAS",
+      "Timing conflict requires review: 2026-10-12 BARI BUS OST FILT-CGIL/FIT-CISL/UILT-UIL/UGL AUTOFERRO",
+      "Operational timing unresolved: 2026-10-14 FIRENZE BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-10-14 PISA BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-12-04 NATIONAL BUS SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE ASPP SOC. ENAV - SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE SOC. ENAV STRUTTURA PROCUREMENT SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-10-03 GENOVA BUS PERSONALE SOC. AMT DI GENOVA",
+      "Operational timing unresolved: 2026-10-03 GENOVA SUBWAY PERSONALE SOC. AMT DI GENOVA"
+    ],
+    "retired": 0
+  }
+}

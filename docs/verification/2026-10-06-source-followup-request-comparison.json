@@ -1,0 +1,114 @@
+[
+  {
+    "url": "https://www.trenord.it/news/",
+    "variant": 2,
+    "http": 403,
+    "bytes": 377,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.trenord.it/news/",
+    "variant": 3,
+    "http": 403,
+    "bytes": 377,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.trenord.it/news/",
+    "variant": 0,
+    "http": 200,
+    "bytes": 386978,
+    "type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://www.trenord.it/news/",
+    "variant": 1,
+    "http": 200,
+    "bytes": 386978,
+    "type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://www.bresciamobilita.it/news",
+    "variant": 3,
+    "http": 403,
+    "bytes": 380,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.bresciamobilita.it/news",
+    "variant": 2,
+    "http": 403,
+    "bytes": 380,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.bresciamobilita.it/news",
+    "variant": 0,
+    "http": 200,
+    "bytes": 136155,
+    "type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://www.bresciamobilita.it/news",
+    "variant": 1,
+    "http": 200,
+    "bytes": 136155,
+    "type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://www.veneziaairport.it/it_it/news.html",
+    "variant": 2,
+    "http": 403,
+    "bytes": 402,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.veneziaairport.it/it_it/news.html",
+    "variant": 3,
+    "http": 403,
+    "bytes": 402,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.veneziaairport.it/it_it/news.html",
+    "variant": 0,
+    "http": 404,
+    "bytes": 153844,
+    "type": "text/html; charset=UTF-8"
+  },
+  {
+    "url": "https://www.veneziaairport.it/it_it/news.html",
+    "variant": 1,
+    "http": 404,
+    "bytes": 153844,
+    "type": "text/html; charset=UTF-8"
+  },
+  {
+    "url": "https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information",
+    "variant": 2,
+    "http": 403,
+    "bytes": 454,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information",
+    "variant": 3,
+    "http": 403,
+    "bytes": 454,
+    "type": "text/html"
+  },
+  {
+    "url": "https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information",
+    "variant": 0,
+    "http": 200,
+    "bytes": 356976,
+    "type": "text/html; charset=utf-8"
+  },
+  {
+    "url": "https://www.easyjet.com/en/help-centre/before-you-fly/latest-travel-information",
+    "variant": 1,
+    "http": 200,
+    "bytes": 356976,
+    "type": "text/html; charset=utf-8"
+  }
+]

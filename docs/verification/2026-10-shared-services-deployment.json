@@ -1,0 +1,12 @@
+{
+  "id": "dpl_5o2EYz1gPEqiQE5zHQKE17UZSVcq",
+  "url": "milan-strike-radar-du20ddghy-zourongcheng554-2935s-projects.vercel.app",
+  "readyState": "READY",
+  "sha": "aece7491771e084f363c2cc13a5894b26f8f765d",
+  "crons": [
+    {
+      "path": "/api/cron/sync-strikes",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}

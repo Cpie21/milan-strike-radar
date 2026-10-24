@@ -1,0 +1,86 @@
+<!doctype html><meta charset="utf-8">
+<script src="../node_modules/tone/build/Tone.js"></script>
+<script>
+// The v3 film's score (Tone.js, rendered offline). It follows the story:
+// tense and muffled in the tangle, a chime when it untangles, warmth on the
+// promise, a light groove while you ask and it works, the sources ticking
+// in, each Italian city its own note, and a resolve on the payoff.
+const FPS = 30;
+window.renderFilm3 = async ({ frames, S, typing, lang }) => {
+  const LEN = frames / FPS, BPM = 100, BEAT = 60 / BPM;
+  const buffer = await Tone.Offline(() => {
+    const out = new Tone.Gain(1.6).connect(new Tone.Limiter(-1.5).toDestination());
+    const bus = new Tone.Compressor({ threshold: -20, ratio: 2.5, attack: 0.02, release: 0.25 }).connect(out);
+    const verb = new Tone.Reverb({ decay: 4, wet: 1 }).connect(bus);
+    const wet = (n, a) => { const g = new Tone.Gain(a); n.connect(g); g.connect(verb); return n; };
+    const padF = new Tone.Filter(500, 'lowpass').connect(bus);
+    const pad = wet(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'fattriangle', count: 3, spread: 20 }, envelope: { attack: 1.2, decay: 0.5, sustain: 0.7, release: 2.5 } }).connect(padF), 0.5); pad.volume.value = -18;
+    const kick = new Tone.MembraneSynth({ pitchDecay: 0.04, octaves: 4, envelope: { attack: 0.002, decay: 0.32, sustain: 0 } }).connect(bus); kick.volume.value = -11;
+    const hatF = new Tone.Filter(9000, 'highpass').connect(bus);
+    const hat = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.03, sustain: 0 } }).connect(hatF); hat.volume.value = -27;
+    const bass = new Tone.MonoSynth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.4, release: 0.2 }, filterEnvelope: { baseFrequency: 120, octaves: 2 } }).connect(bus); bass.volume.value = -14;
+    const keys = wet(new Tone.PolySynth(Tone.FMSynth, { harmonicity: 2, modulationIndex: 1.3, envelope: { attack: 0.004, decay: 1.5, sustain: 0, release: 1.2 }, modulationEnvelope: { attack: 0.002, decay: 0.3, sustain: 0 } }).connect(bus), 0.45); keys.volume.value = -15;
+    const ping = wet(new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.002, decay: 0.5, sustain: 0, release: 0.4 } }).connect(bus), 0.6); ping.volume.value = -18;
+    const tick = wet(new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 } }).connect(bus), 0.2); tick.volume.value = -22;
+    const pop = new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 3, envelope: { attack: 0.001, decay: 0.08, sustain: 0 } }).connect(bus); pop.volume.value = -16;
+    const typeF = new Tone.Filter({ type: 'bandpass', frequency: 3400, Q: 1.3 }).connect(bus);
+    const typeN = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.018, sustain: 0 } }).connect(typeF); typeN.volume.value = -21;
+    const airF = new Tone.Filter({ type: 'bandpass', frequency: 800, Q: 0.9 }).connect(bus);
+    const air = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.12, decay: 0.35, sustain: 0, release: 0.2 } }).connect(airF); air.volume.value = -19;
+    const drone = new Tone.FMSynth({ harmonicity: 0.5, modulationIndex: 2, envelope: { attack: 1.5, release: 1.5 } }).connect(new Tone.Filter(300, 'lowpass').connect(bus)); drone.volume.value = -20;
+    const F = fr => fr / FPS;
+    // 1 tangle: an uneasy low drone, a muffled pop per message, then the chime
+    drone.triggerAttackRelease('D2', F(S.title), 0);
+    [0, 21, 36, 51, 66, 81].forEach(fr => { pop.triggerAttackRelease('C3', 0.08, F(fr)); tick.triggerAttackRelease('A5', 0.03, F(fr + 1)); });
+    ping.triggerAttackRelease('E6', 0.6, F(128)); ping.triggerAttackRelease('A6', 0.6, F(132));
+    // 2 promise: the light comes up
+    padF.frequency.setValueAtTime(500, F(S.title)); padF.frequency.linearRampToValueAtTime(1600, F(S.title + 40));
+    pad.triggerAttackRelease(['A3', 'C4', 'E4', 'B4'], F(96) + 0.5, F(S.title));
+    keys.triggerAttackRelease(['E5'], 1.2, F(S.title + 10));
+    // 3–7 the groove, from asking until the payoff
+    const g0 = F(S.ask + 24), g1 = F(S.payoff);
+    const CH = [['A3', 'C4', 'E4'], ['F3', 'A3', 'C4'], ['C3', 'E3', 'G3'], ['G3', 'B3', 'D4']], BS = ['A1', 'F1', 'C2', 'G1'];
+    for (let t = g0, b = 0; t < g1; t += BEAT, b++) {
+      const inWork = t >= F(S.working) && t < F(S.how + 10); // it holds its breath while it works
+      if (!inWork) { kick.triggerAttackRelease('A1', 0.3, t); if (b % 2 === 1) hat.triggerAttackRelease(0.03, t); hat.triggerAttackRelease(0.02, t + BEAT / 2); }
+      const bar = Math.floor(b / 4) % 4;
+      if (b % 4 === 0) { pad.triggerAttackRelease(CH[bar], BEAT * 3.8, t); if (!inWork) bass.triggerAttackRelease(BS[bar], BEAT * 0.6, t); }
+    }
+    typing.forEach(fr => typeN.triggerAttackRelease(0.02, F(S.ask + fr)));
+    tick.triggerAttackRelease('E6', 0.04, F(S.ask + 128)); air.triggerAttackRelease(0.3, F(S.ask + 129));
+    // 4 working: sparkles
+    for (let i = 0; i < 10; i++) tick.triggerAttackRelease(['A6', 'E6', 'C7', 'G6'][i % 4], 0.03, F(S.working + 6 + i * 6.5));
+    // 5 how: ticks, branches, boxes, the answer
+    [40, 72].forEach(fr => tick.triggerAttackRelease('C6', 0.05, F(S.how + fr)));
+    air.triggerAttackRelease(0.5, F(S.how + 92));
+    [112, 124, 136].forEach((fr, i) => pop.triggerAttackRelease(['G3', 'A3', 'C4'][i], 0.08, F(S.how + fr)));
+    air.triggerAttackRelease(0.5, F(S.how + 158));
+    keys.triggerAttackRelease(['A4', 'E5', 'A5'], 1.6, F(S.how + 184));
+    // 6 answer + 7 the day
+    air.triggerAttackRelease(0.4, F(S.answer + 2)); keys.triggerAttackRelease(['C5'], 1, F(S.answer + 20));
+    tick.triggerAttackRelease('C6', 0.04, F(S.day + 6)); air.triggerAttackRelease(0.3, F(S.day + 8));
+    pop.triggerAttackRelease('E4', 0.08, F(S.day + 96)); ping.triggerAttackRelease('B5', 0.4, F(S.day + 97));
+    // 8 italy: each city its own note, up the scale
+    const PENT = ['A4', 'C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6', 'E6', 'G6'];
+    for (let i = 0; i < 20; i++) ping.triggerAttackRelease(PENT[Math.min(9, Math.floor(i / 2))], 0.4, F(S.italy + 34 + i * 3.2));
+    // 9 payoff: everything settles on one chord; 10 the name, and quiet
+    pad.triggerAttackRelease(['A3', 'E4', 'A4', 'C5'], F(120) + 1, F(S.payoff));
+    keys.triggerAttackRelease(['A4', 'C5', 'E5'], 2, F(S.payoff + 4));
+    keys.triggerAttackRelease(['E5', 'A5'], 2, F(S.payoff + 34));
+    ping.triggerAttackRelease('A5', 1.2, F(S.logo + 2));
+  }, LEN, 2, 48000);
+  return wavB64(buffer);
+};
+function wavB64(buffer) {
+  const ch = buffer.numberOfChannels, len = buffer.length, sr = buffer.sampleRate;
+  const dv = new DataView(new ArrayBuffer(44 + len * ch * 2)); const w = (o, s) => [...s].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); dv.setUint32(4, 36 + len * ch * 2, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, ch, true);
+  dv.setUint32(24, sr, true); dv.setUint32(28, sr * ch * 2, true); dv.setUint16(32, ch * 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, len * ch * 2, true);
+  const data = [...Array(ch)].map((_, c) => buffer.getChannelData(c)); let o = 44;
+  // a short fade at both ends so the loop's seam is silent
+  const fade = Math.round(sr * 0.04);
+  for (let i = 0; i < len; i++) { const g = Math.min(1, i / fade, (len - 1 - i) / fade); for (let c = 0; c < ch; c++) { const v = Math.max(-1, Math.min(1, data[c][i] * g)); dv.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2; } }
+  let s = ''; const bytes = new Uint8Array(dv.buffer); for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+</script>

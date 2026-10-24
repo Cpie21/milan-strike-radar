@@ -1,0 +1,35 @@
+{
+  "atmFutureLabel": {
+    "text": "08:45–15:00、18:00–运营结束 停运",
+    "tone": "stop"
+  },
+  "atmActualDayLabel": {
+    "text": "停运中 · 15:00 恢复 · 18:00 再次停运",
+    "tone": "stop"
+  },
+  "gestInsideProtectionLabel": {
+    "text": "停运中 · 24:00 恢复",
+    "tone": "stop"
+  },
+  "metroServiceEnd": {
+    "end": "00:30",
+    "note": [
+      "ATM 地铁末班约次日 00:30，各线略有不同（M5 约 24:00）",
+      "ATM metro runs until about 00:30, varying by line (M5 about midnight)"
+    ],
+    "source": {
+      "name": "ATM",
+      "url": "https://www.atm.it/it/AtmNews/AtmInforma/Pagine/M4informazionisulserviziopasseggeribis.aspx"
+    }
+  },
+  "unqualifiedBreaks": {
+    "start": "08:45",
+    "end": null,
+    "breaks": [
+      {
+        "start": "15:00",
+        "end": "18:00"
+      }
+    ]
+  }
+}

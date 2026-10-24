@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     root: rootDir,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 

@@ -1,0 +1,1265 @@
+{
+  "projectId": 136776,
+  "dashboardId": 1004763,
+  "dashboardUrl": "https://eu.posthog.com/project/136776/dashboard/1004763",
+  "schemaVersion": 3,
+  "metricStatus": "Project-specific exploratory definitions; complete accessible information-schema metric catalog is empty (0 definitions). metric-list API scope-gated.",
+  "insights": [
+    {
+      "name": "城市与语言使用",
+      "description": "当前生产city页面到达人数；匿名people按PostHog身份计算，不能等同真实人。版本3起，无历史回填。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "product_page_viewed",
+              "custom_name": "访问用户",
+              "math": "dau",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "region",
+                "type": "event"
+              },
+              {
+                "property": "language",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399082,
+      "shortId": "l7auY5FW"
+    },
+    {
+      "name": "设备与桌面启动",
+      "description": "页面到达人数按设备/浏览器或standalone拆分；standalone是实际启动方式，不是安装量。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "product_page_viewed",
+              "custom_name": "访问用户",
+              "math": "dau",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "device",
+                "type": "event"
+              },
+              {
+                "property": "app_mode",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399083,
+      "shortId": "lRp9xRYo"
+    },
+    {
+      "name": "查到的日期状态",
+      "description": "实际看见清静日、全取消日及罢工日的次数；day_offset为相对天数，不发送私密行程。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "day_summary_viewed",
+              "custom_name": "日期内容曝光",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "state",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399084,
+      "shortId": "MfS7THg5"
+    },
+    {
+      "name": "日期查找入口",
+      "description": "选择日期次数，分rail/month/next_strike/ai；另有月份浏览曝光。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "strike_date_selected",
+              "custom_name": "日期选择",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "selection_source",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399085,
+      "shortId": "d56xOgLd"
+    },
+    {
+      "name": "城市搜索→选择→新页面",
+      "description": "30分钟有序用户漏斗；可能跨同人的多次搜索，搜索原文不发送，页面到达不是点击即成功。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "city_search_started",
+              "custom_name": "搜索",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "city_selected",
+              "custom_name": "更换城市",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "product_page_viewed",
+              "custom_name": "页面到达",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "funnelsFilter": {
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 30,
+            "funnelWindowIntervalUnit": "minute",
+            "funnelVizType": "steps"
+          }
+        }
+      },
+      "id": 6399086,
+      "shortId": "EuY2LuLg"
+    },
+    {
+      "name": "城市搜索无结果与清空",
+      "description": "完成搜索的结果分类、实际无结果提示和清空，均无搜索文本。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "city_search_completed",
+              "custom_name": "搜索完成",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "city_search_empty_viewed",
+              "custom_name": "无结果实际可见",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "city_search_cleared",
+              "custom_name": "清空",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399087,
+      "shortId": "AIQz3qYM"
+    },
+    {
+      "name": "用户阅读哪些卡片字段",
+      "description": "保障/线路/人员/类型/范围区块实际可见1秒；按交通类型和区块拆分。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "strike_detail_viewed",
+              "custom_name": "字段曝光",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "transport_type",
+                "type": "event"
+              },
+              {
+                "property": "section",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399089,
+      "shortId": "x6jOer7R"
+    },
+    {
+      "name": "官方和媒体来源核对",
+      "description": "仅neutral source_link_clicked，按authority/host拆分；旧official_source_clicked不再叠加，外链到达未验证。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "source_link_clicked",
+              "custom_name": "来源点击",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "source_authority",
+                "type": "event"
+              },
+              {
+                "property": "source_host",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399090,
+      "shortId": "KdznNKCU"
+    },
+    {
+      "name": "工具入口与实际打开",
+      "description": "工具/AI弹层open和1秒viewed分别计数，按sheet拆分，不当安装/订阅成功。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ui_sheet_opened",
+              "custom_name": "打开",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ui_sheet_viewed",
+              "custom_name": "实际可见",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "sheet",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399091,
+      "shortId": "ePkMGrCg"
+    },
+    {
+      "name": "教程读到哪一步",
+      "description": "工具步骤的前台可见1秒曝光，widget1–5/home1–4；不是操作完成/安装。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "tool_step_viewed",
+              "custom_name": "步骤曝光",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "tool",
+                "type": "event"
+              },
+              {
+                "property": "step",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399092,
+      "shortId": "lXJb4g6A"
+    },
+    {
+      "name": "小组件→代码步骤→复制成功",
+      "description": "30分钟有序用户漏斗，复制真实clipboard成功。安装Scriptable和添加widget无法在本站验证。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ui_sheet_viewed",
+              "custom_name": "小组件可见",
+              "properties": [
+                {
+                  "key": "sheet",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "widget"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "tool_step_viewed",
+              "custom_name": "代码步骤",
+              "properties": [
+                {
+                  "key": "tool",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "widget"
+                  ]
+                },
+                {
+                  "key": "step",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "2"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "widget_copy_succeeded",
+              "custom_name": "复制成功",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "funnelsFilter": {
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 30,
+            "funnelWindowIntervalUnit": "minute",
+            "funnelVizType": "steps"
+          }
+        }
+      },
+      "id": 6399093,
+      "shortId": "NfwBOBPl"
+    },
+    {
+      "name": "日历入口→订阅请求",
+      "description": "30分钟用户漏斗；最终仅webcal请求intent，不能叫订阅完成。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ui_sheet_viewed",
+              "custom_name": "日历面板",
+              "properties": [
+                {
+                  "key": "sheet",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "calendar"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "calendar_subscription_requested",
+              "custom_name": "请求订阅",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "funnelsFilter": {
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 30,
+            "funnelWindowIntervalUnit": "minute",
+            "funnelVizType": "steps"
+          }
+        }
+      },
+      "id": 6399094,
+      "shortId": "m9eoFdI0"
+    },
+    {
+      "name": "桌面教程阅读与链接复制",
+      "description": "前台步骤曝光及非Safari复制结果；不推断安装，step4也只是看到。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "tool_step_viewed",
+              "custom_name": "最后步骤",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "tool",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "home"
+                  ]
+                },
+                {
+                  "key": "step",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "4"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "home_link_copy_succeeded",
+              "custom_name": "复制链接",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "home_link_copy_failed",
+              "custom_name": "复制失败",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399104,
+      "shortId": "cZq3wr4z"
+    },
+    {
+      "name": "工具障碍·关闭与展开",
+      "description": "关闭按原因分开；图片错误、空模式拦截、剪贴板失败属于独立诊断事件，不相加当失败人数。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "tool_image_failed",
+              "custom_name": "教程图片失败",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "calendar_subscription_blocked",
+              "custom_name": "无模式拦截",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "widget_copy_failed",
+              "custom_name": "widget复制失败",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "home_link_copy_failed",
+              "custom_name": "主页链接复制失败",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ui_sheet_closed",
+              "custom_name": "关闭",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399107,
+      "shortId": "tE8vmXeh"
+    },
+    {
+      "name": "反馈编辑→提交→保存",
+      "description": "30分钟有序用户漏斗。只有submitFeedback成功响应才记saved；不发送文字/昵称。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "support_feedback_started",
+              "custom_name": "开始写",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "support_feedback_submitted",
+              "custom_name": "提交",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "support_feedback_saved",
+              "custom_name": "保存",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "funnelsFilter": {
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 30,
+            "funnelWindowIntervalUnit": "minute",
+            "funnelVizType": "steps"
+          }
+        }
+      },
+      "id": 6399108,
+      "shortId": "DBYkuigP"
+    },
+    {
+      "name": "支持·社交与受影响反应",
+      "description": "支付/关注只是外链意图，反应单独submitted/outcome真实结果；不修改既有计数。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "donate_coffee_clicked",
+              "custom_name": "支持支付意图",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "social_link_clicked",
+              "custom_name": "社交外链",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "affected_reaction_submitted",
+              "custom_name": "受影响提交",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "affected_reaction_outcome",
+              "custom_name": "受影响结果",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399109,
+      "shortId": "LXjqNDbF"
+    },
+    {
+      "name": "分享的浏览器结果",
+      "description": "卡片和AI分享按method/outcome拆分，取消/失败/clipboard成功不混同。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "strike_share_outcome",
+              "custom_name": "卡片分享",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_share_outcome",
+              "custom_name": "AI分享",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "method",
+                "type": "event"
+              },
+              {
+                "property": "outcome",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399110,
+      "shortId": "tz6d5KOO"
+    },
+    {
+      "name": "首次到访后7日回访",
+      "description": "当前page事件首次出现日进入日队列；7日日留存。版本3无旧历史，未成熟日期不能当流失。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "RetentionQuery",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "filterTestAccounts": true,
+          "retentionFilter": {
+            "period": "Day",
+            "totalIntervals": 7,
+            "retentionType": "retention_first_time",
+            "retentionReference": "total",
+            "cumulative": false,
+            "targetEntity": {
+              "id": "product_page_viewed",
+              "name": "product_page_viewed",
+              "type": "events"
+            },
+            "returningEntity": {
+              "id": "product_page_viewed",
+              "name": "product_page_viewed",
+              "type": "events"
+            }
+          }
+        }
+      },
+      "id": 6399111,
+      "shortId": "5TupIOnr"
+    },
+    {
+      "name": "常见使用路径",
+      "description": "只选关键业务事件，最多5步，不包含密集注意力/底层API事件；路径按PostHog会话语义。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "PathsQuery",
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            },
+            {
+              "type": "hogql",
+              "key": "event IN ('product_page_viewed','strike_date_selected','city_selected','strike_sources_toggled','source_link_clicked','tool_sheet_opened','calendar_subscription_requested','widget_copy_succeeded','ai_query_submitted','ai_result_viewed','ai_result_day_opened')"
+            }
+          ],
+          "filterTestAccounts": true,
+          "pathsFilter": {
+            "includeEventTypes": [
+              "custom_event"
+            ],
+            "startPoint": "product_page_viewed",
+            "stepLimit": 5,
+            "edgeLimit": 25
+          }
+        }
+      },
+      "id": 6399113,
+      "shortId": "SUNO9Eim"
+    },
+    {
+      "name": "同一张卡片的来源与分享行动",
+      "description": "固定滚动30天；按card_id+匿名session去重。卡片至少看1秒→来源可见/外链/分享结果。是相关事件存在表，不冒充严格顺序用户漏斗。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT transport_mode, countIf(seen>0) AS viewed_card_sessions, countIf(seen>0 AND evidence>0) AS sources_viewed_card_sessions, countIf(seen>0 AND clicked>0) AS source_clicked_card_sessions, countIf(seen>0 AND shared>0) AS share_completed_card_sessions FROM (SELECT properties.card_id AS card, properties.$session_id AS sid, upper(argMax(properties.transport_type,timestamp)) AS transport_mode, max(event='strike_card_attention' AND properties.milestone_seconds=1) AS seen, max(event='strike_sources_viewed') AS evidence, max(event='source_link_clicked') AS clicked, max(event='strike_share_outcome' AND properties.outcome='completed') AS shared FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version > 1 AND coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id) AND properties.card_id IS NOT NULL AND properties.$session_id IS NOT NULL AND event IN ('strike_card_attention','strike_sources_viewed','source_link_clicked','strike_share_outcome') GROUP BY card,sid) GROUP BY transport_mode ORDER BY viewed_card_sessions DESC"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6399116,
+      "shortId": "xbx7Jpin"
+    },
+    {
+      "name": "每次反馈提交的保存与失败",
+      "description": "固定滚动30天；按submission_id去重，双击不重复提交。success响应才saved，不发送反馈文字。入库离线缺receipt记未知。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT multiIf(saved>0,'SAVED',failed>0,'FAILED','NO_RECEIPT') AS outcome,count() AS submissions FROM (SELECT properties.submission_id AS submission, max(event='support_feedback_submitted') AS submitted, max(event='support_feedback_saved') AS saved, max(event='support_feedback_failed') AS failed FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version > 1 AND coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id) AND properties.submission_id IS NOT NULL AND event IN ('support_feedback_submitted','support_feedback_saved','support_feedback_failed') GROUP BY submission) WHERE submitted>0 GROUP BY outcome ORDER BY submissions DESC"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6399117,
+      "shortId": "o182EpNE"
+    }
+  ]
+}

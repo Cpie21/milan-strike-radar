@@ -1,0 +1,177 @@
+{
+  "active": 34,
+  "unknown": 5,
+  "adopted": [
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "windows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "sources": [
+        "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380322"
+      ]
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "windows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "sources": [
+        "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380241"
+      ]
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "windows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "sources": [
+        "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380241"
+      ]
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "windows": [
+        {
+          "end": "15:00",
+          "start": "08:45",
+          "end_kind": "clock"
+        },
+        {
+          "end": null,
+          "start": "18:00",
+          "end_kind": "end_of_service"
+        }
+      ],
+      "sources": [
+        "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/380322"
+      ]
+    },
+    {
+      "date": "2026-10-10",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "provider": "PERSONALE SOC. GEST SERVIZIO TRANVIA DI FIRENZE",
+      "windows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381296"
+      ]
+    },
+    {
+      "date": "2026-10-16",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "provider": "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED",
+      "windows": [
+        {
+          "end": "23:59",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381220"
+      ]
+    },
+    {
+      "date": "2026-11-06",
+      "region": "BARI",
+      "category": "AIRPORT",
+      "provider": "PERSONALE SOC. ENAV APT BARI",
+      "windows": [
+        {
+          "end": "17:00",
+          "start": "13:00",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381112",
+        "https://cgsse.it/calendario-scioperi"
+      ]
+    },
+    {
+      "date": "2026-11-21",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "provider": "PERSONALE SOC. ENAV",
+      "windows": [
+        {
+          "end": "17:00",
+          "start": "13:00",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        "https://cgsse.it/calendario-scioperi",
+        "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381401"
+      ]
+    },
+    {
+      "date": "2026-11-22",
+      "region": "MILANO",
+      "category": "AIRPORT",
+      "provider": "PERSONALE SOC. ENAV AEROPORTO DI MILANO MALPENSA",
+      "windows": [
+        {
+          "end": "24:00",
+          "start": "00:01",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        "https://cgsse.it/calendario-scioperi"
+      ]
+    }
+  ]
+}

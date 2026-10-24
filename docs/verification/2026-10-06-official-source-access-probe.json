@@ -1,0 +1,134 @@
+[
+  {
+    "url": "https://www.ctmcagliari.it/comunicati/",
+    "status": 200,
+    "type": "text/html; charset=UTF-8",
+    "redirect": null,
+    "size": 72713,
+    "title": "CTM SpA - Linea 6: spostamento temporaneo fermata dell’Abbazia (fronte Conversi)",
+    "blocked": true
+  },
+  {
+    "url": "https://www.ctmcagliari.it/notizie/",
+    "status": 200,
+    "type": "text/html; charset=UTF-8",
+    "redirect": null,
+    "size": 115639,
+    "title": "CTM SpA - CTM seleziona un/una Addetto/a Approvvigionamenti",
+    "blocked": true
+  },
+  {
+    "url": "https://www.ctmcagliari.it/feed/",
+    "status": 200,
+    "type": "application/rss+xml; charset=UTF-8",
+    "redirect": null,
+    "size": 15080,
+    "title": "CTM SpA",
+    "blocked": false
+  },
+  {
+    "url": "https://www.bresciamobilita.it/",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 376,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://bresciamobilita.it/",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 368,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.bresciamobilita.it/news",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 380,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.trenord.it/news/trenord-informa/avvisi/",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 412,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.trenord.it/it/news/trenord-informa/avvisi/sciopero/",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 432,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.trenord.it/news/trenord-informa/avvisi/sciopero/",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 425,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.toscana-aeroporti.com/it/news/",
+    "status": 200,
+    "type": "text/html; charset=utf-8",
+    "redirect": null,
+    "size": 562,
+    "blocked": false
+  },
+  {
+    "url": "https://www.toscana-aeroporti.com/it/comunicati-stampa",
+    "status": 200,
+    "type": "text/html; charset=utf-8",
+    "redirect": null,
+    "size": 562,
+    "blocked": false
+  },
+  {
+    "url": "https://www.veneziaairport.it/it_it/news.html",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 402,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.veneziaairport.it/en_en/news.html",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 402,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio",
+    "status": 403,
+    "type": "text/html",
+    "redirect": null,
+    "size": 447,
+    "title": "Access Denied",
+    "blocked": true
+  },
+  {
+    "url": "https://cgsse.it/calendario-scioperi/dettaglio-sciopero/381401",
+    "error": "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+  },
+  {
+    "url": "https://www.cgsse.it/calendario-scioperi/dettaglio-sciopero/381401",
+    "error": "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
+  }
+]

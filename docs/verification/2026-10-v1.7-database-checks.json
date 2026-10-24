@@ -1,0 +1,729 @@
+{
+  "checked_at": "2026-10-05T08:02:14.271Z",
+  "allPassed": true,
+  "unsupportedLocationsPreserved": true,
+  "legacyRetired": true,
+  "currentVersion": "semantic-v5",
+  "reviewCount": 26,
+  "dispositions": {
+    "AGREES": 11,
+    "INCONCLUSIVE": 15
+  },
+  "budget": [
+    {
+      "month": "2026-10-01",
+      "charged_micro_usd": 4267,
+      "disabled": false
+    }
+  ],
+  "cacheReusedWithoutSpend": true,
+  "before_micro_usd": 4267,
+  "after_micro_usd": 4267,
+  "selected": [
+    {
+      "date": "2026-10-14",
+      "region": "FIRENZE",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA人员",
+      "fields": {
+        "timing": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "end": "17:00",
+              "start": "09:01"
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "INTERA GIORNATA DI LAVORO - FERROVIARIO: DALLE 09.01 ALLE 17.00 / APPALTI FERROVIARI: SECONDO MEZZO TURNO DEL TURNO DI LAVORO / TPL: 4 ORE VARIE MODALITA' / TRASPORTO MERCI SU ROTAIA: INTERA PRESTAZIONE LAVORATIVA",
+          "confidence": "HIGH"
+        },
+        "location": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "FIRENZE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "Toscana | Tutte | Regionale | SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+          "confidence": "HIGH"
+        },
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_GENERAL",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": " DALLE 09.01 ALLE 17.00 / ",
+          "confidence": "HIGH"
+        },
+        "exclusions": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "ESCLUSO SETTORE TRASPORTO AEREO E PERSONALE SOC. GEST DI FIRENZE"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "ESCLUSO SETTORE TRASPORTO AEREO E PERSONALE SOC. GEST DI FIRENZE",
+          "confidence": "HIGH"
+        },
+        "railSections": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "text": "DALLE 09.01 ALLE 17.00",
+              "subject": "RAIL_SERVICE",
+              "representedByThisEvent": true
+            },
+            {
+              "text": "SECONDO MEZZO TURNO DEL TURNO DI LAVORO",
+              "subject": "RAIL_CONTRACTORS",
+              "representedByThisEvent": false
+            },
+            {
+              "text": "INTERA PRESTAZIONE LAVORATIVA",
+              "subject": "RAIL_FREIGHT",
+              "representedByThisEvent": false
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "INTERA GIORNATA DI LAVORO - FERROVIARIO: DALLE 09.01 ALLE 17.00 / APPALTI FERROVIARI: SECONDO MEZZO TURNO DEL TURNO DI LAVORO / TPL: 4 ORE VARIE MODALITA' / TRASPORTO MERCI SU ROTAIA: INTERA PRESTAZIONE LAVORATIVA",
+          "confidence": "HIGH"
+        },
+        "affectedLines": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeType": "GUARANTEED_SERVICE",
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "guaranteeSource": "UNKNOWN",
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "DIRECT_SERVICE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+          "confidence": "HIGH"
+        },
+        "affectedAirports": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedOperators": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Toscana",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Toscana | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "FIRENZE",
+            "PISA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+          "confidence": "HIGH"
+        }
+      },
+      "windows": [
+        {
+          "end": "17:00",
+          "start": "09:01",
+          "end_kind": "clock"
+        }
+      ],
+      "semantic": {
+        "date": "14/10/2026",
+        "version": "semantic-v5",
+        "end_date": "14/10/2026",
+        "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+        "checked_at": "2026-10-05T07:59:21.074Z",
+        "confidence": {
+          "locationRole": 0.34,
+          "locationChoice": 0.9,
+          "transportSubtype": 0.99
+        },
+        "input_hash": "67f4bd596d3e78e354b3f306895c4db43febd8d9146155a337069134966ad6e8",
+        "source_key": "0b1670c8d3c13251d8ff96f38bd0d319d58611ccdf70687d07854a43ca2e6e1a",
+        "disposition": "AGREES",
+        "locationRole": "AFFECTED_AREA",
+        "duplicateRisk": 0.19,
+        "reviewReasons": [],
+        "locationChoice": "CURRENT",
+        "sourceConflict": 0.24,
+        "transportSubtype": "RAIL_GENERAL",
+        "parserOverExpanded": 0.39,
+        "parserOmittedImpact": 0.53
+      }
+    },
+    {
+      "date": "2026-10-14",
+      "region": "PISA",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA人员",
+      "fields": {
+        "timing": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "end": "17:00",
+              "start": "09:01"
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "INTERA GIORNATA DI LAVORO - FERROVIARIO: DALLE 09.01 ALLE 17.00 / APPALTI FERROVIARI: SECONDO MEZZO TURNO DEL TURNO DI LAVORO / TPL: 4 ORE VARIE MODALITA' / TRASPORTO MERCI SU ROTAIA: INTERA PRESTAZIONE LAVORATIVA",
+          "confidence": "HIGH"
+        },
+        "location": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "PISA",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "Toscana | Tutte | Regionale | SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+          "confidence": "HIGH"
+        },
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_GENERAL",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": " DALLE 09.01 ALLE 17.00 / ",
+          "confidence": "HIGH"
+        },
+        "exclusions": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "ESCLUSO SETTORE TRASPORTO AEREO E PERSONALE SOC. GEST DI FIRENZE"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "ESCLUSO SETTORE TRASPORTO AEREO E PERSONALE SOC. GEST DI FIRENZE",
+          "confidence": "HIGH"
+        },
+        "railSections": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "text": "DALLE 09.01 ALLE 17.00",
+              "subject": "RAIL_SERVICE",
+              "representedByThisEvent": true
+            },
+            {
+              "text": "SECONDO MEZZO TURNO DEL TURNO DI LAVORO",
+              "subject": "RAIL_CONTRACTORS",
+              "representedByThisEvent": false
+            },
+            {
+              "text": "INTERA PRESTAZIONE LAVORATIVA",
+              "subject": "RAIL_FREIGHT",
+              "representedByThisEvent": false
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "INTERA GIORNATA DI LAVORO - FERROVIARIO: DALLE 09.01 ALLE 17.00 / APPALTI FERROVIARI: SECONDO MEZZO TURNO DEL TURNO DI LAVORO / TPL: 4 ORE VARIE MODALITA' / TRASPORTO MERCI SU ROTAIA: INTERA PRESTAZIONE LAVORATIVA",
+          "confidence": "HIGH"
+        },
+        "affectedLines": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeType": "GUARANTEED_SERVICE",
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "guaranteeSource": "UNKNOWN",
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "DIRECT_SERVICE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+          "confidence": "HIGH"
+        },
+        "affectedAirports": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedOperators": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Toscana",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Toscana | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "FIRENZE",
+            "PISA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+          "confidence": "HIGH"
+        }
+      },
+      "windows": [
+        {
+          "end": "17:00",
+          "start": "09:01",
+          "end_kind": "clock"
+        }
+      ],
+      "semantic": {
+        "date": "14/10/2026",
+        "version": "semantic-v5",
+        "end_date": "14/10/2026",
+        "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+        "checked_at": "2026-10-05T07:59:21.074Z",
+        "confidence": {
+          "locationRole": 0.34,
+          "locationChoice": 0.9,
+          "transportSubtype": 0.99
+        },
+        "input_hash": "67f4bd596d3e78e354b3f306895c4db43febd8d9146155a337069134966ad6e8",
+        "source_key": "0b1670c8d3c13251d8ff96f38bd0d319d58611ccdf70687d07854a43ca2e6e1a",
+        "disposition": "AGREES",
+        "locationRole": "AFFECTED_AREA",
+        "duplicateRisk": 0.19,
+        "reviewReasons": [],
+        "locationChoice": "CURRENT",
+        "sourceConflict": 0.24,
+        "transportSubtype": "RAIL_GENERAL",
+        "parserOverExpanded": 0.39,
+        "parserOmittedImpact": 0.53
+      }
+    },
+    {
+      "date": "2026-10-15",
+      "region": "UNKNOWN",
+      "provider": "ATAF FOGGIA人员",
+      "fields": {
+        "timing": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "end": "24:00",
+              "start": "00:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "24 ORE",
+          "confidence": "HIGH"
+        },
+        "location": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "exclusions": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedLines": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeType": "GUARANTEED_SERVICE",
+        "locationStatus": "UNSUPPORTED_CITY",
+        "guaranteeSource": "UNKNOWN",
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedAirports": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedOperators": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PERSONALE SOC. ATAF DI FOGGIA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ATAF DI FOGGIA",
+          "confidence": "HIGH"
+        },
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Puglia",
+            "province": "Foggia",
+            "relevance": "Locale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Puglia | Foggia | Locale",
+          "confidence": "HIGH"
+        },
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ATAF DI FOGGIA",
+          "confidence": "HIGH"
+        }
+      },
+      "windows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "semantic": {
+        "date": "15/10/2026",
+        "version": "semantic-v5",
+        "end_date": "15/10/2026",
+        "provider": "PERSONALE SOC. ATAF DI FOGGIA",
+        "checked_at": "2026-10-05T07:59:21.074Z",
+        "confidence": {
+          "locationRole": 0.97,
+          "locationChoice": 0.76,
+          "transportSubtype": 1
+        },
+        "input_hash": "d29b8976adf0bb32eeeb6c246d451e8a1c28e9ef6ea693f89d1e6d44fe0a23b8",
+        "source_key": "964f5ac745c6e1f9c0aa4f192225a979a0988b7d826440a5adb5ac9ffa786e78",
+        "disposition": "INCONCLUSIVE",
+        "locationRole": "ORGANIZATION",
+        "duplicateRisk": 0.16,
+        "reviewReasons": [],
+        "locationChoice": "UNKNOWN",
+        "sourceConflict": 0.2,
+        "transportSubtype": "UNKNOWN",
+        "parserOverExpanded": 0.15,
+        "parserOmittedImpact": 0.43
+      }
+    },
+    {
+      "date": "2026-10-20",
+      "region": "UNKNOWN",
+      "provider": "ARRIVA UDINE UDINE人员",
+      "fields": {
+        "timing": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "end": "24:00",
+              "start": "15:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "9 ORE: DALLE 15.00 ALLE 24.00",
+          "confidence": "HIGH"
+        },
+        "location": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "exclusions": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedLines": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeType": "GUARANTEED_SERVICE",
+        "locationStatus": "UNSUPPORTED_CITY",
+        "guaranteeSource": "UNKNOWN",
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedAirports": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedOperators": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PERSONALE SOC. ARRIVA UDINE DI UDINE"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+          "confidence": "HIGH"
+        },
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Friuli-Venezia Giulia",
+            "province": "Udine",
+            "relevance": "Locale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Friuli-Venezia Giulia | Udine | Locale",
+          "confidence": "HIGH"
+        },
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+          "confidence": "HIGH"
+        }
+      },
+      "windows": [
+        {
+          "end": "24:00",
+          "start": "15:00",
+          "end_kind": "clock"
+        }
+      ],
+      "semantic": {
+        "date": "20/10/2026",
+        "version": "semantic-v5",
+        "end_date": "20/10/2026",
+        "provider": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+        "checked_at": "2026-10-05T07:59:21.074Z",
+        "confidence": {
+          "locationRole": 0.95,
+          "locationChoice": 0.79,
+          "transportSubtype": 1
+        },
+        "input_hash": "6fe5e1b9ff7e403a544fe967e318aec8fc805429e8bf4f95191122180da53b44",
+        "source_key": "f791195da0aa883c430a97c30f629286894a151ec346fcc12ed2870a61a4bef9",
+        "disposition": "INCONCLUSIVE",
+        "locationRole": "ORGANIZATION",
+        "duplicateRisk": 0.14,
+        "reviewReasons": [],
+        "locationChoice": "UNKNOWN",
+        "sourceConflict": 0.21,
+        "transportSubtype": "UNKNOWN",
+        "parserOverExpanded": 0.14,
+        "parserOmittedImpact": 0.44
+      }
+    },
+    {
+      "date": "2026-10-29",
+      "region": "BOLOGNA",
+      "provider": "意大利国家铁路人员 / REGGIO EMILIA STORICA ED AV MEDIOPADANA人员 / RIMINI人员",
+      "fields": {
+        "timing": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            {
+              "end": "23:59",
+              "start": "00:00"
+            }
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "24 ORE: DALLE 00.00 ALLE 23.59",
+          "confidence": "HIGH"
+        },
+        "location": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "BOLOGNA",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "Emilia-Romagna | Tutte | Regionale | PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_OPERATOR",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "exclusions": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "railSections": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedLines": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeType": "GUARANTEED_SERVICE",
+        "locationStatus": "SUPPORTED_PROJECTION",
+        "guaranteeSource": "UNKNOWN",
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "DIRECT_SERVICE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "affectedAirports": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "affectedOperators": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        },
+        "officialGeography": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": {
+            "region": "Emilia-Romagna",
+            "province": "Tutte",
+            "relevance": "Regionale"
+          },
+          "method": "OFFICIAL",
+          "source": "MIT",
+          "excerpt": "Emilia-Romagna | Tutte | Regionale",
+          "confidence": "HIGH"
+        },
+        "guaranteedServiceWindow": {
+          "value": [],
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "supportedCityProjection": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": [
+            "BOLOGNA"
+          ],
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+          "confidence": "HIGH"
+        }
+      },
+      "windows": [
+        {
+          "end": "23:59",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "semantic": {
+        "date": "29/10/2026",
+        "version": "semantic-v5",
+        "end_date": "29/10/2026",
+        "provider": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+        "checked_at": "2026-10-05T07:59:21.074Z",
+        "confidence": {
+          "locationRole": 0.8,
+          "locationChoice": 0.85,
+          "transportSubtype": 0.76
+        },
+        "input_hash": "c2fe9fa5dc0a57580827f2216dec3890ffb1bb53d89bf6c63b4056109240415a",
+        "source_key": "91c67d7b035837c2da768fd69fb288be78492aab5eb4b3cde63a46c54d788267",
+        "disposition": "INCONCLUSIVE",
+        "locationRole": "ORGANIZATION",
+        "duplicateRisk": 0.17,
+        "reviewReasons": [],
+        "locationChoice": "CURRENT",
+        "sourceConflict": 0.25,
+        "transportSubtype": "RAIL_OPERATOR",
+        "parserOverExpanded": 0.22,
+        "parserOmittedImpact": 0.35
+      }
+    }
+  ]
+}

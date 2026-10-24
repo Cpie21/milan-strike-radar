@@ -1,0 +1,1048 @@
+{
+  "checkedAt": "2026-10-06T11:50:28.823Z",
+  "origin": "https://www.theitalystrike.com",
+  "checks": [
+    {
+      "params": {
+        "region": "TORINO",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "ROMA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "NAPOLI",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "NAPOLI",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "ROMA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "TORINO",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "NAPOLI",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "TORINO",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "ROMA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "NAPOLI",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "ROMA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "TORINO",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "GENOVA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "FIRENZE",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VENEZIA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "FIRENZE",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "GENOVA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BOLOGNA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VENEZIA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "GENOVA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "FIRENZE",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BOLOGNA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VENEZIA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "GENOVA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "FIRENZE",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BOLOGNA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VENEZIA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BOLOGNA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CATANIA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VERONA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PALERMO",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BARI",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CATANIA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VERONA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PALERMO",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CATANIA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VERONA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CATANIA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BARI",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PALERMO",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "VERONA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BARI",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PALERMO",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BARI",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PADOVA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "TRIESTE",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BERGAMO",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CAGLIARI",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PADOVA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "TRIESTE",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CAGLIARI",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "TRIESTE",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BERGAMO",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CAGLIARI",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PADOVA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "TRIESTE",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BERGAMO",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "CAGLIARI",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PADOVA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BERGAMO",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PERUGIA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BRESCIA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MESSINA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PISA",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PERUGIA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MESSINA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BRESCIA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PERUGIA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PISA",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BRESCIA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PERUGIA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PISA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MESSINA",
+        "date": "2026-10-09",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "BRESCIA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "PISA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MESSINA",
+        "date": "2026-10-09",
+        "category": "AIRPORT"
+      },
+      "http": 200,
+      "events": 0
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "SUBWAY"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "BUS",
+        "line": "90"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "BUS",
+        "line": "91"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "MILANO",
+        "date": "2026-10-09",
+        "category": "SUBWAY",
+        "line": "M1"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "FIRENZE",
+        "date": "2026-10-10",
+        "category": "BUS"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "NAPOLI",
+        "date": "2026-10-16",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 1
+    },
+    {
+      "params": {
+        "region": "PALERMO",
+        "date": "2026-10-08",
+        "category": "TRAIN"
+      },
+      "http": 200,
+      "events": 0
+    }
+  ],
+  "allPassed": true,
+  "metroLines": [
+    {
+      "displayName": "M1",
+      "routeLongNames": [
+        "m1 - linea rossa"
+      ],
+      "routeIds": [
+        "M1"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "SUBWAY",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false,
+      "scheduledReference": {
+        "source": "https://dati.comune.milano.it/gtfs.zip",
+        "checkedAt": "2026-10-06T11:48:49.774Z",
+        "kind": "SCHEDULED_REFERENCE",
+        "firstDeparture": {
+          "clock": "05:40",
+          "seconds": 20400,
+          "dayOffset": 0
+        },
+        "lastDeparture": {
+          "clock": "00:20",
+          "seconds": 87600,
+          "dayOffset": 1
+        },
+        "lastArrival": {
+          "clock": "00:55",
+          "seconds": 89730,
+          "dayOffset": 1
+        }
+      }
+    },
+    {
+      "displayName": "M2",
+      "routeLongNames": [
+        "m2 - linea verde"
+      ],
+      "routeIds": [
+        "M2"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "SUBWAY",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false,
+      "scheduledReference": {
+        "source": "https://dati.comune.milano.it/gtfs.zip",
+        "checkedAt": "2026-10-06T11:48:49.774Z",
+        "kind": "SCHEDULED_REFERENCE",
+        "firstDeparture": {
+          "clock": "05:40",
+          "seconds": 20400,
+          "dayOffset": 0
+        },
+        "lastDeparture": {
+          "clock": "00:32",
+          "seconds": 88320,
+          "dayOffset": 1
+        },
+        "lastArrival": {
+          "clock": "01:30",
+          "seconds": 91800,
+          "dayOffset": 1
+        }
+      }
+    },
+    {
+      "displayName": "M3",
+      "routeLongNames": [
+        "m3 - linea gialla"
+      ],
+      "routeIds": [
+        "M3"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "SUBWAY",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false,
+      "scheduledReference": {
+        "source": "https://dati.comune.milano.it/gtfs.zip",
+        "checkedAt": "2026-10-06T11:48:49.774Z",
+        "kind": "SCHEDULED_REFERENCE",
+        "firstDeparture": {
+          "clock": "05:40",
+          "seconds": 20400,
+          "dayOffset": 0
+        },
+        "lastDeparture": {
+          "clock": "00:23",
+          "seconds": 87810,
+          "dayOffset": 1
+        },
+        "lastArrival": {
+          "clock": "00:53",
+          "seconds": 89580,
+          "dayOffset": 1
+        }
+      }
+    },
+    {
+      "displayName": "M4",
+      "routeLongNames": [
+        "m4 - linea blu"
+      ],
+      "routeIds": [
+        "M4"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "SUBWAY",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false,
+      "scheduledReference": {
+        "source": "https://dati.comune.milano.it/gtfs.zip",
+        "checkedAt": "2026-10-06T11:48:49.774Z",
+        "kind": "SCHEDULED_REFERENCE",
+        "firstDeparture": {
+          "clock": "05:40",
+          "seconds": 20400,
+          "dayOffset": 0
+        },
+        "lastDeparture": {
+          "clock": "00:26",
+          "seconds": 87960,
+          "dayOffset": 1
+        },
+        "lastArrival": {
+          "clock": "00:53",
+          "seconds": 89603,
+          "dayOffset": 1
+        }
+      }
+    },
+    {
+      "displayName": "M5",
+      "routeLongNames": [
+        "m5 - linea lilla"
+      ],
+      "routeIds": [
+        "M5"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "SUBWAY",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false,
+      "scheduledReference": {
+        "source": "https://dati.comune.milano.it/gtfs.zip",
+        "checkedAt": "2026-10-06T11:48:49.774Z",
+        "kind": "SCHEDULED_REFERENCE",
+        "firstDeparture": {
+          "clock": "05:40",
+          "seconds": 20400,
+          "dayOffset": 0
+        },
+        "lastDeparture": {
+          "clock": "00:01",
+          "seconds": 86460,
+          "dayOffset": 1
+        },
+        "lastArrival": {
+          "clock": "00:28",
+          "seconds": 88084,
+          "dayOffset": 1
+        }
+      }
+    }
+  ],
+  "busPotentialLineCount": 161,
+  "busExamples": [
+    {
+      "displayName": "90",
+      "routeLongNames": [
+        "lodi m3 - lotto (circolare destra)"
+      ],
+      "routeIds": [
+        "B90"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "BUS",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false
+    },
+    {
+      "displayName": "91",
+      "routeLongNames": [
+        "lotto - lodi m3 (circolare sinistra)"
+      ],
+      "routeIds": [
+        "B91"
+      ],
+      "routeAliases": [],
+      "operatorId": "ATM_MILANO",
+      "mode": "BUS",
+      "reason": "WITHIN_DECLARED_OPERATOR_SCOPE",
+      "confidence": "HIGH",
+      "noticeSource": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+      "catalogSource": "https://dati.comune.milano.it/gtfs.zip",
+      "catalogCheckedAt": "2026-10-06T11:48:53.969Z",
+      "catalogFeedId": "GTFS_MILANO",
+      "catalogHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "actualOperationConfirmed": false
+    }
+  ],
+  "actualOperationConfirmed": false
+}

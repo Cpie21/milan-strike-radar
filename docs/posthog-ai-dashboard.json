@@ -1,0 +1,1368 @@
+{
+  "projectId": 136776,
+  "dashboardId": 1004559,
+  "dashboardUrl": "https://eu.posthog.com/project/136776/dashboard/1004559",
+  "schemaVersion": 3,
+  "metricStatus": "Project-specific exploratory definitions; complete accessible information-schema metric catalog is empty (0 definitions). metric-list API scope-gated.",
+  "insights": [
+    {
+      "name": "AI 使用趋势",
+      "description": "每日事件数，排除测试，版本2起；多个问题按多个事件计算。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_query_submitted",
+              "math": "total",
+              "name": "提交问题"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_result_viewed",
+              "math": "total",
+              "name": "看到回答"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_feedback_stored",
+              "math": "total",
+              "name": "反馈入库"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6396947,
+      "shortId": "M1fGHmDA"
+    },
+    {
+      "name": "AI 实际入口→编辑→提交→回答",
+      "description": "30分钟有序用户漏斗；入口须前台可见1秒。用户级可跨问题，同问题请看请求表。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_input_attention",
+              "custom_name": "入口可见",
+              "properties": [
+                {
+                  "key": "milestone_seconds",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "1"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_input_started",
+              "custom_name": "编辑",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_query_submitted",
+              "custom_name": "提交",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_result_viewed",
+              "custom_name": "回答显示",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "funnelsFilter": {
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 30,
+            "funnelWindowIntervalUnit": "minute",
+            "funnelVizType": "steps"
+          }
+        }
+      },
+      "id": 6396949,
+      "shortId": "WtMlneTh"
+    },
+    {
+      "name": "同一个问题的完成与行动",
+      "description": "按request_id关联去重，最近30天。缓存路径不要求API事件。行动=查看日期或分享API成功；无完成回执不是自动判定失败。非规范指标。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT if(cached = 1, '缓存', '网络') AS path, count() AS submitted_attempts, countIf(admitted = 1) AS api_admitted, countIf(completed = 1) AS api_completed, countIf(received = 1) AS received_attempts, countIf(viewed = 1) AS viewed_attempts, countIf(viewed = 1 AND action = 1) AS acted, countIf(failed = 1) AS failure_receipt FROM (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2 AND (coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id))\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) WHERE submitted = 1 GROUP BY path LIMIT 10"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6396950,
+      "shortId": "Wm6jlDAy"
+    },
+    {
+      "name": "回答类型与已保存反馈",
+      "description": "同一request_id对齐展示结果与最新已入库评分；评价反映用户感受，不证明事实正确。查看但未评价单列。最近30天。非规范指标。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT kind, level, fallback, count() AS viewed_answers, countIf(assumption_count > 0) AS with_assumptions, countIf(rating = 'good') AS good, countIf(rating = 'bad') AS bad, countIf(rating != 'good' AND rating != 'bad') AS unrated FROM (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2 AND (coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id))\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) WHERE viewed = 1 GROUP BY kind, level, fallback LIMIT 30"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6396951,
+      "shortId": "Wjei4I0c"
+    },
+    {
+      "name": "澄清后是否继续并看到新回答",
+      "description": "parent_request_id关联已展示的澄清与后续问题；同一父问题去重。日期和交通澄清分开。最近30天。非规范指标。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "WITH attempts AS (SELECT properties.request_id AS request_id,\n max(event = 'ai_query_submitted') AS submitted, max(event = 'ai_query_started') AS admitted,\n max(event = 'ai_query_completed') AS completed, max(event = 'ai_response_received') AS received,\n max(event = 'ai_result_viewed') AS viewed, max(event = 'ai_cache_hit') AS cached,\n max(event = 'ai_query_error' OR event = 'ai_query_failed' OR event = 'ai_query_blocked' OR event = 'ai_query_rejected') AS failed,\n max(event = 'ai_result_day_opened' OR (event = 'ai_answer_share_outcome' AND properties.outcome = 'completed')) AS action,\n argMaxIf(properties.result_kind, timestamp, event = 'ai_result_viewed') AS kind,\n argMaxIf(properties.level, timestamp, event = 'ai_result_viewed') AS level,\n argMaxIf(properties.fallback, timestamp, event = 'ai_result_viewed') AS fallback,\n argMaxIf(properties.assumption_count, timestamp, event = 'ai_result_viewed') AS assumption_count,\n argMaxIf(properties.rating, timestamp, event = 'ai_feedback_stored') AS rating,\n argMaxIf(properties.missing, timestamp, event = 'ai_clarification_shown') AS missing,\n argMaxIf(properties.parent_request_id, timestamp, event = 'ai_query_submitted') AS parent_id\n FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version >= 2 AND (coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id))\n AND event IN ('ai_query_submitted','ai_query_started','ai_query_completed','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_error','ai_query_failed','ai_query_blocked','ai_query_rejected','ai_result_day_opened','ai_answer_share_outcome','ai_feedback_stored','ai_clarification_shown')\n AND properties.request_id IS NOT NULL GROUP BY request_id) SELECT p.missing AS missing, count() AS clarifications_viewed, countIf(coalesce(c.children, 0) > 0) AS parents_continued, countIf(coalesce(c.child_viewed, 0) > 0) AS parents_with_child_viewed FROM attempts p LEFT JOIN (SELECT parent_id, countIf(submitted = 1) AS children, max(viewed) AS child_viewed FROM attempts WHERE parent_id IS NOT NULL AND parent_id != '' GROUP BY parent_id) c ON p.request_id = c.parent_id WHERE p.kind = 'clarify' AND p.viewed = 1 GROUP BY p.missing LIMIT 10"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6396952,
+      "shortId": "VTVd2pBD"
+    },
+    {
+      "name": "AI 首字节与完整回答 P50/P95",
+      "description": "客户端首段流字节和完整网络回答等待时间；缓存不参与。单位毫秒。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_stream_started",
+              "custom_name": "首字节 P50",
+              "math": "median",
+              "math_property": "duration_ms",
+              "math_property_type": "event",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_stream_started",
+              "custom_name": "首字节 P95",
+              "math": "p95",
+              "math_property": "duration_ms",
+              "math_property_type": "event",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_response_received",
+              "custom_name": "完整回答 P50",
+              "math": "median",
+              "math_property": "duration_ms",
+              "math_property_type": "event",
+              "properties": [
+                {
+                  "key": "result_source",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "network"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_response_received",
+              "custom_name": "完整回答 P95",
+              "math": "p95",
+              "math_property": "duration_ms",
+              "math_property_type": "event",
+              "properties": [
+                {
+                  "key": "result_source",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "network"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6396953,
+      "shortId": "Ht9bFM5t"
+    },
+    {
+      "name": "AI 每次请求结果（去重）",
+      "description": "固定滚动30天。按request_id去重；成功响应优先；浏览器/服务端同错只算一次。缺最终事件为unresolved，非失败。不展示原文。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT multiIf(received>0 AND cached>0,'CACHE_RECEIVED', received>0,'NETWORK_RECEIVED',limited>0,'CLIENT_LIMITED',rejected>0,'SERVER_REJECTED',failed>0,'FAILED_WITHOUT_RESPONSE',cancelled>0,'CANCELLED',completed>0,'SERVER_COMPLETED_NO_RECEIPT','NO_TERMINAL_TELEMETRY') AS outcome, if(received>0,'',coalesce(code,'')) AS error_reason, count() AS attempts, countIf(viewed>0) AS viewed_attempts FROM (SELECT properties.request_id AS rid,\nmax(event='ai_query_submitted') AS submitted,\nmax(event='ai_response_received') AS received,\nmax(event='ai_result_viewed') AS viewed,\nmax(event='ai_cache_hit') AS cached,\nmax(event='ai_query_completed') AS completed,\nmax(event='ai_query_error' OR event='ai_query_failed') AS failed,\nmax(event='ai_query_rejected') AS rejected,\nmax(event='ai_query_blocked') AS limited,\nmax(event='ai_query_cancelled') AS cancelled,\nargMaxIf(properties.error_code,timestamp,event IN ('ai_query_error','ai_query_failed','ai_query_rejected','ai_query_blocked')) AS code\nFROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version > 1 AND coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id) AND properties.request_id IS NOT NULL AND event IN ('ai_query_submitted','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_completed','ai_query_error','ai_query_failed','ai_query_rejected','ai_query_blocked','ai_query_cancelled')\nGROUP BY rid) WHERE submitted>0 GROUP BY outcome,error_reason ORDER BY attempts DESC"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6396955,
+      "shortId": "FSpY0E4U"
+    },
+    {
+      "name": "AI 缓存与网络响应",
+      "description": "每次尝试的响应来源；缓存复用不会再调用模型，也不重复统计旧答案成本。按result_source分组。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_response_received",
+              "math": "total"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsBar"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "result_source",
+                "type": "event"
+              }
+            ]
+          }
+        }
+      },
+      "id": 6396956,
+      "shortId": "x3m9p37p"
+    },
+    {
+      "name": "AI 输入后的提交、清空与离开",
+      "description": "输入开始、清空、失焦且未提交的编辑片段、提交次数。离开输入不代表用户整次访问放弃；不采集文本/逐字输入。发布后采集。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_input_started",
+              "math": "total"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_input_cleared",
+              "math": "total"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_input_abandoned",
+              "math": "total"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_query_submitted",
+              "math": "total"
+            }
+          ],
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6396966,
+      "shortId": "qgIoT2SN"
+    },
+    {
+      "name": "AI 回答实际停留 1 / 5 / 15 秒",
+      "description": "前台且可见区域达到1/5/15秒的展示片段数；关闭、后台和非当前历史页暂停，重复跨阈值不重报。是注意力代理，不证明阅读理解。发布后采集。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_attention",
+              "math": "total",
+              "name": "1秒",
+              "properties": [
+                {
+                  "key": "milestone_seconds",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_attention",
+              "math": "total",
+              "name": "5秒",
+              "properties": [
+                {
+                  "key": "milestone_seconds",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": 5
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_attention",
+              "math": "total",
+              "name": "15秒",
+              "properties": [
+                {
+                  "key": "milestone_seconds",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": 15
+                }
+              ]
+            }
+          ],
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6396967,
+      "shortId": "ujZFLYTw"
+    },
+    {
+      "name": "查看罢工、核对来源与使用工具",
+      "description": "卡片可见1秒、展开来源、点来源链接、工具交通选择、日历订阅意图与小组件复制成功。每项是各自事件数，无权声称外部安装或订阅完成。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "strike_card_attention",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "milestone_seconds",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "strike_sources_toggled",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "expanded",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "true"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "official_source_clicked",
+              "math": "total"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "tool_modes_changed",
+              "math": "total"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "calendar_subscription_requested",
+              "math": "total"
+            },
+            {
+              "kind": "EventsNode",
+              "event": "widget_copy_succeeded",
+              "math": "total"
+            }
+          ],
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6396968,
+      "shortId": "EipYMq0e"
+    },
+    {
+      "name": "AI 提问来源与城市",
+      "description": "事件次数按输入来源/页面城市拆分；refinement为续问，不能当新付费问题。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_query_submitted",
+              "custom_name": "提问",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "input_source",
+                "type": "event"
+              },
+              {
+                "property": "region",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399071,
+      "shortId": "TzBXP4Pp"
+    },
+    {
+      "name": "AI 用户语言与设备",
+      "description": "提交次数按选择语言与设备拆分，匿名设备不等于真实人数。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_query_submitted",
+              "custom_name": "提问",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "language",
+                "type": "event"
+              },
+              {
+                "property": "device",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399072,
+      "shortId": "TzPanwia"
+    },
+    {
+      "name": "AI 四个判断阶段耗时",
+      "description": "服务端阶段duration_ms，P50/P95按stage拆分；不把等待渲染当模型耗时。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_stage_completed",
+              "custom_name": "P50",
+              "math": "median",
+              "math_property": "duration_ms",
+              "math_property_type": "event",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_stage_completed",
+              "custom_name": "P95",
+              "math": "p95",
+              "math_property": "duration_ms",
+              "math_property_type": "event",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "stage",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399073,
+      "shortId": "nDU3Q0Fv"
+    },
+    {
+      "name": "AI 规则·模型·默认与低置信事实",
+      "description": "阶段内事实计数求和，仅诊断解析方式，不等于真实性评分。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_stage_completed",
+              "custom_name": "规则",
+              "math": "sum",
+              "math_property": "rule_fact_count",
+              "math_property_type": "event",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_stage_completed",
+              "custom_name": "模型",
+              "math": "sum",
+              "math_property": "model_fact_count",
+              "math_property_type": "event",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_stage_completed",
+              "custom_name": "默认",
+              "math": "sum",
+              "math_property": "default_fact_count",
+              "math_property_type": "event",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_stage_completed",
+              "custom_name": "低置信",
+              "math": "sum",
+              "math_property": "low_confidence_fact_count",
+              "math_property_type": "event",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "stage",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399074,
+      "shortId": "oBKm6ruy"
+    },
+    {
+      "name": "AI 回答类型与降级",
+      "description": "实际显示的回答按类型及fallback拆分；UNKNOWN/澄清不算错误，未覆盖单独可见。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_result_viewed",
+              "custom_name": "回答显示",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsTable"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "result_kind",
+                "type": "event"
+              },
+              {
+                "property": "fallback",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399075,
+      "shortId": "oT1NteJ2"
+    },
+    {
+      "name": "AI 差评原因（实际入库）",
+      "description": "仅server ai_feedback_stored的bad，按原因展示；选择bad而未提交原因不计入。好评不等于事实核验。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_feedback_stored",
+              "custom_name": "已保存差评",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "rating",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "bad"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsBarValue"
+          },
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "reason",
+                "type": "event"
+              }
+            ],
+            "breakdown_limit": 25
+          }
+        }
+      },
+      "id": 6399077,
+      "shortId": "OigCJ96y"
+    },
+    {
+      "name": "AI 反馈展示→选择差评→原因→入库",
+      "description": "有序30分钟用户漏斗；不是同问题漏斗。同请求存储真值由请求表核对。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "FunnelsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_feedback_prompt_viewed",
+              "custom_name": "看到评分入口",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_feedback_selected",
+              "custom_name": "选差评",
+              "properties": [
+                {
+                  "key": "rating",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "bad"
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_feedback_reason_selected",
+              "custom_name": "选择原因",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_feedback_stored",
+              "custom_name": "差评入库",
+              "properties": [
+                {
+                  "key": "rating",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "bad"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "funnelsFilter": {
+            "funnelOrderType": "ordered",
+            "funnelWindowInterval": 30,
+            "funnelWindowIntervalUnit": "minute",
+            "funnelVizType": "steps"
+          }
+        }
+      },
+      "id": 6399078,
+      "shortId": "rG3RnvNH"
+    },
+    {
+      "name": "AI 假设·核对范围·不完整提示·过程",
+      "description": "这些区块在前台可见1秒的次数，与打开修改/过程分开；不是阅读理解证明。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_assumptions_viewed",
+              "custom_name": "假设可见",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_assumption_edit_opened",
+              "custom_name": "修改假设",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_checked_scope_viewed",
+              "custom_name": "核对范围",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_incomplete_notice_viewed",
+              "custom_name": "不完整提示",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_trace_viewed",
+              "custom_name": "过程可见",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399079,
+      "shortId": "LRZzLqSF"
+    },
+    {
+      "name": "AI 限额提示·错误可见·后续重试",
+      "description": "提示/错误曝光和后续尝试按事件计数，不能相加当失败率；失败按请求去重另表。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_quota_notice_viewed",
+              "custom_name": "输入限额提示",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_error_viewed",
+              "custom_name": "错误实际可见",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_retry_submitted",
+              "custom_name": "失败后再问",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_refinement_expired",
+              "custom_name": "澄清过期",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399080,
+      "shortId": "JTDUF6ig"
+    },
+    {
+      "name": "AI 回答历史·关闭·重开与分享结果",
+      "description": "历史查看、重开、关闭与分享浏览器结果次数。原生分享完成不保证收件人收到。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "ai_history_viewed",
+              "custom_name": "旧回答",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_reopened",
+              "custom_name": "重开",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_closed",
+              "custom_name": "关闭",
+              "math": "total",
+              "properties": []
+            },
+            {
+              "kind": "EventsNode",
+              "event": "ai_answer_share_outcome",
+              "custom_name": "分享结果",
+              "math": "total",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "filterTestAccounts": true,
+          "trendsFilter": {
+            "display": "ActionsLineGraph"
+          }
+        }
+      },
+      "id": 6399081,
+      "shortId": "bUPivTzF"
+    },
+    {
+      "name": "首次看到AI回答后7日再用",
+      "description": "首次ai_result_viewed后按日再看到回答，可能缓存或新提问；不是付费留存。未成熟队列无结论。",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "RetentionQuery",
+          "properties": [
+            {
+              "key": "is_test",
+              "type": "event",
+              "operator": "exact",
+              "value": [
+                "false"
+              ]
+            },
+            {
+              "key": "analytics_version",
+              "type": "event",
+              "operator": "gt",
+              "value": 1
+            },
+            {
+              "type": "hogql",
+              "key": "coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id)"
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "filterTestAccounts": true,
+          "retentionFilter": {
+            "period": "Day",
+            "totalIntervals": 7,
+            "retentionType": "retention_first_time",
+            "retentionReference": "total",
+            "cumulative": false,
+            "targetEntity": {
+              "id": "ai_result_viewed",
+              "name": "ai_result_viewed",
+              "type": "events"
+            },
+            "returningEntity": {
+              "id": "ai_result_viewed",
+              "name": "ai_result_viewed",
+              "type": "events"
+            }
+          }
+        }
+      },
+      "id": 6399112,
+      "shortId": "eHz43Q62"
+    },
+    {
+      "name": "AI 失败后续问是否恢复（关联请求）",
+      "description": "固定滚动30天。ai_retry_submitted关联上次失败的parent_request_id，分别统计后续响应/显示；可能换了问题，不叫同题恢复率。",
+      "query": {
+        "kind": "DataVisualizationNode",
+        "source": {
+          "kind": "HogQLQuery",
+          "query": "SELECT count() AS retries, countIf(c.received>0) AS response_received, countIf(c.viewed>0) AS result_viewed, countIf(c.failed>0 AND c.received=0) AS failed_without_response FROM (SELECT properties.request_id AS child, argMax(properties.parent_request_id,timestamp) AS parent FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version > 1 AND coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id) AND event='ai_retry_submitted' GROUP BY child) AS r LEFT JOIN (SELECT properties.request_id AS rid,\nmax(event='ai_query_submitted') AS submitted,\nmax(event='ai_response_received') AS received,\nmax(event='ai_result_viewed') AS viewed,\nmax(event='ai_cache_hit') AS cached,\nmax(event='ai_query_completed') AS completed,\nmax(event='ai_query_error' OR event='ai_query_failed') AS failed,\nmax(event='ai_query_rejected') AS rejected,\nmax(event='ai_query_blocked') AS limited,\nmax(event='ai_query_cancelled') AS cancelled,\nargMaxIf(properties.error_code,timestamp,event IN ('ai_query_error','ai_query_failed','ai_query_rejected','ai_query_blocked')) AS code\nFROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = false AND properties.analytics_version > 1 AND coalesce(properties.$session_id, '') NOT IN (SELECT properties.$session_id FROM events WHERE timestamp >= now() - INTERVAL 30 DAY AND properties.is_test = true AND properties.$session_id IS NOT NULL GROUP BY properties.$session_id) AND properties.request_id IS NOT NULL AND event IN ('ai_query_submitted','ai_response_received','ai_result_viewed','ai_cache_hit','ai_query_completed','ai_query_error','ai_query_failed','ai_query_rejected','ai_query_blocked','ai_query_cancelled')\nGROUP BY rid) AS c ON r.child=c.rid"
+        },
+        "display": "ActionsTable"
+      },
+      "id": 6399115,
+      "shortId": "cWrsuE0e"
+    }
+  ]
+}

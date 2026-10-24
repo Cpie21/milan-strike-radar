@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-23T09:44:45.376Z",
+  "officialAnnouncements": 28,
+  "matchedPassengerAnnouncements": 22,
+  "explicitlyExcludedAnnouncements": 3,
+  "outsideProduct": [
+    {
+      "key": "08cae85489e0a5fab3c4ae43ed92bc7a3af496c7dacc85acce8fdaf6662b13f3",
+      "sector": "Circolazione e sicurezza stradale",
+      "provider": "PERSONALE SOC. GSA ADDETTO ALLA SORVEGLIANZA  ANTINCENDIO AUTOSTRADA A1 TRATTA INCISA-SASSO MARCONI"
+    },
+    {
+      "key": "a74750efc7ffb624e15907ee614a052d8f8bb6997148c4272155143f27feef47",
+      "sector": "Marittimo",
+      "provider": "LAVORATORI SETTORE PORTUALE ( IMPRESE EX ART. 16, 17, 18 L. 84/94, ADSP E SOCIETA' CHE APPLICANO CCNL PORTI )"
+    },
+    {
+      "key": "99001f74a1c763c590ca178b20c177a65f519978dfb062cb42b65229fd656350",
+      "sector": "Trasporto merci",
+      "provider": "PERSONALE SOC. SBB CARGO ITALIA"
+    }
+  ],
+  "activeDatabaseRows": 46,
+  "issues": [],
+  "notInUpcomingList": []
+}

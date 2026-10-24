@@ -1,0 +1,19 @@
+{
+  "reviewed_commit": "88be100",
+  "uncommitted_files_were_read_only": true,
+  "files": {
+    "AI_HANDOFF.md": "8368bed2e7657749b79054ab5c4c81b3a0a88cbc46c7b8a3798f818ad52b58f4",
+    "app/lab/page.tsx": "6a74b1827acea91d8b2ec0ffca8e48b66e152801c7127765c59db07444dcc071",
+    "lib/lab/model.ts": "a4406b9dcbfd4bf5cf8a48e2f2558e37c83463e4644851c7b991589c6ef52ee7",
+    "lib/lab/translate.ts": "faaef238562bac8e1b4c2e5aeb003240545f220dd6b40d8a09698efaf3f0454b",
+    "lib/ask/pipeline.ts": "975292e71cbbe7b6e32d98c7f1cb9877aef65192956fcffe82831a3a7ea3bca9",
+    "lib/ask/jev.ts": "b0123a33ce442a1c70b512428536506caa5fff99987f669398a1b094c25fb9a4",
+    "app/api/ask/route.ts": "2b147735a9db810d611286c9b036ba794a466c5d84d1894f45db1109d01bf282",
+    "components/lab/LabAsk.tsx": "72a57fab37c208c53d6a5390a901108e7004ea95678a6a2ae62a5e3fb4c328b3",
+    "components/lab/LabStrikeCard.tsx": "a89102942210df08a24ed4c443f87362780ea84d31589bf14acf2f3ae3891200",
+    "lib/lab/serviceHours.ts": "4bff9870ccf7f7fe8738bfc643bcea7aadf206fa951e57054c39400aad7b8ef6",
+    "app/api/ask/feedback/route.ts": "465d7cee101621de3d94f9cd6fa7a13f5c423bb7b97b7e36ad959dd5219a224c"
+  },
+  "started_from_commit": "7ceb87c",
+  "checked_at": "2026-10-05T14:18:00Z"
+}

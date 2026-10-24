@@ -1,0 +1,286 @@
+{
+  "checkedAt": "2026-10-05T09:46:07.219Z",
+  "results": [
+    {
+      "index": 0,
+      "feedId": "GTFS_MILANO",
+      "source": "https://dati.comune.milano.it/gtfs.zip",
+      "contentHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+      "checkedAt": "2026-10-05T09:46:07.200Z",
+      "validFrom": "2026-09-14",
+      "validTo": "2026-10-19",
+      "routeCount": 166,
+      "metro": [
+        {
+          "id": "M4",
+          "name": "4",
+          "type": 1,
+          "operator": "ATM_MILANO"
+        },
+        {
+          "id": "M3",
+          "name": "3",
+          "type": 1,
+          "operator": "ATM_MILANO"
+        },
+        {
+          "id": "M1",
+          "name": "1",
+          "type": 1,
+          "operator": "ATM_MILANO"
+        },
+        {
+          "id": "M2",
+          "name": "2",
+          "type": 1,
+          "operator": "ATM_MILANO"
+        },
+        {
+          "id": "M5",
+          "name": "5",
+          "type": 1,
+          "operator": "ATM_MILANO"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "error": "The operation was aborted due to timeout"
+    },
+    {
+      "index": 2,
+      "profiles": [
+        {
+          "validFrom": "2026-10-05",
+          "validTo": "2026-11-04",
+          "checkedAt": "2026-10-05",
+          "validityBasis": "REVIEW_WINDOW",
+          "operator": "ATM_MILANO",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "service": "URBAN_SUBURBAN",
+          "source": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+          "weekday": [
+            {
+              "start": null,
+              "end": "08:45",
+              "end_kind": "clock"
+            },
+            {
+              "start": "15:00",
+              "end": "18:00",
+              "end_kind": "clock"
+            }
+          ],
+          "qualification": "Operator standard rule; a dated notice or Commission decision can change it. Service start varies by line."
+        },
+        {
+          "validFrom": "2026-10-05",
+          "validTo": "2026-11-04",
+          "checkedAt": "2026-10-05",
+          "validityBasis": "REVIEW_WINDOW",
+          "operator": "ATAC_ROMA",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "service": "DAYTIME_TPL",
+          "source": "https://romamobilita.it/wp-content/uploads/2026/05/TM-1_28-maggio_merged_compressed.pdf",
+          "weekday": [
+            {
+              "start": null,
+              "end": "08:30",
+              "end_kind": "clock"
+            },
+            {
+              "start": "17:00",
+              "end": "20:00",
+              "end_kind": "clock"
+            }
+          ],
+          "qualification": "Daytime ATAC standard bands restated by Roma Mobilita in a prior notice; not confirmation of this strike. Night services and other Rome operators require their own notice."
+        },
+        {
+          "validFrom": "2026-10-05",
+          "validTo": "2026-11-04",
+          "checkedAt": "2026-10-05",
+          "validityBasis": "REVIEW_WINDOW",
+          "operator": "GTT_TORINO",
+          "modes": [
+            "BUS",
+            "SUBWAY"
+          ],
+          "service": "URBAN_SUBURBAN",
+          "source": "https://www.gtt.to.it/cms/risorse/cdm.pdf",
+          "weekday": [
+            {
+              "start": "06:00",
+              "end": "09:00",
+              "end_kind": "clock"
+            },
+            {
+              "start": "12:00",
+              "end": "15:00",
+              "end_kind": "clock"
+            }
+          ],
+          "qualification": "GTT urban/suburban surface and metro only; excludes interurban and night services."
+        },
+        {
+          "validFrom": "2026-10-05",
+          "validTo": "2026-11-04",
+          "checkedAt": "2026-10-05",
+          "validityBasis": "REVIEW_WINDOW",
+          "operator": "TRENITALIA_REGIONALE",
+          "modes": [
+            "TRAIN"
+          ],
+          "service": "REGIONAL_RAIL",
+          "source": "https://www.trenitalia.com/it/regionale/viaggiare-con-il-regionale.html",
+          "weekday": [
+            {
+              "start": "06:00",
+              "end": "09:00",
+              "end_kind": "clock"
+            },
+            {
+              "start": "18:00",
+              "end": "21:00",
+              "end_kind": "clock"
+            }
+          ],
+          "holiday": [
+            {
+              "start": "07:00",
+              "end": "10:00",
+              "end_kind": "clock"
+            },
+            {
+              "start": "18:00",
+              "end": "21:00",
+              "end_kind": "clock"
+            }
+          ],
+          "qualification": "Minimum regional rail service framework; only listed guaranteed trains are assured, not every train within these bands. Long-distance services are excluded."
+        },
+        {
+          "validFrom": "2026-10-05",
+          "validTo": "2026-11-04",
+          "checkedAt": "2026-10-05",
+          "validityBasis": "REVIEW_WINDOW",
+          "operator": "ARRIVA_BERGAMO",
+          "modes": [
+            "BUS"
+          ],
+          "service": "BERGAMO_CONSORTIA",
+          "source": "https://arriva.it/app/uploads/sites/7/2026/09/BERGAMO-Carta-della-mobilita-2026.pdf",
+          "weekday": [
+            {
+              "start": "06:00",
+              "end": "08:30",
+              "end_kind": "clock"
+            },
+            {
+              "start": "12:30",
+              "end": "16:00",
+              "end_kind": "clock"
+            }
+          ],
+          "qualification": "Bergamo Trasporti Est/Ovest/Sud: guaranteed departures in these bands, based on the 2026 service charter. Excludes airport shuttles and Lecco services."
+        }
+      ]
+    }
+  ],
+  "warnings": [
+    "Operator guarantee source unavailable: ARRIVA_BERGAMO"
+  ],
+  "gtfsNameValidation": {
+    "source": "https://dati.comune.milano.it/gtfs.zip",
+    "feedId": "GTFS_MILANO",
+    "contentHash": "30a9839eea70684bc61243a9cefbabbdf0a5eaa41225884b5ea5fe44d01b8b5a",
+    "checkedAt": "2026-10-05T09:46:07.200Z",
+    "validFrom": "2026-09-14",
+    "validTo": "2026-10-19",
+    "routeCount": 166,
+    "examples": [
+      {
+        "date": "2026-10-09",
+        "mode": "SUBWAY",
+        "scope": {
+          "kind": "SPECIFIC_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "affectedLineNames": [
+            "M1",
+            "M2"
+          ],
+          "excludedLineNames": [],
+          "affectedRouteIds": [
+            "M1",
+            "M2"
+          ],
+          "excludedRouteIds": [],
+          "routeValidation": "VERIFIED",
+          "gtfsFeedId": "GTFS_MILANO"
+        }
+      },
+      {
+        "date": "2026-10-09",
+        "mode": "BUS",
+        "scope": {
+          "kind": "SPECIFIC_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "affectedLineNames": [
+            "90",
+            "91"
+          ],
+          "excludedLineNames": [],
+          "affectedRouteIds": [
+            "B90",
+            "B91"
+          ],
+          "excludedRouteIds": [],
+          "routeValidation": "VERIFIED",
+          "gtfsFeedId": "GTFS_MILANO"
+        }
+      },
+      {
+        "date": "2026-10-20",
+        "mode": "SUBWAY",
+        "scope": {
+          "kind": "SPECIFIC_LINES",
+          "operatorIds": [
+            "ATM_MILANO"
+          ],
+          "networkNames": [],
+          "affectedLineNames": [
+            "M1"
+          ],
+          "excludedLineNames": [],
+          "affectedRouteIds": [],
+          "excludedRouteIds": [],
+          "routeValidation": "OUT_OF_VALIDITY",
+          "gtfsFeedId": "GTFS_MILANO"
+        }
+      }
+    ]
+  },
+  "gttCharterFollowUp": {
+    "source": "https://www.gtt.to.it/cms/risorse/cdm.pdf",
+    "checkedAt": "2026-10-05T10:22:55.131Z",
+    "actualSourceMatches": true,
+    "note": "Fixed complete clock followed by a range separator; unchanged minutes still required."
+  },
+  "limitations": [
+    "Rome static GTFS fetch timed out; no successful catalogue verification claimed.",
+    "Earlier local profile-fetch report below differs from final production warnings; finite-expiry seed is used only on unavailability.",
+    "GTFS examples validate route identities, not observed strike impact."
+  ]
+}

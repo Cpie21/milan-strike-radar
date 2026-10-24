@@ -1,0 +1,553 @@
+{
+  "checkedAt": "2026-10-06T11:49:55.810Z",
+  "origin": "https://www.theitalystrike.com",
+  "expected": {
+    "T1": "1606821564",
+    "T2": "1272089682"
+  },
+  "checks": [
+    {
+      "query": {
+        "region": "FIRENZE",
+        "date": "2026-10-10",
+        "category": "BUS"
+      },
+      "http": 200,
+      "event": {
+        "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+        "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+        "category": "BUS",
+        "impact": {
+          "version": 1,
+          "checkedAt": "2026-10-06T11:47:04.101Z",
+          "declaredScope": {
+            "value": {
+              "kind": "SPECIFIC_LINES",
+              "operatorIds": [
+                "GEST_FIRENZE"
+              ],
+              "operatorNames": [
+                "GEST"
+              ],
+              "networkNames": [],
+              "affectedLineNames": [
+                "T1",
+                "T2"
+              ],
+              "excludedLineNames": [],
+              "affectedRouteIds": [
+                "1606821564",
+                "1272089682"
+              ],
+              "excludedRouteIds": [],
+              "routeAliases": [
+                {
+                  "feedId": "GTFS_GEST",
+                  "source": "https://www.firenzetramvia.it/linee/t1",
+                  "routeId": "1606821564",
+                  "validTo": "2026-12-30",
+                  "operator": "GEST_FIRENZE",
+                  "validFrom": "2026-08-10",
+                  "verifiedAt": "2026-10-06",
+                  "catalogName": "T1.3",
+                  "officialName": "T1",
+                  "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+                }
+              ],
+              "gtfsFeedId": "GTFS_GEST",
+              "officialRegion": "Toscana",
+              "officialProvince": "Firenze"
+            },
+            "confidence": "HIGH",
+            "source": "OPERATOR_OFFICIAL",
+            "method": "CODE",
+            "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+            "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+          },
+          "lineMembership": {
+            "value": {
+              "operator": "GEST_FIRENZE",
+              "date": "2026-10-10",
+              "category": "BUS",
+              "routes": [
+                {
+                  "id": "1272089682",
+                  "name": "T2"
+                },
+                {
+                  "id": "1606821564",
+                  "name": "T1"
+                }
+              ]
+            },
+            "confidence": "HIGH",
+            "source": "OPERATOR_OFFICIAL",
+            "method": "CODE",
+            "url": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+            "excerpt": "Fresh official published route membership; does not establish service-calendar validity or actual operation"
+          },
+          "potentialLines": [
+            {
+              "displayName": "T1",
+              "routeLongNames": [
+                "Servizio Tramvia Firenze - Linea T1.3"
+              ],
+              "routeIds": [
+                "1606821564"
+              ],
+              "routeAliases": [
+                {
+                  "officialName": "T1",
+                  "catalogName": "T1.3",
+                  "routeId": "1606821564",
+                  "operator": "GEST_FIRENZE",
+                  "feedId": "GTFS_GEST",
+                  "source": "https://www.firenzetramvia.it/linee/t1",
+                  "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+                  "validFrom": "2026-08-10",
+                  "validTo": "2026-12-30",
+                  "verifiedAt": "2026-10-06"
+                }
+              ],
+              "operatorId": "GEST_FIRENZE",
+              "mode": "BUS",
+              "reason": "NAMED_IN_OFFICIAL_NOTICE",
+              "confidence": "HIGH",
+              "noticeSource": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+              "catalogCheckedAt": "2026-10-06T11:48:53.937Z",
+              "catalogFeedId": "GTFS_GEST",
+              "catalogHash": "00e0d6b7f13742e7bbf63b4963e2aacd7dbef80210dea8289380f16f7e073bde",
+              "actualOperationConfirmed": false
+            },
+            {
+              "displayName": "T2",
+              "routeLongNames": [
+                "Servizio Tramvia Firenze - Linea T2"
+              ],
+              "routeIds": [
+                "1272089682"
+              ],
+              "routeAliases": [],
+              "operatorId": "GEST_FIRENZE",
+              "mode": "BUS",
+              "reason": "NAMED_IN_OFFICIAL_NOTICE",
+              "confidence": "HIGH",
+              "noticeSource": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+              "catalogCheckedAt": "2026-10-06T11:48:53.937Z",
+              "catalogFeedId": "GTFS_GEST",
+              "catalogHash": "00e0d6b7f13742e7bbf63b4963e2aacd7dbef80210dea8289380f16f7e073bde",
+              "actualOperationConfirmed": false
+            }
+          ],
+          "potentialLinesStatus": "RESOLVED",
+          "enumerationCoverage": "NOTICE_NAMED_LINES",
+          "specificLinesStatus": "KNOWN",
+          "passengerRelevance": "PASSENGER_SERVICE",
+          "observedStatus": "NOT_CHECKED",
+          "presentation": {
+            "zh": "T1、T2 可能受影响",
+            "en": "T1, T2 may be affected",
+            "showLineSection": true
+          }
+        },
+        "lineMatch": null,
+        "announcements": [
+          {
+            "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+            "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+            "checkedAt": "2026-10-06T11:47:04.101Z",
+            "scope": {
+              "value": {
+                "kind": "SPECIFIC_LINES",
+                "operatorIds": [
+                  "GEST_FIRENZE"
+                ],
+                "operatorNames": [
+                  "GEST"
+                ],
+                "networkNames": [],
+                "affectedLineNames": [
+                  "T1",
+                  "T2"
+                ],
+                "excludedLineNames": [],
+                "affectedRouteIds": [
+                  "1606821564",
+                  "1272089682"
+                ],
+                "excludedRouteIds": [],
+                "routeAliases": [
+                  {
+                    "feedId": "GTFS_GEST",
+                    "source": "https://www.firenzetramvia.it/linee/t1",
+                    "routeId": "1606821564",
+                    "validTo": "2026-12-30",
+                    "operator": "GEST_FIRENZE",
+                    "validFrom": "2026-08-10",
+                    "verifiedAt": "2026-10-06",
+                    "catalogName": "T1.3",
+                    "officialName": "T1",
+                    "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+                  }
+                ],
+                "gtfsFeedId": "GTFS_GEST",
+                "officialRegion": "Toscana",
+                "officialProvince": "Firenze"
+              },
+              "confidence": "HIGH",
+              "source": "OPERATOR_OFFICIAL",
+              "method": "CODE",
+              "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "region": "FIRENZE",
+        "date": "2026-10-10",
+        "category": "BUS",
+        "line": "T1"
+      },
+      "http": 200,
+      "event": {
+        "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+        "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+        "category": "BUS",
+        "impact": {
+          "version": 1,
+          "checkedAt": "2026-10-06T11:47:04.101Z",
+          "declaredScope": {
+            "value": {
+              "kind": "SPECIFIC_LINES",
+              "operatorIds": [
+                "GEST_FIRENZE"
+              ],
+              "operatorNames": [
+                "GEST"
+              ],
+              "networkNames": [],
+              "affectedLineNames": [
+                "T1",
+                "T2"
+              ],
+              "excludedLineNames": [],
+              "affectedRouteIds": [
+                "1606821564",
+                "1272089682"
+              ],
+              "excludedRouteIds": [],
+              "routeAliases": [
+                {
+                  "feedId": "GTFS_GEST",
+                  "source": "https://www.firenzetramvia.it/linee/t1",
+                  "routeId": "1606821564",
+                  "validTo": "2026-12-30",
+                  "operator": "GEST_FIRENZE",
+                  "validFrom": "2026-08-10",
+                  "verifiedAt": "2026-10-06",
+                  "catalogName": "T1.3",
+                  "officialName": "T1",
+                  "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+                }
+              ],
+              "gtfsFeedId": "GTFS_GEST",
+              "officialRegion": "Toscana",
+              "officialProvince": "Firenze"
+            },
+            "confidence": "HIGH",
+            "source": "OPERATOR_OFFICIAL",
+            "method": "CODE",
+            "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+            "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+          },
+          "lineMembership": {
+            "value": {
+              "operator": "GEST_FIRENZE",
+              "date": "2026-10-10",
+              "category": "BUS",
+              "routes": [
+                {
+                  "id": "1606821564",
+                  "name": "T1"
+                }
+              ]
+            },
+            "confidence": "HIGH",
+            "source": "OPERATOR_OFFICIAL",
+            "method": "CODE",
+            "url": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+            "excerpt": "Fresh official published route membership; does not establish service-calendar validity or actual operation"
+          },
+          "potentialLines": [
+            {
+              "displayName": "T1",
+              "routeLongNames": [
+                "Servizio Tramvia Firenze - Linea T1.3"
+              ],
+              "routeIds": [
+                "1606821564"
+              ],
+              "routeAliases": [
+                {
+                  "officialName": "T1",
+                  "catalogName": "T1.3",
+                  "routeId": "1606821564",
+                  "operator": "GEST_FIRENZE",
+                  "feedId": "GTFS_GEST",
+                  "source": "https://www.firenzetramvia.it/linee/t1",
+                  "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+                  "validFrom": "2026-08-10",
+                  "validTo": "2026-12-30",
+                  "verifiedAt": "2026-10-06"
+                }
+              ],
+              "operatorId": "GEST_FIRENZE",
+              "mode": "BUS",
+              "reason": "NAMED_IN_OFFICIAL_NOTICE",
+              "confidence": "HIGH",
+              "noticeSource": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+              "catalogCheckedAt": "2026-10-06T11:48:53.937Z",
+              "catalogFeedId": "GTFS_GEST",
+              "catalogHash": "00e0d6b7f13742e7bbf63b4963e2aacd7dbef80210dea8289380f16f7e073bde",
+              "actualOperationConfirmed": false
+            }
+          ],
+          "potentialLinesStatus": "RESOLVED",
+          "enumerationCoverage": "NOTICE_NAMED_LINES",
+          "specificLinesStatus": "KNOWN",
+          "passengerRelevance": "PASSENGER_SERVICE",
+          "observedStatus": "NOT_CHECKED",
+          "presentation": {
+            "zh": "T1 可能受影响",
+            "en": "T1 may be affected",
+            "showLineSection": true
+          }
+        },
+        "lineMatch": "NAMED",
+        "announcements": [
+          {
+            "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+            "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+            "checkedAt": "2026-10-06T11:47:04.101Z",
+            "scope": {
+              "value": {
+                "kind": "SPECIFIC_LINES",
+                "operatorIds": [
+                  "GEST_FIRENZE"
+                ],
+                "operatorNames": [
+                  "GEST"
+                ],
+                "networkNames": [],
+                "affectedLineNames": [
+                  "T1",
+                  "T2"
+                ],
+                "excludedLineNames": [],
+                "affectedRouteIds": [
+                  "1606821564",
+                  "1272089682"
+                ],
+                "excludedRouteIds": [],
+                "routeAliases": [
+                  {
+                    "feedId": "GTFS_GEST",
+                    "source": "https://www.firenzetramvia.it/linee/t1",
+                    "routeId": "1606821564",
+                    "validTo": "2026-12-30",
+                    "operator": "GEST_FIRENZE",
+                    "validFrom": "2026-08-10",
+                    "verifiedAt": "2026-10-06",
+                    "catalogName": "T1.3",
+                    "officialName": "T1",
+                    "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+                  }
+                ],
+                "gtfsFeedId": "GTFS_GEST",
+                "officialRegion": "Toscana",
+                "officialProvince": "Firenze"
+              },
+              "confidence": "HIGH",
+              "source": "OPERATOR_OFFICIAL",
+              "method": "CODE",
+              "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "query": {
+        "region": "FIRENZE",
+        "date": "2026-10-10",
+        "category": "BUS",
+        "line": "T2"
+      },
+      "http": 200,
+      "event": {
+        "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+        "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+        "category": "BUS",
+        "impact": {
+          "version": 1,
+          "checkedAt": "2026-10-06T11:47:04.101Z",
+          "declaredScope": {
+            "value": {
+              "kind": "SPECIFIC_LINES",
+              "operatorIds": [
+                "GEST_FIRENZE"
+              ],
+              "operatorNames": [
+                "GEST"
+              ],
+              "networkNames": [],
+              "affectedLineNames": [
+                "T1",
+                "T2"
+              ],
+              "excludedLineNames": [],
+              "affectedRouteIds": [
+                "1606821564",
+                "1272089682"
+              ],
+              "excludedRouteIds": [],
+              "routeAliases": [
+                {
+                  "feedId": "GTFS_GEST",
+                  "source": "https://www.firenzetramvia.it/linee/t1",
+                  "routeId": "1606821564",
+                  "validTo": "2026-12-30",
+                  "operator": "GEST_FIRENZE",
+                  "validFrom": "2026-08-10",
+                  "verifiedAt": "2026-10-06",
+                  "catalogName": "T1.3",
+                  "officialName": "T1",
+                  "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+                }
+              ],
+              "gtfsFeedId": "GTFS_GEST",
+              "officialRegion": "Toscana",
+              "officialProvince": "Firenze"
+            },
+            "confidence": "HIGH",
+            "source": "OPERATOR_OFFICIAL",
+            "method": "CODE",
+            "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+            "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+          },
+          "lineMembership": {
+            "value": {
+              "operator": "GEST_FIRENZE",
+              "date": "2026-10-10",
+              "category": "BUS",
+              "routes": [
+                {
+                  "id": "1272089682",
+                  "name": "T2"
+                }
+              ]
+            },
+            "confidence": "HIGH",
+            "source": "OPERATOR_OFFICIAL",
+            "method": "CODE",
+            "url": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+            "excerpt": "Fresh official published route membership; does not establish service-calendar validity or actual operation"
+          },
+          "potentialLines": [
+            {
+              "displayName": "T2",
+              "routeLongNames": [
+                "Servizio Tramvia Firenze - Linea T2"
+              ],
+              "routeIds": [
+                "1272089682"
+              ],
+              "routeAliases": [],
+              "operatorId": "GEST_FIRENZE",
+              "mode": "BUS",
+              "reason": "NAMED_IN_OFFICIAL_NOTICE",
+              "confidence": "HIGH",
+              "noticeSource": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+              "catalogCheckedAt": "2026-10-06T11:48:53.937Z",
+              "catalogFeedId": "GTFS_GEST",
+              "catalogHash": "00e0d6b7f13742e7bbf63b4963e2aacd7dbef80210dea8289380f16f7e073bde",
+              "actualOperationConfirmed": false
+            }
+          ],
+          "potentialLinesStatus": "RESOLVED",
+          "enumerationCoverage": "NOTICE_NAMED_LINES",
+          "specificLinesStatus": "KNOWN",
+          "passengerRelevance": "PASSENGER_SERVICE",
+          "observedStatus": "NOT_CHECKED",
+          "presentation": {
+            "zh": "T2 可能受影响",
+            "en": "T2 may be affected",
+            "showLineSection": true
+          }
+        },
+        "lineMatch": "NAMED",
+        "announcements": [
+          {
+            "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+            "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+            "checkedAt": "2026-10-06T11:47:04.101Z",
+            "scope": {
+              "value": {
+                "kind": "SPECIFIC_LINES",
+                "operatorIds": [
+                  "GEST_FIRENZE"
+                ],
+                "operatorNames": [
+                  "GEST"
+                ],
+                "networkNames": [],
+                "affectedLineNames": [
+                  "T1",
+                  "T2"
+                ],
+                "excludedLineNames": [],
+                "affectedRouteIds": [
+                  "1606821564",
+                  "1272089682"
+                ],
+                "excludedRouteIds": [],
+                "routeAliases": [
+                  {
+                    "feedId": "GTFS_GEST",
+                    "source": "https://www.firenzetramvia.it/linee/t1",
+                    "routeId": "1606821564",
+                    "validTo": "2026-12-30",
+                    "operator": "GEST_FIRENZE",
+                    "validFrom": "2026-08-10",
+                    "verifiedAt": "2026-10-06",
+                    "catalogName": "T1.3",
+                    "officialName": "T1",
+                    "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+                  }
+                ],
+                "gtfsFeedId": "GTFS_GEST",
+                "officialRegion": "Toscana",
+                "officialProvince": "Firenze"
+              },
+              "confidence": "HIGH",
+              "source": "OPERATOR_OFFICIAL",
+              "method": "CODE",
+              "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+              "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "labHttpStatus": 200,
+  "allPassed": true
+}

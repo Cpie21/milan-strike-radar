@@ -1,0 +1,265 @@
+{
+  "checkedAt": "2026-10-06T08:25:52.978Z",
+  "migration": {
+    "version": "20261006081821",
+    "name": "shared_backend_services"
+  },
+  "serviceRoleTransactionChecks": {
+    "passed": true,
+    "rolledBack": true,
+    "checks": [
+      "duplicate reservations denied",
+      "one-time settlement",
+      "original-month settlement",
+      "no paid translation reservation",
+      "question completion cannot be refunded twice",
+      "unique panels",
+      "no concurrent overwrite",
+      "approval defaults false"
+    ]
+  },
+  "anonymousTransactionChecks": {
+    "passed": true,
+    "checks": [
+      "private feedback read denied",
+      "paid RPC execution denied"
+    ]
+  },
+  "privileges": {
+    "budget": [
+      {
+        "month": "2026-10-01",
+        "disabled": false,
+        "charged_micro_usd": 25892
+      }
+    ],
+    "tables": [
+      {
+        "rls": true,
+        "name": "ai_budget_reservations",
+        "anon_read": false,
+        "auth_write": false,
+        "service_write": true
+      },
+      {
+        "rls": true,
+        "name": "api_rate_limits",
+        "anon_read": false,
+        "auth_write": false,
+        "service_write": true
+      },
+      {
+        "rls": true,
+        "name": "ask_feedback",
+        "anon_read": false,
+        "auth_write": false,
+        "service_write": true
+      },
+      {
+        "rls": true,
+        "name": "ask_sessions",
+        "anon_read": false,
+        "auth_write": false,
+        "service_write": true
+      },
+      {
+        "rls": true,
+        "name": "lab_graffiti",
+        "anon_read": false,
+        "auth_write": false,
+        "service_write": true
+      }
+    ],
+    "functions": [
+      {
+        "name": "acquire_ask_session",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "claim_graffiti_panel",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "consume_api_limit",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "finish_ask_session",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "reserve_ai_budget",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "save_graffiti_piece",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      },
+      {
+        "name": "settle_ai_budget",
+        "settings": [
+          "search_path=\"\""
+        ],
+        "anon_execute": false,
+        "service_execute": true,
+        "security_definer": false
+      }
+    ],
+    "migrations": [
+      {
+        "name": "shared_backend_services",
+        "version": "20261006081821"
+      },
+      {
+        "name": "strike_semantic_review_budget",
+        "version": "20261004221157"
+      },
+      {
+        "name": "external_strike_timing",
+        "version": "20261004142222"
+      },
+      {
+        "name": "sync_reconciliation_and_feedback",
+        "version": "20261004134223"
+      }
+    ]
+  },
+  "advisors": {
+    "lints": [
+      {
+        "name": "rls_enabled_no_policy",
+        "title": "RLS Enabled No Policy",
+        "level": "INFO",
+        "facing": "EXTERNAL",
+        "categories": [
+          "SECURITY"
+        ],
+        "description": "Detects cases where row level security (RLS) has been enabled on a table but no RLS policies have been created.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy",
+        "count": 10,
+        "findings": [
+          {
+            "detail": "Table \\`public.ai_budget_reservations\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "ai_budget_reservations",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.ai_monthly_budget\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "ai_monthly_budget",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.api_rate_limits\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "api_rate_limits",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.ask_feedback\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "ask_feedback",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.ask_sessions\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "ask_sessions",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.feedback\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "feedback",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.feedback_rate_limits\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "feedback_rate_limits",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.lab_graffiti\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "lab_graffiti",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.strike_semantic_reviews\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "strike_semantic_reviews",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          },
+          {
+            "detail": "Table \\`public.strike_sync_runs\\` has RLS enabled, but no policies exist",
+            "metadata": {
+              "name": "strike_sync_runs",
+              "type": "table",
+              "schema": "public"
+            },
+            "observed_at": "2026-10-06T08:18:50.552Z"
+          }
+        ]
+      }
+    ]
+  }
+}

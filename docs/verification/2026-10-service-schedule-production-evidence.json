@@ -1,0 +1,102 @@
+{
+  "checkedAt": "2026-10-05T19:30:13.802Z",
+  "runtimeCommit": "179bef9",
+  "deployment": "dpl_9ZJvQqpd4d4JEKqE4kXm1817Bpm1",
+  "sync": {
+    "id": "26117923-0f26-44d5-9e9d-5ada5665be24",
+    "status": "success",
+    "started_at": "2026-10-05T19:27:58.144251+00:00",
+    "completed_at": "2026-10-05T19:29:34.409208+00:00",
+    "warnings": [
+      "Supplement unavailable: www.ctmcagliari.it/comunicati/: HTTP 403",
+      "Supplement unavailable: www.bresciamobilita.it/: HTTP 403",
+      "Supplement unavailable: www.toscana-aeroporti.com/it/news/: HTTP 403",
+      "Supplement unavailable: www.veneziaairport.it/it_it/news.html: HTTP 403",
+      "Supplement unavailable: www.trenord.it/news/trenord-informa/avvisi/: HTTP 403",
+      "Supplement unavailable: www.easyjet.com/it/aiuto/prepararsi-a-volare/informazioni-di-viaggio: HTTP 403",
+      "Supplement unavailable: moveo.telepass.com/sciopero-atm-milano-9-ottobre-2026/: fetch failed (ECONNRESET)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381112: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380322: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/380241: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381220: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381296: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Supplement unavailable: cgsse.it/calendario-scioperi/dettaglio-sciopero/381401: fetch failed (UND_ERR_CONNECT_TIMEOUT)",
+      "Timing conflict requires review: 2026-10-09 MILANO BUS AL-COBAS",
+      "Timing conflict requires review: 2026-10-09 MILANO SUBWAY AL-COBAS",
+      "Timing conflict requires review: 2026-10-12 BARI BUS OST FILT-CGIL/FIT-CISL/UILT-UIL/UGL AUTOFERRO",
+      "Operational timing unresolved: 2026-10-14 FIRENZE BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-10-14 PISA BUS SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "Operational timing unresolved: 2026-12-04 NATIONAL AIRPORT SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-12-04 NATIONAL BUS SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE ASPP SOC. ENAV - SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-09-30 ROMA AIRPORT PERSONALE SOC. ENAV STRUTTURA PROCUREMENT SEDE CENTRALE DI ROMA",
+      "Operational timing unresolved: 2026-10-03 GENOVA BUS PERSONALE SOC. AMT DI GENOVA",
+      "Operational timing unresolved: 2026-10-03 GENOVA SUBWAY PERSONALE SOC. AMT DI GENOVA",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09",
+      "Scheduled service times OUT_OF_VALIDITY: MILANO/BUS/2026-10-09"
+    ]
+  },
+  "budget": {
+    "month": "2026-10-01",
+    "charged_micro_usd": 6489,
+    "disabled": false
+  },
+  "individualEvents": [
+    {
+      "id": "bde68652-299f-4e6e-9d3a-2c771b98b059",
+      "category": "BUS",
+      "status": "OUT_OF_VALIDITY",
+      "source": "https://dati.comune.milano.it/gtfs.zip",
+      "lastDeparture": null,
+      "lastArrival": null
+    },
+    {
+      "id": "edc65463-aa23-41fe-bf56-74b568c5fbb0",
+      "category": "SUBWAY",
+      "status": "COMPLETE",
+      "source": "https://dati.comune.milano.it/gtfs.zip",
+      "lastDeparture": {
+        "clock": "00:32",
+        "seconds": 88320,
+        "dayOffset": 1
+      },
+      "lastArrival": {
+        "clock": "01:30",
+        "seconds": 91800,
+        "dayOffset": 1
+      }
+    },
+    {
+      "id": "5f0cc431-b99e-412c-ac04-a14844d81ebb",
+      "category": "BUS",
+      "status": "OUT_OF_VALIDITY",
+      "source": "https://dati.comune.milano.it/gtfs.zip",
+      "lastDeparture": null,
+      "lastArrival": null
+    },
+    {
+      "id": "4ba995c3-6e3a-4bfa-b662-e2810b588ae1",
+      "category": "SUBWAY",
+      "status": "COMPLETE",
+      "source": "https://dati.comune.milano.it/gtfs.zip",
+      "lastDeparture": {
+        "clock": "00:32",
+        "seconds": 88320,
+        "dayOffset": 1
+      },
+      "lastArrival": {
+        "clock": "01:30",
+        "seconds": 91800,
+        "dayOffset": 1
+      }
+    }
+  ],
+  "cardChecks": {
+    "allPassed": true,
+    "subwayEndpoint": "next day 01:30 scheduled passenger arrival",
+    "busEndpoint": "OUT_OF_VALIDITY: no numeric endpoint",
+    "officialStrikeWindowsRemainSymbolic": true,
+    "officialRegisterPayloadPresent": true,
+    "newLabUiIntegrated": false
+  }
+}

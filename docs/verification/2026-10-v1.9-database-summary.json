@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-10-05T13:38:10.665Z",
+  "activeRows": 39,
+  "guaranteeSource": {
+    "UNKNOWN": 26,
+    "OPERATOR_RULE": 6,
+    "OFFICIAL_STRIKE_NOTICE": 2,
+    "STANDARD_RULE": 5
+  },
+  "lineScope": {
+    "UNKNOWN": 33,
+    "ALL_OPERATOR_LINES": 5,
+    "SPECIFIC_LINES": 1
+  },
+  "indirectRailRows": 9,
+  "indirectRailGuaranteesRemainUnknown": true,
+  "eavOldBusRetired": true,
+  "unsupportedLocations": [
+    {
+      "date": "2026-10-15",
+      "provider": "ATAF FOGGIA人员",
+      "officialGeography": {
+        "region": "Puglia",
+        "province": "Foggia",
+        "relevance": "Locale"
+      }
+    },
+    {
+      "date": "2026-10-20",
+      "provider": "ARRIVA UDINE UDINE人员",
+      "officialGeography": {
+        "region": "Friuli-Venezia Giulia",
+        "province": "Udine",
+        "relevance": "Locale"
+      }
+    }
+  ],
+  "budget": [
+    {
+      "month": "2026-10-01",
+      "charged_micro_usd": 6420,
+      "disabled": false
+    }
+  ],
+  "statuses": {
+    "CONFIRMED": 35,
+    "UNCERTAIN": 4
+  }
+}

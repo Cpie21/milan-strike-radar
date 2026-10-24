@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-10-04T22:27:09.310Z",
+  "budget": [
+    {
+      "month": "2026-10-01",
+      "charged_micro_usd": 2528,
+      "disabled": false
+    }
+  ],
+  "currentReviews": 26,
+  "dispositions": {
+    "AGREES": 8,
+    "INCONCLUSIVE": 18
+  },
+  "cacheReusedWithoutAdditionalSpend": true,
+  "before_micro_usd": 2528,
+  "after_micro_usd": 2528
+}

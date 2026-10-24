@@ -1,0 +1,36 @@
+[
+  {
+    "operator": "ATM_MILANO",
+    "source": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202026.pdf",
+    "checkedAt": "2026-10-06T12:15:44.637Z",
+    "ruleMatched": true
+  },
+  {
+    "operator": "ATAC_ROMA",
+    "error": "Unsafe transit redirect"
+  },
+  {
+    "operator": "GTT_TORINO",
+    "source": "https://www.gtt.to.it/cms/risorse/cdm.pdf",
+    "checkedAt": "2026-10-06T12:15:45.997Z",
+    "ruleMatched": true
+  },
+  {
+    "operator": "TRENITALIA_REGIONALE",
+    "source": "https://www.trenitalia.com/it/regionale/viaggiare-con-il-regionale.html",
+    "checkedAt": "2026-10-06T12:15:44.323Z",
+    "ruleMatched": true
+  },
+  {
+    "operator": "ARRIVA_BERGAMO",
+    "source": "https://arriva.it/app/uploads/sites/7/2026/04/BERGAMO-Carta-della-mobilita-2026.pdf",
+    "checkedAt": "2026-10-06T12:15:47.401Z",
+    "ruleMatched": true
+  },
+  {
+    "operator": "AIR_CAMPANIA",
+    "source": "https://aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244",
+    "checkedAt": "2026-10-06T12:15:48.489Z",
+    "ruleMatched": true
+  }
+]

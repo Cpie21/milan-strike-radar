@@ -1,0 +1,7 @@
+{
+  "checked_at": "2026-10-05T13:37:39.583Z",
+  "atm": "Observed ATM Milano operator scope, symbolic morning rule 08:45, rule label and bottom source link",
+  "gest": "Observed T1/T2, 06:30-09:30 /17:00-20:00 with official notice label and source",
+  "eav": "+\t\t\t321 button 火车\n+\t\t\t\t323 text 火车\n+\t\t\t\t\t330 heading 铁路司乘人员罢工, Value: 3\n+\t\t\t\t\t\t331 text 铁路司乘人员罢工\n+\t\t\t\t\t332 text VIAGGIANTE DTF EAV NAPOLI人员 已确认 19:40 - 23:40\n+\t\t\t\t\t336 text 00:00 24:00 保障信息暂未公布 受影响线路 官方暂未注明具体线路\n+\t\t\t\t\t346 text  也被影响了，和你一起在 火车 上猛猛涂鸦",
+  "air": "+\t\t\t\t\t328 text AIR CAMPANIA NAPOLI人员 已确认 08:00 - 16:00\n+\t\t\t\t\t\t332 button Description: 展开保障时间 06:00 - 08:00, Help: 06:00 - 08:00\n+\t\t\t\t\t\t333 button Description: 展开保障时间 13:00 - 15:00, Help: 13:00 - 15:00\n+\t\t\t\t\t\t334 button Description: 展开保障时间 17:00 - 19:00, Help: 17:00 - 19:00\n+\t\t\t\t\t337 text 06:00 - 08:00 13:00 - 15:00 17:00 - 19:00 保障仅针对规定的最低服务或受保护航班，不代表全部班次正常；请核对具体班次。 受影响线路 官方暂未注明具体线路\n+\t\t\t\t\t348 link Description: 来源: 意大利交通部官网 (MIT) ➔, Value: scioperi.mit.gov.it/mit2/public/scioperi\n+\t\t\t\t\t349 link Description: 运营商常规保障规则 ↗, Value: aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244"
+}

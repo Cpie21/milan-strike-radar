@@ -1,0 +1,195 @@
+{
+  "checked_at": "2026-10-06T11:50:21.212Z",
+  "origin": "https://www.theitalystrike.com",
+  "cityChecks": [
+    {
+      "city": "BARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 14
+    },
+    {
+      "city": "BERGAMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 12
+    },
+    {
+      "city": "BOLOGNA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "BRESCIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "CAGLIARI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "CATANIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 14
+    },
+    {
+      "city": "FIRENZE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 16
+    },
+    {
+      "city": "GENOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "MESSINA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 14
+    },
+    {
+      "city": "MILANO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 15
+    },
+    {
+      "city": "NAPOLI",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 17
+    },
+    {
+      "city": "PADOVA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "PALERMO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 14
+    },
+    {
+      "city": "PERUGIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "PISA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 15
+    },
+    {
+      "city": "ROMA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "TORINO",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "TRIESTE",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    },
+    {
+      "city": "VENEZIA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 13
+    },
+    {
+      "city": "VERONA",
+      "page": 200,
+      "api": 200,
+      "calendar": 200,
+      "cards": 11
+    }
+  ],
+  "regressions": {
+    "arrivaLocalAndOfficialHours": true,
+    "veniceLocalOnly": true,
+    "cargoExcluded": true,
+    "airlineNotEntireAirport": true,
+    "protectedBariNotAffectedBari": true,
+    "tuscanyRailAndUnknownTPL": true,
+    "officialBariTimingAndGuarantees": true,
+    "fieldEvidencePresent": true,
+    "mixedAirportServices": true,
+    "railSecurityNotTrainOperation": true,
+    "rfiRegionalCoverage": true,
+    "atmOfficialIndividualEventTiming": true,
+    "generalRailNotContractorOnly": true,
+    "officialRegionalGeographyPreserved": true,
+    "operatorGuaranteesAndSymbolicStart": true,
+    "operatorNetworkScopes": true,
+    "officialRealtimeContract": true,
+    "eavRailDivision": true,
+    "gestOfficialLinesAndGuarantees": true,
+    "airCampaniaRuleIntersection": true
+  },
+  "realtime": {
+    "status": "FRESH",
+    "http": 200,
+    "alerts": 125,
+    "confirmedStrikeDisruptions": 0
+  },
+  "health": {
+    "healthy": true,
+    "stale": false,
+    "timedOut": false,
+    "latest": {
+      "started_at": "2026-10-06T11:47:01.105932+00:00",
+      "completed_at": "2026-10-06T11:48:57.65447+00:00",
+      "status": "success",
+      "fetched": 73,
+      "upserted": 58,
+      "unknown_timing": 8
+    },
+    "last_success": {
+      "started_at": "2026-10-06T11:47:01.105932+00:00",
+      "completed_at": "2026-10-06T11:48:57.65447+00:00",
+      "status": "success",
+      "fetched": 73,
+      "upserted": 58,
+      "unknown_timing": 8
+    }
+  }
+}

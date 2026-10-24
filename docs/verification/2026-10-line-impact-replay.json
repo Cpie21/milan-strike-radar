@@ -1,0 +1,1858 @@
+{
+  "checkedAt": "2026-10-06T06:33:55.952Z",
+  "mode": "READ_ONLY_REPLAY_NOT_DEPLOYED",
+  "databaseWrites": 0,
+  "paidModelCalls": 0,
+  "sourceRows": 39,
+  "independentAnnouncements": 22,
+  "counts": {
+    "REGIONAL_STAFF": 10,
+    "ALL_OPERATOR_LINES": 4,
+    "SPECIFIC_LINES": 1,
+    "OPERATOR_STAFF": 7,
+    "REGIONAL_SERVICE": 4,
+    "NAMED_NETWORKS": 1,
+    "AVIATION": 9,
+    "NATIONAL_SERVICE": 3
+  },
+  "registeredOperators": 24,
+  "registeredGtfsFeeds": 7,
+  "rows": [
+    {
+      "date": "2026-10-08",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "sourceKey": "1cf9fccaf98c3162c4ca638012654da74766adecb0b78247bb0f4cd0a698ea98",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-08",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "sourceKey": "1cf9fccaf98c3162c4ca638012654da74766adecb0b78247bb0f4cd0a698ea98",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-08",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "sourceKey": "1cf9fccaf98c3162c4ca638012654da74766adecb0b78247bb0f4cd0a698ea98",
+      "provider": "PERSONALE SOC. FS SECURITY REGIONE SICILIA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "sourceKey": "d57475fbe3f3f892440fc29fd72c336edb0c7c9c1d9e9634155db4e5da37ae47",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "operatorNames": [
+              "ATM Milano"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Lombardia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+        },
+        "specificLinesStatus": "NOT_ENUMERATED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ATM Milano 所属线路可能受影响",
+          "en": "ATM Milano services may be affected",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeDuringStrike": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+        "value": [],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+        "confidence": "MEDIUM"
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "sourceKey": "d57475fbe3f3f892440fc29fd72c336edb0c7c9c1d9e9634155db4e5da37ae47",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "operatorNames": [
+              "ATM Milano"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Lombardia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+        },
+        "lineMembership": {
+          "value": {
+            "operator": "ATM_MILANO",
+            "date": "2026-10-09",
+            "category": "SUBWAY",
+            "routes": [
+              {
+                "id": "M4",
+                "name": "4"
+              },
+              {
+                "id": "M3",
+                "name": "3"
+              },
+              {
+                "id": "M1",
+                "name": "1"
+              },
+              {
+                "id": "M2",
+                "name": "2"
+              },
+              {
+                "id": "M5",
+                "name": "5"
+              }
+            ]
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://dati.comune.milano.it/gtfs.zip",
+          "excerpt": "Dated official timetable route identity; does not confirm actual strike operation"
+        },
+        "specificLinesStatus": "NOT_ENUMERATED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ATM Milano 所属线路可能受影响",
+          "en": "ATM Milano services may be affected",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeDuringStrike": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+        "value": [],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+        "confidence": "MEDIUM"
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "BUS",
+      "sourceKey": "fe6ad34afb572e5cf64a994195f47bb7d3aaa9693d566bec00b43140772f44e8",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "operatorNames": [
+              "ATM Milano"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Lombardia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+        },
+        "specificLinesStatus": "NOT_ENUMERATED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ATM Milano 所属线路可能受影响",
+          "en": "ATM Milano services may be affected",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeDuringStrike": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+        "value": [],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+        "confidence": "MEDIUM"
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "region": "MILANO",
+      "category": "SUBWAY",
+      "sourceKey": "fe6ad34afb572e5cf64a994195f47bb7d3aaa9693d566bec00b43140772f44e8",
+      "provider": "PERSONALE SOCC. GRUPPO ATM DI MILANO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "ALL_OPERATOR_LINES",
+            "operatorIds": [
+              "ATM_MILANO"
+            ],
+            "operatorNames": [
+              "ATM Milano"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Lombardia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero9ottobre.aspx",
+          "excerpt": "Le nostre linee potrebbero non essere garantite dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio."
+        },
+        "lineMembership": {
+          "value": {
+            "operator": "ATM_MILANO",
+            "date": "2026-10-09",
+            "category": "SUBWAY",
+            "routes": [
+              {
+                "id": "M4",
+                "name": "4"
+              },
+              {
+                "id": "M3",
+                "name": "3"
+              },
+              {
+                "id": "M1",
+                "name": "1"
+              },
+              {
+                "id": "M2",
+                "name": "2"
+              },
+              {
+                "id": "M5",
+                "name": "5"
+              }
+            ]
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://dati.comune.milano.it/gtfs.zip",
+          "excerpt": "Dated official timetable route identity; does not confirm actual strike operation"
+        },
+        "specificLinesStatus": "NOT_ENUMERATED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ATM Milano 所属线路可能受影响",
+          "en": "ATM Milano services may be affected",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeDuringStrike": {
+        "url": "https://www.atm.it/it/IlGruppo/ChiSiamo/Documents/Carta%20della%20Mobilit%C3%A0%20ATM%202025.pdf",
+        "value": [],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+        "confidence": "MEDIUM"
+      }
+    },
+    {
+      "date": "2026-10-10",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+      "provider": "PERSONALE SOC. GEST SERVIZIO TRANVIA DI FIRENZE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "SPECIFIC_LINES",
+            "operatorIds": [
+              "GEST_FIRENZE"
+            ],
+            "operatorNames": [
+              "GEST"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [
+              "T1",
+              "T2"
+            ],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Firenze"
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+          "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p"
+        },
+        "specificLinesStatus": "KNOWN",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "T1、T2 可能受影响",
+          "en": "T1, T2 may be affected",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OFFICIAL_STRIKE_NOTICE"
+    },
+    {
+      "date": "2026-10-12",
+      "region": "BARI",
+      "category": "BUS",
+      "sourceKey": "b0f090121f6dcefef1ed0fc4d94d74aad6e6151ca3c7d88a6b5e43e4715fcfa3",
+      "provider": "PERSONALE SOC AMTAB DI BARI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "AMTAB_BARI"
+            ],
+            "operatorNames": [
+              "AMTAB"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Puglia",
+            "officialProvince": "Bari"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC AMTAB DI BARI"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "AMTAB 人员罢工，具体线路影响尚未确认",
+          "en": "AMTAB staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OFFICIAL_STRIKE_NOTICE"
+    },
+    {
+      "date": "2026-10-12",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "sourceKey": "995d510a9de6210b96761e17f1bb8c5621dc198b0b6c1ec64e2762c897157d99",
+      "provider": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-12",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "sourceKey": "995d510a9de6210b96761e17f1bb8c5621dc198b0b6c1ec64e2762c897157d99",
+      "provider": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-12",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "sourceKey": "995d510a9de6210b96761e17f1bb8c5621dc198b0b6c1ec64e2762c897157d99",
+      "provider": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-13",
+      "region": "CATANIA",
+      "category": "TRAIN",
+      "sourceKey": "995d510a9de6210b96761e17f1bb8c5621dc198b0b6c1ec64e2762c897157d99",
+      "provider": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-13",
+      "region": "MESSINA",
+      "category": "TRAIN",
+      "sourceKey": "995d510a9de6210b96761e17f1bb8c5621dc198b0b6c1ec64e2762c897157d99",
+      "provider": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-13",
+      "region": "PALERMO",
+      "category": "TRAIN",
+      "sourceKey": "995d510a9de6210b96761e17f1bb8c5621dc198b0b6c1ec64e2762c897157d99",
+      "provider": "PERSONALE SOC. RFI INFRASTRUTTURE SICILIA/DOIT PALERMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Sicilia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Sicilia | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-14",
+      "region": "FIRENZE",
+      "category": "TRAIN",
+      "sourceKey": "0b1670c8d3c13251d8ff96f38bd0d319d58611ccdf70687d07854a43ca2e6e1a",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Toscana | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "Toscana 铁路服务可能受影响，具体运营商和线路尚未确认",
+          "en": "Toscana rail services may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-14",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "sourceKey": "0b1670c8d3c13251d8ff96f38bd0d319d58611ccdf70687d07854a43ca2e6e1a",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Toscana | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "Toscana 地方公共交通可能受影响，具体运营商和线路尚未确认",
+          "en": "Toscana local public transport may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-14",
+      "region": "PISA",
+      "category": "TRAIN",
+      "sourceKey": "0b1670c8d3c13251d8ff96f38bd0d319d58611ccdf70687d07854a43ca2e6e1a",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Toscana | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "Toscana 铁路服务可能受影响，具体运营商和线路尚未确认",
+          "en": "Toscana rail services may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-14",
+      "region": "PISA",
+      "category": "BUS",
+      "sourceKey": "0b1670c8d3c13251d8ff96f38bd0d319d58611ccdf70687d07854a43ca2e6e1a",
+      "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI ANCHE IN APPALTO E STRUMENTALI REGIONE TOSCANA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Toscana | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "Toscana 地方公共交通可能受影响，具体运营商和线路尚未确认",
+          "en": "Toscana local public transport may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-15",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "sourceKey": "964f5ac745c6e1f9c0aa4f192225a979a0988b7d826440a5adb5ac9ffa786e78",
+      "provider": "PERSONALE SOC. ATAF DI FOGGIA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "ATAF_FOGGIA"
+            ],
+            "operatorNames": [
+              "ATAF Foggia"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Puglia",
+            "officialProvince": "Foggia"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC. ATAF DI FOGGIA"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ATAF Foggia 人员罢工，具体线路影响尚未确认",
+          "en": "ATAF Foggia staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-16",
+      "region": "BERGAMO",
+      "category": "BUS",
+      "sourceKey": "6ef9ce99d404276f381e36e559834c2a4392192a20fc3d1115188e72a1370d15",
+      "provider": "PERSONALE SOC. ARRIVA ITALIA UNITA' PRODUTTIVA DI BERGAMO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "NAMED_NETWORKS",
+            "operatorIds": [
+              "ARRIVA_BERGAMO"
+            ],
+            "operatorNames": [
+              "Arriva Bergamo"
+            ],
+            "networkNames": [
+              "BERGAMO TRASPORTI SUD",
+              "BERGAMO TRASPORTI EST",
+              "BERGAMO TRASPORTI OVEST"
+            ],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Lombardia",
+            "officialProvince": "Bergamo"
+          },
+          "confidence": "HIGH",
+          "source": "OPERATOR_OFFICIAL",
+          "method": "CODE",
+          "url": "https://bergamo.arriva.it/notice/sciopero-di-24-ore-del-16-10-2026-arriva-italia/",
+          "excerpt": "Si avvisa la gentile clientela, che nella giornata di venerdì 16 ottobre 2026 è stato indotto dalle sigle sindalcali Filt Cgil, Fit Cisl, Faisa Cisal e UILTransporti, uno sciopero aziendale per i dipendenti di Arriva Italia di 24 ore. In tale giornata NON saranno garantiti i servizi di linea gestiti da BERGAMO TRASPORTI SUD, BERGAMO TRASPORTI EST, BERGAMO TRASPORTI OVEST s.c. a r.l. nelle fasce orarie: Da inizio servizio alle ore 05:59- dalle ore 08:31 alle ore 12:29 e dalle ore 16:01 sino a termine servizio."
+        },
+        "specificLinesStatus": "NOT_ENUMERATED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "BERGAMO TRASPORTI SUD / BERGAMO TRASPORTI EST / BERGAMO TRASPORTI OVEST 可能受影响",
+          "en": "BERGAMO TRASPORTI SUD / BERGAMO TRASPORTI EST / BERGAMO TRASPORTI OVEST services may be affected",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeDuringStrike": {
+        "url": "https://arriva.it/app/uploads/sites/7/2026/09/BERGAMO-Carta-della-mobilita-2026.pdf",
+        "value": [],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+        "confidence": "MEDIUM"
+      }
+    },
+    {
+      "date": "2026-10-16",
+      "region": "FIRENZE",
+      "category": "AIRPORT",
+      "sourceKey": "aebc5d462e00e188f5acd50e3d43c4cc76a8d14d684e87bfc730dfb62d8d3236",
+      "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Toscana | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "MIXED_AIRPORT_SERVICES",
+          "airports": [
+            "佛罗伦萨机场",
+            "比萨机场"
+          ],
+          "operators": [
+            "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE"
+          ]
+        },
+        "presentation": {
+          "zh": "佛罗伦萨机场 / 比萨机场 · 机场综合服务人员罢工，服务可能受影响",
+          "en": "佛罗伦萨机场 / 比萨机场: Mixed airport services strike; services may be affected",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE"
+    },
+    {
+      "date": "2026-10-16",
+      "region": "NAPOLI",
+      "category": "TRAIN",
+      "sourceKey": "f9c9fdde9de1b34cecc9d964f9b7c4dd44eb65fd788511c4caa082086934415b",
+      "provider": "PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "EAV_NAPOLI"
+            ],
+            "operatorNames": [
+              "EAV"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Campania",
+            "officialProvince": "Napoli"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "EAV 人员罢工，具体线路影响尚未确认",
+          "en": "EAV staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-16",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "sourceKey": "5b31464dbd98b58325c2e3858fc21be96f4f26b3e2976b2758823868dd457a19",
+      "provider": "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "AIRLINE_CREW",
+          "airports": [],
+          "operators": [
+            "PERSONALE NAVIGANTE SOC. EASYJET AIRLINES LIMITED"
+          ]
+        },
+        "presentation": {
+          "zh": "航司机组罢工，具体航班影响以官方通知为准",
+          "en": "Airline crew strike; flight impact requires official confirmation",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE"
+    },
+    {
+      "date": "2026-10-16",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "sourceKey": "bd90491aa30fcd4166f83b6c41c0572032f48ab553f41627f07862166092e70c",
+      "provider": "PERSONALE NAVIGANTE TECNICO DELLA SOC. POSTE AIR CARGO",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "CARGO",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "CARGO",
+          "airports": [],
+          "operators": [
+            "PERSONALE NAVIGANTE TECNICO DELLA SOC. POSTE AIR CARGO"
+          ]
+        },
+        "presentation": {
+          "zh": "货运航空罢工，具体航班影响以官方通知为准",
+          "en": "Cargo airline strike; flight impact requires official confirmation",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-16",
+      "region": "PISA",
+      "category": "AIRPORT",
+      "sourceKey": "aebc5d462e00e188f5acd50e3d43c4cc76a8d14d684e87bfc730dfb62d8d3236",
+      "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Toscana",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Toscana | Tutte | Regionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "MIXED_AIRPORT_SERVICES",
+          "airports": [
+            "佛罗伦萨机场",
+            "比萨机场"
+          ],
+          "operators": [
+            "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE"
+          ]
+        },
+        "presentation": {
+          "zh": "佛罗伦萨机场 / 比萨机场 · 机场综合服务人员罢工，服务可能受影响",
+          "en": "佛罗伦萨机场 / 比萨机场: Mixed airport services strike; services may be affected",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE"
+    },
+    {
+      "date": "2026-10-16",
+      "region": "VENEZIA",
+      "category": "AIRPORT",
+      "sourceKey": "1766b5dfb1d05255f055ad90a4cac80c73fc27d6babc4f12b944e1973b6779f7",
+      "provider": "PERSONALE SOC. SICURITALIA IVRI AEROPORTO MARCO POLO DI VENEZIA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Interregionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "AIRPORT",
+          "airports": [
+            "威尼斯机场"
+          ],
+          "operators": [
+            "PERSONALE SOC. SICURITALIA IVRI AEROPORTO MARCO POLO DI VENEZIA"
+          ]
+        },
+        "presentation": {
+          "zh": "威尼斯机场 · 机场人员罢工，服务可能受影响",
+          "en": "威尼斯机场: Airport staff strike; services may be affected",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE"
+    },
+    {
+      "date": "2026-10-20",
+      "region": "UNKNOWN",
+      "category": "BUS",
+      "sourceKey": "f791195da0aa883c430a97c30f629286894a151ec346fcc12ed2870a61a4bef9",
+      "provider": "PERSONALE SOC. ARRIVA UDINE DI UDINE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "ARRIVA_UDINE"
+            ],
+            "operatorNames": [
+              "Arriva Udine"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Friuli-Venezia Giulia",
+            "officialProvince": "Udine"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC. ARRIVA UDINE DI UDINE"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "Arriva Udine 人员罢工，具体线路影响尚未确认",
+          "en": "Arriva Udine staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-10-28",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "sourceKey": "dcecd15e6d90cde05c4ad79e73ea9b62bb3b8e1354ad5eb1b23ecb62fc96a637",
+      "provider": "PERSONALE SOC. AIR CAMPANIA DI NAPOLI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "AIR_CAMPANIA"
+            ],
+            "operatorNames": [
+              "AIR Campania"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Campania",
+            "officialProvince": "Napoli"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC. AIR CAMPANIA DI NAPOLI"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "AIR Campania 人员罢工，具体线路影响尚未确认",
+          "en": "AIR Campania staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "OPERATOR_RULE",
+      "guaranteeDuringStrike": {
+        "url": "https://aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244",
+        "value": [
+          {
+            "end": "15:00",
+            "start": "13:00",
+            "end_kind": "clock"
+          }
+        ],
+        "method": "CODE",
+        "source": "OPERATOR_OFFICIAL",
+        "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+        "confidence": "MEDIUM"
+      }
+    },
+    {
+      "date": "2026-10-29",
+      "region": "BOLOGNA",
+      "category": "TRAIN",
+      "sourceKey": "91c67d7b035837c2da768fd69fb288be78492aab5eb4b3cde63a46c54d788267",
+      "provider": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "REGIONAL_STAFF",
+            "operatorIds": [
+              "TRENITALIA"
+            ],
+            "operatorNames": [
+              "Trenitalia"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Emilia-Romagna",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC. TRENITALIA DIV. CUSTOMER OPERATIONS SEDI DI BOLOGNA, REGGIO EMILIA STORICA ED AV MEDIOPADANA, RIMINI"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "SUPPORT_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "相关人员罢工，对列车运行的具体影响尚未确认",
+          "en": "Related staff strike; effects on train operation unconfirmed",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-06",
+      "region": "BARI",
+      "category": "AIRPORT",
+      "sourceKey": "9b064603811d3310cb5871c3ecb5f128551119ab7b21a4f514f9b4ec4ff1ef69",
+      "provider": "PERSONALE SOC. ENAV APT BARI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Interregionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "AIRPORT",
+          "airports": [
+            "巴里机场"
+          ],
+          "operators": [
+            "PERSONALE SOC. ENAV APT BARI"
+          ]
+        },
+        "presentation": {
+          "zh": "巴里机场 · 机场人员罢工，服务可能受影响",
+          "en": "巴里机场: Airport staff strike; services may be affected",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "guaranteeDuringStrike": {
+        "value": [],
+        "confidence": "HIGH",
+        "source": "STANDARD_RULE",
+        "method": "CODE"
+      }
+    },
+    {
+      "date": "2026-11-21",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "sourceKey": "b2b5dffe63ba0385e7634167bff0a0b1edf4d9cf16fa8fabf0ef2d14bf8f76d8",
+      "provider": "PERSONALE SOC. ENAV",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "NATIONAL_AVIATION",
+          "airports": [],
+          "operators": [
+            "PERSONALE SOC. ENAV"
+          ]
+        },
+        "presentation": {
+          "zh": "全国航空人员罢工，具体航班影响以官方通知为准",
+          "en": "National aviation strike; flight impact requires official confirmation",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "guaranteeDuringStrike": {
+        "value": [],
+        "confidence": "HIGH",
+        "source": "STANDARD_RULE",
+        "method": "CODE"
+      }
+    },
+    {
+      "date": "2026-11-22",
+      "region": "MILANO",
+      "category": "AIRPORT",
+      "sourceKey": "fd00d30751ec90c9dcee811afd25c4651813791a87c8c1013543836b40ba8bad",
+      "provider": "PERSONALE SOC. ENAV AEROPORTO DI MILANO MALPENSA",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "AIRPORT",
+          "airports": [
+            "马尔彭萨机场"
+          ],
+          "operators": [
+            "PERSONALE SOC. ENAV AEROPORTO DI MILANO MALPENSA"
+          ],
+          "protectedFlightExceptions": {
+            "value": [
+              {
+                "airportName": "BARI",
+                "direction": "TO_FROM",
+                "kind": "GUARANTEED_FLIGHTS"
+              }
+            ],
+            "confidence": "HIGH",
+            "source": "MIT",
+            "method": "CODE",
+            "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+            "excerpt": "GARANTITI I VOLI DA E PER L'AEROPORTO DI BARI"
+          }
+        },
+        "presentation": {
+          "zh": "马尔彭萨机场 · 机场人员罢工，服务可能受影响",
+          "en": "马尔彭萨机场: Airport staff strike; services may be affected",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "STANDARD_RULE",
+      "guaranteeDuringStrike": {
+        "value": [
+          {
+            "start": "07:00",
+            "end": "10:00",
+            "end_kind": "clock"
+          },
+          {
+            "start": "18:00",
+            "end": "21:00",
+            "end_kind": "clock"
+          }
+        ],
+        "confidence": "HIGH",
+        "source": "STANDARD_RULE",
+        "method": "CODE"
+      },
+      "protectedFlightExceptions": {
+        "value": [
+          {
+            "airportName": "BARI",
+            "direction": "TO_FROM",
+            "kind": "GUARANTEED_FLIGHTS"
+          }
+        ],
+        "confidence": "HIGH",
+        "source": "MIT",
+        "method": "CODE",
+        "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+        "excerpt": "GARANTITI I VOLI DA E PER L'AEROPORTO DI BARI"
+      }
+    },
+    {
+      "date": "2026-12-03",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "sourceKey": "79fd2f7ad47fb3434e75a1e34e7c1e71f3e8fb793354810b48e4df191395fd49",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "NATIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "全国铁路服务可能受影响，具体运营商和线路尚未确认",
+          "en": "National rail services may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-12-04",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "sourceKey": "79fd2f7ad47fb3434e75a1e34e7c1e71f3e8fb793354810b48e4df191395fd49",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "NATIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "PASSENGER_SERVICE",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "全国铁路服务可能受影响，具体运营商和线路尚未确认",
+          "en": "National rail services may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-12-04",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "sourceKey": "79fd2f7ad47fb3434e75a1e34e7c1e71f3e8fb793354810b48e4df191395fd49",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "AVIATION",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_APPLICABLE",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "aviation": {
+          "scopeType": "NATIONAL_AVIATION",
+          "airports": [],
+          "operators": []
+        },
+        "presentation": {
+          "zh": "全国航空人员罢工，具体航班影响以官方通知为准",
+          "en": "National aviation strike; flight impact requires official confirmation",
+          "showLineSection": false
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-12-04",
+      "region": "NATIONAL",
+      "category": "BUS",
+      "sourceKey": "79fd2f7ad47fb3434e75a1e34e7c1e71f3e8fb793354810b48e4df191395fd49",
+      "provider": "SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "NATIONAL_SERVICE",
+            "operatorIds": [],
+            "operatorNames": [],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Italia",
+            "officialProvince": "Tutte"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "Italia | Tutte | Nazionale"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "全国地方公共交通可能受影响，具体运营商和线路尚未确认",
+          "en": "National local public transport may be affected; specific operators and lines unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-12-16",
+      "region": "NAPOLI",
+      "category": "SUBWAY",
+      "sourceKey": "2aee6dee0b445d5f1e1694cbde21a4e4c7976c4081896e83e1b89854c93348ca",
+      "provider": "PERSONALE SOC. ANM DI NAPOLI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "ANM_NAPOLI"
+            ],
+            "operatorNames": [
+              "ANM"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Campania",
+            "officialProvince": "Napoli"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC. ANM DI NAPOLI"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ANM 人员罢工，具体线路影响尚未确认",
+          "en": "ANM staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    },
+    {
+      "date": "2026-12-16",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "sourceKey": "2aee6dee0b445d5f1e1694cbde21a4e4c7976c4081896e83e1b89854c93348ca",
+      "provider": "PERSONALE SOC. ANM DI NAPOLI",
+      "impact": {
+        "version": 1,
+        "checkedAt": "2026-10-06T05:10:31.516877+00:00",
+        "declaredScope": {
+          "value": {
+            "kind": "OPERATOR_STAFF",
+            "operatorIds": [
+              "ANM_NAPOLI"
+            ],
+            "operatorNames": [
+              "ANM"
+            ],
+            "networkNames": [],
+            "affectedLineNames": [],
+            "excludedLineNames": [],
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "officialRegion": "Campania",
+            "officialProvince": "Napoli"
+          },
+          "confidence": "HIGH",
+          "source": "MIT",
+          "method": "CODE",
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "excerpt": "PERSONALE SOC. ANM DI NAPOLI"
+        },
+        "specificLinesStatus": "NOT_CHECKED",
+        "passengerRelevance": "UNKNOWN",
+        "observedStatus": "NOT_CHECKED",
+        "presentation": {
+          "zh": "ANM 人员罢工，具体线路影响尚未确认",
+          "en": "ANM staff strike; specific line impact unconfirmed",
+          "showLineSection": true
+        }
+      },
+      "guaranteeSource": "UNKNOWN"
+    }
+  ]
+}

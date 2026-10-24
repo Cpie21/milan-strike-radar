@@ -1,0 +1,276 @@
+[
+  {
+    "date": "2026-09-21",
+    "category": "BUS",
+    "provider": "公共交通人员",
+    "region": "ROMA",
+    "status": "CONFIRMED",
+    "display_time": "08:30 - 12:30",
+    "duration_hours": "4小时",
+    "strike_windows": [
+      {
+        "start": "08:30",
+        "end": "12:30"
+      }
+    ],
+    "guarantee_windows": [
+      {
+        "start": "00:00",
+        "end": "08:29"
+      },
+      {
+        "start": "17:00",
+        "end": "19:59"
+      }
+    ],
+    "affected_lines": [
+      "全部线路"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-09-30",
+    "category": "AIRPORT",
+    "provider": "意大利空管人员",
+    "region": "NATIONAL",
+    "status": "CONFIRMED",
+    "display_time": "13:00 - 17:00",
+    "duration_hours": "4小时",
+    "strike_windows": [
+      {
+        "start": "13:00",
+        "end": "17:00"
+      }
+    ],
+    "guarantee_windows": [],
+    "affected_lines": [
+      "全国相关机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-09-30",
+    "category": "AIRPORT",
+    "provider": "科技天空技术人员",
+    "region": "NATIONAL",
+    "status": "CONFIRMED",
+    "display_time": "13:00 - 17:00",
+    "duration_hours": "4小时",
+    "strike_windows": [
+      {
+        "start": "13:00",
+        "end": "17:00"
+      }
+    ],
+    "guarantee_windows": [],
+    "affected_lines": [
+      "全国相关机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-09-30",
+    "category": "AIRPORT",
+    "provider": "意大利空管人员",
+    "region": "ROMA",
+    "status": "CONFIRMED",
+    "display_time": "13:00 - 17:00",
+    "duration_hours": "4小时",
+    "strike_windows": [
+      {
+        "start": "13:00",
+        "end": "17:00"
+      }
+    ],
+    "guarantee_windows": [],
+    "affected_lines": [
+      "罗马相关机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-09-30",
+    "category": "AIRPORT",
+    "provider": "意大利空管人员",
+    "region": "ROMA",
+    "status": "CONFIRMED",
+    "display_time": "全天 24小时",
+    "duration_hours": "24小时",
+    "strike_windows": [
+      {
+        "start": "00:00",
+        "end": "24:00"
+      }
+    ],
+    "guarantee_windows": [
+      {
+        "start": "07:00",
+        "end": "10:00"
+      },
+      {
+        "start": "18:00",
+        "end": "21:00"
+      }
+    ],
+    "affected_lines": [
+      "罗马相关机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-09-30",
+    "category": "AIRPORT",
+    "provider": "利纳特机场空管人员",
+    "region": "MILANO",
+    "status": "CONFIRMED",
+    "display_time": "13:00 - 17:00",
+    "duration_hours": "4小时",
+    "strike_windows": [
+      {
+        "start": "13:00",
+        "end": "17:00"
+      }
+    ],
+    "guarantee_windows": [],
+    "affected_lines": [
+      "利纳特机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-10-02",
+    "category": "TRAIN",
+    "provider": "铁路相关人员",
+    "region": "NATIONAL",
+    "status": "UNCERTAIN",
+    "display_time": "全天 24小时",
+    "duration_hours": "24小时",
+    "strike_windows": [
+      {
+        "start": "00:00",
+        "end": "24:00"
+      }
+    ],
+    "guarantee_windows": [
+      {
+        "start": "06:00",
+        "end": "09:00"
+      },
+      {
+        "start": "18:00",
+        "end": "21:00"
+      }
+    ],
+    "affected_lines": [
+      "全部线路"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-10-09",
+    "category": "SUBWAY",
+    "provider": "米兰交通局人员",
+    "region": "MILANO",
+    "status": "CONFIRMED",
+    "display_time": "全天 24小时",
+    "duration_hours": "24小时",
+    "strike_windows": [
+      {
+        "start": "00:00",
+        "end": "24:00"
+      }
+    ],
+    "guarantee_windows": [
+      {
+        "start": "00:00",
+        "end": "08:45"
+      },
+      {
+        "start": "15:00",
+        "end": "18:00"
+      }
+    ],
+    "affected_lines": [
+      "全部线路"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-10-09",
+    "category": "BUS",
+    "provider": "米兰交通局人员",
+    "region": "MILANO",
+    "status": "CONFIRMED",
+    "display_time": "全天 24小时",
+    "duration_hours": "24小时",
+    "strike_windows": [
+      {
+        "start": "00:00",
+        "end": "24:00"
+      }
+    ],
+    "guarantee_windows": [
+      {
+        "start": "00:00",
+        "end": "08:45"
+      },
+      {
+        "start": "15:00",
+        "end": "18:00"
+      }
+    ],
+    "affected_lines": [
+      "全部线路"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-10-16",
+    "category": "AIRPORT",
+    "provider": "易捷航空机组与飞行员",
+    "region": "NATIONAL",
+    "status": "CONFIRMED",
+    "display_time": "全天 24小时",
+    "duration_hours": "24小时",
+    "strike_windows": [
+      {
+        "start": "00:00",
+        "end": "24:00"
+      }
+    ],
+    "guarantee_windows": [
+      {
+        "start": "07:00",
+        "end": "10:00"
+      },
+      {
+        "start": "18:00",
+        "end": "21:00"
+      }
+    ],
+    "affected_lines": [
+      "全国相关机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  },
+  {
+    "date": "2026-11-06",
+    "category": "AIRPORT",
+    "provider": "意大利空管人员",
+    "region": "NATIONAL",
+    "status": "CONFIRMED",
+    "display_time": "13:00 - 17:00",
+    "duration_hours": "4小时",
+    "strike_windows": [
+      {
+        "start": "13:00",
+        "end": "17:00"
+      }
+    ],
+    "guarantee_windows": [],
+    "affected_lines": [
+      "全国相关机场"
+    ],
+    "data_source": "MIT_PRIMARY"
+  }
+]

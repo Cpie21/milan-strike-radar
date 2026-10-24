@@ -1,0 +1,415 @@
+{
+  "checked_at": "2026-10-05T13:38:10.665Z",
+  "records": [
+    {
+      "id": "a6f15023-fe35-426c-a00d-26b93ccf5f1e",
+      "date": "2026-10-10",
+      "region": "FIRENZE",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "source_key": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+      "provider": "GEST SERVIZIO TRANVIA FIRENZE人员",
+      "strike_windows": [
+        {
+          "end": "24:00",
+          "start": "00:00"
+        }
+      ],
+      "guarantee_windows": [
+        {
+          "end": "09:30",
+          "start": "06:30"
+        },
+        {
+          "end": "20:00",
+          "start": "17:00"
+        }
+      ],
+      "affected_lines": [
+        "T1",
+        "T2"
+      ],
+      "windows": [
+        {
+          "end": "24:00",
+          "start": "00:00",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+          "name": "www.gestramvia.it",
+          "excerpt": "SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS.",
+          "authority": "official",
+          "checked_at": "2026-10-05T13:32:53.258Z",
+          "content_hash": "d7eac2d79027a098b4cb50d05a2ea3eeb8f329a32caafa9edf60ebb0f406ca0d"
+        },
+        {
+          "url": "https://www.virgilio.it/notizie/scioperi-settimana-dal-5-all-11-ottobre-2026-stop-metro-treni-sanita-e-servizi-le-citta-coinvolte-1786123",
+          "name": "Virgilio",
+          "excerpt": "10 Ottobre 2026 — Firenze – GEST | Cobas Lavoro Privato | 24 ore; fasce garantite 6:30–9:30 e 17:00–20:00",
+          "authority": "reported",
+          "checked_at": "2026-10-05T13:32:53.258Z",
+          "content_hash": "c3c3040718452ee4f46f5553f90c0133c4f02e68b60410ef002aed41334e1fe4"
+        },
+        {
+          "url": "https://sciopero.net/381296-trasporto-pubblico-locale-firenze-10-10-2026/",
+          "name": "Sciopero.net",
+          "excerpt": "24 Ore Fasce Garantite 6:30-9:30 E 17:00-20:00",
+          "authority": "reported",
+          "checked_at": "2026-10-05T13:32:53.258Z",
+          "content_hash": "020703f67f3b7e827251d2af6b41a2cd8ed1b850a9c3aff222d60878cd026a49"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "serviceClassification": null,
+        "lineScope": {
+          "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+          "value": {
+            "kind": "SPECIFIC_LINES",
+            "operatorIds": [
+              "GEST_FIRENZE"
+            ],
+            "networkNames": [],
+            "routeValidation": "UNAVAILABLE",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [
+              "T1",
+              "T2"
+            ],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. La regolarità del servizio dipenderà dalle adesioni allo sciopero. La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Le MOTIVAZIONI: ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. ● Relazioni Industriali: negazione del riconoscimento del diritto alla costituzione di RSA e delle OO. SS. non firmatarie del CCNL come stabilito dalla sentenza 156/2025 della Corte Costituzionale. ● Relazioni col Personale: mancanza di risposte alle richieste dei dipendenti. Uscita dei turni p",
+          "confidence": "HIGH"
+        },
+        "guaranteeSource": "OFFICIAL_STRIKE_NOTICE",
+        "guaranteePolicy": null,
+        "guaranteeEvidenceWindows": {
+          "url": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+          "value": [
+            {
+              "end": "09:30",
+              "start": "06:30",
+              "end_kind": "clock"
+            },
+            {
+              "end": "20:00",
+              "start": "17:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "OFFICIAL",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Fasce garantite 6.30-9.30 e 17.00-20.00  Fasce garantite 6.30-9.30 e 17.00-20.00  Fasce garantite 6.30-9.30 e 17.00-20.00  SCANDICCI, 2 ottobre 2026 – Sabato 10 ottobre i tram delle linee T1 e T2 potrebbero subire ritardi o cancellazioni per via di uno sciopero aziendale di 24 ore proclamato da COBAS. Fasce garantite 6.30-9.30 e 17.00-20.00  La regolarità del servizio dipenderà dalle adesioni allo sciopero. Fasce garantite 6.30-9.30 e 17.00-20.00  La percentuale di adesione all’ultimo sciopero indetto da COBAS è stata del 3,25%. Fasce garantite 6.30-9.30 e 17.00-20.00  Le MOTIVAZIONI: Fasce garantite 6.30-9.30 e 17.00-20.00  ● Inidoneità del Personale Viaggiante: negazione di ricollocamenti ad altra mansione per i non più idonei alla guida. Fasce garantite 6.30-9.30 e 17.00-20.00  ● Relazi",
+          "confidence": "HIGH"
+        },
+        "guaranteeDuringStrike": null
+      }
+    },
+    {
+      "id": "2c933134-acb8-4c9b-8ff8-fb92fd3aa377",
+      "date": "2026-10-16",
+      "region": "NAPOLI",
+      "category": "TRAIN",
+      "status": "CONFIRMED",
+      "source_key": "f9c9fdde9de1b34cecc9d964f9b7c4dd44eb65fd788511c4caa082086934415b",
+      "provider": "VIAGGIANTE DTF EAV NAPOLI人员",
+      "strike_windows": [
+        {
+          "end": "23:40",
+          "start": "19:40"
+        }
+      ],
+      "guarantee_windows": [],
+      "affected_lines": [],
+      "windows": [
+        {
+          "end": "23:40",
+          "start": "19:40",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [],
+      "fields": {
+        "scopeType": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "RAIL_CREW",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI",
+          "confidence": "HIGH"
+        },
+        "passengerImpact": {
+          "url": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+          "value": "DIRECT_SERVICE",
+          "method": "CODE",
+          "source": "MIT",
+          "excerpt": "PERSONALE VIAGGIANTE DTF SOC. EAV DI NAPOLI",
+          "confidence": "HIGH"
+        },
+        "serviceClassification": {
+          "url": "https://www.eavsrl.it/avvisi-di-sciopero/dati-adesioni-scioperi/",
+          "value": {
+            "mode": "TRAIN",
+            "operator": "EAV",
+            "department": "DTF"
+          },
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Verified department meaning; does not establish this event’s exact lines or guaranteed services.",
+          "confidence": "HIGH"
+        },
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteePolicy": null,
+        "guaranteeEvidenceWindows": null,
+        "guaranteeDuringStrike": null
+      }
+    },
+    {
+      "id": "8d7c307a-7c09-4853-8cc2-7c4a663b70ab",
+      "date": "2026-10-16",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "status": "STALE",
+      "source_key": "f9c9fdde9de1b34cecc9d964f9b7c4dd44eb65fd788511c4caa082086934415b",
+      "provider": "VIAGGIANTE DTF EAV NAPOLI人员",
+      "strike_windows": [
+        {
+          "end": "23:40",
+          "start": "19:40"
+        }
+      ],
+      "guarantee_windows": [],
+      "affected_lines": [],
+      "windows": [
+        {
+          "end": "23:40",
+          "start": "19:40",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://sciopero.net/381231-trasporto-pubblico-locale-napoli-16-10-2026/",
+          "name": "Sciopero.net",
+          "excerpt": "Dalle Ore 19.40 Alle Ore 23.40",
+          "authority": "reported",
+          "checked_at": "2026-10-05T10:23:53.716Z",
+          "content_hash": "8c21842e91e47c08367894cc542b4dadbb92a0eb50115b942083f88b40c9333d"
+        }
+      ],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "serviceClassification": null,
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeSource": "UNKNOWN",
+        "guaranteePolicy": null,
+        "guaranteeEvidenceWindows": null,
+        "guaranteeDuringStrike": null
+      }
+    },
+    {
+      "id": "8148105e-f4a0-410b-bed9-af0878a70c27",
+      "date": "2026-10-28",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "status": "CONFIRMED",
+      "source_key": "dcecd15e6d90cde05c4ad79e73ea9b62bb3b8e1354ad5eb1b23ecb62fc96a637",
+      "provider": "AIR CAMPANIA NAPOLI人员",
+      "strike_windows": [
+        {
+          "end": "16:00",
+          "start": "08:00"
+        }
+      ],
+      "guarantee_windows": [
+        {
+          "end": "08:00",
+          "start": "06:00"
+        },
+        {
+          "end": "15:00",
+          "start": "13:00"
+        },
+        {
+          "end": "19:00",
+          "start": "17:00"
+        }
+      ],
+      "affected_lines": [],
+      "windows": [
+        {
+          "end": "16:00",
+          "start": "08:00",
+          "end_kind": "clock"
+        }
+      ],
+      "sources": [],
+      "fields": {
+        "scopeType": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "passengerImpact": {
+          "value": "UNKNOWN",
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "serviceClassification": null,
+        "lineScope": {
+          "value": {
+            "kind": "UNKNOWN",
+            "operatorIds": [
+              "AIR_CAMPANIA"
+            ],
+            "networkNames": [],
+            "routeValidation": "NOT_REQUESTED",
+            "affectedRouteIds": [],
+            "excludedRouteIds": [],
+            "affectedLineNames": [],
+            "excludedLineNames": []
+          },
+          "method": "CODE",
+          "source": "UNKNOWN",
+          "confidence": "UNKNOWN"
+        },
+        "guaranteeSource": "OPERATOR_RULE",
+        "guaranteePolicy": {
+          "mode": "BUS",
+          "modes": [
+            "BUS"
+          ],
+          "source": "https://aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244",
+          "service": "CAMPANIA_BUS",
+          "validTo": "2026-11-04",
+          "windows": [
+            {
+              "end": "08:00",
+              "start": "06:00",
+              "end_kind": "clock"
+            },
+            {
+              "end": "15:00",
+              "start": "13:00",
+              "end_kind": "clock"
+            },
+            {
+              "end": "19:00",
+              "start": "17:00",
+              "end_kind": "clock"
+            }
+          ],
+          "operator": "AIR_CAMPANIA",
+          "checkedAt": "2026-10-05",
+          "validFrom": "2026-10-05",
+          "qualification": "AIR Campania bus service charter, rev. 9 of 18 November 2025; dated notices take precedence. Protection is minimum service, not every departure. Excludes funicular and indirect support staff.",
+          "validityBasis": "REVIEW_WINDOW"
+        },
+        "guaranteeEvidenceWindows": {
+          "url": "https://aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244",
+          "value": [
+            {
+              "end": "08:00",
+              "start": "06:00",
+              "end_kind": "clock"
+            },
+            {
+              "end": "15:00",
+              "start": "13:00",
+              "end_kind": "clock"
+            },
+            {
+              "end": "19:00",
+              "start": "17:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "AIR Campania bus service charter, rev. 9 of 18 November 2025; dated notices take precedence. Protection is minimum service, not every departure. Excludes funicular and indirect support staff.",
+          "confidence": "MEDIUM"
+        },
+        "guaranteeDuringStrike": {
+          "url": "https://aircampania.it/download/carta-della-mobilita-ed-1-rev-1-del-13-07-2023/?wpdmdl=10244",
+          "value": [
+            {
+              "end": "15:00",
+              "start": "13:00",
+              "end_kind": "clock"
+            }
+          ],
+          "method": "CODE",
+          "source": "OPERATOR_OFFICIAL",
+          "excerpt": "Intersection of sourced protection rules with the known strike window; not all departures are guaranteed.",
+          "confidence": "MEDIUM"
+        }
+      }
+    }
+  ],
+  "budget": [
+    {
+      "month": "2026-10-01",
+      "charged_micro_usd": 6420,
+      "disabled": false
+    }
+  ]
+}

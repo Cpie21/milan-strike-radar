@@ -1,0 +1,130 @@
+{
+  "checkedAt": "2026-10-06T11:49:50.711Z",
+  "gest": {
+    "date": "2026-10-10",
+    "scope": {
+      "kind": "SPECIFIC_LINES",
+      "gtfsFeedId": "GTFS_GEST",
+      "operatorIds": [
+        "GEST_FIRENZE"
+      ],
+      "networkNames": [],
+      "routeAliases": [
+        {
+          "feedId": "GTFS_GEST",
+          "source": "https://www.firenzetramvia.it/linee/t1",
+          "routeId": "1606821564",
+          "validTo": "2026-12-30",
+          "operator": "GEST_FIRENZE",
+          "validFrom": "2026-08-10",
+          "verifiedAt": "2026-10-06",
+          "catalogName": "T1.3",
+          "officialName": "T1",
+          "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+        }
+      ],
+      "routeValidation": "VERIFIED",
+      "affectedRouteIds": [
+        "1606821564",
+        "1272089682"
+      ],
+      "excludedRouteIds": [],
+      "affectedLineNames": [
+        "T1",
+        "T2"
+      ],
+      "excludedLineNames": []
+    },
+    "status": "CONFIRMED",
+    "sourceKey": "7aa2d9d265e55c1864d4fd75e78cf1238f55fdd6cdacbe7aef867030130dd4cc",
+    "guarantees": [
+      {
+        "end": "09:30",
+        "start": "06:30",
+        "end_kind": "clock"
+      },
+      {
+        "end": "20:00",
+        "start": "17:00",
+        "end_kind": "clock"
+      }
+    ],
+    "rawMembership": [
+      {
+        "id": "1272089682",
+        "name": "T2",
+        "type": 0,
+        "longName": "Servizio Tramvia Firenze - Linea T2",
+        "operator": "GEST_FIRENZE"
+      },
+      {
+        "id": "1606821564",
+        "name": "T1.3",
+        "type": 0,
+        "longName": "Servizio Tramvia Firenze - Linea T1.3",
+        "operator": "GEST_FIRENZE"
+      }
+    ],
+    "potentialLines": [
+      {
+        "mode": "BUS",
+        "reason": "NAMED_IN_OFFICIAL_NOTICE",
+        "routeIds": [
+          "1606821564"
+        ],
+        "confidence": "HIGH",
+        "operatorId": "GEST_FIRENZE",
+        "catalogHash": "00e0d6b7f13742e7bbf63b4963e2aacd7dbef80210dea8289380f16f7e073bde",
+        "displayName": "T1",
+        "noticeSource": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+        "routeAliases": [
+          {
+            "feedId": "GTFS_GEST",
+            "source": "https://www.firenzetramvia.it/linee/t1",
+            "routeId": "1606821564",
+            "validTo": "2026-12-30",
+            "operator": "GEST_FIRENZE",
+            "validFrom": "2026-08-10",
+            "verifiedAt": "2026-10-06",
+            "catalogName": "T1.3",
+            "officialName": "T1",
+            "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+          }
+        ],
+        "catalogFeedId": "GTFS_GEST",
+        "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+        "routeLongNames": [
+          "Servizio Tramvia Firenze - Linea T1.3"
+        ],
+        "catalogCheckedAt": "2026-10-06T11:48:53.937Z",
+        "actualOperationConfirmed": false
+      },
+      {
+        "mode": "BUS",
+        "reason": "NAMED_IN_OFFICIAL_NOTICE",
+        "routeIds": [
+          "1272089682"
+        ],
+        "confidence": "HIGH",
+        "operatorId": "GEST_FIRENZE",
+        "catalogHash": "00e0d6b7f13742e7bbf63b4963e2aacd7dbef80210dea8289380f16f7e073bde",
+        "displayName": "T2",
+        "noticeSource": "https://www.gestramvia.it/10-ottobre-sciopero-aziendale-di-24-ore-indetto-da-cobas/",
+        "routeAliases": [],
+        "catalogFeedId": "GTFS_GEST",
+        "catalogSource": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+        "routeLongNames": [
+          "Servizio Tramvia Firenze - Linea T2"
+        ],
+        "catalogCheckedAt": "2026-10-06T11:48:53.937Z",
+        "actualOperationConfirmed": false
+      }
+    ]
+  },
+  "budget": {
+    "month": "2026-10-01",
+    "disabled": false,
+    "chargedMicroUsd": 27329
+  },
+  "futureActiveCount": 33
+}

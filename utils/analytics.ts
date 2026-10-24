@@ -2,9 +2,29 @@
  * PostHog Analytics Helpers
  * 
  * captureOnce: fires `posthog.capture` only the FIRST time per device.
- * Uses localStorage as a deduplication store (best-effort IP-level dedup on client).
+ * Uses localStorage for per-browser-device deduplication; it is not IP deduplication.
  */
 import posthog from 'posthog-js';
+import { ANALYTICS_VERSION, readAnalyticsContext, type AnalyticsContext } from '../lib/analyticsContract';
+
+let pageContext: { region?: string; language?: string; page_view_id?: string; app_mode?: string } = {};
+export function setAnalyticsPageContext(value: typeof pageContext): void { pageContext = value; }
+
+export function analyticsEnabled(): boolean {
+    return typeof window !== 'undefined' && !!process.env.NEXT_PUBLIC_POSTHOG_KEY &&
+        ['theitalystrike.com', 'www.theitalystrike.com'].includes(window.location.hostname) &&
+        !posthog.has_opted_out_capturing();
+}
+
+export function analyticsIsTest(): boolean {
+    try { return sessionStorage.getItem('strike_analytics_test') === '1'; } catch { return false; }
+}
+
+export function analyticsContext(requestId: string): AnalyticsContext | null {
+    if (!analyticsEnabled()) return null;
+    try { return readAnalyticsContext({ requestId, distinctId: posthog.get_distinct_id(), sessionId: posthog.get_session_id(), isTest: analyticsIsTest() }); }
+    catch { return null; }
+}
 
 /**
  * Detect the device type for the `device` property.
@@ -30,17 +50,23 @@ export function isWeChatBrowser(): boolean {
  * Skips if the event has already been recorded in localStorage.
  */
 export function captureOnce(event: string, properties?: Record<string, unknown>): void {
-    if (typeof window === 'undefined') return;
+    if (!analyticsEnabled()) return;
     const key = `ph_once_${event}`;
-    if (localStorage.getItem(key)) return;
-    localStorage.setItem(key, '1');
-    posthog.capture(event, properties);
+    try { if (localStorage.getItem(key)) return; } catch { /* storage blocked */ }
+    if (capture(event, properties)) { try { localStorage.setItem(key, '1'); } catch { /* storage blocked */ } }
 }
 
 /**
  * Always capture (for events that can repeat, like graffiti or share).
  */
-export function capture(event: string, properties?: Record<string, unknown>): void {
-    if (typeof window === 'undefined') return;
-    posthog.capture(event, properties);
+export function capture(event: string, properties?: Record<string, unknown>): boolean {
+    if (!analyticsEnabled()) return false;
+    try {
+        return !!posthog.capture(event, { ...pageContext, ...properties, analytics_version: ANALYTICS_VERSION, environment: 'production',
+            surface: 'site', device: getDeviceType(), is_test: analyticsIsTest() }, { transport: 'sendBeacon', send_instantly: true });
+    } catch { return false; }
+}
+
+export function trackSource(url: string, properties?: Record<string, unknown>): void {
+    try { const props = { ...properties, source_host: new URL(url).hostname }; capture('source_link_clicked', props); capture('official_source_clicked', props); } catch { /* malformed source cannot interrupt navigation */ }
 }

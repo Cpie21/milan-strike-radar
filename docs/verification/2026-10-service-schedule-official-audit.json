@@ -1,0 +1,1604 @@
+{
+  "checkedAt": "2026-10-05T19:21:42.197Z",
+  "actualOperationConfirmed": false,
+  "coverage": [
+    {
+      "city": "MILANO",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_MILANO",
+              "source": "https://dati.comune.milano.it/gtfs.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_MILANO",
+              "source": "https://dati.comune.milano.it/gtfs.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "ROMA",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_ROMA",
+              "source": "https://romamobilita.it/sites/default/files/rome_static_gtfs.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_ROMA",
+              "source": "https://romamobilita.it/sites/default/files/rome_static_gtfs.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "TORINO",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "NAPOLI",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "FIRENZE",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_GEST",
+              "source": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "BOLOGNA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "VENEZIA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "GENOVA",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_GENOVA",
+              "source": "https://www.amt.genova.it/amt/GTFS/GTFS_AMT_GENOVA.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_GENOVA",
+              "source": "https://www.amt.genova.it/amt/GTFS/GTFS_AMT_GENOVA.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "PALERMO",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "CATANIA",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_CATANIA",
+              "source": "https://www.amts.ct.it/GTFS/AMTCT.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "BARI",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_BARI",
+              "source": "https://www.amtabservizio.it/gtfs/google_transit.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "VERONA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "PADOVA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "TRIESTE",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "CAGLIARI",
+      "modes": {
+        "BUS": {
+          "status": "SOURCE_CONFIGURED",
+          "feeds": [
+            {
+              "id": "GTFS_CAGLIARI",
+              "source": "https://www.ctmcagliari.it/open_data/GTFS.zip"
+            }
+          ],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "BERGAMO",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "BRESCIA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "PISA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "MESSINA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    },
+    {
+      "city": "PERUGIA",
+      "modes": {
+        "BUS": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "SUBWAY": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "TRAIN": {
+          "status": "NO_VERIFIED_FEED",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        },
+        "AIRPORT": {
+          "status": "NOT_APPLICABLE",
+          "feeds": [],
+          "note": "Source configuration is not proof of dated/mode/line coverage; each event must pass validation."
+        }
+      }
+    }
+  ],
+  "feeds": [
+    {
+      "id": "GTFS_MILANO",
+      "source": "https://dati.comune.milano.it/gtfs.zip",
+      "hash": "f0959217d549f278d59f4ef60bdb5bce8b6fc3dea2efa84c9ff7f213973ea1cc",
+      "validFrom": "2026-09-14",
+      "validTo": "2026-10-19",
+      "modeValidTo": {
+        "BUS": "2026-10-02",
+        "SUBWAY": "2026-10-15"
+      },
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 5,
+          "first": {
+            "clock": "05:40",
+            "dayOffset": 0,
+            "seconds": 20400
+          },
+          "lastDeparture": {
+            "clock": "00:32",
+            "dayOffset": 1,
+            "seconds": 88320
+          },
+          "lastArrival": {
+            "clock": "01:30",
+            "dayOffset": 1,
+            "seconds": 91800
+          }
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 5,
+          "first": {
+            "clock": "05:40",
+            "dayOffset": 0,
+            "seconds": 20400
+          },
+          "lastDeparture": {
+            "clock": "00:32",
+            "dayOffset": 1,
+            "seconds": 88320
+          },
+          "lastArrival": {
+            "clock": "01:30",
+            "dayOffset": 1,
+            "seconds": 91800
+          }
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 14.495
+    },
+    {
+      "id": "GTFS_ROMA",
+      "source": "https://romamobilita.it/sites/default/files/rome_static_gtfs.zip",
+      "hash": "123fade557699778885fc6f070a2f145cf332fd222bfee8cadfe4ed2cf2dbe4c",
+      "validFrom": "2026-09-21",
+      "validTo": "2026-12-06",
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 306,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 4,
+          "first": {
+            "clock": "05:30",
+            "dayOffset": 0,
+            "seconds": 19800
+          },
+          "lastDeparture": {
+            "clock": "01:30",
+            "dayOffset": 1,
+            "seconds": 91800
+          },
+          "lastArrival": {
+            "clock": "02:11",
+            "dayOffset": 1,
+            "seconds": 94260
+          }
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 307,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 4,
+          "first": {
+            "clock": "05:30",
+            "dayOffset": 0,
+            "seconds": 19800
+          },
+          "lastDeparture": {
+            "clock": "01:30",
+            "dayOffset": 1,
+            "seconds": 91800
+          },
+          "lastArrival": {
+            "clock": "02:11",
+            "dayOffset": 1,
+            "seconds": 94260
+          }
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 307,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 4,
+          "first": {
+            "clock": "05:30",
+            "dayOffset": 0,
+            "seconds": 19800
+          },
+          "lastDeparture": {
+            "clock": "01:30",
+            "dayOffset": 1,
+            "seconds": 91800
+          },
+          "lastArrival": {
+            "clock": "02:11",
+            "dayOffset": 1,
+            "seconds": 94260
+          }
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 311,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 4,
+          "first": {
+            "clock": "05:30",
+            "dayOffset": 0,
+            "seconds": 19800
+          },
+          "lastDeparture": {
+            "clock": "23:30",
+            "dayOffset": 0,
+            "seconds": 84600
+          },
+          "lastArrival": {
+            "clock": "00:11",
+            "dayOffset": 1,
+            "seconds": 87060
+          }
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 5.766
+    },
+    {
+      "id": "GTFS_GEST",
+      "source": "https://dati.toscana.it/dataset/8bb8f8fe-fe7d-41d0-90dc-49f2456180d1/resource/1f62d551-65f4-49f8-9a99-e19b02077be3/download/gest.gtfs",
+      "hash": "97d18a9d9eae546fd21526244106b56891bef6dbb7db0846b20c0f9f6bd5ad13",
+      "validFrom": "2026-08-10",
+      "validTo": "2026-12-30",
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 2,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 2,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 2,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 2,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 0.19
+    },
+    {
+      "id": "GTFS_BARI",
+      "source": "https://www.amtabservizio.it/gtfs/google_transit.zip",
+      "hash": "89b3ea96d98cc592a9e0b06a36069a9da950d08b0eee43999d14c2e5c011a5e9",
+      "validFrom": "2026-09-27",
+      "validTo": "2026-11-30",
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 66,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 40,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 66,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 66,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 0.19
+    },
+    {
+      "id": "GTFS_GENOVA",
+      "source": "https://www.amt.genova.it/amt/GTFS/GTFS_AMT_GENOVA.zip",
+      "hash": "197330bd5a1783fa45679df2961be933abe1bc74f57051841b0a633996eb6a20",
+      "validFrom": "2026-10-05",
+      "validTo": "2026-10-12",
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "PARTIAL",
+          "reason": "MISSING_OR_FREQUENCY_BASED_TRIP_TIMES",
+          "routes": 156,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 1,
+          "first": {
+            "clock": "05:00",
+            "dayOffset": 0,
+            "seconds": 18000
+          },
+          "lastDeparture": {
+            "clock": "21:17",
+            "dayOffset": 0,
+            "seconds": 76620
+          },
+          "lastArrival": {
+            "clock": "21:33",
+            "dayOffset": 0,
+            "seconds": 77580
+          }
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "PARTIAL",
+          "reason": "MISSING_OR_FREQUENCY_BASED_TRIP_TIMES",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "PARTIAL",
+          "reason": "MISSING_OR_FREQUENCY_BASED_TRIP_TIMES",
+          "routes": 154,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 1,
+          "first": {
+            "clock": "05:20",
+            "dayOffset": 0,
+            "seconds": 19200
+          },
+          "lastDeparture": {
+            "clock": "00:09",
+            "dayOffset": 1,
+            "seconds": 86940
+          },
+          "lastArrival": {
+            "clock": "00:25",
+            "dayOffset": 1,
+            "seconds": 87900
+          }
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "PARTIAL",
+          "reason": "MISSING_OR_FREQUENCY_BASED_TRIP_TIMES",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 1.208
+    },
+    {
+      "id": "GTFS_CAGLIARI",
+      "source": "https://www.ctmcagliari.it/open_data/GTFS.zip",
+      "hash": "fb7b606c4a41c2a150eeae88c96160a5f1c1646b555c05df18c2d2364825967e",
+      "validFrom": "2026-10-05",
+      "validTo": "2026-12-31",
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 42,
+          "first": {
+            "clock": "03:39",
+            "dayOffset": 0,
+            "seconds": 13140
+          },
+          "lastDeparture": {
+            "clock": "00:55",
+            "dayOffset": 1,
+            "seconds": 89700
+          },
+          "lastArrival": {
+            "clock": "01:05",
+            "dayOffset": 1,
+            "seconds": 90300
+          }
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 45,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 42,
+          "first": {
+            "clock": "03:39",
+            "dayOffset": 0,
+            "seconds": 13140
+          },
+          "lastDeparture": {
+            "clock": "00:55",
+            "dayOffset": 1,
+            "seconds": 89700
+          },
+          "lastArrival": {
+            "clock": "01:05",
+            "dayOffset": 1,
+            "seconds": 90300
+          }
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "COMPLETE",
+          "reason": null,
+          "routes": 42,
+          "first": {
+            "clock": "03:39",
+            "dayOffset": 0,
+            "seconds": 13140
+          },
+          "lastDeparture": {
+            "clock": "00:55",
+            "dayOffset": 1,
+            "seconds": 89700
+          },
+          "lastArrival": {
+            "clock": "01:05",
+            "dayOffset": 1,
+            "seconds": 90300
+          }
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 0.29
+    },
+    {
+      "id": "GTFS_CATANIA",
+      "source": "https://www.amts.ct.it/GTFS/AMTCT.zip",
+      "hash": "e28ec62ccfcc8cf6b53ab714d0cdb9f606ea0c55c14dfb44af143e87a45a22e2",
+      "validFrom": "2026-09-29",
+      "validTo": "2026-10-25",
+      "cases": [
+        {
+          "date": "2026-10-09",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 50,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-09",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 50,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-10",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "BUS",
+          "status": "OVERLAPPING_SERVICE_DAYS",
+          "reason": "NO_SINGLE_NETWORK_END_ACROSS_SERVICE_DAYS",
+          "routes": 50,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "SUBWAY",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-16",
+          "mode": "TRAIN",
+          "status": "UNKNOWN",
+          "reason": "MODE_NOT_IN_FEED",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "BUS",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "SUBWAY",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        },
+        {
+          "date": "2026-10-29",
+          "mode": "TRAIN",
+          "status": "OUT_OF_VALIDITY",
+          "reason": "DATE_OUTSIDE_PUBLISHED_TIMETABLE",
+          "routes": 0,
+          "first": null,
+          "lastDeparture": null,
+          "lastArrival": null
+        }
+      ],
+      "seconds": 0.327
+    }
+  ]
+}

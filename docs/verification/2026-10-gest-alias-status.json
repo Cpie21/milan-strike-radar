@@ -1,0 +1,21 @@
+{
+  "healthy": true,
+  "stale": false,
+  "timedOut": false,
+  "latest": {
+    "started_at": "2026-10-06T11:47:01.105932+00:00",
+    "completed_at": "2026-10-06T11:48:57.65447+00:00",
+    "status": "success",
+    "fetched": 73,
+    "upserted": 58,
+    "unknown_timing": 8
+  },
+  "last_success": {
+    "started_at": "2026-10-06T11:47:01.105932+00:00",
+    "completed_at": "2026-10-06T11:48:57.65447+00:00",
+    "status": "success",
+    "fetched": 73,
+    "upserted": 58,
+    "unknown_timing": 8
+  }
+}
