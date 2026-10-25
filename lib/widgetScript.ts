@@ -85,6 +85,7 @@ function dedupeStrikes(items) {
 
 function getDotColor(item, nowMin) {
   if (item && item.status === "CANCELLED") return C.grayDot;
+  if (widgetDataStatus.delayed) return C.yellow;
   if (item && item.timing_evidence && item.timing_evidence.windows.some(w => w.start === null || w.end_kind === "end_of_service")) {
     // A service-relative endpoint cannot establish whether a particular line
     // is currently stopped. Keep the widget cautionary rather than claiming it.
@@ -136,7 +137,7 @@ function addLeftColumn(container, count, isStrike, visibleRows) {
     icon.imageSize = new Size(36, 32);
     icon.tintColor = C.green;
   }
-  left.addSpacer(isStrike ? (visibleRows >= 3 ? 18 : visibleRows === 2 ? 28 : 45) : 53);
+  left.addSpacer(widgetDataStatus.delayed ? 10 : isStrike ? (visibleRows >= 3 ? 18 : visibleRows === 2 ? 28 : 45) : 53);
   const n = left.addText(String(count));
   n.font = Font.boldSystemFont(24);
   n.textColor = C.white;
@@ -197,7 +198,7 @@ try {
     addLeftColumn(root, 0, false);
     root.addSpacer();
     const box = root.addStack();
-    box.size = new Size(206, 135);
+    box.size = new Size(206, widgetDataStatus.delayed ? 105 : 135);
     box.cornerRadius = 12;
     box.backgroundColor = new Color("#FFFFFF", 0.08);
     box.centerAlignContent();
@@ -221,7 +222,7 @@ try {
     const root = widget.addStack();
     root.layoutHorizontally();
     root.topAlignContent();
-    const visibleRows = Math.min(count, MAX_VISIBLE_ROWS);
+    const visibleRows = Math.min(count, widgetDataStatus.delayed ? 2 : MAX_VISIBLE_ROWS);
     addLeftColumn(root, count, true, visibleRows);
     root.addSpacer(19);
     const right = root.addStack();

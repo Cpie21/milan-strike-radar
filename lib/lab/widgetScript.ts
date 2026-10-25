@@ -347,7 +347,9 @@ try {
     const wins = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end));
     const hl = label(say, wins.join(wins.length === 2 ? "\\n" : "  ") || T.pending, 16, COL.text, "bold"); hl.lineLimit = 2;
     widget.addSpacer(8);
-    const tr = widget.addImage(track(g.items, color, now, CW, true)); tr.imageSize = new Size(CW, 20);
+    if (!widgetDataStatus.delayed) {
+      const tr = widget.addImage(track(g.items, color, now, CW, true)); tr.imageSize = new Size(CW, 20);
+    }
   } else if (dense) {
     // three or four modes, each on its own, two to a line
     eyebrow(CITY);
@@ -364,12 +366,14 @@ try {
         label(cell, T.modes[g.modes[0]], 12, COL.text2, "semibold");
         cell.addSpacer();
         const st = todayState(g.items, now);
-        label(cell, cellState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
+        label(cell, widgetDataStatus.delayed ? T.pending : cellState(st), 12, widgetDataStatus.delayed ? COL.text2 : st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
       });
       if (each.length - r === 1) row.addSpacer();
     }
     widget.addSpacer(7);
-    const ln = widget.addImage(lanes(each, now, CW, 5, 4)); ln.imageSize = new Size(CW, lanesHeight(each.length, 5, 4));
+    if (!widgetDataStatus.delayed) {
+      const ln = widget.addImage(lanes(each, now, CW, 5, 4)); ln.imageSize = new Size(CW, lanesHeight(each.length, 5, 4));
+    }
   } else {
     // one or two strikes: one line each, then the day on one axis
     const one = groups.length === 1;
@@ -387,11 +391,13 @@ try {
       label(r, one ? hours || T.pending : names(g.modes), 12, one ? COL.text : COL.text2, "semibold");
       r.addSpacer();
       const st = todayState(g.items, now);
-      label(r, shortState(st), 12, st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
+      label(r, widgetDataStatus.delayed ? T.pending : shortState(st), 12, widgetDataStatus.delayed ? COL.text2 : st.kind === "inside" ? COL.main[g.modes[0]] : st.kind === "past" ? COL.text3 : COL.text, "semibold");
     });
     widget.addSpacer(one ? 9 : 7);
     const [lane, gap] = one ? [10, 0] : [7, 6];
-    const ln = widget.addImage(lanes(shown, now, CW, lane, gap)); ln.imageSize = new Size(CW, lanesHeight(shown.length, lane, gap));
+    if (!widgetDataStatus.delayed) {
+      const ln = widget.addImage(lanes(shown, now, CW, lane, gap)); ln.imageSize = new Size(CW, lanesHeight(shown.length, lane, gap));
+    }
   }
   if (family === "large") {
     // on a strike day the medium part has no week: show this one first
