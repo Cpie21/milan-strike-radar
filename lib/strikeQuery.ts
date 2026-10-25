@@ -33,7 +33,7 @@ const cachedCityStrikes = unstable_cache(async (tag: string, startDate: string) 
 
 // Validate freshness outside the cache: a failed background refresh must not
 // allow stale cached data to masquerade as a healthy synchronization.
-export async function readCityStrikes(tag: string, startDate: string) {
+async function readSyncState() {
   // Establish request-time rendering before the SDK can catch Next's dynamic
   // control-flow exception and turn it into an apparent database failure.
   await connection();
@@ -44,6 +44,21 @@ export async function readCityStrikes(tag: string, startDate: string) {
     db.from('strike_sync_runs').select('status,started_at').order('started_at', { ascending: false }).limit(1).maybeSingle(),
     db.from('strike_sync_runs').select('completed_at').eq('status', 'success').order('completed_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
-  if (latest.error || success.error || !syncHealth(latest.data, success.data?.completed_at).healthy) throw new Error('Strike synchronization is unavailable or outdated');
+  if (latest.error || success.error) throw new Error('Strike synchronization status unavailable');
+  return { healthy: syncHealth(latest.data, success.data?.completed_at).healthy, lastSuccessfulSync: success.data?.completed_at as string | undefined };
+}
+
+export async function readCityStrikes(tag: string, startDate: string) {
+  const state = await readSyncState();
+  if (!state.healthy) throw new Error('Strike synchronization is unavailable or outdated');
   return cachedCityStrikes(tag, startDate);
+}
+
+// Widgets can show saved announcements while a primary-source refresh fails,
+// provided the response explicitly carries the real last-success timestamp.
+// Strict page/calendar/Ask readers retain their existing health gate.
+export async function readSavedCityStrikeSnapshot(tag: string, startDate: string) {
+  const state = await readSyncState();
+  if (!state.lastSuccessfulSync || !Number.isFinite(Date.parse(state.lastSuccessfulSync))) throw new Error('No successful strike synchronization');
+  return { ...state, records: await cachedCityStrikes(tag, startDate) };
 }

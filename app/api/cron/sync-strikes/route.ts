@@ -10,6 +10,7 @@ import { enrichStrikeTiming } from '../../../../lib/strikeEnrichment';
 import { reviewStrikeSemantics } from '../../../../lib/strikeSemanticReview';
 import { enrichTransitScope, enrichScheduledServiceTimes, enrichPotentialRouteCatalogs } from '../../../../lib/transitEnrichment';
 import { CITIES, cityPath } from '../../../../lib/cities';
+import type { MitAcquisition } from '../../../../lib/mitRelay';
 
 export { fetchAndFilter, fetchRecentRows, transformRows, upsertToSupabase };
 export const runtime = 'nodejs';
@@ -35,7 +36,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     runId = run.id;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(run.started_at));
     const window = syncDateWindow(today);
-    const [upcoming, recent] = await Promise.all([fetchAndFilter(), fetchRecentRows()]);
+    const acquisition:MitAcquisition[]=[];
+    const acquired=(receipt:MitAcquisition)=>{acquisition.push(receipt);};
+    const [upcoming, recent] = await Promise.all([fetchAndFilter(today,acquired), fetchRecentRows(today,acquired)]);
     const rawRows = [...upcoming, ...recent];
     // Processing an empty valid table is successful, unlike a missing/error table.
     let records: StrikeRecord[] = rawRows.length ? (await transformRows(rawRows)).map(record => ({ ...record, last_seen_at: run.started_at })) : [];
@@ -76,8 +79,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     revalidatePath('/api/strikes');
     revalidatePath('/api/calendar');
     revalidateTag('strikes', { expire: 0 });
-    console.log('[sync-strikes]', JSON.stringify({ runId, fetched: rawRows.length, upserted, unknownTiming, retired, coverage, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
-    return NextResponse.json({ success: true, runId, fetched: rawRows.length, upserted, unknownTiming, retired, coverage, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, transit:{profilesApplied:transit.profilesApplied,routeCatalogs:transit.routeCatalogs,serviceSchedules:schedules.complete,scheduleFeeds:schedules.feeds,membershipCatalogs:memberships.catalogs,membershipProjections:memberships.projected},semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
+    console.log('[sync-strikes]', JSON.stringify({ runId, acquisition, fetched: rawRows.length, upserted, unknownTiming, retired, coverage, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warnings }));
+    return NextResponse.json({ success: true, runId, acquisition, fetched: rawRows.length, upserted, unknownTiming, retired, coverage, enriched: enrichment.enriched, sourcesChecked: enrichment.sourcesChecked, conflicts: enrichment.conflicts, transit:{profilesApplied:transit.profilesApplied,routeCatalogs:transit.routeCatalogs,serviceSchedules:schedules.complete,scheduleFeeds:schedules.feeds,membershipCatalogs:memberships.catalogs,membershipProjections:memberships.projected},semantic:semantic.stats, semanticEnabled:semantic.enabled, verification:'verification' in enrichment?enrichment.verification:undefined, warningCount: warnings.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[sync-strikes] Error:', message);

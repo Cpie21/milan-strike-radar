@@ -20,6 +20,8 @@
 // The production widget (lib/widgetScript.ts, WidgetGuideModal) is left as
 // it is; this one ships from the lab sheet only.
 
+import { widgetDataRuntime } from '../widgetRuntime';
+
 export type LabWidgetOptions = { origin: string; region: string; types: string[]; cityName: string; path: string; lang: 'zh' | 'en' };
 
 const LABELS = {
@@ -55,12 +57,13 @@ const manyText = n => n + " strikes today";
 const oneText = names => names + " strike today";
 const cellState = st => st.kind === "inside" ? "to " + st.until : st.kind === "later" ? "from " + st.from : st.kind === "past" ? "over" : "pending";`;
   return `// ${cityName} · strike radar widget. Medium is the main size; small and large work too.
-const API_URL = ${JSON.stringify(`${origin}/api/strikes?region=${region}`)};
+const API_URL = ${JSON.stringify(`${origin}/api/widget?region=${region}`)};
 const OPEN_URL = ${JSON.stringify(`${origin}${path}?from=widget`)};
 const TYPES = ${JSON.stringify(types)};
 const CITY = ${JSON.stringify(cityName)};
 const T = ${JSON.stringify(text)};
 ${fns}
+${widgetDataRuntime(region, lang)}
 
 const COL = {
   bg: "#0E0F12", surface: "#1A1C21", text: "#F5F6F7", text2: "#A9AEB7", text3: "#6E737C",
@@ -285,11 +288,7 @@ widget.url = OPEN_URL;
 widget.refreshAfterDate = new Date(Date.now() + 20 * 60 * 1000);
 widget.setPadding(14, 14, 14, 16);
 try {
-  const request = new Request(API_URL);
-  request.timeoutInterval = 15;
-  const all = JSON.parse(await request.loadString());
-  if (request.response && request.response.statusCode !== 200) throw new Error("data unavailable");
-  if (!Array.isArray(all)) throw new Error("bad data");
+  const all = await loadWidgetData(API_URL);
   if (!TYPES.length) throw new Error("no transport selected");
   const today = romeToday(), now = romeMinutes();
   const live = all.filter(x => x && TYPES.includes(x.category) && x.status !== "CANCELLED");
@@ -312,7 +311,7 @@ try {
   // Top band: the assistant's face and what it is saying. Bottom: the
   // picture of the day, the full width of the widget.
   const top = widget.addStack(); top.layoutHorizontally(); top.centerAlignContent();
-  const fimg = top.addImage(face(strike ? ["worryL", "worryR"] : ["happy", "happy"], small ? 2.4 : dense ? 2.8 : 3.4));
+  const fimg = top.addImage(face(strike || widgetDataStatus.delayed ? ["worryL", "worryR"] : ["happy", "happy"], small ? 2.4 : dense ? 2.8 : 3.4));
   fimg.imageSize = small ? new Size(46, 26) : dense ? new Size(53, 30) : new Size(64, 36);
   top.addSpacer(small ? 0 : 10);
   const words = small ? null : top.addStack();
@@ -326,7 +325,7 @@ try {
 
   if (!strike) {
     eyebrow(CITY + " · " + T.week[dow(today)]);
-    label(say, T.calm, small ? 18 : 20, COL.text, "bold");
+    label(say, widgetDataStatus.delayed ? WIDGET_TEXT.delayed : T.calm, small ? 18 : 20, COL.text, "bold");
     widget.addSpacer(small ? 6 : 12);
     const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
     if (nextDate) {
@@ -335,7 +334,7 @@ try {
       ms.forEach((m, i) => { if (i) r.addSpacer(2); badge(r, m, 14); });
       r.addSpacer(5);
       label(r, (small ? "" : T.next + " · ") + dateText(t.getUTCMonth() + 1, t.getUTCDate(), T.week[t.getUTCDay()]) + " · " + inDays(daysBetween(today, nextDate)), 11.5, COL.text2);
-    } else label(r, T.none, 11.5, COL.text2);
+    } else label(r, widgetDataStatus.delayed ? WIDGET_TEXT.verify : T.none, 11.5, COL.text2);
     if (!small) { widget.addSpacer(8); week(widget, byDate, today, 7, today); }
   } else if (small) {
     // small: what and when, then the bar
@@ -343,7 +342,7 @@ try {
     const chips = say.addStack(); chips.layoutHorizontally(); chips.centerAlignContent();
     g.modes.slice(0, 3).forEach((m, i) => { if (i) chips.addSpacer(3); badge(chips, m, 15); });
     chips.addSpacer(6);
-    label(chips, T.strikeToday, 12, color, "semibold");
+    label(chips, widgetDataStatus.delayed ? WIDGET_TEXT.saved : T.strikeToday, 12, color, "semibold");
     say.addSpacer(4);
     const wins = windowsOf(g.items[0]).map(w => (w.start === null ? T.start : w.start) + "–" + (w.end === null ? T.end : w.end));
     const hl = label(say, wins.join(wins.length === 2 ? "\\n" : "  ") || T.pending, 16, COL.text, "bold"); hl.lineLimit = 2;
@@ -352,7 +351,7 @@ try {
   } else if (dense) {
     // three or four modes, each on its own, two to a line
     eyebrow(CITY);
-    label(say, manyText(modesToday.length), 18, COL.text, "bold");
+    label(say, widgetDataStatus.delayed ? WIDGET_TEXT.saved : manyText(modesToday.length), 18, COL.text, "bold");
     widget.addSpacer(8);
     const each = modesToday.map(m => ({ modes: [m], items: todays.filter(x => x.category === m) }));
     for (let r = 0; r < each.length; r += 2) {
@@ -375,7 +374,7 @@ try {
     // one or two strikes: one line each, then the day on one axis
     const one = groups.length === 1;
     eyebrow(CITY);
-    label(say, one ? oneText(groups[0].modes.map(m => T.modes[m]).join(T.and)) : manyText(groups.length), 19, COL.text, "bold");
+    label(say, widgetDataStatus.delayed ? WIDGET_TEXT.saved : one ? oneText(groups[0].modes.map(m => T.modes[m]).join(T.and)) : manyText(groups.length), 19, COL.text, "bold");
     widget.addSpacer(one ? 12 : 10);
     const shown = family === "large" ? groups : groups.slice(0, 2);
     shown.forEach((g, i) => {
@@ -403,6 +402,7 @@ try {
     week(widget, byDate, addDays(today, 7), 7, today);
   }
   widget.addSpacer();
+  if (widgetDataStatus.delayed) label(widget, widgetDataNotice(), 10, COL.amber, "semibold");
 } catch (e) {
   background(widget, null);
   const r = widget.addStack(); r.layoutHorizontally(); r.centerAlignContent();
