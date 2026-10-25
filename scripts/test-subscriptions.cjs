@@ -27,7 +27,7 @@ test('subscription links are public, preserve city and selected modes, and rejec
 
 // Execute the actual generated source against a small Scriptable API model.
 // Rendering calls are recorded; this does not claim native iOS verification.
-async function runWidget(code, records, { at = '2026-10-24T21:30:00Z', status = 200, offline = false, family = 'medium' } = {}) {
+async function runWidget(code, records, { at = '2026-10-24T21:30:00Z', status = 200, offline = false, family = 'medium', fresh = true, sourceTime = at, cache = new Map() } = {}) {
   const texts = [], dots = [], requests = [];
   class Node {
     addStack() { return new Node(); }
@@ -53,7 +53,8 @@ async function runWidget(code, records, { at = '2026-10-24T21:30:00Z', status = 
   const context = {
     Date: Clock, Intl, console, Color, ListWidget: Node,
     config: { widgetFamily: family, runsInApp: false },
-    Request: class { constructor(url) { requests.push(this); this.url = url; this.response = { statusCode: status }; } async loadString() { if (offline) throw new Error('offline'); return JSON.stringify(records); } },
+    Request: class { constructor(url) { requests.push(this); this.url = url; this.response = { statusCode: status }; } async loadString() { if (offline) throw new Error('offline'); return JSON.stringify({ version: 1, region: 'MILANO', fresh, lastSuccessfulSync: sourceTime, data: records }); } },
+    FileManager: { local: () => ({ documentsDirectory: () => '/documents', joinPath: (dir, name) => dir + '/' + name, fileExists: path => cache.has(path), readString: path => cache.get(path), writeString: (path, value) => cache.set(path, value) }) },
     Size: class {}, Rect: class {}, Point: class {}, LinearGradient: class {},
     Path: class { addRoundedRect() {} },
     DrawContext: class { constructor() { return new Proxy({}, { get: (_, name) => name === 'getImage' ? () => ({}) : () => {} }); } },
@@ -66,7 +67,7 @@ async function runWidget(code, records, { at = '2026-10-24T21:30:00Z', status = 
   assert.ok(widget.refreshAfterDate instanceof Date);
   assert.equal(new URL(widget.url).searchParams.get('from'), 'widget');
   assert.equal(requests[0].timeoutInterval, 15);
-  return { texts, dots };
+  return { texts, dots, cache };
 }
 const labels = { titleMap: { SUBWAY: 'Metro strike' }, fallbackTitle: 'Strike', todayStrike: 'Strikes', safeTravel: 'All clear', noStrikeToday: 'No strikes today', dataError: 'Data error' };
 const labCode = (types = ['SUBWAY'], lang = 'en') => buildLabWidgetScript({ origin: 'https://www.theitalystrike.com', region: 'MILANO', types, cityName: 'Milan', path: '/', lang });
@@ -159,4 +160,62 @@ test('calendar type filters, unsupported cities and sync failures return explici
     assert.equal(failed.status, 503);
     assert.equal(failed.headers.get('cache-control'), 'no-store');
   } finally { failRead = false; }
+});
+
+test('both widgets keep a city-scoped disk snapshot through HTTP errors and midnight, with a visible delay instead of all clear', async () => {
+  for (const code of [labCode(), legacyCode()]) {
+    const first = await runWidget(code, [record()]);
+    assert.equal(first.cache.size, 1);
+    const saved = [...first.cache.values()][0];
+    const second = await runWidget(code, [], { offline: true, at: '2026-10-25T10:00:00Z', cache: first.cache });
+    assert.ok(second.texts.some(t => t.includes('Update delayed')));
+    assert.ok(second.texts.some(t => t.includes('24/10')));
+    assert.ok(!second.texts.includes('No strikes today'));
+    assert.ok(!second.texts.includes('All clear'));
+    assert.equal([...second.cache.values()][0], saved);
+  }
+});
+
+test('server-delayed empty data cannot become no strikes; expired, future, wrong-city or corrupt cache is rejected', async () => {
+  for (const code of [labCode(), legacyCode()]) {
+    const delayed = await runWidget(code, [], { fresh: false });
+    assert.ok(delayed.texts.some(t => t.includes('Update delayed')));
+    assert.ok(!delayed.texts.includes('No strikes today'));
+    const first = await runWidget(code, [record()]);
+    const key = [...first.cache.keys()][0], saved = JSON.parse(first.cache.get(key));
+    for (const value of [
+      '{broken json',
+      JSON.stringify({ ...saved, region: 'ROMA' }),
+      JSON.stringify({ ...saved, lastSuccessfulSync: '2026-10-01T00:00:00Z' }),
+      JSON.stringify({ ...saved, lastSuccessfulSync: '2030-01-01T00:00:00Z' }),
+      JSON.stringify({ ...saved, data: [{}] }),
+    ]) {
+      const failed = await runWidget(code, [], { offline: true, cache: new Map([[key, value]]) });
+      assert.ok(failed.texts.some(t => ['Data error', 'Can’t update right now'].includes(t)));
+      assert.ok(!failed.texts.includes('No strikes today'));
+    }
+  }
+});
+
+require.cache[queryPath].exports.readSavedCityStrikeSnapshot = async (tag, since) => {
+  queryStart = since;
+  if (failRead) throw new Error('database offline');
+  return { healthy: false, lastSuccessfulSync: '2026-10-24T07:41:23.985Z', records: rows };
+};
+const { GET: widgetGET } = require('../app/api/widget/route.ts');
+test('widget API serves small saved notices with honest sync status while strict feeds retain their health gate', async () => {
+  const response = await widgetGET(new Request('https://example.test/api/widget?region=MILANO'));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const body = await response.json();
+  assert.equal(body.fresh, false);
+  assert.equal(body.lastSuccessfulSync, '2026-10-24T07:41:23.985Z');
+  assert.equal(body.region, 'MILANO');
+  assert.ok(body.data.length);
+  assert.equal(queryStart, '2026-10-23');
+  assert.ok(body.data.every(row => !('raw_payload' in row) && !('lineImpacts' in row)));
+  assert.equal((await widgetGET(new Request('https://example.test/api/widget?region=UNKNOWN'))).status, 400);
+  failRead = true;
+  try { assert.equal((await widgetGET(new Request('https://example.test/api/widget'))).status, 503); }
+  finally { failRead = false; }
 });

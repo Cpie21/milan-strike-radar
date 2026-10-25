@@ -1,5 +1,7 @@
 // Scriptable widget source. Shared by the widget guide in the current page
 // and the redesigned sheet so both ship the identical script.
+import { widgetDataRuntime } from './widgetRuntime';
+
 export type WidgetScriptOptions = {
   targetOrigin: string;
   normalizedRegion: string;
@@ -10,11 +12,13 @@ export type WidgetScriptOptions = {
 };
 
 export function buildWidgetScript({ targetOrigin, normalizedRegion, typesJson, regionLabel, widgetLabelsJson, regionPagePath }: WidgetScriptOptions) {
-  return `const API_URL = "${targetOrigin}/api/strikes?region=${normalizedRegion}";
+  const labels = JSON.parse(widgetLabelsJson) as { noStrikeToday?: string };
+  return `const API_URL = "${targetOrigin}/api/widget?region=${normalizedRegion}";
 const SELECTED_TYPES = ${typesJson};
 const REGION_LABEL = "${regionLabel}";
 const L = ${widgetLabelsJson};
 const OPEN_URL = "${targetOrigin}${regionPagePath}?from=widget";
+${widgetDataRuntime(normalizedRegion, /[\u4e00-\u9fff]/.test(labels.noStrikeToday || '') ? 'zh' : 'en')}
 const widget = new ListWidget();
 const LEFT_COL_WIDTH = 90;
 const RIGHT_COL_WIDTH = 198;
@@ -81,6 +85,7 @@ function dedupeStrikes(items) {
 
 function getDotColor(item, nowMin) {
   if (item && item.status === "CANCELLED") return C.grayDot;
+  if (widgetDataStatus.delayed) return C.yellow;
   if (item && item.timing_evidence && item.timing_evidence.windows.some(w => w.start === null || w.end_kind === "end_of_service")) {
     // A service-relative endpoint cannot establish whether a particular line
     // is currently stopped. Keep the widget cautionary rather than claiming it.
@@ -125,18 +130,18 @@ function addLeftColumn(container, count, isStrike, visibleRows) {
   left.layoutVertically();
   left.size = new Size(LEFT_COL_WIDTH, 0);
   left.topAlignContent();
-  if (isStrike) {
+  if (isStrike || widgetDataStatus.delayed) {
     addWarningBadge(left);
   } else {
     const icon = left.addImage(SFSymbol.named("checkmark.shield.fill").image);
     icon.imageSize = new Size(36, 32);
     icon.tintColor = C.green;
   }
-  left.addSpacer(isStrike ? (visibleRows >= 3 ? 18 : visibleRows === 2 ? 28 : 45) : 53);
+  left.addSpacer(widgetDataStatus.delayed ? 10 : isStrike ? (visibleRows >= 3 ? 18 : visibleRows === 2 ? 28 : 45) : 53);
   const n = left.addText(String(count));
   n.font = Font.boldSystemFont(24);
   n.textColor = C.white;
-  const s = left.addText(isStrike ? L.todayStrike : L.safeTravel);
+  const s = left.addText(widgetDataStatus.delayed ? WIDGET_TEXT.delayed : isStrike ? L.todayStrike : L.safeTravel);
   s.font = Font.boldSystemFont(17);
   s.textColor = isStrike ? C.yellow : C.green;
   return left;
@@ -176,11 +181,7 @@ widget.url = OPEN_URL;
 widget.refreshAfterDate = new Date(Date.now() + 20 * 60 * 1000);
 
 try {
-  const req = new Request(API_URL);
-  req.timeoutInterval = 15;
-  const allStrikes = JSON.parse(await req.loadString());
-  if (req.response && req.response.statusCode !== 200) throw new Error("data unavailable");
-  if (!Array.isArray(allStrikes)) throw new Error("bad-data");
+  const allStrikes = await loadWidgetData(API_URL);
   if (!SELECTED_TYPES.length) throw new Error("no transport selected");
   const now = new Date();
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
@@ -197,11 +198,11 @@ try {
     addLeftColumn(root, 0, false);
     root.addSpacer();
     const box = root.addStack();
-    box.size = new Size(206, 135);
+    box.size = new Size(206, widgetDataStatus.delayed ? 105 : 135);
     box.cornerRadius = 12;
     box.backgroundColor = new Color("#FFFFFF", 0.08);
     box.centerAlignContent();
-    const txt = box.addText(L.noStrikeToday);
+    const txt = box.addText(widgetDataStatus.delayed ? WIDGET_TEXT.verify : L.noStrikeToday);
     txt.font = Font.boldSystemFont(15);
     txt.textColor = C.white50;
   } else if (count === 1) {
@@ -221,7 +222,7 @@ try {
     const root = widget.addStack();
     root.layoutHorizontally();
     root.topAlignContent();
-    const visibleRows = Math.min(count, MAX_VISIBLE_ROWS);
+    const visibleRows = Math.min(count, widgetDataStatus.delayed ? 2 : MAX_VISIBLE_ROWS);
     addLeftColumn(root, count, true, visibleRows);
     root.addSpacer(19);
     const right = root.addStack();
@@ -243,6 +244,14 @@ try {
       right.addSpacer(9);
       addOneRow(right, todayStrikes[2], nowMin, getDotColor(todayStrikes[2], nowMin), false);
     }
+  }
+  if (widgetDataStatus.delayed) {
+    widget.addSpacer(4);
+    const notice = widget.addText(widgetDataNotice());
+    notice.font = Font.mediumSystemFont(10);
+    notice.textColor = C.yellow;
+    notice.lineLimit = 1;
+    notice.minimumScaleFactor = 0.7;
   }
 } catch (e) {
   widget.setPadding(10, 16, 11, 10);
