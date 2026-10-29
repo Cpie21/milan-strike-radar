@@ -1,0 +1,281 @@
+{
+  "runtimeCommit": "90cdd109f1a420d92f2f14935d08bc2d405039df",
+  "deployment": "dpl_E7xqSSVPHzcuMjYfSBT35W3ZDa1r",
+  "publicAlias": "https://www.theitalystrike.com",
+  "manualCloudRuns": [
+    {
+      "id": "c83dc3b3-0b67-4131-9f22-9816a2322b44",
+      "status": "success",
+      "started_at": "2026-10-29T13:04:46.252052+00:00",
+      "completed_at": "2026-10-29T13:05:40.51487+00:00",
+      "fetched": 72,
+      "upserted": 73,
+      "retired": 0,
+      "unknown_timing": 27,
+      "error": null
+    },
+    {
+      "id": "6c77d1eb-a1d1-4ccd-ae61-2ea75062fa08",
+      "status": "success",
+      "started_at": "2026-10-29T13:02:38.000456+00:00",
+      "completed_at": "2026-10-29T13:03:42.295061+00:00",
+      "fetched": 72,
+      "upserted": 73,
+      "retired": 0,
+      "unknown_timing": 27,
+      "error": null
+    }
+  ],
+  "scheduledRunBeforeFix": {
+    "id": "e5a66371-9be9-4d09-a6e5-a4be8c40b75f",
+    "status": "success",
+    "startedAt": "2026-10-29T05:10:31.489514Z",
+    "completedAt": "2026-10-29T05:11:40.774478Z",
+    "fetched": 68,
+    "upserted": 62
+  },
+  "postponedRecords": [
+    {
+      "id": "376f7439-3b82-478f-b59d-f0fd56c5befb",
+      "date": "2026-10-29",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "status": "CANCELLED",
+      "display_time": "已延期 · 新日期待公布",
+      "windows": []
+    },
+    {
+      "id": "a5f6786f-b52a-44fe-a050-2e9a569c5688",
+      "date": "2026-10-30",
+      "region": "NAPOLI",
+      "category": "SUBWAY",
+      "status": "CANCELLED",
+      "display_time": "已延期 · 新日期待公布",
+      "windows": []
+    },
+    {
+      "id": "9708f44f-8f60-47db-b9bb-01d106ab89a0",
+      "date": "2026-10-30",
+      "region": "NAPOLI",
+      "category": "BUS",
+      "status": "CANCELLED",
+      "display_time": "已延期 · 新日期待公布",
+      "windows": []
+    },
+    {
+      "id": "2ea79b66-e371-4b46-8f31-c1963278a0bf",
+      "date": "2026-10-30",
+      "region": "NATIONAL",
+      "category": "BUS",
+      "status": "CANCELLED",
+      "display_time": "已延期 · 新日期待公布",
+      "windows": []
+    },
+    {
+      "id": "f14409d8-2e52-4e5d-8212-7e7d4eb0e14e",
+      "date": "2026-10-30",
+      "region": "NATIONAL",
+      "category": "AIRPORT",
+      "status": "CANCELLED",
+      "display_time": "已延期 · 新日期待公布",
+      "windows": []
+    },
+    {
+      "id": "78f9ff87-19f4-4972-8353-a0edbd901260",
+      "date": "2026-10-30",
+      "region": "NATIONAL",
+      "category": "TRAIN",
+      "status": "CANCELLED",
+      "display_time": "已延期 · 新日期待公布",
+      "windows": []
+    }
+  ],
+  "independentAirportRecords": [
+    {
+      "id": "c6be311e-a025-4382-972f-0c8c4b8ed169",
+      "region": "FIRENZE",
+      "status": "CONFIRMED",
+      "sourceKey": "2b8b2c5d3635835285246d5f0a00253215ccb4f1f4b6fefdff39aeec0c030b72"
+    },
+    {
+      "id": "a5c6c44a-8de0-4445-8f66-b480ce95adde",
+      "region": "PISA",
+      "status": "CONFIRMED",
+      "sourceKey": "2b8b2c5d3635835285246d5f0a00253215ccb4f1f4b6fefdff39aeec0c030b72"
+    }
+  ],
+  "publicVerification": {
+    "checkedAt": "2026-10-29T13:05:12.371Z",
+    "origin": "https://www.theitalystrike.com",
+    "cities": [
+      {
+        "region": "BARI",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "BERGAMO",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "BOLOGNA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 6
+      },
+      {
+        "region": "BRESCIA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "CAGLIARI",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "CATANIA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "FIRENZE",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [
+          "AIRPORT"
+        ],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "GENOVA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "MESSINA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "MILANO",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "NAPOLI",
+        "status": 200,
+        "postponedSourceEvents": 5,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 5
+      },
+      {
+        "region": "PADOVA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "PALERMO",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "PERUGIA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "PISA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [
+          "AIRPORT"
+        ],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "ROMA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "TORINO",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "TRIESTE",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "VENEZIA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      },
+      {
+        "region": "VERONA",
+        "status": 200,
+        "postponedSourceEvents": 4,
+        "activeOctober30Modes": [],
+        "calendarCancellations": 4
+      }
+    ]
+  },
+  "calendarUidCheck": {
+    "regions": [
+      "MILANO",
+      "NAPOLI"
+    ],
+    "result": "all previously returned October 29/30 UIDs remain present as CANCELLED"
+  },
+  "browser": {
+    "viewport": [
+      390,
+      844
+    ],
+    "date": "2026-10-30",
+    "result": "Three postponed cards and new date pending; no active hours",
+    "screenshot": "2026-10-29-postponement-mobile.png",
+    "preExistingConsoleErrors": "Three wallpaper mask images returned 404 on the pre-release page; outside lifecycle repair."
+  },
+  "checks": {
+    "testsPassed": 383,
+    "typecheck": true,
+    "changedFileLint": true,
+    "localAndCloudBuild": true
+  },
+  "boundary": "The two repaired runs were manually triggered cloud executions. Future scheduled execution has not been observed."
+}

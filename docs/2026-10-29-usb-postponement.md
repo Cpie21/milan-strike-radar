@@ -26,4 +26,14 @@ The order applies to the USB national general declaration proclaimed October 6 a
 
 - Full regression suite: 383 passing, including the real MIT fixture, independent airport preservation, category limits, negations/requests, stable local projections, repeated sync reconstruction, card wording and calendar UID/cancellation.
 - Typecheck, lint of changed TypeScript/TSX, production build and diff checks pass.
-- Local assertions do not establish cloud cron behavior. Live deployment/synchronization verification will be recorded below after release.
+- Local assertions do not establish cloud cron behavior.
+
+## Live release verification
+
+- Committed runtime `90cdd109f1a420d92f2f14935d08bc2d405039df`, deployment `dpl_E7xqSSVPHzcuMjYfSBT35W3ZDa1r`, promoted to `https://www.theitalystrike.com`. Inspecting that custom alias resolves to this ready deployment. PR: https://github.com/Cpie21/milan-strike-radar/pull/35 . The subsequent merge of the prior branch only retained its verification document.
+- Two authenticated, manually triggered cloud synchronizations succeeded: `6c77d1eb-a1d1-4ccd-ae61-2ea75062fa08` (13:02:38–13:03:42 UTC), then `c83dc3b3-0b67-4131-9f22-9816a2322b44` (13:04:46–13:05:40 UTC). Each fetched 72 primary rows via the configured Italy relay and upserted 73 projections; primary coverage issues were empty. No new relay or secret configuration was needed.
+- Six existing national/Naples transport rows retain their database IDs and become `CANCELLED / POSTPONED` with empty windows. After the second normal sync they remain cancelled; neither old timing evidence nor city discovery reactivates them. Tuscany's two independent airport rows keep their IDs and `CONFIRMED` status.
+- All 20 cities: public page, strikes API, widget API and calendar return 200; matching national source events are postponed and empty of active hours; widget data is fresh. Florence/Pisa retain only their independent airport action on October 30. Milan/Naples calendars preserve every previously returned October 29/30 UID with a cancellation update.
+- A real browser at 390×844 shows the October 30 bus/train/airport cards as `已延期` and `新日期待公布`. After repeat sync, Milan/Naples/Florence/Pisa widgets report the second run's last-success timestamp. Native device refresh timing was not tested.
+- Evidence: `verification/2026-10-29-usb-postponement.json` and `verification/2026-10-29-postponement-mobile.png`. A pre-existing browser console issue (three absent wallpaper mask images) is outside this status repair.
+- The morning scheduled run proves cron ran before the repair. The two repaired executions were manual cloud runs; future scheduled execution has not yet been observed.
