@@ -1,0 +1,304 @@
+{
+  "at": "2026-10-25T13:28:54.210Z",
+  "runtime": "5a19a89",
+  "deployment": "dpl_95DWnD5aSS7a3ZXk6s4bXLyaD9Et",
+  "degradedBeforeRecovery": {
+    "version": 1,
+    "region": "MILANO",
+    "fresh": false,
+    "lastSuccessfulSync": "2026-10-24T07:41:23.985415+00:00"
+  },
+  "cloudSync": {
+    "success": true,
+    "runId": "1c3befb6-cb1d-4544-baee-fa406346d7ce",
+    "acquisition": [
+      {
+        "transport": "ITALY_RELAY",
+        "kind": "history",
+        "fetchedAt": "2026-10-25T13:25:13.261Z",
+        "sha256": "dfd4f48170a066b46181bf9feb8d905b65c7641cbc4ab3a2e1beaa887948307a",
+        "records": 36
+      },
+      {
+        "transport": "ITALY_RELAY",
+        "kind": "upcoming",
+        "fetchedAt": "2026-10-25T13:25:13.254Z",
+        "sha256": "84f2dd1db9e1e37c3e51dcb77c9de6988c92c0621ff3d828e13c10040fc0b72d",
+        "records": 26
+      }
+    ],
+    "fetched": 62,
+    "upserted": 61,
+    "unknownTiming": 19,
+    "retired": 1,
+    "coverage": {
+      "announcements": 35,
+      "modeled": 32,
+      "excluded": 3,
+      "issues": []
+    },
+    "enriched": 5,
+    "sourcesChecked": 137,
+    "conflicts": 0,
+    "transit": {
+      "profilesApplied": 3,
+      "routeCatalogs": 1,
+      "serviceSchedules": 0,
+      "scheduleFeeds": 0,
+      "membershipCatalogs": 3,
+      "membershipProjections": 3
+    },
+    "semantic": {
+      "called": 29,
+      "cached": 0,
+      "flagged": 0,
+      "needsReview": 0,
+      "inconclusive": 22,
+      "failed": 0,
+      "skipped": 0,
+      "budgetExhausted": false
+    },
+    "semanticEnabled": true,
+    "verification": {
+      "operatorOfficial": 5,
+      "reported": 0,
+      "mitOnly": 40,
+      "acquisition": {
+        "cgsseDocuments": 4,
+        "toscanaApiDocuments": 3,
+        "unionDocuments": 8
+      }
+    },
+    "warningCount": 26
+  },
+  "widgets": [
+    {
+      "region": "MILANO",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 21,
+      "bytes": 6269,
+      "valid": true
+    },
+    {
+      "region": "ROMA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 19,
+      "bytes": 5837,
+      "valid": true
+    },
+    {
+      "region": "TORINO",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 19,
+      "bytes": 5679,
+      "valid": true
+    },
+    {
+      "region": "NAPOLI",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 25,
+      "bytes": 7199,
+      "valid": true
+    },
+    {
+      "region": "FIRENZE",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 18,
+      "bytes": 5625,
+      "valid": true
+    },
+    {
+      "region": "BOLOGNA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 22,
+      "bytes": 6836,
+      "valid": true
+    },
+    {
+      "region": "VENEZIA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 19,
+      "bytes": 5753,
+      "valid": true
+    },
+    {
+      "region": "GENOVA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 18,
+      "bytes": 5455,
+      "valid": true
+    },
+    {
+      "region": "PALERMO",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5196,
+      "valid": true
+    },
+    {
+      "region": "CATANIA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 18,
+      "bytes": 5456,
+      "valid": true
+    },
+    {
+      "region": "BARI",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 20,
+      "bytes": 6037,
+      "valid": true
+    },
+    {
+      "region": "VERONA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 18,
+      "bytes": 5482,
+      "valid": true
+    },
+    {
+      "region": "PADOVA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5195,
+      "valid": true
+    },
+    {
+      "region": "TRIESTE",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5196,
+      "valid": true
+    },
+    {
+      "region": "CAGLIARI",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5197,
+      "valid": true
+    },
+    {
+      "region": "BERGAMO",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5196,
+      "valid": true
+    },
+    {
+      "region": "BRESCIA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 18,
+      "bytes": 5456,
+      "valid": true
+    },
+    {
+      "region": "PISA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 18,
+      "bytes": 5622,
+      "valid": true
+    },
+    {
+      "region": "MESSINA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5196,
+      "valid": true
+    },
+    {
+      "region": "PERUGIA",
+      "status": 200,
+      "fresh": true,
+      "lastSuccessfulSync": "2026-10-25T13:26:09.762508+00:00",
+      "records": 17,
+      "bytes": 5196,
+      "valid": true
+    }
+  ],
+  "others": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/api/strikes?region=MILANO",
+      "status": 200
+    },
+    {
+      "path": "/api/calendar?region=MILANO",
+      "status": 200
+    },
+    {
+      "path": "/api/sync-status",
+      "status": 200,
+      "health": {
+        "healthy": true,
+        "stale": false,
+        "timedOut": false,
+        "data_quality": "PARTIAL",
+        "latest": {
+          "started_at": "2026-10-25T13:25:01.996989+00:00",
+          "completed_at": "2026-10-25T13:26:09.762508+00:00",
+          "status": "success",
+          "fetched": 62,
+          "upserted": 61,
+          "unknown_timing": 19,
+          "warning_count": 26
+        },
+        "last_success": {
+          "started_at": "2026-10-25T13:25:01.996989+00:00",
+          "completed_at": "2026-10-25T13:26:09.762508+00:00",
+          "status": "success",
+          "fetched": 62,
+          "upserted": 61,
+          "unknown_timing": 19,
+          "warning_count": 26
+        }
+      }
+    }
+  ],
+  "latestFailedRun": {
+    "started_at": "2026-10-25T05:10:31.518995+00:00",
+    "completed_at": "2026-10-25T05:11:07.985+00:00",
+    "status": "failed",
+    "error": "MIT /mit2/public/scioperi/ricerca unavailable after 3 attempts: fetch failed (UND_ERR_CONNECT_TIMEOUT)"
+  }
+}
