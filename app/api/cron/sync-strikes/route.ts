@@ -1,5 +1,6 @@
 import { attachFollowUpPlans } from '../../../../lib/recordFollowUp';
 import { preserveHistoricalEvidence } from '../../../../lib/strikeHistory';
+import { propagatePrimaryLifecycle } from '../../../../lib/strikeLifecycle';
 import { optionalSyncStage } from '../../../../lib/syncStageBudget';
 import { attachLineImpacts } from '../../../../lib/lineImpact';
 import { revalidatePath, revalidateTag } from 'next/cache';
@@ -63,7 +64,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     records=semantic.records;
     const schedules=await optionalSyncStage('scheduled times',optionalDeadline,105000,warnings,()=>enrichScheduledServiceTimes(records,warnings),()=>({records,complete:0,feeds:0}));
     const memberships=await optionalSyncStage('route membership',optionalDeadline,85000,warnings,()=>enrichPotentialRouteCatalogs(schedules.records,warnings),()=>({records:schedules.records,catalogs:0,projected:0}));
-    records=attachFollowUpPlans(attachLineImpacts(preserveHistoricalEvidence(memberships.records,prior || [],today)));
+    records=attachFollowUpPlans(attachLineImpacts(propagatePrimaryLifecycle(preserveHistoricalEvidence(memberships.records,prior || [],today),prior || [])));
     const coverage=auditSourceCoverage(rawRows,records);
     warnings.push(...coverage.issues);
     const upserted = records.length ? await upsertToSupabase(records, db, warnings) : 0;

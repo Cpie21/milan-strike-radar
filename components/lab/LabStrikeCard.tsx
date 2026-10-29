@@ -134,8 +134,9 @@ export default function LabStrikeCard({ card, prev, next, ctx, highlighted, atte
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-semibold line-through" style={{ color: C.text3 }}>{tx(lang, ...TITLE[card.category])}</span>
           <span className={`block truncate ${TYPE.label}`} style={{ color: C.text3 }}>{card.provider}</span>
+          {card.lifecycle?.action === 'POSTPONED' && <span className={`block ${TYPE.label}`} style={{ color: C.text2 }}>{card.lifecycle.newDate || tx(lang, '新日期待公布', 'New date pending')}</span>}
         </span>
-        <span className={`px-2.5 h-6 rounded-full flex items-center ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>{tx(lang, '已取消', 'Cancelled')}</span>
+        <span className={`px-2.5 h-6 rounded-full flex items-center ${TYPE.label}`} style={{ background: C.surface2, color: C.text2 }}>{card.lifecycle?.action === 'POSTPONED' ? tx(lang, '已延期', 'Postponed') : statusLine(card, ctx.today, ctx.nowMinutes, lang).text}</span>
       </div>
     );
   }

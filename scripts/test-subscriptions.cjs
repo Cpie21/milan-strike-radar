@@ -132,6 +132,23 @@ require.cache[queryPath] = { id: queryPath, filename: queryPath, loaded: true, e
 const { GET } = require('../app/api/calendar/route.ts');
 const unfold = text => text.replace(/\r\n[ \t]/g, '');
 
+test('real postponed strike cancels the same calendar UID, explains postponement and clears old hours', async () => {
+  const { transformRows } = require('../lib/strikeSync.ts');
+  const { general } = require('./fixtures/mit-usb-postponement.json');
+  const saved = rows;
+  try {
+    rows = await transformRows([{ ...general, note: '' }]);
+    const before = unfold(await (await GET(new Request('https://example.test/api/calendar?region=MILANO&types=train'))).text());
+    rows = await transformRows([general]);
+    const after = unfold(await (await GET(new Request('https://example.test/api/calendar?region=MILANO&types=train'))).text());
+    assert.deepEqual(after.match(/^UID:.+$/gm), before.match(/^UID:.+$/gm));
+    assert.equal((after.match(/STATUS:CANCELLED/g) || []).length, 2);
+    assert.match(after, /SUMMARY:\[已延期 · 新日期待公布\]/);
+    assert.match(after, /状态依据: ORDINANZA MINISTERIALE N. 204 T DI DIFFERIMENTO/);
+    assert.doesNotMatch(after, /罢工时段: 21:00/);
+  } finally { rows = saved; }
+});
+
 test('calendar retains recent events/cancellations across midnight with stable UIDs and valid all-day dates', async () => {
   const response = await GET(new Request('https://example.test/api/calendar?region=MILANO&types=subway'));
   assert.equal(response.status, 200);

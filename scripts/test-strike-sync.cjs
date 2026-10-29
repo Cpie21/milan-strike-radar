@@ -11,6 +11,70 @@ require.extensions['.ts'] = (module, filename) => {
 };
 const { parseStrikeHtml, fetchAndFilter, transformRows } = require('../lib/strikeSync.ts');
 const { classifyRegionTag } = require('../lib/strikeNormalization.ts');
+const { primaryLifecycle, propagatePrimaryLifecycle } = require('../lib/strikeLifecycle.ts');
+const usbPostponement = require('./fixtures/mit-usb-postponement.json');
+
+test('MIT DIFFERIMENTO note overrides In Programma for the real USB declaration, preserving independent airport strikes', async () => {
+  const active = (await transformRows([{ ...usbPostponement.general, note: '' }])).filter(r => r.region === 'NATIONAL');
+  assert.ok(active.some(r => r.category === 'TRAIN' && r.date === '2026-10-29' && r.status === 'CONFIRMED'));
+  const records = await transformRows([usbPostponement.general, usbPostponement.independentAirport]);
+  const deferred = records.filter(r => r.source_key === usbPostponement.general.sourceKey);
+  assert.ok(deferred.length >= 4);
+  for (const record of deferred) {
+    assert.equal(record.status, 'CANCELLED');
+    assert.equal(record.timing_evidence.fields.lifecycle.value.action, 'POSTPONED');
+    assert.equal(record.timing_evidence.fields.lifecycle.value.newDate, null);
+    assert.match(record.timing_evidence.fields.lifecycle.excerpt, /DIFFERIMENTO/);
+    assert.deepEqual(record.strike_windows, []);
+    assert.deepEqual(record.guarantee_windows, []);
+    assert.deepEqual(record.timing_evidence.windows, []);
+    assert.match(record.display_time, /已延期.*新日期待公布/);
+  }
+  const independent = records.filter(r => r.source_key === usbPostponement.independentAirport.sourceKey);
+  assert.ok(independent.length);
+  assert.ok(independent.every(r => r.status !== 'CANCELLED' && r.strike_windows.length));
+  const { applyTimingEvidence } = require('../lib/strikeEnrichment.ts');
+  assert.deepEqual(applyTimingEvidence(deferred[0], []), deferred[0]);
+  const { preserveHistoricalEvidence } = require('../lib/strikeHistory.ts');
+  assert.ok(preserveHistoricalEvidence(deferred, active, '2026-10-31').every(r => r.status === 'CANCELLED'));
+});
+
+test('lifecycle nouns, scope, negation and requests do not cancel unrelated transport', () => {
+  const row = { ...usbPostponement.general, sourceStatus: 'In Programma', modalita: '' };
+  for (const [note, action] of [['DIFFERIMENTO','POSTPONED'],['Sciopero rinviato a data da destinarsi','POSTPONED'],['REVOCA','WITHDRAWN'],['SOSPENSIONE','SUSPENDED'],['Sciopero annullato','WITHDRAWN']]) {
+    assert.equal(primaryLifecycle({ ...row, note }, 'TRAIN').action, action);
+  }
+  for (const note of ['Richiesta di differimento dello sciopero', 'Invito alla revoca dello sciopero', 'Sciopero non revocato', 'Eventuale rinvio dello sciopero', 'Revocato lo sciopero del 18/10/2026']) {
+    assert.equal(primaryLifecycle({ ...row, note }, 'TRAIN'), null, note);
+  }
+  const rail = { ...row, note: 'DIFFERIMENTO INTERO SETTORE FERROVIARIO; AEREO CONFERMATO' };
+  assert.equal(primaryLifecycle(rail, 'TRAIN').action, 'POSTPONED');
+  assert.equal(primaryLifecycle(rail, 'AIRPORT'), null);
+  assert.equal(primaryLifecycle(rail, 'BUS'), null);
+  assert.equal(primaryLifecycle({ ...row, note: 'Differimento dei settori dei trasporti, escluso aereo' }, 'AIRPORT'), null);
+  assert.equal(primaryLifecycle({ ...row, sourceStatus: 'Revocato', note: '' }, 'BUS').action, 'WITHDRAWN');
+  assert.equal(primaryLifecycle({ ...row, note: '', modalita: 'SCIOPERO DIFFERITO' }, 'BUS').action, 'POSTPONED');
+  assert.equal(primaryLifecycle({ ...row, note: 'Sciopero differito al 6 novembre 2026' }, 'TRAIN').newDate, '2026-11-06');
+});
+
+test('cancelled national declarations update previously published local calendar identities and cannot reactivate on replay', async () => {
+  const active = await transformRows([{ ...usbPostponement.general, note: '' }]);
+  const national = active.find(r => r.category === 'BUS' && r.region === 'NATIONAL');
+  const prior = [{ ...national, region: 'NAPOLI', status: 'CONFIRMED' }, { ...national, region: 'NAPOLI', category: 'SUBWAY', status: 'CONFIRMED' }];
+  const current = await transformRows([usbPostponement.general]);
+  const once = propagatePrimaryLifecycle(current, prior);
+  const local = once.find(r => r.region === 'NAPOLI');
+  assert.equal(local.source_key, national.source_key);
+  assert.equal(local.date, national.date);
+  assert.equal(local.status, 'CANCELLED');
+  assert.match(local.raw_payload.note, /DIFFERIMENTO/);
+  assert.deepEqual(local.strike_windows, []);
+  assert.equal(once.find(r => r.region === 'NAPOLI' && r.category === 'SUBWAY').status, 'CANCELLED');
+  const twice = propagatePrimaryLifecycle(await transformRows([usbPostponement.general]), once);
+  assert.equal(twice.length, once.length);
+  assert.ok(twice.every(r => r.status === 'CANCELLED'));
+  assert.equal(propagatePrimaryLifecycle(current, [{ ...prior[0], source_key: 'different-proclamation' }]).length, current.length);
+});
 
 const headers = ['Inizio', 'Fine', 'Sindacati', 'Settore*', 'Categoria', 'Modalità', 'Rilevanza', 'Note', 'Data proclamazione', 'Regione', 'Provincia'];
 const row = ['09/10/2026', '09/10/2026', 'AL-COBAS', 'Trasporto pubblico locale', 'PERSONALE SOCC. GRUPPO ATM DI MILANO', '24 ORE: VARIE MODALITA', 'Provinciale', '', '27/07/2026', 'Lombardia', 'Tutte'];
