@@ -1,4 +1,5 @@
 import type { EvidenceWindow } from '../strikeEvidence';
+import { lifecycleLabel, type LifecycleChange } from '../strikeLifecycle';
 import { addDaysIso, weekdayOfIso } from '../romeDate';
 
 // View model for the redesign. Built on the server from aggregateStrikes
@@ -41,6 +42,7 @@ export type ModeCard = {
   impacts?: { zh: string; en: string; lines: boolean; named?: string[]; routes: string[] }[];
   geography: { zh: string; en: string }[]; // official administrative scope beyond this city
   status: CardStatus;
+  lifecycle?: LifecycleChange;
   provider: string;
   providerEn?: string; // the backend writes the staff in Chinese; this is the English reading
   national: boolean;
@@ -163,7 +165,7 @@ export function windowsText(windows: EvidenceWindow[], lang: Lang = 'zh') {
 // promised about resuming (ATM-style notices say lines "may not be
 // guaranteed", not that the network stops or restarts at a given minute).
 export function statusLine(card: ModeCard, today: string, nowMinutes: number, lang: Lang = 'zh'): { text: string; tone: Tone } {
-  if (card.status === 'CANCELLED') return { text: tx(lang, '已取消', 'Cancelled'), tone: 'cancelled' };
+  if (card.status === 'CANCELLED') return { text: card.lifecycle ? lifecycleLabel(card.lifecycle, lang) : tx(lang, '已取消', 'Cancelled'), tone: 'cancelled' };
   if (!card.windows.length) return { text: tx(lang, '已宣布罢工 · 时段待公布', 'Strike announced · hours pending'), tone: 'pending' };
   if (card.date !== today) return { text: tx(lang, `罢工时段 ${windowsText(card.windows, lang)}`, `Strike hours ${windowsText(card.windows, lang)}`), tone: 'stop' };
   const span = (w: EvidenceWindow) => ({ w, start: w.start === null ? 0 : minutes(w.start), end: w.end_kind === 'end_of_service' || !w.end ? 1440 : minutes(w.end) });

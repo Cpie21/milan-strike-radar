@@ -1,0 +1,36 @@
+{
+  "general": {
+    "date": "30/10/2026",
+    "note": "ORDINANZA MINISTERIALE N. 204 T DI DIFFERIMENTO DEI SETTORI DEI TRASPORTI INTERESSATI DALLA REGOLA DELLA FRANCHIGIA PER LA COMMEMORAZIONE DEI DEFUNTI",
+    "region": "NATIONAL",
+    "sector": "Generale",
+    "unions": "USB",
+    "endDate": "30/10/2026",
+    "modalita": "INTERA GIORNATA - AEREO: DALLE 00.00 ALLE 23.59; FERROVIARIO: DALLE 21.00 DEL 29/10 ALLE 20.59 DEL 30/10; TPL: DURATA E MODALITA' STABILITE A LIVELLO TERRITORIALE; AUTOSTRADE: DALLE 22.00 DEL 29/10: TAXI: DALLE 00.01 ALLE 23.59",
+    "provider": "SCIOPERO GENERALE SETTORI PUBBLICI E PRIVATI",
+    "province": "Tutte",
+    "rawRegion": "Italia",
+    "rilevanza": "Nazionale",
+    "sourceKey": "04f27a1f2c4e8b417e10d553fb249ebbf6296963aa184596f250e02e1de86024",
+    "sourceUrl": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+    "sourceStatus": "In Programma",
+    "proclamationDate": "06/10/2026"
+  },
+  "independentAirport": {
+    "date": "30/10/2026",
+    "note": "",
+    "region": "FIRENZE",
+    "sector": "Aereo",
+    "unions": "OSP USB LAVORO PRIVATO",
+    "endDate": "30/10/2026",
+    "modalita": "24 ORE: DALLE 00.00 ALLE 23.59",
+    "provider": "PERSONALE SOCC. TOSCANA AEROPORTI, GH TOSCANA E CONSULTA OPERANTI PRESSO GLI AEROPORTI DI PISA E FIRENZE",
+    "province": "Tutte",
+    "rawRegion": "Toscana",
+    "rilevanza": "Regionale",
+    "sourceKey": "2b8b2c5d3635835285246d5f0a00253215ccb4f1f4b6fefdff39aeec0c030b72",
+    "sourceUrl": "https://scioperi.mit.gov.it/mit2/public/scioperi",
+    "sourceStatus": "In Programma",
+    "proclamationDate": "12/10/2026"
+  }
+}

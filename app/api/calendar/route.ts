@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aggregateStrikes, categoryMap, filterStrikesForRegion } from '../../../components/utils';
 import { escapeCalendarText, serializeCalendar } from '../../../lib/ical';
 import { evidenceTimeLabel } from '../../../lib/strikeEvidence';
+import { lifecycleLabel } from '../../../lib/strikeLifecycle';
 import { addDaysIso } from '../../../lib/romeDate';
 import { calendarTypes, SUBSCRIPTION_ORIGIN } from '../../../lib/subscriptions';
 
@@ -54,8 +55,11 @@ export async function GET(request: NextRequest) {
         const labels: Record<string, string> = { TRAIN: '火车', SUBWAY: '地铁', BUS: '公交', AIRPORT: '机场' };
         const catDisplay = strike.category==='AIRPORT'?scopeTitle(scopeOf(strike)):strike.category==='TRAIN'?railTitle(scopeOf(strike)):labels[strike.category] || categoryMap[strike.category] || strike.category;
         const detailUrl = `${SUBSCRIPTION_ORIGIN}${pagePath}?date=${strike.date}`;
+        const lifecycle = strike.timing_evidence?.fields?.lifecycle?.value;
+        const statusLabel = strike.status === 'CANCELLED' ? lifecycle ? lifecycleLabel(lifecycle, 'zh') : '已取消' : '';
         const description = [
             `城市: ${regionLabel}`, `罢工主体: ${strike.provider}`,
+            ...(statusLabel ? [`状态: ${statusLabel}`, ...(lifecycle ? [`状态依据: ${lifecycle.statement}`] : [])] : []),
             `罢工时段: ${strike.display_time || '具体时段待公布'}`,
             ...(strike.category==='TRAIN' && indirectRail(scopeOf(strike))?['此处为相关人员停工时段；旅客列车运行影响尚未确认，不代表所有列车停运。']:[]),
             ...[...new Set((strike.strike_events || []).map(e=>geographyContext(e.timing_evidence?.fields)).filter(Boolean))],
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
             ...(strike.guarantee_windows?.length?['保障仅针对规定的最低服务或受保护航班，请核对具体班次。']:[]),
             ...(strike.strike_events || []).flatMap(event=>event.timing_evidence?.fields?.exclusions?.value || []).map(text=>`原公告排除项: ${text}`),
             ...(strike.has_unknown_timing ? ['另有公告的具体时段待核实'] : []),
-            ...(strike.strike_events || []).map(event=>`${event.provider || '交通运营商'} ${event.unions || ''}: ${event.status === 'CANCELLED' ? '已取消' : event.windows.length ? event.windows.map(w=>`${w.start || '运营开始'} - ${w.end || '运营结束'}`).join(', ') : '具体时段待公布'}`),
+            ...(strike.strike_events || []).map(event=>`${event.provider || '交通运营商'} ${event.unions || ''}: ${event.status === 'CANCELLED' ? event.timing_evidence?.fields?.lifecycle ? lifecycleLabel(event.timing_evidence.fields.lifecycle.value, 'zh') : '已取消' : event.windows.length ? event.windows.map(w=>`${w.start || '运营开始'} - ${w.end || '运营结束'}`).join(', ') : '具体时段待公布'}`),
             ...(strike.timing_evidence ? [
                 `时段信息: ${strike.timing_evidence.confidence === 'official' ? '官方公告' : strike.timing_evidence.confidence === 'conflict' ? '来源冲突，待核实' : '外部公告，以运营商最新通知为准'}`,
                 ...strike.timing_evidence.sources.map((source: { url: string; name: string }) => `时段来源: ${source.name} ${source.url}`),
@@ -82,7 +86,7 @@ export async function GET(request: NextRequest) {
             `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z`);
         if (strike.status === 'CANCELLED') lines.push('STATUS:CANCELLED');
         lines.push(`DTSTART;VALUE=DATE:${dateStr}`, `DTEND;VALUE=DATE:${nextDateStr}`,
-            `SUMMARY:${escapeCalendarText(`${regionLabel}${catDisplay}${catDisplay.includes('罢工')?'':'罢工'}`)}`,
+            `SUMMARY:${escapeCalendarText(`${statusLabel ? `[${statusLabel}] ` : ''}${regionLabel}${catDisplay}${catDisplay.includes('罢工')?'':'罢工'}`)}`,
             `DESCRIPTION:${escapeCalendarText(description)}`, `URL:${detailUrl}`, 'END:VEVENT');
     });
     lines.push('END:VCALENDAR');

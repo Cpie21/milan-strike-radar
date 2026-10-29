@@ -15,6 +15,7 @@ import {
 } from './strikeNormalization';
 import { makeScopeEvidence, extractLineScope } from './strikeScope';
 import { getGuaranteeWindows } from './guaranteeWindows';
+import { applyLifecycle, primaryLifecycle } from './strikeLifecycle';
 import type { TimingEvidence } from './strikeEvidence';
 
 export type StrikeStatus = 'CONFIRMED' | 'CANCELLED' | 'REQUIRES_DETAIL' | 'UNCERTAIN';
@@ -568,9 +569,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
 
     let status: StrikeStatus = 'CONFIRMED';
     const combinedRaw = `${row.provider} ${row.modalita} ${row.note} ${row.rilevanza}`.toLowerCase();
-    if (`${combinedRaw} ${row.sourceStatus || ''}`.toLowerCase().match(/revocat|differit|sospes/)) {
-      status = 'CANCELLED';
-    } else if (combinedRaw.includes('da definire')) {
+    if (combinedRaw.includes('da definire')) {
       status = 'REQUIRES_DETAIL';
     }
 
@@ -600,7 +599,7 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
       const dataSource = 'MIT_PRIMARY';
       if (resolvedStatus === 'REQUIRES_DETAIL') resolvedStatus = 'UNCERTAIN';
 
-      return {
+      const record = {
         date: dateIso,
         category,
         provider: providerNorm,
@@ -615,6 +614,8 @@ export async function transformRows(rawRows: RawStrikeRow[]): Promise<StrikeReco
         data_source: dataSource,
         ...(row.sourceKey ? { source_key: row.sourceKey, source_url: row.sourceUrl || MIT_URL, raw_payload: row, last_seen_at: new Date().toISOString() } : {}),
       } satisfies StrikeRecord;
+      const lifecycle = primaryLifecycle(row, category);
+      return lifecycle ? applyLifecycle(record, lifecycle, { url: row.sourceUrl || MIT_URL, name: 'Ministero delle Infrastrutture e dei Trasporti', authority: 'official', checked_at: new Date().toISOString(), content_hash: createHash('sha256').update(lifecycle.statement).digest('hex'), excerpt: lifecycle.statement }, 'MIT') : record;
     }));
   })));
   }

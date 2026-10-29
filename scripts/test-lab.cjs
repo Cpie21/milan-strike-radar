@@ -10,6 +10,13 @@ require.extensions['.ts'] = (module, filename) => {
 };
 const { buildRail, continuesOvernight, groupIdentical, overnightLine, relativeDay, skyFor, statusLine, segments } = require('../lib/lab/model.ts');
 
+test('postponed cards distinguish pending and announced replacement dates from withdrawal', () => {
+  const postponed = { status: 'CANCELLED', lifecycle: { action: 'POSTPONED', newDate: null, statement: 'DIFFERIMENTO' } };
+  assert.equal(statusLine(postponed, '2026-10-29', 600).text, '已延期 · 新日期待公布');
+  assert.equal(statusLine(postponed, '2026-10-29', 600, 'en').text, 'Postponed · new date pending');
+  assert.equal(statusLine({ ...postponed, lifecycle: { ...postponed.lifecycle, newDate: '2026-11-06' } }, '2026-10-29', 600).text, '已延期 · 2026-11-06');
+});
+
 const card = (date, category, windows, extra = {}) => ({
   id: `${date}-${category}`, date, scope: '', category, status: 'CONFIRMED', provider: 'ATM', national: false, displayTime: '',
   windows, guarantees: [], guaranteeSource: 'UNKNOWN', guaranteeKind: 'GUARANTEED_SERVICE', lines: [], unknownTiming: false, confidence: 'official', sources: [], events: [], ...extra,

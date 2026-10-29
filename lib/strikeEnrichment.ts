@@ -432,6 +432,7 @@ export function parseExternalWindows(text: string, record: StrikeRecord): Eviden
 }
 
 export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotice[]) {
+  if (record.status === 'CANCELLED') return record;
   const fields=record.timing_evidence?.fields || (record.raw_payload ? makeScopeEvidence({...record.raw_payload,note:record.raw_payload.note || ''},record.region,record.category,record.strike_windows,record.guarantee_windows) : undefined);
   const result: StrikeRecord = { ...record, timing_evidence:{windows:record.strike_windows.map(w=>({...w,end_kind:'clock' as const})),confidence:'official',sources:[],unions:record.raw_payload?.unions || '',conflicts:[],fields} };
   const matched=notices.filter(n=>matchesNotice(n,record));
@@ -477,7 +478,6 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   const updatedFields=result.timing_evidence!.fields;
   const verificationSources=[...new Map(matched.map(n=>[n.source.url,n.source])).values()];
   result.timing_evidence!.sources=verificationSources;
-  if (record.status === 'CANCELLED') return result;
   if (record.raw_payload && /(?:fine|termine|inizio)\s+(?:del\s+)?servizio/i.test(record.raw_payload.modalita)) {
     notices = [...notices, { date: record.date, provider: record.raw_payload.provider, territory: record.region, unions: record.raw_payload.unions || '', sector: record.raw_payload.sector, timing: record.raw_payload.modalita, status: record.raw_payload.sourceStatus || '', source: sourceFor(record.source_url || 'https://scioperi.mit.gov.it/mit2/public/scioperi', record.raw_payload.modalita, new Date().toISOString()) }];
   }

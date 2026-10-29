@@ -128,6 +128,7 @@ export default async function LabRoute({ tag }: { tag: string }) {
       geography,
       category: day.category,
       status: day.status,
+      lifecycle: day.timing_evidence?.fields?.lifecycle?.value,
       provider: providerZh(day.provider || ''),
       providerEn: day.provider ? (providerEnRule(day.provider) ?? translateProvider(day.provider, 'en')).replace(/^\w/, ch => ch.toUpperCase()) : '',
       national: events.some(e => nationalKeys.has(e.source_key)),
