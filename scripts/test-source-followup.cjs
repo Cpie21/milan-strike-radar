@@ -73,3 +73,37 @@ test('runtime compatibility can read a real notice but never adopts a human-veri
  global.fetch=async(u,o)=>{u=String(u);const body=u===root?(o.headers['User-Agent']?'Denied':challenge?'Verify you are human':`<a href="${detail}">Sciopero 15 ottobre 2026</a>`):u===detail?'<article><h1>Sciopero Brescia Trasporti 15 ottobre 2026</h1><p>USB dalle 09:00 alle 13:00.</p></article>':'<main>News</main>';return new Response(body,{status:u===root&&o.headers['User-Agent']?403:200,headers:{'Content-Type':'text/html'}});};
  try{const a=await enrichStrikeTiming([r],[],now);assert.deepEqual(a.records[0].strike_windows,[{start:'09:00',end:'13:00'}]);challenge=true;const warnings=[],b=await enrichStrikeTiming([r],warnings,now);assert.deepEqual(b.records[0].strike_windows,r.strike_windows);assert.ok(warnings.some(w=>w.includes('blocked automated access')));}finally{global.fetch=original;}
 });
+test('imminent strike notices are hoisted soonest-first, within a bound that keeps the rotation alive',()=>{
+ const {orderDiscoveryUrls}=require('../lib/discoveryRotation.ts');const at=new Date('2026-11-12T05:10:00Z');
+ const stale=Array.from({length:60},(_,i)=>'https://official.test/stale-'+i),tomorrow='https://official.test/tomorrow',later='https://official.test/later',extra='https://official.test/extra';
+ const history=new Map([...stale.map(u=>[u,{firstDiscoveredAt:'2026-10-06T05:00:00Z',lastAttemptedAt:'2026-11-10T05:10:00Z'}]),[tomorrow,{firstDiscoveredAt:'2026-11-10T05:10:43Z'}],[later,{firstDiscoveredAt:'2026-11-11T05:10:43Z'}],[extra,{firstDiscoveredAt:'2026-11-11T05:10:43Z'}]]);
+ const urls=[...stale,later,extra,tomorrow];
+ assert.ok(orderDiscoveryUrls(urls,at,history).indexOf(tomorrow)>=60,'age alone leaves the new notice behind the rotation');
+ const imminent=new Map([[later,'2026-11-15'],[tomorrow,'2026-11-13'],[extra,'2026-11-16']]);
+ assert.deepEqual(orderDiscoveryUrls(urls,at,history,imminent).slice(0,3),[tomorrow,later,extra]);
+ const bounded=orderDiscoveryUrls(urls,at,history,imminent,2);assert.deepEqual(bounded.slice(0,2),[tomorrow,later]);assert.ok(bounded.indexOf(extra)>=60);assert.equal(bounded.length,urls.length);
+});
+test('a dated operator notice found days ahead is read before the strike, not left deferred behind older pages',async()=>{
+ const original=global.fetch,date='2026-11-13',at=new Date('2026-11-12T05:10:00Z'),mit='https://scioperi.mit.gov.it/mit2/public/scioperi';
+ const notice='https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/ScioperoannunciatodaALCobaseCONFIALTrasportivenerd%c3%ac13novembre.aspx';
+ const raw={provider:'PERSONALE SOCC. GRUPPO ATM DI MILANO',province:'Tutte',date,region:'Lombardia',relevance:'Provinciale',sector:'Trasporto pubblico locale',unions:'AL-COBAS',modalita:"24 ORE: VARIE MODALITA'",sourceStatus:'Programmato',note:''};
+ const r={date,provider:raw.provider,region:'MILANO',category:'SUBWAY',status:'UNCERTAIN',strike_windows:[],guarantee_windows:[],affected_lines:[],raw_payload:raw,source_key:'al-cobas-13-nov',source_url:mit,timing_evidence:{windows:[],sources:[],conflicts:[],fields:makeScopeEvidence(raw,'MILANO','SUBWAY',[],[])}};
+ // Sixty older ATM pages of a later strike wait in the same queue, as in production on 12 November.
+ const stale=Array.from({length:60},(_,i)=>'https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero-vecchio-'+i+'.aspx');
+ const discovery=(sources)=>({windows:[],sources:[],conflicts:[],fields:{noticeDiscovery:{checkedAt:'2026-11-11T05:10:43Z',status:'PARTIAL',sources}}});
+ const prior=[{source_key:r.source_key,date,region:'MILANO',category:'SUBWAY',timing_evidence:discovery([{url:notice,status:'DEFERRED',firstDiscoveredAt:'2026-11-10T05:10:43Z'}])},
+  {source_key:'later',date:'2026-12-11',region:'MILANO',category:'SUBWAY',timing_evidence:discovery(stale.map(url=>({url,status:'DEFERRED',firstDiscoveredAt:'2026-10-06T13:34:10Z',lastAttemptedAt:'2026-11-09T05:10:43Z'})))}];
+ const later={...r,date:'2026-12-11',source_key:'later',raw_payload:{...raw,date:'2026-12-11'}},fetched=[];
+ const index='https://www.atm.it/it/ViaggiaConNoi/InfoTraffico/Pagine/default2.aspx',link='<a href="/it/ViaggiaConNoi/InfoTraffico/Pagine/ScioperoannunciatodaALCobaseCONFIALTrasportivenerd%c3%ac13novembre.aspx">Sciopero annunciato da AL Cobas e CONFIAL Trasporti venerdì 13 novembre</a>';
+ const siblings=Array.from({length:60},(_,i)=>'<a href="/it/ViaggiaConNoi/InfoTraffico/Pagine/Sciopero-altro-'+i+'.aspx">Sciopero: informazioni '+i+'</a>').join('');
+ global.fetch=async u=>{u=String(u);fetched.push(u);return new Response(u===index?'<main>'+siblings+link+'</main>':u===notice?'<main><h1>Sciopero annunciato da AL Cobas e CONFIAL Trasporti venerdì 13 novembre</h1><p>Venerdì 13 novembre i sindacati AL Cobas e CONFIAL Trasporti hanno proclamato uno sciopero. Il servizio delle nostre linee potrebbe non essere garantito dalle 8:45 alle 15 e dopo le 18, fino al termine del servizio.</p></main>':'<main><h1>Avvisi</h1></main>',{headers:{'content-type':'text/html'}});};
+ try{const out=await enrichStrikeTiming([r,later],[],at,Date.now()+60000,prior),got=out.records.find(x=>x.date===date);
+  assert.ok(fetched.includes(notice));
+  assert.deepEqual(got.timing_evidence.windows.map(w=>[w.start,w.end||w.end_kind]),[['08:45','15:00'],['18:00','end_of_service']]);
+  assert.equal(got.timing_evidence.fields.noticeDiscovery.sources.find(s=>s.url===notice).status,'FETCHED');
+  assert.ok(stale.some(u=>fetched.includes(u)),'the rotation still advances for everything else');
+  // First sighting, no history: the yearless link on the index is read in the same run, ahead of 60 undated siblings.
+  fetched.length=0;const first=await enrichStrikeTiming([r,later],[],at,Date.now()+60000,[]);
+  assert.ok(fetched.includes(notice));assert.equal(first.records.find(x=>x.date===date).display_time,'08:45 - 15:00, 18:00 - 运营结束');
+ }finally{global.fetch=original;}
+});

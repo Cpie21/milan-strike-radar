@@ -533,6 +533,10 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   return result;
 }
 
+const IMMINENT_DAYS=4;
+const dayAndMonth=(text:string,date:string)=>new RegExp(`\\b0?${Number(date.slice(8))}\\s+(?:${MONTHS[Number(date.slice(5,7))-1]}|${ENGLISH_MONTHS[Number(date.slice(5,7))-1]})\\b`,'i').test(text);
+// 40 known + 45 indexes + 25 media + 35 dated + 10 + 10 + 10 + 20 regulator details.
+const MAX_DISCOVERY_ATTEMPTS=195;
 export async function enrichStrikeTiming(records: StrikeRecord[], warnings: string[], now = new Date(),deadline = Date.now() + 160_000, priorRecords:Pick<StrikeRecord,'source_key'|'date'|'region'|'category'|'timing_evidence'>[] = []) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year:'numeric', month:'2-digit', day:'2-digit' }).format(now);
   const horizon = new Date(now.getTime() + 90 * 86400000).toISOString().slice(0, 10);
@@ -558,9 +562,16 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   // Bound parallelism, redirects, bytes, time and total documents in the function.
   const discoveryStart=Date.now(),discoveryBudget=Math.max(0,deadline-discoveryStart);
   const phaseDeadline=(fraction:number)=>discoveryStart+Math.floor(discoveryBudget*fraction);
+  // Notices tied to a strike in the next few days are read first, soonest
+  // strike first. Without this a dated operator notice found three days ahead
+  // waited behind the whole rotation and the strike day arrived with no hours.
+  const imminentEnd=new Date(Date.parse(today+'T12:00:00Z')+IMMINENT_DAYS*86400000).toISOString().slice(0,10);
+  const isImminent=(date:string)=>date>=today&&date<=imminentEnd;
+  const imminent=new Map<string,string>();
+  const markImminent=(url:string,date:string)=>{if(isImminent(date.slice(0,10))&&(!imminent.has(url)||date<imminent.get(url)!))imminent.set(url,date);};
   async function collect(urls: string[],attemptLimit=180,until=deadline) {
-    const attemptEnd=Math.min(180,sourcesChecked+attemptLimit);
-    const unique = orderDiscoveryUrls(urls,now,attemptHistory).filter(u => !documents.has(u) && !failed.has(u));
+    const attemptEnd=Math.min(MAX_DISCOVERY_ATTEMPTS,sourcesChecked+attemptLimit);
+    const unique = orderDiscoveryUrls(urls.filter(u => !documents.has(u) && !failed.has(u)),now,attemptHistory,imminent,Math.ceil(attemptLimit*0.6));
     for (let offset = 0; offset < unique.length; offset += 6) {
       if (Date.now() >= until || sourcesChecked >= attemptEnd) { warnings.push('External discovery budget reached; some sources deferred'); break; }
       await Promise.all(unique.slice(offset, offset + Math.min(6, attemptEnd - sourcesChecked)).map(async url => {
@@ -587,12 +598,17 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
     // leaving any registered publisher's index. Reuse URLs, never old facts.
     ...previousDiscovery(old),
   ]);
-  await collect(knownNotices,25,phaseDeadline(0.20));
+  for(const old of priorRecords) {
+    if(!isImminent(old.date) || !targets.some(r=>r.source_key===old.source_key&&r.date===old.date&&r.category===old.category))continue;
+    for(const source of old.timing_evidence?.sources||[])if(source.authority==='official')markImminent(source.url,old.date);
+    for(const url of previousDiscovery(old))markImminent(url,old.date);
+  }
+  await collect(knownNotices,40,phaseDeadline(0.20));
   await collect(operatorIndexes,45,phaseDeadline(0.45));
   await collect([...MEDIA_INDEXES, ...search],25,phaseDeadline(0.60));
   const articles: string[] = [];
   const linkedByOfficialIndex=new Set<string>();
-  const discoveryLinks:{root:string;url:string;dates:string[]}[]=[];
+  const discoveryLinks:{root:string;url:string;dates:string[];label?:string}[]=[];
   for (const [url, html] of documents) {
     const $ = cheerio.load(html);
     if (new URL(url).hostname === 'sciopero.net') {
@@ -611,9 +627,17 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
         const href = $(a).attr('href');
         if (!href) return;
         const candidate = linkUrl(href, url);
-        if (candidate && /scioper|\bstrike\b|industrial action/i.test($(a).text() + ' ' + href) && (OFFICIAL_HOSTS.has(new URL(url).hostname) || dates.some(d => exactDate($(a).text(), d) || exactDate(href.replace(/-/g, ' '), d)) || /scioperi-settimana|scioperi-.*calendario/.test(candidate)) && candidate !== url && !/garantiti-incasodisciopero|in-caso-di-sciopero|tag\/|economia\/scioperi/.test(candidate)) { articles.push(candidate); if(operatorIndexes.includes(url) && OFFICIAL_HOSTS.has(new URL(url).hostname)) {linkedByOfficialIndex.add(candidate);discoveryLinks.push({root:url,url:candidate,dates:dates.filter(d=>exactDate($(a).text(),d)||exactDate(href.replace(/-/g,' '),d))});} }
+        if (candidate && /scioper|\bstrike\b|industrial action/i.test($(a).text() + ' ' + href) && (OFFICIAL_HOSTS.has(new URL(url).hostname) || dates.some(d => exactDate($(a).text(), d) || exactDate(href.replace(/-/g, ' '), d)) || /scioperi-settimana|scioperi-.*calendario/.test(candidate)) && candidate !== url && !/garantiti-incasodisciopero|in-caso-di-sciopero|tag\/|economia\/scioperi/.test(candidate)) { articles.push(candidate); if(operatorIndexes.includes(url) && OFFICIAL_HOSTS.has(new URL(url).hostname)) {linkedByOfficialIndex.add(candidate);discoveryLinks.push({root:url,url:candidate,label:$(a).text(),dates:dates.filter(d=>exactDate($(a).text(),d)||exactDate(href.replace(/-/g,' '),d))});} }
       });
     }
+  }
+  // Links found in this run on the publisher index of an imminent strike are
+  // read in this run, not queued for a later day.
+  for(const link of discoveryLinks) {
+    if(link.dates.length){for(const date of link.dates)markImminent(link.url,date);continue;}
+    // Operators often title a notice "venerdì 13 novembre" with no year. That
+    // is only an ordering hint here; the parser still decides what it proves.
+    for(const date of new Set(targets.filter(r=>isImminent(r.date)&&noticeRootsForRecord(r).includes(link.root)).map(r=>r.date)))markImminent(link.url,dayAndMonth(link.label||'',date)?date:date+'~');
   }
   const datedArticles=articles.filter(url=>discoveryLinks.some(link=>link.url===url&&link.dates.length) || new URL(url).hostname==='sciopero.net');
   await collect(datedArticles,35,phaseDeadline(0.80));
