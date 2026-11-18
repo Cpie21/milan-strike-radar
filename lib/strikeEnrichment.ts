@@ -533,6 +533,46 @@ export function applyTimingEvidence(record: StrikeRecord, notices: ExternalNotic
   return result;
 }
 
+export function projectCityStrikeNotices(records: StrikeRecord[], targets: StrikeRecord[], notices: ExternalNotice[]) {
+  const identity = (record: StrikeRecord) => JSON.stringify([
+    record.source_key || null, record.source_key ? null : record.provider,
+    record.date, record.region, record.category,
+  ]);
+  const present = new Set(records.map(identity));
+  // A direct subway record supplies its own mode-specific facts. A bus
+  // declaration can supply a subway projection only if that identity is free.
+  const national = targets.filter(record => record.region === 'NATIONAL' && ['BUS', 'SUBWAY'].includes(record.category))
+    .sort((a, b) => Number(b.category === 'SUBWAY') - Number(a.category === 'SUBWAY'));
+  const variants: StrikeRecord[] = [];
+  for (const record of national) {
+    for (const city of CITIES) {
+      const scoped = notices.filter(notice => notice.source.authority === 'official' &&
+        (sourceCities(notice.source.url).includes(city.tag) || notice.union_scope?.cities.includes(city.tag)));
+      const general = /sciopero generale|categorie pubbliche|plurisettorial/i.test(record.raw_payload?.provider || '');
+      const categories = record.category === 'BUS' && general && METRO_CITY_TAGS.has(city.tag)
+        ? ['BUS', 'SUBWAY'] as const : [record.category];
+      for (const category of categories) {
+        const variant = { ...record, region: city.tag, category };
+        const key = identity(variant);
+        if (present.has(key)) continue;
+        const enriched = applyTimingEvidence(variant, scoped);
+        const timing = enriched.timing_evidence;
+        const lineScope = timing?.fields?.lineScope;
+        const hasHours = timing?.windows.length && timing.confidence !== 'conflict';
+        const hasLines = lineScope?.confidence === 'HIGH' && lineScope.value.kind !== 'UNKNOWN';
+        if (!hasHours && !hasLines) continue;
+        enriched.provider = [...new Set(CITY_STRIKE_SOURCES
+          .filter(source => source.cities.includes(city.tag) &&
+            timing?.sources.some(evidence => source.urls.some(root => new URL(root).hostname === new URL(evidence.url).hostname)))
+          .map(source => source.name))].join(' / ') || enriched.provider;
+        present.add(key);
+        variants.push(enriched);
+      }
+    }
+  }
+  return variants;
+}
+
 const IMMINENT_DAYS=4;
 const dayAndMonth=(text:string,date:string)=>new RegExp(`\\b0?${Number(date.slice(8))}\\s+(?:${MONTHS[Number(date.slice(5,7))-1]}|${ENGLISH_MONTHS[Number(date.slice(5,7))-1]})\\b`,'i').test(text);
 // 40 known + 45 indexes + 25 media + 35 dated + 10 + 10 + 10 + 20 regulator details.
@@ -674,22 +714,7 @@ export async function enrichStrikeTiming(records: StrikeRecord[], warnings: stri
   // Prefer the primary regulator details whenever reachable; do not bypass TLS.
   await collect(notices.filter(n => targets.some(r => matchesNotice(n, r))).map(n => n.official_url).filter((u): u is string => Boolean(u)),20);
   notices = parsedDocuments();
-  const cityVariants: StrikeRecord[]=[];
-  for (const record of targets.filter(r=>r.region==='NATIONAL' && ['BUS','SUBWAY'].includes(r.category))) {
-    for (const city of CITIES) {
-      const scoped=notices.filter(n=>n.source.authority==='official' && (sourceCities(n.source.url).includes(city.tag) || n.union_scope?.cities.includes(city.tag)));
-      const general=/sciopero generale|categorie pubbliche|plurisettorial/i.test(record.raw_payload?.provider || '');
-      const categories = record.category === 'BUS' && general && METRO_CITY_TAGS.has(city.tag) ? ['BUS','SUBWAY'] as const : [record.category];
-      for (const category of categories) {
-        const variant={...record,region:city.tag,category};
-        const enriched=applyTimingEvidence(variant,scoped);
-        if ((enriched.timing_evidence?.windows.length && enriched.timing_evidence.confidence !== 'conflict') || enriched.timing_evidence?.fields?.lineScope?.confidence==='HIGH' && enriched.timing_evidence.fields.lineScope.value.kind!=='UNKNOWN') {
-          enriched.provider=[...new Set(CITY_STRIKE_SOURCES.filter(s=>s.cities.includes(city.tag) && enriched.timing_evidence!.sources.some(e=>s.urls.some(root=>new URL(root).hostname===new URL(e.url).hostname))).map(s=>s.name))].join(' / ') || enriched.provider;
-          cityVariants.push(enriched);
-        }
-      }
-    }
-  }
+  const cityVariants = projectCityStrikeNotices(output, targets, notices);
   const enrichedRecords = output.map(r => targets.some(t => t.source_key === r.source_key && t.date === r.date && t.category === r.category && t.region === r.region) ? applyTimingEvidence(r, notices) : r);
   for (const r of [...enrichedRecords,...cityVariants]) {
     if(!targets.some(t=>t.source_key===r.source_key&&t.date===r.date) || !r.timing_evidence?.fields)continue;

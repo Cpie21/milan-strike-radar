@@ -3,7 +3,7 @@ const ts = require('typescript');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileModule(fs.readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true, target: ts.ScriptTarget.ES2022 } }).outputText, filename);
-const { parseExternalNotices, parseExternalWindows, matchesNotice, applyTimingEvidence, allowedSourceUrl, enrichStrikeTiming } = require('../lib/strikeEnrichment.ts');
+const { parseExternalNotices, parseExternalWindows, matchesNotice, applyTimingEvidence, allowedSourceUrl, enrichStrikeTiming, projectCityStrikeNotices } = require('../lib/strikeEnrichment.ts');
 const { preserveHistoricalEvidence } = require('../lib/strikeHistory.ts');
 const { aggregateStrikes } = require('../components/utils.ts');
 const record = (override = {}) => ({ date:'2026-10-09', region:'MILANO', category:'SUBWAY', provider:'米兰交通局人员', status:'UNCERTAIN', display_time:'具体时段待公布', duration_hours:'24小时（时段待公布）', strike_windows:[], guarantee_windows:[], affected_lines:['全部线路'], source_key:'same-mit-identity', source_url:'https://scioperi.mit.gov.it/mit2/public/scioperi', raw_payload:{ provider:'PERSONALE GRUPPO ATM DI MILANO', unions:'CONFIAL TRASPORTI', sector:'Trasporto pubblico locale', modalita:"24 ORE: VARIE MODALITA'", sourceStatus:'Programmato' }, ...override });
@@ -60,6 +60,33 @@ test('GEST discovery follows the registered news index without hard-coding the e
  try{const r=await enrichStrikeTiming([gestRecord()],[],new Date('2026-10-05T12:00:00Z'));assert.ok(fetched.includes(gestUrl));assert.deepEqual(r.records[0].affected_lines,['T1','T2']);assert.equal(r.records[0].timing_evidence.fields.guaranteeSource,'OFFICIAL_STRIKE_NOTICE');}finally{global.fetch=original;}
 });
 const detailHtml = (timing = notice().timing) => `<main><article class="detail-container"><h1>Sciopero Atm Milano, Net del 09-10-2026</h1>${Object.entries({"Data Dell'evento":'09-10-2026','Ambito Territoriale':'Milano, Monza','Sigle Sindacali':'Confial Trasporti','Settore Coinvolto':'Trasporto Pubblico Locale','Orari E Fasce':timing,'Stato Attuale':'CONFERMATO'}).map(([k,v])=>`<div class="detail-row"><div class="detail-label">${k}</div><div class="detail-value">${v}</div></div>`).join('')}</article></main>`;
+
+test('city projections keep one row per source, date, city and mode', () => {
+  const generic = {
+    ...record().raw_payload,
+    provider: 'SCIOPERO GENERALE CATEGORIE PUBBLICHE E PRIVATE',
+  };
+  const bus = record({ region: 'NATIONAL', category: 'BUS', raw_payload: generic });
+  const subway = record({ region: 'NATIONAL', raw_payload: generic, last_seen_at: '2026-10-09T05:00:00Z' });
+  const operator = notice({
+    territory: 'Milano',
+    provider: 'ATM Milano',
+    timing: 'ATM Milano metropolitana: dalle 8 alle 15; autobus: dalle 9 alle 13',
+    source: { ...source('https://www.atm.it/it/AtmNews/notice.aspx'), authority: 'official' },
+  });
+  const projections = projectCityStrikeNotices([bus, subway], [bus, subway], [operator]);
+  assert.deepEqual(projections.filter(row => row.region === 'MILANO').map(row => [row.category, row.display_time]), [
+    ['SUBWAY', '08:00 - 15:00'],
+    ['BUS', '09:00 - 13:00'],
+  ]);
+  assert.equal(projections.find(row => row.region === 'MILANO' && row.category === 'SUBWAY').last_seen_at, subway.last_seen_at);
+  const existing = record({ status: 'CANCELLED' });
+  const independent = { ...bus, source_key: 'another-declaration' };
+  const all = [existing, bus, subway, independent];
+  const additional = projectCityStrikeNotices(all, [bus, subway, independent], [operator]);
+  assert.equal(additional.some(row => row.source_key === existing.source_key && row.region === 'MILANO' && row.category === 'SUBWAY'), false);
+  assert.equal(additional.some(row => row.source_key === independent.source_key && row.region === 'MILANO' && row.category === 'SUBWAY'), true);
+});
 
 test('scopes ATM hours away from Monza and preserves end-of-service without inventing midnight', () => {
   assert.deepEqual(parseExternalWindows(notice().timing, record()), expected);
